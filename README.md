@@ -2,6 +2,8 @@
 
 Four-bar is a simulator, a synthesizing tool for four-bar linkage mechanism.
 
+Online demo: <https://kmolyuan.github.io/four-bar-rs/>
+
 ## Native Execution
 
 In Linux, you need to install some library:
