@@ -1,0 +1,40 @@
+name: Github Deploy
+on:
+  push:
+    tags: [ v* ]
+jobs:
+  gh-release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: four-bar
+            asset_name: four-bar-linux-amd64
+          - os: macOS-latest
+            artifact_name: four-bar
+            asset_name: four-bar-macos-amd64
+          - os: windows-latest
+            artifact_name: four-bar.exe
+            asset_name: four-bar-windows-amd64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev
+      - shell: bash
+        run: |
+          cargo build --all-features --release
+      - name: Pack binaries
+        uses: papeloto/action-zip@v1
+        with:
+          files: target/release/${{ matrix.artifact_name }}
+          dest: ${{ matrix.asset_name }}.zip
+      - name: Upload binaries to release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        with:
+          files: ${{ matrix.asset_name }}.zip

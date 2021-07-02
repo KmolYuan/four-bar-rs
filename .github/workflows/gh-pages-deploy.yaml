@@ -1,0 +1,24 @@
+name: GH-Pages Deploy
+on:
+  push:
+    branches: [ main ]
+jobs:
+  gh-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: sudo apt install binaryen
+      - run: |
+          ./setup_web.sh
+          ./build_web.sh
+      - run: wasm-opt docs/four_bar_bg.wasm -O2 -o docs/four_bar_bg.wasm
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: docs/
+          CLEAN: true
