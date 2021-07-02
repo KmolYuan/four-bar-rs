@@ -1,5 +1,0 @@
-.idea/
-target/
-docs/*.wasm
-docs/*.js
-Cargo.lock
