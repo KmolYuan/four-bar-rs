@@ -1,4 +1,5 @@
 use eframe::egui::*;
+use four_bar::Mechanism;
 use std::f64::consts::{FRAC_PI_6, PI, TAU};
 
 macro_rules! unit {
@@ -56,7 +57,7 @@ pub struct Linkage {
     l2: f64,
     l3: f64,
     l4: f64,
-    gamma: f64,
+    g: f64,
 }
 
 impl Default for Linkage {
@@ -70,12 +71,24 @@ impl Default for Linkage {
             l2: 70.,
             l3: 70.,
             l4: 45.,
-            gamma: FRAC_PI_6,
+            g: FRAC_PI_6,
         }
     }
 }
 
 impl Linkage {
+    pub fn mechanism(&self) -> Mechanism {
+        Mechanism::four_bar(
+            (self.x0, self.y0),
+            self.l0,
+            self.l1,
+            self.l2,
+            self.l3,
+            self.l4,
+            self.g,
+        )
+    }
+
     pub fn update(&mut self, ctx: &CtxRef) {
         SidePanel::left("side panel").show(ctx, |ui: &mut Ui| {
             ui.heading("Dimensional Configuration");
@@ -101,7 +114,7 @@ impl Linkage {
                 ui.group(|ui| {
                     ui.heading("Coupler");
                     link!("Extended: ", self.l4, ui);
-                    angle!("Angle: ", self.gamma, ui);
+                    angle!("Angle: ", self.g, ui);
                 });
             });
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {

@@ -22,7 +22,7 @@ wasm-bindgen "target/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
   --out-dir docs --no-modules --no-typescript
 
 # to get wasm-opt:  apt/brew/dnf install binaryen
-if [[ $1 = "-O" ]]; then
+if [[ "${1-}" = "-O" ]]; then
   echo "Optimizing wasm..."
   wasm-opt docs/${CRATE_SNAKE_CASE}_bg.wasm -O2 -o docs/${CRATE_SNAKE_CASE}_bg.wasm
 fi

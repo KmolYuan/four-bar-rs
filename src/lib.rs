@@ -3,6 +3,7 @@
 pub use app::App;
 
 mod app;
+mod as_values;
 mod linkage;
 
 #[cfg(target_arch = "wasm32")]

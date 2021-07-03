@@ -1,4 +1,4 @@
-use crate::linkage::*;
+use crate::{as_values::AsValues, linkage::*};
 use eframe::{egui::*, epi};
 
 /// Main state.
@@ -45,7 +45,7 @@ impl epi::App for App {
                     }
                 }
                 ui.with_layout(Layout::right_to_left(), |ui| {
-                    if ui.small_button("？").clicked() {
+                    if ui.small_button("ℹ").clicked() {
                         self.welcome = true;
                     }
                 })
@@ -55,7 +55,19 @@ impl epi::App for App {
             self.linkage.update(ctx);
         }
         CentralPanel::default().show(ctx, |ui| {
-            plot::Plot::new("canvas").ui(ui);
+            let mut m = self.linkage.mechanism();
+            let path = m.four_bar_loop(0., 360);
+            plot::Plot::new("canvas")
+                .line(plot::Line::new(path[0].as_values()))
+                .line(plot::Line::new(path[1].as_values()))
+                .line(plot::Line::new(path[2].as_values()))
+                .points(
+                    plot::Points::new(m.joints.as_values())
+                        .radius(5.)
+                        .color(Color32::LIGHT_BLUE),
+                )
+                .data_aspect(1.)
+                .ui(ui);
         });
         // Welcome message
         Window::new("Welcome to Four🍀bar!")
