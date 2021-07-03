@@ -56,13 +56,13 @@ macro_rules! draw_link {
     ($a:expr, $b:expr) => {
         plot::Line::new([$a, $b].as_values())
             .width(3.)
-            .color(Color32::from_rgb(128, 96, 77))
+            .color(Color32::from_rgb(165, 151, 132))
     };
     ($a:expr, $b:expr $(, $c:expr)+) => {
         plot::Polygon::new([$a, $b $(, $c)+].as_values())
             .width(3.)
             .fill_alpha(0.6)
-            .color(Color32::from_rgb(128, 96, 77))
+            .color(Color32::from_rgb(165, 151, 132))
     };
 }
 

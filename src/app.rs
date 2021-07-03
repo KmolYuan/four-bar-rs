@@ -27,28 +27,35 @@ impl epi::App for App {
         TopBottomPanel::top("top panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ctx.style().visuals.dark_mode {
-                    if ui.small_button("🔆").clicked() {
+                    if ui.small_button("🔆").on_hover_text("Light").clicked() {
                         ctx.set_visuals(Visuals::light());
                     }
                 } else {
-                    if ui.small_button("🌙").clicked() {
+                    if ui.small_button("🌙").on_hover_text("Dark").clicked() {
                         ctx.set_visuals(Visuals::dark());
                     }
                 }
                 if self.side_panel {
-                    if ui.small_button("⬅").clicked() {
+                    if ui.small_button("⬅").on_hover_text("Fold").clicked() {
                         self.side_panel = false;
                     }
                 } else {
-                    if ui.small_button("➡").clicked() {
+                    if ui.small_button("➡").on_hover_text("Expand").clicked() {
                         self.side_panel = true;
                     }
                 }
                 ui.with_layout(Layout::right_to_left(), |ui| {
-                    if ui.small_button("ℹ").clicked() {
+                    if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
                         self.welcome = true;
                     }
-                })
+                    if ui
+                        .small_button("↻")
+                        .on_hover_text("Reset UI Setting")
+                        .clicked()
+                    {
+                        *ctx.memory() = Default::default();
+                    }
+                });
             });
         });
         if self.side_panel {
