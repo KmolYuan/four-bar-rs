@@ -58,6 +58,7 @@ pub struct App {
     l3: f64,
     l4: f64,
     gamma: f64,
+    side_panel: bool,
 }
 
 impl Default for App {
@@ -73,7 +74,44 @@ impl Default for App {
             l3: 70.,
             l4: 45.,
             gamma: FRAC_PI_6,
+            side_panel: true,
         }
+    }
+}
+
+impl App {
+    fn side_panel(&mut self, ctx: &CtxRef) {
+        SidePanel::left("side panel").show(ctx, |ui: &mut Ui| {
+            ui.heading("Dimensional Configuration");
+            ui.vertical(|ui| {
+                ui.group(|ui| {
+                    ui.heading("Offset");
+                    if ui.button("Reset").clicked() {
+                        self.x0 = 0.;
+                        self.y0 = 0.;
+                        self.alpha = 0.;
+                    }
+                    unit!("X Offset: ", self.x0, ui);
+                    unit!("Y Offset: ", self.y0, ui);
+                    angle!("Rotation: ", self.alpha, ui);
+                });
+                ui.group(|ui| {
+                    ui.heading("Parameters");
+                    link!("Ground: ", self.l0, ui);
+                    link!("Crank: ", self.l1, ui);
+                    link!("Coupler: ", self.l2, ui);
+                    link!("Follower: ", self.l3, ui);
+                });
+                ui.group(|ui| {
+                    ui.heading("Coupler");
+                    link!("Extended: ", self.l4, ui);
+                    angle!("Angle: ", self.gamma, ui);
+                });
+            });
+            ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("powered by egui"));
+            });
+        });
     }
 }
 
@@ -81,35 +119,36 @@ impl epi::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &CtxRef, _frame: &mut epi::Frame<'_>) {
-        SidePanel::left("side panel").show(ctx, |ui| {
-            ui.heading("Dimensional Configuration");
-            ui.group(|ui| {
-                ui.heading("Offset");
-                if ui.button("Reset").clicked() {
-                    self.x0 = 0.;
-                    self.y0 = 0.;
-                    self.alpha = 0.;
+        TopBottomPanel::top("top panel").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if ctx.style().visuals.dark_mode {
+                    if ui.small_button("🔆").clicked() {
+                        ctx.set_visuals(Visuals::light());
+                    }
+                } else {
+                    if ui.small_button("🌙").clicked() {
+                        ctx.set_visuals(Visuals::dark());
+                    }
                 }
-                unit!("X Offset: ", self.x0, ui);
-                unit!("Y Offset: ", self.y0, ui);
-                angle!("Rotation: ", self.alpha, ui);
-            });
-            ui.group(|ui| {
-                ui.heading("Parameters");
-                link!("Ground: ", self.l0, ui);
-                link!("Crank: ", self.l1, ui);
-                link!("Coupler: ", self.l2, ui);
-                link!("Follower: ", self.l3, ui);
-            });
-            ui.group(|ui| {
-                ui.heading("Coupler");
-                link!("Extended: ", self.l4, ui);
-                angle!("Angle: ", self.gamma, ui);
-            });
-            ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
-                ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("powered by egui"));
+                if self.side_panel {
+                    if ui.small_button("⬅").clicked() {
+                        self.side_panel = false;
+                    }
+                } else {
+                    if ui.small_button("➡").clicked() {
+                        self.side_panel = true;
+                    }
+                }
+                ui.with_layout(Layout::right_to_left(), |ui| {
+                    if ui.small_button("？").clicked() {
+                        self.welcome = true;
+                    }
+                })
             });
         });
+        if self.side_panel {
+            self.side_panel(ctx);
+        }
         CentralPanel::default().show(ctx, |ui| {
             plot::Plot::new("canvas").ui(ui);
         });
