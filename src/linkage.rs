@@ -51,7 +51,7 @@ macro_rules! angle {
 pub struct Linkage {
     x0: f64,
     y0: f64,
-    alpha: f64,
+    a: f64,
     l0: f64,
     l1: f64,
     l2: f64,
@@ -65,7 +65,7 @@ impl Default for Linkage {
         Self {
             x0: 0.,
             y0: 0.,
-            alpha: 0.,
+            a: 0.,
             l0: 90.,
             l1: 35.,
             l2: 70.,
@@ -80,6 +80,7 @@ impl Linkage {
     pub fn mechanism(&self) -> Mechanism {
         Mechanism::four_bar(
             (self.x0, self.y0),
+            self.a,
             self.l0,
             self.l1,
             self.l2,
@@ -98,11 +99,11 @@ impl Linkage {
                     if ui.button("Reset").clicked() {
                         self.x0 = 0.;
                         self.y0 = 0.;
-                        self.alpha = 0.;
+                        self.a = 0.;
                     }
                     unit!("X Offset: ", self.x0, ui);
                     unit!("Y Offset: ", self.y0, ui);
-                    angle!("Rotation: ", self.alpha, ui);
+                    angle!("Rotation: ", self.a, ui);
                 });
                 ui.group(|ui| {
                     ui.heading("Parameters");
