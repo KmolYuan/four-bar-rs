@@ -71,6 +71,7 @@ macro_rules! draw_path {
 #[cfg_attr(feature = "persistence", serde(default))] // if we add new fields, give them default values when deserializing old state
 pub struct Linkage {
     interval: f64,
+    drive: f64,
     x0: f64,
     y0: f64,
     a: f64,
@@ -86,6 +87,7 @@ impl Default for Linkage {
     fn default() -> Self {
         Self {
             interval: 1.,
+            drive: 0.,
             x0: 0.,
             y0: 0.,
             a: 0.,
@@ -129,6 +131,13 @@ impl Linkage {
                     link!("Extended: ", self.l4, self.interval, ui);
                     angle!("Angle: ", self.g, ui);
                 });
+                ui.group(|ui| {
+                    ui.heading("Driver");
+                    if ui.button("Reset").clicked() {
+                        self.drive = 0.;
+                    }
+                    angle!("Angle: ", self.drive, ui);
+                });
             });
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("powered by egui"));
@@ -148,7 +157,7 @@ impl Linkage {
                 self.l4,
                 self.g,
             );
-            m.four_bar_angle(0.).unwrap();
+            m.four_bar_angle(self.drive).unwrap();
             let joints = m.joints.clone();
             let path = m.four_bar_loop(0., 360);
             plot::Plot::new("canvas")
