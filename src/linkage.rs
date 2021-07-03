@@ -1,22 +1,23 @@
+use crate::as_values::AsValues;
 use eframe::egui::*;
 use four_bar::Mechanism;
 use std::f64::consts::{FRAC_PI_6, PI, TAU};
 
 macro_rules! unit {
-    ($label:literal, $attr:expr, $ui:ident) => {
+    ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
         DragValue::new(&mut $attr)
             .prefix($label)
-            .speed(0.01)
+            .speed($inter)
             .ui($ui);
     };
 }
 
 macro_rules! link {
-    ($label:literal, $attr:expr, $ui:ident) => {
+    ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
         DragValue::new(&mut $attr)
             .prefix($label)
             .clamp_range(0.0001..=9999.)
-            .speed(0.01)
+            .speed($inter)
             .ui($ui);
     };
 }
@@ -29,7 +30,7 @@ macro_rules! angle {
                 .prefix($label)
                 .suffix(" deg")
                 .clamp_range((0.)..=360.)
-                .speed(0.01)
+                .speed(1.)
                 .ui(ui)
                 .changed()
             {
@@ -45,10 +46,31 @@ macro_rules! angle {
     };
 }
 
+macro_rules! draw_link {
+    ($a:expr, $b:expr) => {
+        plot::Line::new([$a, $b].as_values())
+            .width(3.)
+            .color(Color32::from_rgb(128, 96, 77))
+    };
+    ($a:expr, $b:expr $(, $c:expr)+) => {
+        plot::Polygon::new([$a, $b $(, $c)+].as_values())
+            .width(3.)
+            .fill_alpha(0.6)
+            .color(Color32::from_rgb(128, 96, 77))
+    };
+}
+
+macro_rules! draw_path {
+    ($name:literal, $path:expr) => {
+        plot::Line::new($path.as_values()).name($name).width(3.)
+    };
+}
+
 /// Linkage data.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "persistence", serde(default))] // if we add new fields, give them default values when deserializing old state
 pub struct Linkage {
+    interval: f64,
     x0: f64,
     y0: f64,
     a: f64,
@@ -63,6 +85,7 @@ pub struct Linkage {
 impl Default for Linkage {
     fn default() -> Self {
         Self {
+            interval: 1.,
             x0: 0.,
             y0: 0.,
             a: 0.,
@@ -77,21 +100,10 @@ impl Default for Linkage {
 }
 
 impl Linkage {
-    pub fn mechanism(&self) -> Mechanism {
-        Mechanism::four_bar(
-            (self.x0, self.y0),
-            self.a,
-            self.l0,
-            self.l1,
-            self.l2,
-            self.l3,
-            self.l4,
-            self.g,
-        )
-    }
-
     pub fn update(&mut self, ctx: &CtxRef) {
         SidePanel::left("side panel").show(ctx, |ui: &mut Ui| {
+            ui.heading("Options");
+            link!("Value interval: ", self.interval, 0.01, ui);
             ui.heading("Dimensional Configuration");
             ui.vertical(|ui| {
                 ui.group(|ui| {
@@ -101,26 +113,64 @@ impl Linkage {
                         self.y0 = 0.;
                         self.a = 0.;
                     }
-                    unit!("X Offset: ", self.x0, ui);
-                    unit!("Y Offset: ", self.y0, ui);
+                    unit!("X Offset: ", self.x0, self.interval, ui);
+                    unit!("Y Offset: ", self.y0, self.interval, ui);
                     angle!("Rotation: ", self.a, ui);
                 });
                 ui.group(|ui| {
                     ui.heading("Parameters");
-                    link!("Ground: ", self.l0, ui);
-                    link!("Crank: ", self.l1, ui);
-                    link!("Coupler: ", self.l2, ui);
-                    link!("Follower: ", self.l3, ui);
+                    link!("Ground: ", self.l0, self.interval, ui);
+                    link!("Crank: ", self.l1, self.interval, ui);
+                    link!("Coupler: ", self.l2, self.interval, ui);
+                    link!("Follower: ", self.l3, self.interval, ui);
                 });
                 ui.group(|ui| {
                     ui.heading("Coupler");
-                    link!("Extended: ", self.l4, ui);
+                    link!("Extended: ", self.l4, self.interval, ui);
                     angle!("Angle: ", self.g, ui);
                 });
             });
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("powered by egui"));
             });
+        });
+    }
+
+    pub fn plot(&mut self, ctx: &CtxRef) {
+        CentralPanel::default().show(ctx, |ui| {
+            let mut m = Mechanism::four_bar(
+                (self.x0, self.y0),
+                self.a,
+                self.l0,
+                self.l1,
+                self.l2,
+                self.l3,
+                self.l4,
+                self.g,
+            );
+            m.four_bar_angle(0.).unwrap();
+            let joints = m.joints.clone();
+            let path = m.four_bar_loop(0., 360);
+            plot::Plot::new("canvas")
+                .line(draw_link![joints[0], joints[2]])
+                .line(draw_link![joints[1], joints[3]])
+                .polygon(draw_link![joints[2], joints[3], joints[4]])
+                .points(
+                    plot::Points::new([joints[0], joints[1]].as_values())
+                        .radius(7.)
+                        .color(Color32::from_rgb(93, 69, 56)),
+                )
+                .points(
+                    plot::Points::new([joints[2], joints[3], joints[4]].as_values())
+                        .radius(5.)
+                        .color(Color32::from_rgb(128, 96, 77)),
+                )
+                .line(draw_path!("Crank pivot", path[0]))
+                .line(draw_path!("Follower pivot", path[1]))
+                .line(draw_path!("Coupler pivot", path[2]))
+                .data_aspect(1.)
+                .legend(plot::Legend::default())
+                .ui(ui);
         });
     }
 }

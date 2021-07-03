@@ -124,8 +124,7 @@ impl Point {
     }
 
     pub fn pla(&self, d0: f64, a0: f64) -> Self {
-        let a1 = f64::atan2(self.y, self.x) + a0;
-        Self::new(self.x + d0 * a1.cos(), self.y + d0 * a1.sin())
+        Self::new(self.x + d0 * a0.cos(), self.y + d0 * a0.sin())
     }
 
     pub fn plap(&self, d0: f64, a0: f64, rhs: &Self) -> Self {
