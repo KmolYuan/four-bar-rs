@@ -23,12 +23,12 @@ macro_rules! link {
 }
 
 macro_rules! angle {
-    ($label:literal, $attr:expr, $ui:ident) => {
+    ($label:literal, $attr:expr, $ui:ident, $t:literal) => {
         $ui.horizontal(|ui| {
             let mut deg = $attr / PI * 180.;
             if DragValue::new(&mut deg)
                 .prefix($label)
-                .suffix(" deg")
+                .suffix(concat![" deg", $t])
                 .clamp_range((0.)..=360.)
                 .speed(1.)
                 .ui(ui)
@@ -37,12 +37,18 @@ macro_rules! angle {
                 $attr = deg / 180. * PI;
             }
             DragValue::new(&mut $attr)
-                .suffix(" rad")
+                .suffix(concat![" rad", $t])
                 .min_decimals(2)
                 .clamp_range((0.)..=TAU)
                 .speed(0.01)
                 .ui(ui);
         });
+    };
+    ($label:literal, $attr:expr, $ui:ident) => {
+        if TAU - $attr < 1e-20 {
+            $attr = 0.;
+        }
+        angle!($label, $attr, $ui, "");
     };
 }
 
@@ -72,6 +78,7 @@ macro_rules! draw_path {
 pub struct Linkage {
     interval: f64,
     drive: f64,
+    speed: f64,
     x0: f64,
     y0: f64,
     a: f64,
@@ -88,6 +95,7 @@ impl Default for Linkage {
         Self {
             interval: 1.,
             drive: 0.,
+            speed: 0.,
             x0: 0.,
             y0: 0.,
             a: 0.,
@@ -133,9 +141,11 @@ impl Linkage {
                 });
                 ui.group(|ui| {
                     ui.heading("Driver");
-                    if ui.button("Reset").clicked() {
+                    if ui.button("Reset / Stop").clicked() {
+                        self.speed = 0.;
                         self.drive = 0.;
                     }
+                    angle!("Speed: ", self.speed, ui, "/s");
                     angle!("Angle: ", self.drive, ui);
                 });
             });
@@ -181,5 +191,9 @@ impl Linkage {
                 .legend(plot::Legend::default())
                 .ui(ui);
         });
+        if self.speed != 0. {
+            self.drive += self.speed / 60.;
+            ctx.request_repaint();
+        }
     }
 }
