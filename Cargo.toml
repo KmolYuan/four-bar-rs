@@ -1,5 +1,5 @@
 [package]
-name = "four-bar"
+name = "four-bar-ui"
 version = "0.1.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2018"
@@ -9,6 +9,7 @@ description = "Four🍀bar is a simulator, a synthesizing tool for four-bar link
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+four-bar = { path = "kernel" }
 eframe = "0.13"
 serde = { version = "1", features = ["derive"], optional = true }
 

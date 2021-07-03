@@ -62,10 +62,10 @@ impl epi::App for App {
             .open(&mut self.welcome)
             .collapsible(false)
             .show(ctx, |ui| {
-                ui.label(
-                    "Four-bar is a four-bar linkage mechanism \
-                    simulator and synthesizing tool.",
-                );
+                ui.label(concat!("Version: v", env!("CARGO_PKG_VERSION")));
+                ui.label(env!("CARGO_PKG_DESCRIPTION"));
+                ui.heading("Author");
+                ui.label(env!("CARGO_PKG_AUTHORS"));
                 ui.heading("License");
                 ui.label("This software is under AGPL v3 license.");
                 ui.label("The commercial usages under server or client side are not allowed.");

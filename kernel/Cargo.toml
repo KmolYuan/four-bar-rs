@@ -1,0 +1,9 @@
+[package]
+name = "four-bar"
+version = "0.1.0"
+authors = ["KmolYuan <pyslvs@gmail.com>"]
+edition = "2018"
+description = "Four🍀bar is a simulator, a synthesizing tool for four-bar linkage mechanism."
+
+[dependencies]
+

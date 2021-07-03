@@ -13,8 +13,7 @@ jobs:
       - run: sudo apt install binaryen
       - run: |
           ./setup_web.sh
-          ./build_web.sh
-      - run: wasm-opt docs/four_bar_bg.wasm -O2 -o docs/four_bar_bg.wasm
+          ./build_web.sh -O
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@releases/v3
         with:
