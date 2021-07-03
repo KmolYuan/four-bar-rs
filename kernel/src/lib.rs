@@ -78,8 +78,16 @@ impl Mechanism {
         for i in 0..n {
             let a = start + i as f64 * interval;
             self.four_bar_angle(a).unwrap();
-            for j in 0..3 {
-                path[j][i] = self.joints[j + 2];
+            let mut failed = false;
+            for j in (0..3).rev() {
+                if self.joints[j + 2][0].is_nan() {
+                    failed = true;
+                }
+                if failed {
+                    path[j][i] = [f64::NAN, f64::NAN];
+                } else {
+                    path[j][i] = self.joints[j + 2];
+                }
             }
         }
         path
