@@ -1,0 +1,115 @@
+use crate::*;
+use efd::{calculate_efd, normalize_efd};
+use metaheuristics_nature::ObjFunc;
+use ndarray::{arr2, concatenate, Array1, Array2, ArrayView1, AsArray, Axis, Ix2};
+use std::f64::consts::{PI, TAU};
+
+pub fn path_is_nan<'a, V>(path: V) -> bool
+where
+    V: AsArray<'a, f64, Ix2>,
+{
+    let path = path.into();
+    for i in 0..path.nrows() {
+        if path[[i, 0]].is_nan() || path[[i, 1]].is_nan() {
+            return true;
+        }
+    }
+    false
+}
+
+/// Synthesis task of planar four-bar linkage.
+pub struct Planar {
+    pub target: Array2<f64>,
+    n: usize,
+    harmonic: usize,
+    ub: Array1<f64>,
+    lb: Array1<f64>,
+}
+
+impl Planar {
+    /// Create a new task.
+    pub fn new<'a, V>(curve: V, n: usize, harmonic: usize) -> Self
+    where
+        V: AsArray<'a, f64, Ix2>,
+    {
+        let mut target = curve.into().into_owned();
+        let end = target.nrows() - 1;
+        if (target[[0, 0]] - target[[end, 0]]).abs() > 1e-20
+            || (target[[0, 1]] - target[[end, 1]]).abs() > 1e-20
+        {
+            target = concatenate!(Axis(0), target, arr2(&[[target[[0, 0]], target[[0, 1]]]]));
+        }
+        let target = calculate_efd(&target, harmonic);
+        let (target, _) = normalize_efd(&target, true);
+        let mut ub = Array1::ones(5) * 10.;
+        // gamma
+        ub[4] = TAU;
+        let mut lb = Array1::ones(5) * 1e-6;
+        lb[4] = 0.;
+        Self {
+            target,
+            n,
+            harmonic,
+            ub,
+            lb,
+        }
+    }
+}
+
+impl ObjFunc for Planar {
+    type Result = Array2<f64>;
+
+    fn fitness<'a, A>(&self, _gen: u32, v: A) -> f64
+    where
+        A: AsArray<'a, f64>,
+    {
+        let v = v.into();
+        let mut f = Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4]);
+        let c = arr2(&f.four_bar_loop(0., self.n));
+        if path_is_nan(&c) {
+            return 1e20;
+        }
+        let curve1 = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+        let c = arr2(&f.four_bar_loop(PI, self.n));
+        let curve2 = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+        let mut min_v = f64::INFINITY;
+        for curve in &[curve1, curve2] {
+            let coeffs = calculate_efd(curve, self.harmonic);
+            let (coeffs, _) = normalize_efd(&coeffs, true);
+            let v = (coeffs - &self.target).mapv(f64::abs).sum();
+            if v < min_v {
+                min_v = v;
+            }
+        }
+        min_v
+    }
+
+    fn result<'a, A>(&self, v: A) -> Self::Result
+    where
+        A: AsArray<'a, f64>,
+    {
+        let v = v.into();
+        let mut f = Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4]);
+        let curve1 = arr2(&f.four_bar_loop(0., self.n));
+        let curve2 = arr2(&f.four_bar_loop(PI, self.n));
+        let coeffs = calculate_efd(&curve1, self.harmonic);
+        let (coeffs, _) = normalize_efd(&coeffs, true);
+        let v1 = (coeffs - &self.target).mapv(f64::abs).sum();
+        let coeffs = calculate_efd(&curve2, self.harmonic);
+        let (coeffs, _) = normalize_efd(&coeffs, true);
+        let v2 = (coeffs - &self.target).mapv(f64::abs).sum();
+        if v1 < v2 {
+            curve1
+        } else {
+            curve2
+        }
+    }
+
+    fn ub(&self) -> ArrayView1<f64> {
+        self.ub.view()
+    }
+
+    fn lb(&self) -> ArrayView1<f64> {
+        self.lb.view()
+    }
+}

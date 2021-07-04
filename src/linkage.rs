@@ -180,7 +180,7 @@ impl Linkage {
             );
             m.four_bar_angle(self.drive).unwrap();
             let joints = m.joints.clone();
-            let path = m.four_bar_loop(0., 360);
+            let path = m.four_bar_loop_all(0., 360);
             plot::Plot::new("canvas")
                 .line(draw_link![joints[0], joints[2]])
                 .line(draw_link![joints[1], joints[3]])

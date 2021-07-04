@@ -7,8 +7,9 @@ description = "Four🍀bar is a simulator, a synthesizing tool for four-bar link
 
 [features]
 default = ['synthesis']
-synthesis = ['metaheuristics-nature', 'efd']
+synthesis = ['ndarray', 'metaheuristics-nature', 'efd']
 
 [dependencies]
+ndarray = { version = "0.15", optional = true }
 metaheuristics-nature = { version = "0.6", optional = true }
 efd = { version = "0.3", optional = true }

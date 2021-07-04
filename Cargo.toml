@@ -8,15 +8,18 @@ description = "Four🍀bar is a simulator, a synthesizing tool for four-bar link
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = ['persistence']
+http = ["eframe/http"]
+persistence = ["eframe/persistence", "serde"]
+
 [dependencies]
 four-bar = { path = "kernel" }
 eframe = "0.13"
 serde = { version = "1", features = ["derive"], optional = true }
 
-[features]
-default = ['persistence']
-http = ["eframe/http"]
-persistence = ["eframe/persistence", "serde"]
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 
 [profile.release]
 opt-level = 2 # fast and small wasm

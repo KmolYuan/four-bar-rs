@@ -72,7 +72,20 @@ impl Mechanism {
         Ok(())
     }
 
-    pub fn four_bar_loop(&mut self, start: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
+    /// A loop trajectory for only coupler point.
+    pub fn four_bar_loop(&mut self, start: f64, n: usize) -> Vec<[f64; 2]> {
+        let interval = TAU / n as f64;
+        let mut path = vec![[0.; 2]; n];
+        for i in 0..n {
+            let a = start + i as f64 * interval;
+            self.four_bar_angle(a).unwrap();
+            path[i] = self.joints[4];
+        }
+        path
+    }
+
+    /// A loop trajectory for all moving pivot.
+    pub fn four_bar_loop_all(&mut self, start: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
         let interval = TAU / n as f64;
         let mut path = [vec![[0.; 2]; n], vec![[0.; 2]; n], vec![[0.; 2]; n]];
         for i in 0..n {
