@@ -14,7 +14,7 @@ eframe = "0.13"
 serde = { version = "1", features = ["derive"], optional = true }
 
 [features]
-default = []
+default = ['persistence']
 http = ["eframe/http"]
 persistence = ["eframe/persistence", "serde"]
 

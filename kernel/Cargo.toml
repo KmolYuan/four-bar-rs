@@ -4,3 +4,11 @@ version = "0.1.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2018"
 description = "Four🍀bar is a simulator, a synthesizing tool for four-bar linkage mechanism."
+
+[features]
+default = ['synthesis']
+synthesis = ['metaheuristics-nature', 'efd']
+
+[dependencies]
+metaheuristics-nature = { version = "0.6", optional = true }
+efd = { version = "0.3", optional = true }
