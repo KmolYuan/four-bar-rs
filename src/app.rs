@@ -1,11 +1,26 @@
 use crate::linkage::*;
 use eframe::{egui::*, epi};
 
+macro_rules! switch_button {
+    ($ui:expr, $attr:expr, $d_icon:literal, $d_tip:literal, $e_icon:literal, $e_tip:literal) => {
+        if $attr {
+            if $ui.small_button($d_icon).on_hover_text($d_tip).clicked() {
+                $attr = false;
+            }
+        } else {
+            if $ui.small_button($e_icon).on_hover_text($e_tip).clicked() {
+                $attr = true;
+            }
+        }
+    };
+}
+
 /// Main state.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "persistence", serde(default))] // if we add new fields, give them default values when deserializing old state
+#[cfg_attr(feature = "persistence", serde(default))]
 pub struct App {
     welcome: bool,
+    menu_up: bool,
     side_panel: bool,
     linkage: Linkage,
 }
@@ -14,9 +29,44 @@ impl Default for App {
     fn default() -> Self {
         Self {
             welcome: true,
+            menu_up: true,
             linkage: Linkage::default(),
             side_panel: true,
         }
+    }
+}
+
+impl App {
+    fn menu(&mut self, ctx: &CtxRef, ui: &mut Ui) {
+        if ctx.style().visuals.dark_mode {
+            if ui.small_button("🔆").on_hover_text("Light").clicked() {
+                ctx.set_visuals(Visuals::light());
+            }
+        } else {
+            if ui.small_button("🌙").on_hover_text("Dark").clicked() {
+                ctx.set_visuals(Visuals::dark());
+            }
+        }
+        switch_button!(ui, self.side_panel, "⬅", "Fold", "➡", "Expand");
+        switch_button!(ui, self.menu_up, "⬇", "Menu go down", "⬆", "Menu go up");
+        ui.with_layout(Layout::right_to_left(), |ui| {
+            if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
+                self.welcome = !self.welcome;
+            }
+            if ui
+                .small_button("↻")
+                .on_hover_text("Reset UI setting")
+                .clicked()
+            {
+                let dark = ctx.style().visuals.dark_mode;
+                *ctx.memory() = Default::default();
+                if dark {
+                    ctx.set_visuals(Visuals::dark());
+                } else {
+                    ctx.set_visuals(Visuals::light());
+                }
+            }
+        });
     }
 }
 
@@ -24,42 +74,16 @@ impl epi::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &CtxRef, _frame: &mut epi::Frame<'_>) {
-        TopBottomPanel::top("top panel").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ctx.style().visuals.dark_mode {
-                    if ui.small_button("🔆").on_hover_text("Light").clicked() {
-                        ctx.set_visuals(Visuals::light());
-                    }
-                } else {
-                    if ui.small_button("🌙").on_hover_text("Dark").clicked() {
-                        ctx.set_visuals(Visuals::dark());
-                    }
-                }
-                if self.side_panel {
-                    if ui.small_button("⬅").on_hover_text("Fold").clicked() {
-                        self.side_panel = false;
-                    }
-                } else {
-                    if ui.small_button("➡").on_hover_text("Expand").clicked() {
-                        self.side_panel = true;
-                    }
-                }
-                ui.with_layout(Layout::right_to_left(), |ui| {
-                    if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
-                        self.welcome = true;
-                    }
-                    if ui
-                        .small_button("↻")
-                        .on_hover_text("Reset UI Setting")
-                        .clicked()
-                    {
-                        *ctx.memory() = Default::default();
-                    }
-                });
-            });
-        });
+        if self.menu_up {
+            TopBottomPanel::top("menu")
+        } else {
+            TopBottomPanel::bottom("menu")
+        }
+        .show(ctx, |ui| ui.horizontal(|ui| self.menu(ctx, ui)));
         if self.side_panel {
-            self.linkage.update(ctx);
+            SidePanel::left("side panel").show(ctx, |ui| {
+                self.linkage.panel(ui);
+            });
         }
         self.linkage.plot(ctx);
         // Welcome message
