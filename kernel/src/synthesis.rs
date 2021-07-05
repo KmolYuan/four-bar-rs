@@ -1,6 +1,6 @@
-use crate::*;
-use efd::{calculate_efd, normalize_efd};
-use metaheuristics_nature::ObjFunc;
+use crate::Mechanism;
+use efd::{calculate_efd, inverse_transform, locus, normalize_efd, rotate_contour};
+pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array1, Array2, ArrayView1, AsArray, Axis, Ix2};
 use std::f64::consts::{PI, TAU};
 
@@ -24,6 +24,9 @@ pub struct Planar {
     harmonic: usize,
     ub: Array1<f64>,
     lb: Array1<f64>,
+    // Normalized information
+    rot: f64,
+    locus: (f64, f64),
 }
 
 impl Planar {
@@ -32,15 +35,17 @@ impl Planar {
     where
         V: AsArray<'a, f64, Ix2>,
     {
-        let mut target = curve.into().into_owned();
-        let end = target.nrows() - 1;
-        if (target[[0, 0]] - target[[end, 0]]).abs() > 1e-20
-            || (target[[0, 1]] - target[[end, 1]]).abs() > 1e-20
+        let mut curve = curve.into().into_owned();
+        let end = curve.nrows() - 1;
+        if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
+            || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
         {
-            target = concatenate!(Axis(0), target, arr2(&[[target[[0, 0]], target[[0, 1]]]]));
+            // Close loop
+            curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
         }
-        let target = calculate_efd(&target, harmonic);
-        let (target, _) = normalize_efd(&target, true);
+        let coeffs = calculate_efd(&curve, harmonic);
+        let (target, rot) = normalize_efd(&coeffs, true);
+        let locus = locus(&curve);
         let mut ub = Array1::ones(5) * 10.;
         // gamma
         ub[4] = TAU;
@@ -52,6 +57,8 @@ impl Planar {
             harmonic,
             ub,
             lb,
+            rot,
+            locus,
         }
     }
 }
@@ -92,16 +99,18 @@ impl ObjFunc for Planar {
         let mut f = Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4]);
         let curve1 = arr2(&f.four_bar_loop(0., self.n));
         let curve2 = arr2(&f.four_bar_loop(PI, self.n));
-        let coeffs = calculate_efd(&curve1, self.harmonic);
-        let (coeffs, _) = normalize_efd(&coeffs, true);
-        let v1 = (coeffs - &self.target).mapv(f64::abs).sum();
-        let coeffs = calculate_efd(&curve2, self.harmonic);
-        let (coeffs, _) = normalize_efd(&coeffs, true);
-        let v2 = (coeffs - &self.target).mapv(f64::abs).sum();
+        let coeffs1 = calculate_efd(&curve1, self.harmonic);
+        let (coeffs1, _) = normalize_efd(&coeffs1, true);
+        let v1 = (&coeffs1 - &self.target).mapv(f64::abs).sum();
+        let coeffs2 = calculate_efd(&curve2, self.harmonic);
+        let (coeffs2, _) = normalize_efd(&coeffs2, true);
+        let v2 = (&coeffs2 - &self.target).mapv(f64::abs).sum();
         if v1 < v2 {
-            curve1
+            let contour = inverse_transform(&coeffs1, self.locus, self.n, self.harmonic);
+            rotate_contour(&contour, -self.rot, self.locus)
         } else {
-            curve2
+            let contour = inverse_transform(&coeffs2, self.locus, self.n, self.harmonic);
+            rotate_contour(&contour, -self.rot, self.locus)
         }
     }
 
@@ -112,4 +121,15 @@ impl ObjFunc for Planar {
     fn lb(&self) -> ArrayView1<f64> {
         self.lb.view()
     }
+}
+
+/// Dimensional synthesis with default options.
+pub fn synthesis(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let planar = Planar::new(&arr2(curve), 720, 360);
+    let contour = DE::new(
+        planar,
+        DESetting::default().task(Task::MaxGen(40)).pop_num(500),
+    )
+    .run(|| {});
+    contour.axis_iter(Axis(0)).map(|v| [v[0], v[1]]).collect()
 }
