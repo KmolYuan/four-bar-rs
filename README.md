@@ -27,3 +27,7 @@ cargo run
 ./build_web.sh
 ./start_server.sh
 ```
+
+## Library
+
+The library `four-bar` can also install by Cargo.

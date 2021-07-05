@@ -26,6 +26,7 @@ impl Formula {
 }
 
 pub struct Mechanism {
+    /// The joint positions.
     pub joints: Vec<[f64; 2]>,
     formulas: Vec<Formula>,
 }
@@ -102,7 +103,6 @@ impl Mechanism {
         path
     }
 
-    /// Apply the formulas.
     fn apply(&mut self) {
         for f in self.formulas.iter_mut() {
             f.apply(&mut self.joints);

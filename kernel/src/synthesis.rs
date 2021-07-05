@@ -4,7 +4,7 @@ pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array1, Array2, ArrayView1, AsArray, Axis, Ix2};
 use std::f64::consts::{PI, TAU};
 
-pub fn path_is_nan<'a, V>(path: V) -> bool
+fn path_is_nan<'a, V>(path: V) -> bool
 where
     V: AsArray<'a, f64, Ix2>,
 {
@@ -19,6 +19,7 @@ where
 
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
+    /// The target coefficients.
     pub target: Array2<f64>,
     n: usize,
     harmonic: usize,
