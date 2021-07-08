@@ -8,19 +8,23 @@ enum Formula {
     PLA(usize, f64, f64, usize),
     PLAP(usize, f64, f64, usize, usize),
     PLLP(usize, f64, f64, usize, bool, usize),
+    PPP(usize, usize, usize, usize),
 }
 
 impl Formula {
-    fn apply(&mut self, joints: &mut Vec<impl Point>) {
-        match self {
+    fn apply(&self, joints: &mut Vec<impl Point>) {
+        match *self {
             Self::PLA(c1, d0, a0, t) => {
-                joints[*t] = joints[*c1].pla(*d0, *a0);
+                joints[t] = joints[c1].pla(d0, a0);
             }
             Self::PLAP(c1, d0, a0, c2, t) => {
-                joints[*t] = joints[*c1].plap(*d0, *a0, &joints[*c2]);
+                joints[t] = joints[c1].plap(d0, a0, &joints[c2]);
             }
             Self::PLLP(c1, d0, d1, c2, inv, t) => {
-                joints[*t] = joints[*c1].pllp(*d0, *d1, &joints[*c2], *inv);
+                joints[t] = joints[c1].pllp(d0, d1, &joints[c2], inv);
+            }
+            Self::PPP(c1, c2, c3, t) => {
+                joints[t] = joints[c1].ppp(&joints[c2], &joints[c3]);
             }
         }
     }
@@ -44,19 +48,22 @@ impl Mechanism {
         l4: f64,
         g: f64,
     ) -> Self {
-        let mut s = Self {
-            joints: Vec::with_capacity(5),
-            formulas: vec![],
-        };
-        s.joints.push([p0.0, p0.1]);
-        s.joints.push([p0.0 + l0 * a.cos(), p0.1 + l0 * a.sin()]);
+        let mut joints = Vec::with_capacity(5);
+        joints.push([p0.0, p0.1]);
+        joints.push([p0.0 + l0 * a.cos(), p0.1 + l0 * a.sin()]);
         for _ in 2..5 {
-            s.joints.push([0., 0.]);
+            joints.push([0., 0.]);
         }
-        s.formulas.push(Formula::PLA(0, l1, 0., 2));
-        s.formulas.push(Formula::PLLP(2, l2, l3, 1, false, 3));
-        s.formulas.push(Formula::PLAP(2, l4, g, 3, 4));
-        s
+        let mut formulas = Vec::with_capacity(3);
+        formulas.push(Formula::PLA(0, l1, 0., 2));
+        if (l0 - l2).abs() < 1e-20 && (l1 - l3).abs() < 1e-20 {
+            // Special case
+            formulas.push(Formula::PPP(0, 2, 1, 3));
+        } else {
+            formulas.push(Formula::PLLP(2, l2, l3, 1, false, 3));
+        }
+        formulas.push(Formula::PLAP(2, l4, g, 3, 4));
+        Self { joints, formulas }
     }
 
     /// Modify the angle of four bar linkage.
