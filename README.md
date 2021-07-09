@@ -1,5 +1,7 @@
 # Four🍀bar
 
+[![dependency status](https://deps.rs/repo/github/KmolYuan/four-bar-rs/status.svg)](https://deps.rs/repo/github/KmolYuan/four-bar-rs)
+
 Four-bar is a simulator, a synthesizing tool for four-bar linkage mechanism.
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>

@@ -67,7 +67,7 @@ impl Planar {
 impl ObjFunc for Planar {
     type Result = Array2<f64>;
 
-    fn fitness<'a, A>(&self, _gen: u32, v: A) -> f64
+    fn fitness<'a, A>(&self, v: A, _: &Report) -> f64
     where
         A: AsArray<'a, f64>,
     {
@@ -125,12 +125,13 @@ impl ObjFunc for Planar {
 }
 
 /// Dimensional synthesis with default options.
-pub fn synthesis(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+pub fn synthesis<C>(curve: &[[f64; 2]], callback: impl Callback<C>) -> Vec<[f64; 2]> {
     let planar = Planar::new(&arr2(curve), 720, 360);
-    let contour = DE::new(
+    let contour = DE::solve(
         planar,
         DESetting::default().task(Task::MaxGen(40)).pop_num(500),
+        callback,
     )
-    .run(|| {});
+    .result();
     contour.axis_iter(Axis(0)).map(|v| [v[0], v[1]]).collect()
 }

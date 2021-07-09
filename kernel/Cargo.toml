@@ -11,5 +11,5 @@ synthesis = ['ndarray', 'metaheuristics-nature', 'efd']
 
 [dependencies]
 ndarray = { version = "0.15", optional = true }
-metaheuristics-nature = { version = "0.6", optional = true }
+metaheuristics-nature = { version = "0.7", optional = true }
 efd = { version = "0.3", optional = true }
