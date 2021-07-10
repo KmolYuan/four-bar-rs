@@ -127,42 +127,37 @@ impl Linkage {
             self.l4 /= self.l1;
             self.l1 = 1.;
         }
-        ui.vertical(|ui| {
-            ui.group(|ui| {
-                ui.heading("Offset");
-                if ui.button("Reset").clicked() {
-                    self.x0 = 0.;
-                    self.y0 = 0.;
-                    self.a = 0.;
-                }
-                unit!("X Offset: ", self.x0, self.interval, ui);
-                unit!("Y Offset: ", self.y0, self.interval, ui);
-                angle!("Rotation: ", self.a, ui);
-            });
-            ui.group(|ui| {
-                ui.heading("Parameters");
-                link!("Ground: ", self.l0, self.interval, ui);
-                link!("Crank: ", self.l1, self.interval, ui);
-                link!("Coupler: ", self.l2, self.interval, ui);
-                link!("Follower: ", self.l3, self.interval, ui);
-            });
-            ui.group(|ui| {
-                ui.heading("Coupler");
-                link!("Extended: ", self.l4, self.interval, ui);
-                angle!("Angle: ", self.g, ui);
-            });
-            ui.group(|ui| {
-                ui.heading("Driver");
-                if ui.button("Reset / Stop").clicked() {
-                    self.speed = 0.;
-                    self.drive = 0.;
-                }
-                angle!("Speed: ", self.speed, ui, "/s");
-                angle!("Angle: ", self.drive, ui);
-            });
+        ui.group(|ui| {
+            ui.heading("Offset");
+            if ui.button("Reset").clicked() {
+                self.x0 = 0.;
+                self.y0 = 0.;
+                self.a = 0.;
+            }
+            unit!("X Offset: ", self.x0, self.interval, ui);
+            unit!("Y Offset: ", self.y0, self.interval, ui);
+            angle!("Rotation: ", self.a, ui);
         });
-        ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
-            ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("powered by egui"));
+        ui.group(|ui| {
+            ui.heading("Parameters");
+            link!("Ground: ", self.l0, self.interval, ui);
+            link!("Crank: ", self.l1, self.interval, ui);
+            link!("Coupler: ", self.l2, self.interval, ui);
+            link!("Follower: ", self.l3, self.interval, ui);
+        });
+        ui.group(|ui| {
+            ui.heading("Coupler");
+            link!("Extended: ", self.l4, self.interval, ui);
+            angle!("Angle: ", self.g, ui);
+        });
+        ui.group(|ui| {
+            ui.heading("Driver");
+            if ui.button("Reset / Stop").clicked() {
+                self.speed = 0.;
+                self.drive = 0.;
+            }
+            angle!("Speed: ", self.speed, ui, "/s");
+            angle!("Angle: ", self.drive, ui);
         });
     }
 

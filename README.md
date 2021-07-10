@@ -8,6 +8,8 @@ Online demo: <https://kmolyuan.github.io/four-bar-rs/>
 
 Native icon: <https://icons8.com>
 
+Powered by <https://github.com/emilk/egui>.
+
 ## Native Execution
 
 In Linux, you need to install some library:

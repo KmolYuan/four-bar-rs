@@ -22,6 +22,7 @@ pub struct App {
     welcome: bool,
     menu_up: bool,
     side_panel: bool,
+    started: bool,
     linkage: Linkage,
 }
 
@@ -30,8 +31,9 @@ impl Default for App {
         Self {
             welcome: true,
             menu_up: true,
-            linkage: Linkage::default(),
             side_panel: true,
+            started: false,
+            linkage: Linkage::default(),
         }
     }
 }
@@ -68,6 +70,12 @@ impl App {
             }
         });
     }
+
+    fn credit(ui: &mut Ui) {
+        ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+            ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("Powered by egui"));
+        });
+    }
 }
 
 impl epi::App for App {
@@ -83,6 +91,11 @@ impl epi::App for App {
         if self.side_panel {
             SidePanel::left("side panel").show(ctx, |ui| {
                 self.linkage.panel(ui);
+                ui.group(|ui| {
+                    ui.heading("Synthesis");
+                    switch_button!(ui, self.started, "⏹", "Stop", "▶", "Start");
+                });
+                Self::credit(ui);
             });
         }
         self.linkage.plot(ctx);
