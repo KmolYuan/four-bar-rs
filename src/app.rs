@@ -71,6 +71,16 @@ impl App {
         });
     }
 
+    fn synthesis(&mut self, ui: &mut Ui) {
+        ui.group(|ui| {
+            ui.heading("Synthesis");
+            ui.horizontal(|ui| {
+                switch_button!(ui, self.started, "⏹", "Stop", "▶", "Start");
+                // TODO: Progress bar here!
+            });
+        });
+    }
+
     fn credit(ui: &mut Ui) {
         ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
             ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("Powered by egui"));
@@ -91,10 +101,7 @@ impl epi::App for App {
         if self.side_panel {
             SidePanel::left("side panel").show(ctx, |ui| {
                 self.linkage.panel(ui);
-                ui.group(|ui| {
-                    ui.heading("Synthesis");
-                    switch_button!(ui, self.started, "⏹", "Stop", "▶", "Start");
-                });
+                self.synthesis(ui);
                 Self::credit(ui);
             });
         }

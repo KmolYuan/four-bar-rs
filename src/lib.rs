@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
-pub use app::App;
+pub use crate::app::App;
 
 mod app;
 mod as_values;
