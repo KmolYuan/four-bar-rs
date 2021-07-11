@@ -1,6 +1,9 @@
-use crate::linkage::*;
+use crate::linkage::Linkage;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::synthesis::Synthesis;
 use eframe::{egui::*, epi};
 
+#[macro_export]
 macro_rules! switch_button {
     ($ui:expr, $attr:expr, $d_icon:literal, $d_tip:literal, $e_icon:literal, $e_tip:literal) => {
         if $attr {
@@ -24,6 +27,8 @@ pub struct App {
     side_panel: bool,
     started: bool,
     linkage: Linkage,
+    #[cfg(not(target_arch = "wasm32"))]
+    synthesis: Synthesis,
 }
 
 impl Default for App {
@@ -34,6 +39,8 @@ impl Default for App {
             side_panel: true,
             started: false,
             linkage: Linkage::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            synthesis: Synthesis::default(),
         }
     }
 }
@@ -71,16 +78,6 @@ impl App {
         });
     }
 
-    fn synthesis(&mut self, ui: &mut Ui) {
-        ui.group(|ui| {
-            ui.heading("Synthesis");
-            ui.horizontal(|ui| {
-                switch_button!(ui, self.started, "⏹", "Stop", "▶", "Start");
-                // TODO: Progress bar here!
-            });
-        });
-    }
-
     fn credit(ui: &mut Ui) {
         ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
             ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("Powered by egui"));
@@ -101,7 +98,8 @@ impl epi::App for App {
         if self.side_panel {
             SidePanel::left("side panel").show(ctx, |ui| {
                 self.linkage.panel(ui);
-                self.synthesis(ui);
+                #[cfg(not(target_arch = "wasm32"))]
+                self.synthesis.update(ui);
                 Self::credit(ui);
             });
         }

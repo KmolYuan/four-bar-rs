@@ -5,6 +5,8 @@ pub use crate::app::App;
 mod app;
 mod as_values;
 mod linkage;
+#[cfg(not(target_arch = "wasm32"))]
+mod synthesis;
 
 #[cfg(target_arch = "wasm32")]
 use eframe::wasm_bindgen::{self, prelude::*};

@@ -129,7 +129,7 @@ pub fn synthesis<C>(curve: &[[f64; 2]], callback: impl Callback<C>) -> Vec<[f64;
     let planar = Planar::new(&arr2(curve), 720, 360);
     let contour = DE::solve(
         planar,
-        DESetting::default().task(Task::MaxGen(40)).pop_num(500),
+        DESetting::default().task(Task::MaxGen(40)).pop_num(400),
         callback,
     )
     .result();
