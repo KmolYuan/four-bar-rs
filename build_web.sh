@@ -14,7 +14,7 @@ rm -f docs/${CRATE_SNAKE_CASE}_bg.wasm
 
 echo "Building rust..."
 BUILD=release
-cargo build --release -p ${CRATE} --lib --target wasm32-unknown-unknown
+cargo build --${BUILD} --package ${CRATE} --lib --target wasm32-unknown-unknown
 
 echo "Generating JS bindings for wasm..."
 TARGET_NAME="${CRATE_SNAKE_CASE}.wasm"
