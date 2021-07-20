@@ -2,7 +2,7 @@ use crate::Mechanism;
 use efd::{calculate_efd, inverse_transform, locus, normalize_efd, rotate_contour};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array1, Array2, ArrayView1, AsArray, Axis, Ix2};
-use std::f64::consts::{PI, TAU};
+use std::f64::consts::TAU;
 
 fn path_is_nan<'a, V>(path: V) -> bool
 where
@@ -77,19 +77,10 @@ impl ObjFunc for Planar {
         if path_is_nan(&c) {
             return 1e20;
         }
-        let curve1 = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
-        let c = arr2(&f.four_bar_loop(PI, self.n));
-        let curve2 = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
-        let mut min_v = f64::INFINITY;
-        for curve in &[curve1, curve2] {
-            let coeffs = calculate_efd(curve, self.harmonic);
-            let (coeffs, _) = normalize_efd(&coeffs, true);
-            let v = (coeffs - &self.target).mapv(f64::abs).sum();
-            if v < min_v {
-                min_v = v;
-            }
-        }
-        min_v
+        let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+        let coeffs = calculate_efd(&curve, self.harmonic);
+        let (coeffs, _) = normalize_efd(&coeffs, true);
+        (coeffs - &self.target).mapv(f64::abs).sum()
     }
 
     fn result<'a, A>(&self, v: A) -> Self::Result
@@ -99,20 +90,10 @@ impl ObjFunc for Planar {
         let v = v.into();
         let mut f = Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4]);
         let curve1 = arr2(&f.four_bar_loop(0., self.n));
-        let curve2 = arr2(&f.four_bar_loop(PI, self.n));
-        let coeffs1 = calculate_efd(&curve1, self.harmonic);
-        let (coeffs1, _) = normalize_efd(&coeffs1, true);
-        let v1 = (&coeffs1 - &self.target).mapv(f64::abs).sum();
-        let coeffs2 = calculate_efd(&curve2, self.harmonic);
-        let (coeffs2, _) = normalize_efd(&coeffs2, true);
-        let v2 = (&coeffs2 - &self.target).mapv(f64::abs).sum();
-        if v1 < v2 {
-            let contour = inverse_transform(&coeffs1, self.locus, self.n, self.harmonic);
-            rotate_contour(&contour, -self.rot, self.locus)
-        } else {
-            let contour = inverse_transform(&coeffs2, self.locus, self.n, self.harmonic);
-            rotate_contour(&contour, -self.rot, self.locus)
-        }
+        let coeffs = calculate_efd(&curve1, self.harmonic);
+        let (coeffs, _) = normalize_efd(&coeffs, true);
+        let contour = inverse_transform(&coeffs, self.locus, self.n, None);
+        rotate_contour(&contour, -self.rot, self.locus)
     }
 
     fn ub(&self) -> ArrayView1<f64> {
