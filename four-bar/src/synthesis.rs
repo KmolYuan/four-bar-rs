@@ -27,6 +27,9 @@ pub struct Planar {
     lb: Array1<f64>,
     // Normalized information
     rot: f64,
+    // TODO
+    #[allow(dead_code)]
+    scale: f64,
     locus: (f64, f64),
 }
 
@@ -59,6 +62,7 @@ impl Planar {
             ub,
             lb,
             rot,
+            scale: 0.,
             locus,
         }
     }
