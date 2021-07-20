@@ -1,5 +1,5 @@
 use crate::Mechanism;
-use efd::{calculate_efd, inverse_transform, locus, normalize_efd, rotate_contour};
+use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array1, Array2, ArrayView1, AsArray, Axis, Ix2};
 use std::f64::consts::TAU;
@@ -65,7 +65,7 @@ impl Planar {
 }
 
 impl ObjFunc for Planar {
-    type Result = Array2<f64>;
+    type Result = Mechanism;
 
     fn fitness<'a, A>(&self, v: A, _: &Report) -> f64
     where
@@ -88,12 +88,7 @@ impl ObjFunc for Planar {
         A: AsArray<'a, f64>,
     {
         let v = v.into();
-        let mut f = Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4]);
-        let curve1 = arr2(&f.four_bar_loop(0., self.n));
-        let coeffs = calculate_efd(&curve1, self.harmonic);
-        let (coeffs, _) = normalize_efd(&coeffs, true);
-        let contour = inverse_transform(&coeffs, self.locus, self.n, None);
-        rotate_contour(&contour, -self.rot, self.locus)
+        Mechanism::four_bar(self.locus, self.rot, v[0], 1., v[1], v[2], v[3], v[4])
     }
 
     fn ub(&self) -> ArrayView1<f64> {
@@ -106,13 +101,12 @@ impl ObjFunc for Planar {
 }
 
 /// Dimensional synthesis with default options.
-pub fn synthesis<C>(curve: &[[f64; 2]], callback: impl Callback<C>) -> Vec<[f64; 2]> {
+pub fn synthesis<C>(curve: &[[f64; 2]], callback: impl Callback<C>) -> Mechanism {
     let planar = Planar::new(&arr2(curve), 720, 360);
-    let contour = DE::solve(
+    DE::solve(
         planar,
         DESetting::default().task(Task::MaxGen(40)).pop_num(400),
         callback,
     )
-    .result();
-    contour.axis_iter(Axis(0)).map(|v| [v[0], v[1]]).collect()
+    .result()
 }
