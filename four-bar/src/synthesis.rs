@@ -27,8 +27,6 @@ pub struct Planar {
     lb: Array1<f64>,
     // Normalized information
     rot: f64,
-    // TODO
-    #[allow(dead_code)]
     scale: f64,
     locus: (f64, f64),
 }
@@ -48,7 +46,7 @@ impl Planar {
             curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
         }
         let coeffs = calculate_efd(&curve, harmonic);
-        let (target, rot) = normalize_efd(&coeffs, true);
+        let (target, rot, _, scale) = normalize_efd(&coeffs, true);
         let locus = locus(&curve);
         let mut ub = Array1::ones(5) * 10.;
         // gamma
@@ -62,7 +60,7 @@ impl Planar {
             ub,
             lb,
             rot,
-            scale: 0.,
+            scale,
             locus,
         }
     }
@@ -83,7 +81,7 @@ impl ObjFunc for Planar {
         }
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
-        let (coeffs, _) = normalize_efd(&coeffs, true);
+        let (coeffs, _, _, _) = normalize_efd(&coeffs, true);
         (coeffs - &self.target).mapv(f64::abs).sum()
     }
 
@@ -92,7 +90,16 @@ impl ObjFunc for Planar {
         A: AsArray<'a, f64>,
     {
         let v = v.into();
-        Mechanism::four_bar(self.locus, self.rot, v[0], 1., v[1], v[2], v[3], v[4])
+        Mechanism::four_bar(
+            self.locus,
+            self.rot,
+            v[0] * self.scale,
+            self.scale,
+            v[1] * self.scale,
+            v[2] * self.scale,
+            v[3] * self.scale,
+            v[4],
+        )
     }
 
     fn ub(&self) -> ArrayView1<f64> {
