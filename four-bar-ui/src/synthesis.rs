@@ -1,20 +1,25 @@
 use crate::switch_button;
 use eframe::egui::*;
 use four_bar::synthesis::synthesis;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Arc,
+};
 use std::thread::spawn;
-
-const PROGRESS: AtomicU32 = AtomicU32::new(0);
 
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "persistence", serde(default))]
 pub struct Synthesis {
     started: bool,
+    progress: Arc<AtomicU32>,
 }
 
 impl Default for Synthesis {
     fn default() -> Self {
-        Self { started: false }
+        Self {
+            started: false,
+            progress: Default::default(),
+        }
     }
 }
 
@@ -26,18 +31,19 @@ impl Synthesis {
                 let started = self.started;
                 switch_button!(ui, self.started, "⏹", "Stop", "▶", "Start");
                 if !started && self.started {
-                    spawn(|| {
-                        synthesis(YU2, |report| {
-                            dbg!(report.gen);
-                            PROGRESS.store(report.gen, Ordering::Relaxed);
+                    let progress = self.progress.clone();
+                    spawn(move || {
+                        synthesis(YU2, 40, 200, |r| {
+                            progress.store(r.gen, Ordering::Relaxed);
                             false
                         })
                     });
                 }
                 if self.started {
-                    ui.label(PROGRESS.load(Ordering::Relaxed).to_string());
+                    // TODO: Progress bar here!
+                    ui.label(self.progress.load(Ordering::Relaxed).to_string());
+                    ui.ctx().request_repaint();
                 }
-                // TODO: Progress bar here!
             });
         });
     }

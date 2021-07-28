@@ -196,10 +196,10 @@ impl Linkage {
                 .data_aspect(1.)
                 .legend(plot::Legend::default())
                 .ui(ui);
+            if self.speed != 0. {
+                self.drive += self.speed / 60.;
+                ui.ctx().request_repaint();
+            }
         });
-        if self.speed != 0. {
-            self.drive += self.speed / 60.;
-            ctx.request_repaint();
-        }
     }
 }
