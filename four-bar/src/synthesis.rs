@@ -90,14 +90,26 @@ impl ObjFunc for Planar {
         A: AsArray<'a, f64>,
     {
         let v = v.into();
+        let c = arr2(
+            &Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4])
+                .four_bar_loop(0., self.n),
+        );
+        let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+        let coeffs = calculate_efd(&curve, self.harmonic);
+        let (_, rot, _, scale) = normalize_efd(&coeffs, true);
+        let locus = locus(&curve);
+        let scale = self.scale / scale;
         Mechanism::four_bar(
-            self.locus,
-            self.rot,
-            v[0] * self.scale,
-            self.scale,
-            v[1] * self.scale,
-            v[2] * self.scale,
-            v[3] * self.scale,
+            (
+                self.locus.0 / scale - locus.0,
+                self.locus.1 / scale - locus.1,
+            ),
+            rot - self.rot,
+            v[0] * scale,
+            scale,
+            v[1] * scale,
+            v[2] * scale,
+            v[3] * scale,
             v[4],
         )
     }
