@@ -112,12 +112,20 @@ impl ObjFunc for Planar {
 }
 
 /// Dimensional synthesis with default options.
-pub fn synthesis<C>(curve: &[[f64; 2]], callback: impl Callback<C>) -> Mechanism {
+pub fn synthesis(
+    curve: &[[f64; 2]],
+    gen: u32,
+    pop: usize,
+    callback: impl FnMut(Report) -> bool,
+) -> (Mechanism, Vec<Report>) {
     let planar = Planar::new(&arr2(curve), 720, 360);
-    DE::solve(
+    let de = DE::solve(
         planar,
-        DESetting::default().task(Task::MaxGen(40)).pop_num(400),
+        DESetting::default()
+            .task(Task::MaxGen(gen))
+            .rpt(1)
+            .pop_num(pop),
         callback,
-    )
-    .result()
+    );
+    (de.result(), de.history())
 }

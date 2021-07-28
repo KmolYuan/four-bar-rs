@@ -1,6 +1,6 @@
 use crate::switch_button;
 use eframe::egui::*;
-use four_bar::synthesis::{synthesis, Report};
+use four_bar::synthesis::synthesis;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::thread::spawn;
 
@@ -27,9 +27,10 @@ impl Synthesis {
                 switch_button!(ui, self.started, "⏹", "Stop", "▶", "Start");
                 if !started && self.started {
                     spawn(|| {
-                        synthesis(YU2, |report: &Report| {
+                        synthesis(YU2, |report| {
                             dbg!(report.gen);
                             PROGRESS.store(report.gen, Ordering::Relaxed);
+                            false
                         })
                     });
                 }
