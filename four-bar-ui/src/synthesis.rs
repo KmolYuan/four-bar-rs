@@ -1,8 +1,7 @@
-use crate::switch_button;
 use eframe::egui::*;
 use four_bar::synthesis::synthesis;
 use std::sync::{
-    atomic::{AtomicU32, Ordering},
+    atomic::{AtomicBool, AtomicU32, Ordering},
     Arc,
 };
 use std::thread::spawn;
@@ -10,14 +9,14 @@ use std::thread::spawn;
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "persistence", serde(default))]
 pub struct Synthesis {
-    started: bool,
+    started: Arc<AtomicBool>,
     progress: Arc<AtomicU32>,
 }
 
 impl Default for Synthesis {
     fn default() -> Self {
         Self {
-            started: false,
+            started: Arc::new(AtomicBool::new(false)),
             progress: Default::default(),
         }
     }
@@ -28,20 +27,27 @@ impl Synthesis {
         ui.group(|ui| {
             ui.heading("Synthesis");
             ui.horizontal(|ui| {
-                let started = self.started;
-                switch_button!(ui, self.started, "⏹", "Stop", "▶", "Start");
-                if !started && self.started {
-                    let progress = self.progress.clone();
-                    spawn(move || {
-                        synthesis(YU2, 40, 200, |r| {
-                            progress.store(r.gen, Ordering::Relaxed);
-                            false
-                        })
-                    });
+                let started = self.started.load(Ordering::Relaxed);
+                if started {
+                    if ui.small_button("⏹").on_hover_text("Stop").clicked() {
+                        self.started.store(false, Ordering::Relaxed);
+                    }
+                } else {
+                    if ui.small_button("▶").on_hover_text("Start").clicked() {
+                        self.started.store(true, Ordering::Relaxed);
+                        let started = self.started.clone();
+                        let progress = self.progress.clone();
+                        spawn(move || {
+                            synthesis(YU2, 40, 200, |r| {
+                                progress.store(r.gen, Ordering::Relaxed);
+                                !started.load(Ordering::Relaxed)
+                            })
+                        });
+                    }
                 }
-                if self.started {
-                    // TODO: Progress bar here!
-                    ui.label(self.progress.load(Ordering::Relaxed).to_string());
+                // TODO: Progress bar here!
+                ui.label(self.progress.load(Ordering::Relaxed).to_string());
+                if self.started.load(Ordering::Relaxed) {
                     ui.ctx().request_repaint();
                 }
             });
