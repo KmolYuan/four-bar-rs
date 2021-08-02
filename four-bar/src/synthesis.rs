@@ -33,11 +33,8 @@ pub struct Planar {
 
 impl Planar {
     /// Create a new task.
-    pub fn new<'a, V>(curve: V, n: usize, harmonic: usize) -> Self
-    where
-        V: AsArray<'a, f64, Ix2>,
-    {
-        let mut curve = curve.into().into_owned();
+    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize) -> Self {
+        let mut curve = arr2(curve);
         let end = curve.nrows() - 1;
         if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
             || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
@@ -98,13 +95,16 @@ impl ObjFunc for Planar {
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (_, rot, _, scale) = normalize_efd(&coeffs, true);
         let locus = locus(&curve);
+        let rot = rot - self.rot;
         let scale = self.scale / scale;
+        let locus_rot = locus.1.atan2(locus.0) + rot;
+        let d = locus.1.hypot(locus.0) * scale;
         Mechanism::four_bar(
             (
-                self.locus.0 / scale - locus.0,
-                self.locus.1 / scale - locus.1,
+                self.locus.0 - d * locus_rot.cos(),
+                self.locus.1 - d * locus_rot.sin(),
             ),
-            rot - self.rot,
+            rot,
             v[0] * scale,
             scale,
             v[1] * scale,
@@ -130,7 +130,7 @@ pub fn synthesis(
     pop: usize,
     callback: impl FnMut(Report) -> bool,
 ) -> (Mechanism, Vec<Report>) {
-    let planar = Planar::new(&arr2(curve), 720, 360);
+    let planar = Planar::new(curve, 720, 360);
     let de = DE::solve(
         planar,
         DESetting::default()
