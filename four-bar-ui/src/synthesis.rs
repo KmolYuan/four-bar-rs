@@ -40,7 +40,7 @@ impl Synthesis {
                         spawn(move || {
                             synthesis(YU2, 40, 200, |r| {
                                 progress.store(r.gen, Ordering::Relaxed);
-                                !started.load(Ordering::Relaxed)
+                                started.load(Ordering::Relaxed)
                             })
                         });
                     }

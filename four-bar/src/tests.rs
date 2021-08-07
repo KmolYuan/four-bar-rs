@@ -12,7 +12,7 @@ fn planar() {
     let pb = ProgressBar::new(gen as u64);
     let (mut ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
         pb.set_position(r.gen as u64);
-        false
+        true
     });
     pb.finish();
     let path = ans.four_bar_loop(0., 360);
