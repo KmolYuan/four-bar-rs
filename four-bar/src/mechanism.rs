@@ -5,25 +5,25 @@ use std::{
 };
 
 enum Formula {
-    PLA(usize, f64, f64, usize),
-    PLAP(usize, f64, f64, usize, usize),
-    PLLP(usize, f64, f64, usize, bool, usize),
-    PPP(usize, usize, usize, usize),
+    Pla(usize, f64, f64, usize),
+    Plap(usize, f64, f64, usize, usize),
+    Pllp(usize, f64, f64, usize, bool, usize),
+    Ppp(usize, usize, usize, usize),
 }
 
 impl Formula {
     fn apply(&self, joints: &mut Vec<impl Point>) {
         match *self {
-            Self::PLA(c1, d0, a0, t) => {
+            Self::Pla(c1, d0, a0, t) => {
                 joints[t] = joints[c1].pla(d0, a0);
             }
-            Self::PLAP(c1, d0, a0, c2, t) => {
+            Self::Plap(c1, d0, a0, c2, t) => {
                 joints[t] = joints[c1].plap(d0, a0, &joints[c2]);
             }
-            Self::PLLP(c1, d0, d1, c2, inv, t) => {
+            Self::Pllp(c1, d0, d1, c2, inv, t) => {
                 joints[t] = joints[c1].pllp(d0, d1, &joints[c2], inv);
             }
-            Self::PPP(c1, c2, c3, t) => {
+            Self::Ppp(c1, c2, c3, t) => {
                 joints[t] = joints[c1].ppp(&joints[c2], &joints[c3]);
             }
         }
@@ -39,8 +39,7 @@ pub struct Mechanism {
 impl Mechanism {
     /// Create four bar linkages.
     pub fn four_bar(
-        p0: (f64, f64),
-        a: f64,
+        (p0x, p0y, a): (f64, f64, f64),
         l0: f64,
         l1: f64,
         l2: f64,
@@ -49,26 +48,26 @@ impl Mechanism {
         g: f64,
     ) -> Self {
         let mut joints = Vec::with_capacity(5);
-        joints.push([p0.0, p0.1]);
-        joints.push([p0.0 + l0 * a.cos(), p0.1 + l0 * a.sin()]);
+        joints.push([p0x, p0y]);
+        joints.push([p0x + l0 * a.cos(), p0y + l0 * a.sin()]);
         for _ in 2..5 {
             joints.push([0., 0.]);
         }
         let mut formulas = Vec::with_capacity(3);
-        formulas.push(Formula::PLA(0, l1, 0., 2));
+        formulas.push(Formula::Pla(0, l1, 0., 2));
         if (l0 - l2).abs() < 1e-20 && (l1 - l3).abs() < 1e-20 {
             // Special case
-            formulas.push(Formula::PPP(0, 2, 1, 3));
+            formulas.push(Formula::Ppp(0, 2, 1, 3));
         } else {
-            formulas.push(Formula::PLLP(2, l2, l3, 1, false, 3));
+            formulas.push(Formula::Pllp(2, l2, l3, 1, false, 3));
         }
-        formulas.push(Formula::PLAP(2, l4, g, 3, 4));
+        formulas.push(Formula::Plap(2, l4, g, 3, 4));
         Self { joints, formulas }
     }
 
     /// Modify the angle of four bar linkage.
     pub fn four_bar_angle(&mut self, angle: f64) -> Result<()> {
-        if let Formula::PLA(_, _, ref mut a, _) = self.formulas[0] {
+        if let Formula::Pla(_, _, ref mut a, _) = self.formulas[0] {
             *a = angle;
         } else {
             return Err(Error::new(ErrorKind::AddrNotAvailable, "invalid four bar"));
@@ -81,10 +80,10 @@ impl Mechanism {
     pub fn four_bar_loop(&mut self, start: f64, n: usize) -> Vec<[f64; 2]> {
         let interval = TAU / n as f64;
         let mut path = vec![[0.; 2]; n];
-        for i in 0..n {
+        for (i, c) in path.iter_mut().enumerate() {
             let a = start + i as f64 * interval;
             self.four_bar_angle(a).unwrap();
-            path[i] = self.joints[4];
+            *c = self.joints[4];
         }
         path
     }

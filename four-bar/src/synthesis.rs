@@ -1,7 +1,7 @@
 use crate::Mechanism;
 use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
-use ndarray::{arr2, concatenate, Array1, Array2, ArrayView1, AsArray, Axis, Ix2};
+use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
 use std::f64::consts::TAU;
 
 fn path_is_nan<'a, V>(path: V) -> bool
@@ -23,8 +23,8 @@ pub struct Planar {
     pub target: Array2<f64>,
     n: usize,
     harmonic: usize,
-    ub: Array1<f64>,
-    lb: Array1<f64>,
+    ub: [f64; 5],
+    lb: [f64; 5],
     // Normalized information
     rot: f64,
     scale: f64,
@@ -45,10 +45,10 @@ impl Planar {
         let coeffs = calculate_efd(&curve, harmonic);
         let (target, rot, _, scale) = normalize_efd(&coeffs, true);
         let locus = locus(&curve);
-        let mut ub = Array1::ones(5) * 10.;
+        let mut ub = [10.; 5];
         // gamma
         ub[4] = TAU;
-        let mut lb = Array1::ones(5) * 1e-6;
+        let mut lb = [1e-6; 5];
         lb[4] = 0.;
         Self {
             target,
@@ -71,7 +71,7 @@ impl ObjFunc for Planar {
         A: AsArray<'a, f64>,
     {
         let v = v.into();
-        let mut f = Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4]);
+        let mut f = Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4]);
         let c = arr2(&f.four_bar_loop(0., self.n));
         if path_is_nan(&c) {
             return 1e20;
@@ -88,7 +88,7 @@ impl ObjFunc for Planar {
     {
         let v = v.into();
         let c = arr2(
-            &Mechanism::four_bar((0., 0.), 0., v[0], 1., v[1], v[2], v[3], v[4])
+            &Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4])
                 .four_bar_loop(0., self.n),
         );
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
@@ -103,8 +103,8 @@ impl ObjFunc for Planar {
             (
                 self.locus.0 - d * locus_rot.cos(),
                 self.locus.1 - d * locus_rot.sin(),
+                rot,
             ),
-            rot,
             v[0] * scale,
             scale,
             v[1] * scale,
@@ -114,12 +114,12 @@ impl ObjFunc for Planar {
         )
     }
 
-    fn ub(&self) -> ArrayView1<f64> {
-        self.ub.view()
+    fn ub(&self) -> &[f64] {
+        &self.ub
     }
 
-    fn lb(&self) -> ArrayView1<f64> {
-        self.lb.view()
+    fn lb(&self) -> &[f64] {
+        &self.lb
     }
 }
 
@@ -131,12 +131,9 @@ pub fn synthesis(
     callback: impl FnMut(Report) -> bool,
 ) -> (Mechanism, Vec<Report>) {
     let planar = Planar::new(curve, 720, 360);
-    let de = DE::solve(
+    let de = Solver::solve(
         planar,
-        DESetting::default()
-            .task(Task::MaxGen(gen))
-            .rpt(1)
-            .pop_num(pop),
+        De::default().task(Task::MaxGen(gen)).rpt(1).pop_num(pop),
         callback,
     );
     (de.result(), de.history())

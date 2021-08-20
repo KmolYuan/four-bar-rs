@@ -164,8 +164,7 @@ impl Linkage {
     pub fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
             let mut m = Mechanism::four_bar(
-                (self.x0, self.y0),
-                self.a,
+                (self.x0, self.y0, self.a),
                 self.l0,
                 self.l1,
                 self.l2,
