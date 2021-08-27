@@ -15,7 +15,7 @@ persistence = ["eframe/persistence", "serde"]
 
 [dependencies]
 four-bar = { path = "../four-bar" }
-eframe = "0.13"
+eframe = "0.14"
 serde = { version = "1", features = ["derive"], optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
