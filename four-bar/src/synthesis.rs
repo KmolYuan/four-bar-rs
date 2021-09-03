@@ -66,11 +66,7 @@ impl Planar {
 impl ObjFunc for Planar {
     type Result = Mechanism;
 
-    fn fitness<'a, A>(&self, v: A, _: &Report) -> f64
-    where
-        A: AsArray<'a, f64>,
-    {
-        let v = v.into();
+    fn fitness(&self, v: &[f64], _: &Report) -> f64 {
         let mut f = Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4]);
         let c = arr2(&f.four_bar_loop(0., self.n));
         if path_is_nan(&c) {
@@ -82,11 +78,7 @@ impl ObjFunc for Planar {
         (coeffs - &self.target).mapv(f64::abs).sum()
     }
 
-    fn result<'a, A>(&self, v: A) -> Self::Result
-    where
-        A: AsArray<'a, f64>,
-    {
-        let v = v.into();
+    fn result(&self, v: &[f64]) -> Self::Result {
         let c = arr2(
             &Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4])
                 .four_bar_loop(0., self.n),
