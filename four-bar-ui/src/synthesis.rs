@@ -6,11 +6,23 @@ use std::sync::{
 };
 use std::thread::spawn;
 
+macro_rules! parameter {
+    ($label:literal, $attr:expr, $ui:ident) => {
+        DragValue::new(&mut $attr)
+            .prefix($label)
+            .clamp_range(0..=5000)
+            .speed(1)
+            .ui($ui);
+    };
+}
+
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "persistence", serde(default))]
 pub struct Synthesis {
     started: Arc<AtomicBool>,
     progress: Arc<AtomicU32>,
+    gen: u32,
+    pop: usize,
 }
 
 impl Default for Synthesis {
@@ -18,6 +30,8 @@ impl Default for Synthesis {
         Self {
             started: Arc::new(AtomicBool::new(false)),
             progress: Default::default(),
+            gen: 40,
+            pop: 200,
         }
     }
 }
@@ -26,6 +40,8 @@ impl Synthesis {
     pub fn update(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
             ui.heading("Synthesis");
+            parameter!("Generation: ", self.gen, ui);
+            parameter!("Population: ", self.pop, ui);
             ui.horizontal(|ui| {
                 let started = self.started.load(Ordering::Relaxed);
                 if started {
@@ -35,26 +51,30 @@ impl Synthesis {
                 } else {
                     if ui.small_button("▶").on_hover_text("Start").clicked() {
                         self.started.store(true, Ordering::Relaxed);
+                        let gen = self.gen;
+                        let pop = self.pop;
                         let started = self.started.clone();
                         let progress = self.progress.clone();
                         spawn(move || {
-                            synthesis(YU2, 40, 200, |r| {
+                            let ans = synthesis(YU2, gen, pop, |r| {
                                 progress.store(r.gen, Ordering::Relaxed);
                                 started.load(Ordering::Relaxed)
-                            })
+                            });
+                            started.store(false, Ordering::Relaxed);
+                            ans
                         });
                     }
                 }
-                // TODO: Progress bar here!
-                ui.label(self.progress.load(Ordering::Relaxed).to_string());
-                if self.started.load(Ordering::Relaxed) {
-                    ui.ctx().request_repaint();
-                }
+                ProgressBar::new(self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32)
+                    .show_percentage()
+                    .animate(started)
+                    .ui(ui);
             });
         });
     }
 }
 
+// FIXME: Remove this test case
 const YU2: &[[f64; 2]] = &[
     [-24., 40.],
     [-30., 41.],

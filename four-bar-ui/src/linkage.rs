@@ -29,7 +29,7 @@ macro_rules! angle {
             if DragValue::new(&mut deg)
                 .prefix($label)
                 .suffix(concat![" deg", $t])
-                .clamp_range((0.)..=360.)
+                .clamp_range(0..=360)
                 .speed(1.)
                 .ui(ui)
                 .changed()

@@ -111,7 +111,7 @@ impl Mechanism {
     }
 
     fn apply(&mut self) {
-        for f in self.formulas.iter_mut() {
+        for f in self.formulas.iter() {
             f.apply(&mut self.joints);
         }
     }
