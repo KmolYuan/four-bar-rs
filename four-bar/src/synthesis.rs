@@ -1,5 +1,5 @@
 use crate::Mechanism;
-use efd::{calculate_efd, locus, normalize_efd};
+use efd::{calculate_efd, diff, locus, normalize_efd};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
 use std::f64::consts::TAU;
@@ -44,8 +44,16 @@ impl Planar {
         lb[4] = 0.;
         // Path guiding
         if open {
-            // Open path
-            todo!();
+            let distance = diff(&curve, Some(Axis(0))).map_axis(Axis(1), |c| c[0].hypot(c[1]));
+            let max_d = distance.iter().fold(-f64::INFINITY, |a, &b| a.max(b));
+            let min_d = distance.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            // Open path guiding points
+            for _ in 0..5 {
+                ub.push(max_d);
+                lb.push(min_d);
+                ub.push(TAU);
+                lb.push(0.);
+            }
         } else if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
             || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
         {
