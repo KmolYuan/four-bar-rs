@@ -51,10 +51,8 @@ impl App {
             if ui.small_button("🔆").on_hover_text("Light").clicked() {
                 ctx.set_visuals(Visuals::light());
             }
-        } else {
-            if ui.small_button("🌙").on_hover_text("Dark").clicked() {
-                ctx.set_visuals(Visuals::dark());
-            }
+        } else if ui.small_button("🌙").on_hover_text("Dark").clicked() {
+            ctx.set_visuals(Visuals::dark());
         }
         switch_button!(ui, self.side_panel, "⬅", "Fold", "➡", "Expand");
         switch_button!(ui, self.menu_up, "⬇", "Menu go down", "⬆", "Menu go up");

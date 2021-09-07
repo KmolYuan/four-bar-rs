@@ -48,22 +48,20 @@ impl Synthesis {
                     if ui.small_button("⏹").on_hover_text("Stop").clicked() {
                         self.started.store(false, Ordering::Relaxed);
                     }
-                } else {
-                    if ui.small_button("▶").on_hover_text("Start").clicked() {
-                        self.started.store(true, Ordering::Relaxed);
-                        let gen = self.gen;
-                        let pop = self.pop;
-                        let started = self.started.clone();
-                        let progress = self.progress.clone();
-                        spawn(move || {
-                            let ans = synthesis(YU2, gen, pop, |r| {
-                                progress.store(r.gen, Ordering::Relaxed);
-                                started.load(Ordering::Relaxed)
-                            });
-                            started.store(false, Ordering::Relaxed);
-                            ans
+                } else if ui.small_button("▶").on_hover_text("Start").clicked() {
+                    self.started.store(true, Ordering::Relaxed);
+                    let gen = self.gen;
+                    let pop = self.pop;
+                    let started = self.started.clone();
+                    let progress = self.progress.clone();
+                    spawn(move || {
+                        let ans = synthesis(YU2, gen, pop, |r| {
+                            progress.store(r.gen, Ordering::Relaxed);
+                            started.load(Ordering::Relaxed)
                         });
-                    }
+                        started.store(false, Ordering::Relaxed);
+                        ans
+                    });
                 }
                 ProgressBar::new(self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32)
                     .show_percentage()

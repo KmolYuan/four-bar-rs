@@ -13,6 +13,7 @@ where
         polygon[[i, 0]] -= x0 + (xn - x0) * i as f64 / n as f64;
         polygon[[i, 1]] -= y0 + (yn - y0) * i as f64 / n as f64;
     }
+    #[allow(clippy::reversed_empty_ranges)]
     let inverse = &polygon.slice(s![1..-1;-1, ..]) * -1.;
     concatenate!(Axis(0), polygon, inverse)
 }
