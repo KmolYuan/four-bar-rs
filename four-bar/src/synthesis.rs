@@ -17,19 +17,23 @@ where
     false
 }
 
+// Normalization information
+#[derive(Default)]
+struct Norm {
+    target: Array2<f64>,
+    rot: f64,
+    scale: f64,
+    locus: (f64, f64),
+}
+
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
-    /// The target coefficients.
-    pub target: Array2<f64>,
+    norm: Norm,
     n: usize,
     harmonic: usize,
     open: bool,
     ub: Vec<f64>,
     lb: Vec<f64>,
-    // Normalized information
-    rot: f64,
-    scale: f64,
-    locus: (f64, f64),
 }
 
 impl Planar {
@@ -60,19 +64,29 @@ impl Planar {
             // Close loop
             curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
         }
-        let coeffs = calculate_efd(&curve, harmonic);
-        let (target, rot, _, scale) = normalize_efd(&coeffs, true);
-        let locus = locus(&curve);
+        let norm = if open {
+            Norm {
+                target: curve,
+                ..Default::default()
+            }
+        } else {
+            let coeffs = calculate_efd(&curve, harmonic);
+            let (target, rot, _, scale) = normalize_efd(&coeffs, true);
+            let locus = locus(&curve);
+            Norm {
+                target,
+                rot,
+                scale,
+                locus,
+            }
+        };
         Self {
-            target,
+            norm,
             n,
             harmonic,
             open,
             ub,
             lb,
-            rot,
-            scale,
-            locus,
         }
     }
 }
@@ -92,7 +106,7 @@ impl ObjFunc for Planar {
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (coeffs, _, _, _) = normalize_efd(&coeffs, true);
-        (coeffs - &self.target).mapv(f64::abs).sum()
+        (coeffs - &self.norm.target).mapv(f64::abs).sum()
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
@@ -107,14 +121,14 @@ impl ObjFunc for Planar {
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (_, rot, _, scale) = normalize_efd(&coeffs, true);
         let locus = locus(&curve);
-        let rot = rot - self.rot;
-        let scale = self.scale / scale;
+        let rot = rot - self.norm.rot;
+        let scale = self.norm.scale / scale;
         let locus_rot = locus.1.atan2(locus.0) + rot;
         let d = locus.1.hypot(locus.0) * scale;
         Mechanism::four_bar(
             (
-                self.locus.0 - d * locus_rot.cos(),
-                self.locus.1 - d * locus_rot.sin(),
+                self.norm.locus.0 - d * locus_rot.cos(),
+                self.norm.locus.1 - d * locus_rot.sin(),
                 rot,
             ),
             v[0] * scale,
