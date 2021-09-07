@@ -17,7 +17,7 @@ fn planar() {
     // let target = PATH_HAND;
     let gen = 40;
     let pb = ProgressBar::new(gen as u64);
-    let (mut ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
+    let (mut ans, history) = synthesis::synthesis(&target, gen, 200, true, |r| {
         pb.set_position(r.gen as u64);
         true
     });

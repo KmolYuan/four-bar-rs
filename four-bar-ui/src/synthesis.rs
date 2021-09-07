@@ -1,10 +1,12 @@
 use eframe::egui::*;
 use four_bar::synthesis::synthesis;
-use std::sync::{
-    atomic::{AtomicBool, AtomicU32, Ordering},
-    Arc,
+use std::{
+    sync::{
+        atomic::{AtomicBool, AtomicU32, Ordering},
+        Arc,
+    },
+    thread::spawn,
 };
-use std::thread::spawn;
 
 macro_rules! parameter {
     ($label:literal, $attr:expr, $ui:ident) => {
@@ -23,6 +25,7 @@ pub struct Synthesis {
     progress: Arc<AtomicU32>,
     gen: u32,
     pop: usize,
+    open: bool,
 }
 
 impl Default for Synthesis {
@@ -32,6 +35,7 @@ impl Default for Synthesis {
             progress: Default::default(),
             gen: 40,
             pop: 200,
+            open: false,
         }
     }
 }
@@ -42,20 +46,20 @@ impl Synthesis {
             ui.heading("Synthesis");
             parameter!("Generation: ", self.gen, ui);
             parameter!("Population: ", self.pop, ui);
+            Checkbox::new(&mut self.open, "Open Path").ui(ui);
             ui.horizontal(|ui| {
                 let started = self.started.load(Ordering::Relaxed);
-                if started {
-                    if ui.small_button("⏹").on_hover_text("Stop").clicked() {
-                        self.started.store(false, Ordering::Relaxed);
-                    }
+                if started && ui.small_button("⏹").on_hover_text("Stop").clicked() {
+                    self.started.store(false, Ordering::Relaxed);
                 } else if ui.small_button("▶").on_hover_text("Start").clicked() {
                     self.started.store(true, Ordering::Relaxed);
                     let gen = self.gen;
                     let pop = self.pop;
+                    let open = self.open;
                     let started = self.started.clone();
                     let progress = self.progress.clone();
                     spawn(move || {
-                        let ans = synthesis(YU2, gen, pop, |r| {
+                        let ans = synthesis(YU2, gen, pop, open, |r| {
                             progress.store(r.gen, Ordering::Relaxed);
                             started.load(Ordering::Relaxed)
                         });

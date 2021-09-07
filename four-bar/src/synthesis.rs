@@ -23,8 +23,9 @@ pub struct Planar {
     pub target: Array2<f64>,
     n: usize,
     harmonic: usize,
-    ub: [f64; 5],
-    lb: [f64; 5],
+    open: bool,
+    ub: Vec<f64>,
+    lb: Vec<f64>,
     // Normalized information
     rot: f64,
     scale: f64,
@@ -33,10 +34,19 @@ pub struct Planar {
 
 impl Planar {
     /// Create a new task.
-    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize) -> Self {
+    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
         let mut curve = arr2(curve);
         let end = curve.nrows() - 1;
-        if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
+        let mut ub = vec![10.; 5];
+        let mut lb = vec![1e-6; 5];
+        // gamma
+        ub[4] = TAU;
+        lb[4] = 0.;
+        // Path guiding
+        if open {
+            // Open path
+            todo!();
+        } else if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
             || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
         {
             // Close loop
@@ -45,15 +55,11 @@ impl Planar {
         let coeffs = calculate_efd(&curve, harmonic);
         let (target, rot, _, scale) = normalize_efd(&coeffs, true);
         let locus = locus(&curve);
-        let mut ub = [10.; 5];
-        // gamma
-        ub[4] = TAU;
-        let mut lb = [1e-6; 5];
-        lb[4] = 0.;
         Self {
             target,
             n,
             harmonic,
+            open,
             ub,
             lb,
             rot,
@@ -72,6 +78,9 @@ impl ObjFunc for Planar {
         if path_is_nan(&c) {
             return 1e20;
         }
+        if self.open {
+            todo!();
+        }
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (coeffs, _, _, _) = normalize_efd(&coeffs, true);
@@ -83,6 +92,9 @@ impl ObjFunc for Planar {
             &Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4])
                 .four_bar_loop(0., self.n),
         );
+        if self.open {
+            todo!();
+        }
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (_, rot, _, scale) = normalize_efd(&coeffs, true);
@@ -120,9 +132,10 @@ pub fn synthesis(
     curve: &[[f64; 2]],
     gen: u32,
     pop: usize,
+    open: bool,
     callback: impl FnMut(Report) -> bool,
 ) -> (Mechanism, Vec<Report>) {
-    let planar = Planar::new(curve, 720, 360);
+    let planar = Planar::new(curve, 720, 360, open);
     let de = Solver::solve(
         planar,
         De::default().task(Task::MaxGen(gen)).rpt(1).pop_num(pop),
