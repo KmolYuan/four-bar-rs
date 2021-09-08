@@ -113,7 +113,7 @@ impl Planar {
 }
 
 impl ObjFunc for Planar {
-    type Result = Mechanism;
+    type Result = FourBar;
 
     fn fitness(&self, v: &[f64], _: &Report) -> f64 {
         let mut f = Mechanism::four_bar(Self::four_bar(v));
@@ -156,7 +156,7 @@ impl ObjFunc for Planar {
         let scale = norm_scale / scale;
         let locus_rot = locus.1.atan2(locus.0) + rot;
         let d = locus.1.hypot(locus.0) * scale;
-        Mechanism::four_bar(FourBar {
+        FourBar {
             p0: (
                 norm_locus.0 - d * locus_rot.cos(),
                 norm_locus.1 - d * locus_rot.sin(),
@@ -168,7 +168,7 @@ impl ObjFunc for Planar {
             l3: v[2] * scale,
             l4: v[3] * scale,
             g: v[4],
-        })
+        }
     }
 
     fn ub(&self) -> &[f64] {
@@ -187,12 +187,12 @@ pub fn synthesis(
     pop: usize,
     open: bool,
     callback: impl FnMut(Report) -> bool,
-) -> (Mechanism, Vec<Report>) {
+) -> (FourBar, Vec<Report>) {
     let planar = Planar::new(curve, 720, 360, open);
-    let de = Solver::solve(
+    let s = Solver::solve(
         planar,
         De::default().task(Task::MaxGen(gen)).rpt(1).pop_num(pop),
         callback,
     );
-    (de.result(), de.history())
+    (s.result(), s.history())
 }

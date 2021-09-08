@@ -19,8 +19,11 @@ macro_rules! switch_button {
 }
 
 /// Main state.
-#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "persistence", serde(default))]
+#[cfg_attr(
+    feature = "persistence",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
 pub struct App {
     welcome: bool,
     menu_up: bool,

@@ -1,12 +1,10 @@
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::FRAC_PI_6,
     ops::{Div, DivAssign},
 };
 
 #[derive(Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FourBar {
     pub p0: (f64, f64),
     pub a: f64,

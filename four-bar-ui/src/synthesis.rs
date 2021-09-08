@@ -18,8 +18,11 @@ macro_rules! parameter {
     };
 }
 
-#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "persistence", serde(default))]
+#[cfg_attr(
+    feature = "persistence",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
 pub struct Synthesis {
     started: Arc<AtomicBool>,
     progress: Arc<AtomicU32>,

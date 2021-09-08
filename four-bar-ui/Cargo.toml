@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ['persistence']
 http = ["eframe/http"]
-persistence = ["eframe/persistence", "serde"]
+persistence = ["eframe/persistence", "serde", "four-bar/serde"]
 
 [dependencies]
 four-bar = { path = "../four-bar" }

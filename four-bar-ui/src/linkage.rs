@@ -73,8 +73,11 @@ macro_rules! draw_path {
 }
 
 /// Linkage data.
-#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "persistence", serde(default))]
+#[cfg_attr(
+    feature = "persistence",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
 pub struct Linkage {
     interval: f64,
     drive: f64,

@@ -17,12 +17,12 @@ fn planar() {
     // let target = PATH_HAND;
     let gen = 40;
     let pb = ProgressBar::new(gen as u64);
-    let (mut ans, history) = synthesis::synthesis(&target, gen, 200, true, |r| {
+    let (mut ans, history) = synthesis::synthesis(&target, gen, 200, false, |r| {
         pb.set_position(r.gen as u64);
         true
     });
     pb.finish();
-    let path = ans.four_bar_loop(0., 360);
+    let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot_curve(
         &[
             ("Target", &target, (221, 51, 85)),
