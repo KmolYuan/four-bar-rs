@@ -49,8 +49,10 @@ impl Synthesis {
             Checkbox::new(&mut self.open, "Open Path").ui(ui);
             ui.horizontal(|ui| {
                 let started = self.started.load(Ordering::Relaxed);
-                if started && ui.small_button("⏹").on_hover_text("Stop").clicked() {
-                    self.started.store(false, Ordering::Relaxed);
+                if started {
+                    if ui.small_button("⏹").on_hover_text("Stop").clicked() {
+                        self.started.store(false, Ordering::Relaxed);
+                    }
                 } else if ui.small_button("▶").on_hover_text("Start").clicked() {
                     self.started.store(true, Ordering::Relaxed);
                     let gen = self.gen;

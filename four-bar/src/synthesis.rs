@@ -17,6 +17,16 @@ where
     false
 }
 
+fn guide(c: &mut Array2<f64>, v: &[f64]) {
+    for i in (0..v.len()).step_by(2) {
+        let end = arr2(&[[
+            c[[c.nrows() - 1, 0]] + v[i] * v[i + 1].cos(),
+            c[[c.nrows() - 1, 1]] + v[i] * v[i + 1].sin(),
+        ]]);
+        *c = concatenate!(Axis(0), *c, end);
+    }
+}
+
 // Normalization information
 #[derive(Default)]
 struct Norm {
@@ -46,8 +56,8 @@ impl Planar {
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        // Path guiding
-        if open {
+        let norm = if open {
+            // Path guiding
             let distance = diff(&curve, Some(Axis(0))).map_axis(Axis(1), |c| c[0].hypot(c[1]));
             let max_d = distance.iter().fold(-f64::INFINITY, |a, &b| a.max(b));
             let min_d = distance.iter().fold(f64::INFINITY, |a, &b| a.min(b));
@@ -58,26 +68,24 @@ impl Planar {
                 ub.push(TAU);
                 lb.push(0.);
             }
-        } else if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
-            || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
-        {
-            // Close loop
-            curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
-        }
-        let norm = if open {
             Norm {
                 target: curve,
                 ..Default::default()
             }
         } else {
+            // Close loop
+            if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
+                || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
+            {
+                curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
+            }
             let coeffs = calculate_efd(&curve, harmonic);
             let (target, rot, _, scale) = normalize_efd(&coeffs, true);
-            let locus = locus(&curve);
             Norm {
                 target,
                 rot,
                 scale,
-                locus,
+                locus: locus(&curve),
             }
         };
         Self {
@@ -100,13 +108,19 @@ impl ObjFunc for Planar {
         if path_is_nan(&c) {
             return 1e20;
         }
-        if self.open {
-            todo!();
-        }
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
-        let (coeffs, _, _, _) = normalize_efd(&coeffs, true);
-        (coeffs - &self.norm.target).mapv(f64::abs).sum()
+        let (coeffs, ..) = normalize_efd(&coeffs, true);
+        if self.open {
+            let mut c = self.norm.target.clone();
+            guide(&mut c, &v[5..]);
+            let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+            let coeffs = calculate_efd(&curve, self.harmonic);
+            let (target, ..) = normalize_efd(&coeffs, true);
+            (coeffs - &target).mapv(f64::abs).sum()
+        } else {
+            (coeffs - &self.norm.target).mapv(f64::abs).sum()
+        }
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
@@ -114,21 +128,28 @@ impl ObjFunc for Planar {
             &Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4])
                 .four_bar_loop(0., self.n),
         );
-        if self.open {
-            todo!();
-        }
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (_, rot, _, scale) = normalize_efd(&coeffs, true);
+        let (norm_rot, norm_scale, norm_locus) = if self.open {
+            let mut c = self.norm.target.clone();
+            guide(&mut c, &v[5..]);
+            let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+            let coeffs = calculate_efd(&curve, self.harmonic);
+            let (_, rot, _, scale) = normalize_efd(&coeffs, true);
+            (rot, scale, locus(&curve))
+        } else {
+            (self.norm.rot, self.norm.scale, self.norm.locus)
+        };
         let locus = locus(&curve);
-        let rot = rot - self.norm.rot;
-        let scale = self.norm.scale / scale;
+        let rot = rot - norm_rot;
+        let scale = norm_scale / scale;
         let locus_rot = locus.1.atan2(locus.0) + rot;
         let d = locus.1.hypot(locus.0) * scale;
         Mechanism::four_bar(
             (
-                self.norm.locus.0 - d * locus_rot.cos(),
-                self.norm.locus.1 - d * locus_rot.sin(),
+                norm_locus.0 - d * locus_rot.cos(),
+                norm_locus.1 - d * locus_rot.sin(),
                 rot,
             ),
             v[0] * scale,
