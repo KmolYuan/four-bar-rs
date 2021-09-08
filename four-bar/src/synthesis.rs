@@ -1,4 +1,4 @@
-use crate::Mechanism;
+use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, diff, locus, normalize_efd};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
@@ -97,13 +97,26 @@ impl Planar {
             lb,
         }
     }
+
+    fn four_bar(v: &[f64]) -> FourBar {
+        FourBar {
+            p0: (0., 0.),
+            a: 0.,
+            l0: v[0],
+            l1: 1.,
+            l2: v[1],
+            l3: v[2],
+            l4: v[3],
+            g: v[4],
+        }
+    }
 }
 
 impl ObjFunc for Planar {
     type Result = Mechanism;
 
     fn fitness(&self, v: &[f64], _: &Report) -> f64 {
-        let mut f = Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4]);
+        let mut f = Mechanism::four_bar(Self::four_bar(v));
         let c = arr2(&f.four_bar_loop(0., self.n));
         if path_is_nan(&c) {
             return 1e20;
@@ -124,10 +137,7 @@ impl ObjFunc for Planar {
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
-        let c = arr2(
-            &Mechanism::four_bar((0., 0., 0.), v[0], 1., v[1], v[2], v[3], v[4])
-                .four_bar_loop(0., self.n),
-        );
+        let c = arr2(&Mechanism::four_bar(Self::four_bar(v)).four_bar_loop(0., self.n));
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (_, rot, _, scale) = normalize_efd(&coeffs, true);
@@ -146,19 +156,19 @@ impl ObjFunc for Planar {
         let scale = norm_scale / scale;
         let locus_rot = locus.1.atan2(locus.0) + rot;
         let d = locus.1.hypot(locus.0) * scale;
-        Mechanism::four_bar(
-            (
+        Mechanism::four_bar(FourBar {
+            p0: (
                 norm_locus.0 - d * locus_rot.cos(),
                 norm_locus.1 - d * locus_rot.sin(),
-                rot,
             ),
-            v[0] * scale,
-            scale,
-            v[1] * scale,
-            v[2] * scale,
-            v[3] * scale,
-            v[4],
-        )
+            a: rot,
+            l0: v[0] * scale,
+            l1: scale,
+            l2: v[1] * scale,
+            l3: v[2] * scale,
+            l4: v[3] * scale,
+            g: v[4],
+        })
     }
 
     fn ub(&self) -> &[f64] {

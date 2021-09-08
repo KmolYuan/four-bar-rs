@@ -1,9 +1,11 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 pub use crate::anti_sym_ext::*;
+pub use crate::four_bar::*;
 pub use crate::mechanism::*;
 pub use crate::point::*;
 
 mod anti_sym_ext;
+mod four_bar;
 mod mechanism;
 mod point;
 #[cfg(feature = "synthesis")]

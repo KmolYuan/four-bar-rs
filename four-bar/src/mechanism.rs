@@ -1,4 +1,4 @@
-use crate::Point;
+use crate::{FourBar, Point};
 use std::{
     f64::consts::TAU,
     io::{Error, ErrorKind, Result},
@@ -38,30 +38,22 @@ pub struct Mechanism {
 
 impl Mechanism {
     /// Create four bar linkages.
-    pub fn four_bar(
-        (p0x, p0y, a): (f64, f64, f64),
-        l0: f64,
-        l1: f64,
-        l2: f64,
-        l3: f64,
-        l4: f64,
-        g: f64,
-    ) -> Self {
+    pub fn four_bar(m: FourBar) -> Self {
         let mut joints = Vec::with_capacity(5);
-        joints.push([p0x, p0y]);
-        joints.push([p0x + l0 * a.cos(), p0y + l0 * a.sin()]);
+        joints.push([m.p0.x(), m.p0.y()]);
+        joints.push([m.p0.x() + m.l0 * m.a.cos(), m.p0.y() + m.l0 * m.a.sin()]);
         for _ in 2..5 {
             joints.push([0., 0.]);
         }
         let mut formulas = Vec::with_capacity(3);
-        formulas.push(Formula::Pla(0, l1, 0., 2));
-        if (l0 - l2).abs() < 1e-20 && (l1 - l3).abs() < 1e-20 {
+        formulas.push(Formula::Pla(0, m.l1, 0., 2));
+        if (m.l0 - m.l2).abs() < 1e-20 && (m.l1 - m.l3).abs() < 1e-20 {
             // Special case
             formulas.push(Formula::Ppp(0, 2, 1, 3));
         } else {
-            formulas.push(Formula::Pllp(2, l2, l3, 1, false, 3));
+            formulas.push(Formula::Pllp(2, m.l2, m.l3, 1, false, 3));
         }
-        formulas.push(Formula::Plap(2, l4, g, 3, 4));
+        formulas.push(Formula::Plap(2, m.l4, m.g, 3, 4));
         Self { joints, formulas }
     }
 

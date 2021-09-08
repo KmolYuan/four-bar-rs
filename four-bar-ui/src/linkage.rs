@@ -1,7 +1,7 @@
 use crate::as_values::AsValues;
 use eframe::egui::*;
-use four_bar::Mechanism;
-use std::f64::consts::{FRAC_PI_6, PI, TAU};
+use four_bar::{FourBar, Mechanism};
+use std::f64::consts::{PI, TAU};
 
 macro_rules! unit {
     ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
@@ -79,15 +79,7 @@ pub struct Linkage {
     interval: f64,
     drive: f64,
     speed: f64,
-    x0: f64,
-    y0: f64,
-    a: f64,
-    l0: f64,
-    l1: f64,
-    l2: f64,
-    l3: f64,
-    l4: f64,
-    g: f64,
+    four_bar: FourBar,
 }
 
 impl Default for Linkage {
@@ -96,15 +88,7 @@ impl Default for Linkage {
             interval: 1.,
             drive: 0.,
             speed: 0.,
-            x0: 0.,
-            y0: 0.,
-            a: 0.,
-            l0: 90.,
-            l1: 35.,
-            l2: 70.,
-            l3: 70.,
-            l4: 45.,
-            g: FRAC_PI_6,
+            four_bar: Default::default(),
         }
     }
 }
@@ -118,37 +102,29 @@ impl Linkage {
             *self = Self::default();
         }
         if ui.button("Normalize").clicked() {
-            self.x0 = 0.;
-            self.y0 = 0.;
-            self.a = 0.;
-            self.l0 /= self.l1;
-            self.l2 /= self.l1;
-            self.l3 /= self.l1;
-            self.l4 /= self.l1;
-            self.l1 = 1.;
+            self.four_bar.reset();
+            self.four_bar /= self.four_bar.l1;
         }
         ui.group(|ui| {
             ui.heading("Offset");
             if ui.button("Reset").clicked() {
-                self.x0 = 0.;
-                self.y0 = 0.;
-                self.a = 0.;
+                self.four_bar.reset();
             }
-            unit!("X Offset: ", self.x0, self.interval, ui);
-            unit!("Y Offset: ", self.y0, self.interval, ui);
-            angle!("Rotation: ", self.a, ui);
+            unit!("X Offset: ", self.four_bar.p0.0, self.interval, ui);
+            unit!("Y Offset: ", self.four_bar.p0.1, self.interval, ui);
+            angle!("Rotation: ", self.four_bar.a, ui);
         });
         ui.group(|ui| {
             ui.heading("Parameters");
-            link!("Ground: ", self.l0, self.interval, ui);
-            link!("Crank: ", self.l1, self.interval, ui);
-            link!("Coupler: ", self.l2, self.interval, ui);
-            link!("Follower: ", self.l3, self.interval, ui);
+            link!("Ground: ", self.four_bar.l0, self.interval, ui);
+            link!("Crank: ", self.four_bar.l1, self.interval, ui);
+            link!("Coupler: ", self.four_bar.l2, self.interval, ui);
+            link!("Follower: ", self.four_bar.l3, self.interval, ui);
         });
         ui.group(|ui| {
             ui.heading("Coupler");
-            link!("Extended: ", self.l4, self.interval, ui);
-            angle!("Angle: ", self.g, ui);
+            link!("Extended: ", self.four_bar.l4, self.interval, ui);
+            angle!("Angle: ", self.four_bar.g, ui);
         });
         ui.group(|ui| {
             ui.heading("Driver");
@@ -163,15 +139,7 @@ impl Linkage {
 
     pub fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
-            let mut m = Mechanism::four_bar(
-                (self.x0, self.y0, self.a),
-                self.l0,
-                self.l1,
-                self.l2,
-                self.l3,
-                self.l4,
-                self.g,
-            );
+            let mut m = Mechanism::four_bar(self.four_bar.clone());
             m.four_bar_angle(self.drive).unwrap();
             let joints = m.joints.clone();
             let path = m.four_bar_loop_all(0., 360);
