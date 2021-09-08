@@ -34,4 +34,4 @@ cargo run
 
 ## Library
 
-The library `four-bar` can also install by Cargo.
+The library `four-bar` can also install with Cargo.
