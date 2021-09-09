@@ -1,6 +1,8 @@
+use csv::{Error, Reader};
 use eframe::egui::*;
 use four_bar::synthesis::synthesis;
 use std::{
+    io::Cursor,
     sync::{
         atomic::{AtomicBool, AtomicU32, Ordering},
         Arc,
@@ -18,6 +20,12 @@ macro_rules! parameter {
     };
 }
 
+fn read_csv(s: &str) -> Result<Vec<[f64; 2]>, Error> {
+    Reader::from_reader(Cursor::new(s))
+        .deserialize::<[f64; 2]>()
+        .collect()
+}
+
 #[cfg_attr(
     feature = "persistence",
     derive(serde::Deserialize, serde::Serialize),
@@ -29,6 +37,8 @@ pub struct Synthesis {
     gen: u32,
     pop: usize,
     open: bool,
+    curve_csv: String,
+    error: bool,
 }
 
 impl Default for Synthesis {
@@ -39,6 +49,8 @@ impl Default for Synthesis {
             gen: 40,
             pop: 200,
             open: false,
+            curve_csv: String::new(),
+            error: false,
         }
     }
 }
@@ -50,6 +62,12 @@ impl Synthesis {
             parameter!("Generation: ", self.gen, ui);
             parameter!("Population: ", self.pop, ui);
             Checkbox::new(&mut self.open, "Open Path").ui(ui);
+            ui.text_edit_multiline(&mut self.curve_csv);
+            if self.error {
+                Label::new("The provided comma-separated value is empty or invalid.")
+                    .text_color(Color32::RED)
+                    .ui(ui);
+            }
             ui.horizontal(|ui| {
                 let started = self.started.load(Ordering::Relaxed);
                 if started {
@@ -57,20 +75,14 @@ impl Synthesis {
                         self.started.store(false, Ordering::Relaxed);
                     }
                 } else if ui.small_button("▶").on_hover_text("Start").clicked() {
-                    self.started.store(true, Ordering::Relaxed);
-                    let gen = self.gen;
-                    let pop = self.pop;
-                    let open = self.open;
-                    let started = self.started.clone();
-                    let progress = self.progress.clone();
-                    spawn(move || {
-                        let ans = synthesis(YU2, gen, pop, open, |r| {
-                            progress.store(r.gen, Ordering::Relaxed);
-                            started.load(Ordering::Relaxed)
-                        });
-                        started.store(false, Ordering::Relaxed);
-                        ans
-                    });
+                    if self.curve_csv.is_empty() {
+                        self.error = true;
+                    } else if let Ok(curve) = read_csv(&self.curve_csv) {
+                        self.error = false;
+                        self.start_syn(curve);
+                    } else {
+                        self.error = true;
+                    }
                 }
                 ProgressBar::new(self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32)
                     .show_percentage()
@@ -79,28 +91,21 @@ impl Synthesis {
             });
         });
     }
-}
 
-// FIXME: Remove this test case
-const YU2: &[[f64; 2]] = &[
-    [-24., 40.],
-    [-30., 41.],
-    [-34., 40.],
-    [-38., 36.],
-    [-36., 30.],
-    [-28., 29.],
-    [-21., 31.],
-    [-17., 32.],
-    [-8., 34.],
-    [3., 37.],
-    [10., 41.],
-    [17., 41.],
-    [26., 39.],
-    [28., 33.],
-    [29., 26.],
-    [26., 23.],
-    [17., 23.],
-    [11., 24.],
-    [6., 27.],
-    [0., 31.],
-];
+    fn start_syn(&mut self, curve: Vec<[f64; 2]>) {
+        self.started.store(true, Ordering::Relaxed);
+        let gen = self.gen;
+        let pop = self.pop;
+        let open = self.open;
+        let started = self.started.clone();
+        let progress = self.progress.clone();
+        spawn(move || {
+            let ans = synthesis(&curve, gen, pop, open, |r| {
+                progress.store(r.gen, Ordering::Relaxed);
+                started.load(Ordering::Relaxed)
+            });
+            started.store(false, Ordering::Relaxed);
+            ans
+        });
+    }
+}

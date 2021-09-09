@@ -21,6 +21,8 @@ serde = { version = "1", features = ["derive"], optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # use to load the icon
 image = "0.23"
+four-bar = { path = "../four-bar", features = ["synthesis"] }
+csv = "1.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
