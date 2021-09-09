@@ -1,3 +1,4 @@
+//! The synthesis implementation of planar four-bar linkage mechanisms.
 use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, diff, locus, normalize_efd};
 pub use metaheuristics_nature::*;

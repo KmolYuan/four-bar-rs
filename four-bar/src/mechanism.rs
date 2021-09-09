@@ -30,6 +30,7 @@ impl Formula {
     }
 }
 
+/// Geometry constraint solver of the linkage mechanisms.
 pub struct Mechanism {
     /// The joint positions.
     pub joints: Vec<[f64; 2]>,

@@ -3,16 +3,25 @@ use std::{
     ops::{Div, DivAssign},
 };
 
+/// Data type of the four-bar mechanism.
 #[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FourBar {
+    /// Origin.
     pub p0: (f64, f64),
+    /// Offset angle.
     pub a: f64,
+    /// Length of the ground link.
     pub l0: f64,
+    /// Length of the crank link.
     pub l1: f64,
+    /// Length of the coupler link.
     pub l2: f64,
+    /// Length of te follower link.
     pub l3: f64,
+    /// Length of the extended link.
     pub l4: f64,
+    /// Angle of the extended coupler.
     pub g: f64,
 }
 
@@ -33,6 +42,7 @@ impl Default for FourBar {
 }
 
 impl FourBar {
+    /// Remove the origin offset and the offset angle.
     pub fn reset(&mut self) {
         self.p0 = (0., 0.);
         self.a = 0.;
