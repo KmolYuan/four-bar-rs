@@ -1,11 +1,11 @@
 use csv::{Error, Reader};
 use eframe::egui::*;
-use four_bar::synthesis::synthesis;
+use four_bar::{synthesis::synthesis, FourBar};
 use std::{
     io::Cursor,
     sync::{
         atomic::{AtomicBool, AtomicU32, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     thread::spawn,
 };
@@ -31,7 +31,7 @@ fn read_csv(s: &str) -> Result<Vec<[f64; 2]>, Error> {
     derive(serde::Deserialize, serde::Serialize),
     serde(default)
 )]
-pub struct Synthesis {
+pub(crate) struct Synthesis {
     started: Arc<AtomicBool>,
     progress: Arc<AtomicU32>,
     gen: u32,
@@ -56,7 +56,7 @@ impl Default for Synthesis {
 }
 
 impl Synthesis {
-    pub fn update(&mut self, ui: &mut Ui) {
+    pub(crate) fn update(&mut self, ui: &mut Ui, four_bar: Arc<Mutex<FourBar>>) {
         ui.group(|ui| {
             ui.heading("Synthesis");
             parameter!("Generation: ", self.gen, ui);
@@ -79,7 +79,7 @@ impl Synthesis {
                         self.error = true;
                     } else if let Ok(curve) = read_csv(&self.curve_csv) {
                         self.error = false;
-                        self.start_syn(curve);
+                        self.start_syn(curve, four_bar);
                     } else {
                         self.error = true;
                     }
@@ -92,7 +92,7 @@ impl Synthesis {
         });
     }
 
-    fn start_syn(&mut self, curve: Vec<[f64; 2]>) {
+    fn start_syn(&mut self, curve: Vec<[f64; 2]>, four_bar: Arc<Mutex<FourBar>>) {
         self.started.store(true, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
@@ -100,12 +100,12 @@ impl Synthesis {
         let started = self.started.clone();
         let progress = self.progress.clone();
         spawn(move || {
-            let ans = synthesis(&curve, gen, pop, open, |r| {
+            let (ans, _) = synthesis(&curve, gen, pop, open, |r| {
                 progress.store(r.gen, Ordering::Relaxed);
                 started.load(Ordering::Relaxed)
             });
             started.store(false, Ordering::Relaxed);
-            ans
+            *four_bar.lock().unwrap() = ans;
         });
     }
 }

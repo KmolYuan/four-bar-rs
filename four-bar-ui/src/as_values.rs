@@ -1,6 +1,6 @@
 use eframe::egui::plot::{Value, Values};
 
-pub trait AsValues {
+pub(crate) trait AsValues {
     fn as_values(&self) -> Values;
 }
 

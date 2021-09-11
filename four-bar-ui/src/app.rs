@@ -1,6 +1,4 @@
 use crate::linkage::Linkage;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::synthesis::Synthesis;
 use eframe::{egui::*, epi};
 
 #[macro_export]
@@ -30,8 +28,6 @@ pub struct App {
     side_panel: bool,
     started: bool,
     linkage: Linkage,
-    #[cfg(not(target_arch = "wasm32"))]
-    synthesis: Synthesis,
 }
 
 impl Default for App {
@@ -42,8 +38,6 @@ impl Default for App {
             side_panel: true,
             started: false,
             linkage: Linkage::default(),
-            #[cfg(not(target_arch = "wasm32"))]
-            synthesis: Synthesis::default(),
         }
     }
 }
@@ -99,8 +93,6 @@ impl epi::App for App {
         if self.side_panel {
             SidePanel::left("side panel").show(ctx, |ui| {
                 self.linkage.panel(ui);
-                #[cfg(not(target_arch = "wasm32"))]
-                self.synthesis.update(ui);
                 Self::credit(ui);
             });
         }

@@ -1,7 +1,12 @@
 use crate::as_values::AsValues;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::synthesis::Synthesis;
 use eframe::egui::*;
 use four_bar::{FourBar, Mechanism};
-use std::f64::consts::{PI, TAU};
+use std::{
+    f64::consts::{PI, TAU},
+    sync::{Arc, Mutex},
+};
 
 macro_rules! unit {
     ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
@@ -78,11 +83,13 @@ macro_rules! draw_path {
     derive(serde::Deserialize, serde::Serialize),
     serde(default)
 )]
-pub struct Linkage {
+pub(crate) struct Linkage {
     interval: f64,
     drive: f64,
     speed: f64,
-    four_bar: FourBar,
+    four_bar: Arc<Mutex<FourBar>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    synthesis: Synthesis,
 }
 
 impl Default for Linkage {
@@ -92,43 +99,21 @@ impl Default for Linkage {
             drive: 0.,
             speed: 0.,
             four_bar: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            synthesis: Synthesis::default(),
         }
     }
 }
 
 impl Linkage {
-    pub fn panel(&mut self, ui: &mut Ui) {
+    pub(crate) fn panel(&mut self, ui: &mut Ui) {
         ui.heading("Options");
         link!("Value interval: ", self.interval, 0.01, ui);
         ui.heading("Dimension");
         if ui.button("Default").clicked() {
             *self = Self::default();
         }
-        if ui.button("Normalize").clicked() {
-            self.four_bar.reset();
-            self.four_bar /= self.four_bar.l1;
-        }
-        ui.group(|ui| {
-            ui.heading("Offset");
-            if ui.button("Reset").clicked() {
-                self.four_bar.reset();
-            }
-            unit!("X Offset: ", self.four_bar.p0.0, self.interval, ui);
-            unit!("Y Offset: ", self.four_bar.p0.1, self.interval, ui);
-            angle!("Rotation: ", self.four_bar.a, ui);
-        });
-        ui.group(|ui| {
-            ui.heading("Parameters");
-            link!("Ground: ", self.four_bar.l0, self.interval, ui);
-            link!("Crank: ", self.four_bar.l1, self.interval, ui);
-            link!("Coupler: ", self.four_bar.l2, self.interval, ui);
-            link!("Follower: ", self.four_bar.l3, self.interval, ui);
-        });
-        ui.group(|ui| {
-            ui.heading("Coupler");
-            link!("Extended: ", self.four_bar.l4, self.interval, ui);
-            angle!("Angle: ", self.four_bar.g, ui);
-        });
+        self.parameter(ui);
         ui.group(|ui| {
             ui.heading("Driver");
             if ui.button("Reset / Stop").clicked() {
@@ -138,11 +123,44 @@ impl Linkage {
             angle!("Speed: ", self.speed, ui, "/s");
             angle!("Angle: ", self.drive, ui);
         });
+        #[cfg(not(target_arch = "wasm32"))]
+        self.synthesis.update(ui, self.four_bar.clone());
     }
 
-    pub fn plot(&mut self, ctx: &CtxRef) {
+    fn parameter(&mut self, ui: &mut Ui) {
+        let interval = self.interval;
+        let mut four_bar = self.four_bar.lock().unwrap();
+        if ui.button("Normalize").clicked() {
+            four_bar.reset();
+            let l1 = four_bar.l1;
+            *four_bar /= l1;
+        }
+        ui.group(|ui| {
+            ui.heading("Offset");
+            if ui.button("Reset").clicked() {
+                four_bar.reset();
+            }
+            unit!("X Offset: ", four_bar.p0.0, interval, ui);
+            unit!("Y Offset: ", four_bar.p0.1, interval, ui);
+            angle!("Rotation: ", four_bar.a, ui);
+        });
+        ui.group(|ui| {
+            ui.heading("Parameters");
+            link!("Ground: ", four_bar.l0, interval, ui);
+            link!("Crank: ", four_bar.l1, interval, ui);
+            link!("Coupler: ", four_bar.l2, interval, ui);
+            link!("Follower: ", four_bar.l3, interval, ui);
+        });
+        ui.group(|ui| {
+            ui.heading("Coupler");
+            link!("Extended: ", four_bar.l4, interval, ui);
+            angle!("Angle: ", four_bar.g, ui);
+        });
+    }
+
+    pub(crate) fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
-            let mut m = Mechanism::four_bar(self.four_bar.clone());
+            let mut m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
             m.four_bar_angle(self.drive).unwrap();
             let joints = m.joints.clone();
             let path = m.four_bar_loop_all(0., 360);
