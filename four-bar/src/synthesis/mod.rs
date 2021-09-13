@@ -1,9 +1,12 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
+use self::guide::guide;
 use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, diff, locus, normalize_efd};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
 use std::f64::consts::TAU;
+
+mod guide;
 
 fn path_is_nan<'a, V>(path: V) -> bool
 where
@@ -16,16 +19,6 @@ where
         }
     }
     false
-}
-
-fn guide(c: &mut Array2<f64>, v: &[f64]) {
-    for i in (0..v.len()).step_by(2) {
-        let end = arr2(&[[
-            c[[c.nrows() - 1, 0]] + v[i] * v[i + 1].cos(),
-            c[[c.nrows() - 1, 1]] + v[i] * v[i + 1].sin(),
-        ]]);
-        *c = concatenate!(Axis(0), *c, end);
-    }
 }
 
 // Normalization information
