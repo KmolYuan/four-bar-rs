@@ -9,7 +9,7 @@ description = "Four🍀bar is a simulator, a synthesizing tool for four-bar link
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ['persistence']
+default = ["persistence"]
 http = ["eframe/http"]
 persistence = ["eframe/persistence", "serde", "four-bar/serde"]
 

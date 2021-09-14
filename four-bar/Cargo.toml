@@ -6,7 +6,7 @@ edition = "2018"
 description = "Four🍀bar is a simulator, a synthesizing tool for four-bar linkage mechanism."
 
 [features]
-synthesis = ['ndarray', 'metaheuristics-nature', 'efd']
+synthesis = ["ndarray", "metaheuristics-nature", "efd", "bspline"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }

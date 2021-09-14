@@ -56,12 +56,16 @@ impl Planar {
             let max_d = distance.iter().fold(-f64::INFINITY, |a, &b| a.max(b));
             let min_d = distance.iter().fold(f64::INFINITY, |a, &b| a.min(b));
             // Open path guiding points
-            for _ in 0..5 {
+            ub.push(max_d);
+            lb.push(min_d);
+            for _ in 0..3 {
                 ub.push(max_d);
                 lb.push(min_d);
                 ub.push(TAU);
                 lb.push(0.);
             }
+            ub.push(max_d);
+            lb.push(min_d);
             Norm {
                 target: curve,
                 ..Default::default()
