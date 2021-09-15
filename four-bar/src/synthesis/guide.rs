@@ -49,7 +49,7 @@ pub(crate) fn guide(c: &mut Array2<f64>, v: &[f64]) {
     pts.push(first);
     let bs = BSpline::new(
         pts.len(),
-        pts.iter().map(|c| Point::from(c.clone())).collect(),
+        pts.iter().map(|c| Point::from(*c)).collect(),
         Array1::linspace(0., 1., pts.len() * 2 + 1).to_vec(),
     );
     let mut new_curve = Vec::new();
