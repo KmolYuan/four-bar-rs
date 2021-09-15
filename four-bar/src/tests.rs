@@ -24,6 +24,7 @@ fn planar() {
     pb.finish();
     let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot_curve(
+        "Comparison of the Close Curve Process",
         &[
             ("Target", &target, (221, 51, 85)),
             ("Optimized", &path, (118, 182, 222)),
@@ -33,11 +34,16 @@ fn planar() {
     plot_history(&history, "history.svg");
 }
 
-pub fn plot_curve<'a, S, P>(curves: &[(S, &[[f64; 2]], (u8, u8, u8))], path: P)
+pub fn plot_curve<'a, S, P>(title: &str, curves: &[(S, &[[f64; 2]], (u8, u8, u8))], path: P)
 where
     S: ToString + Copy,
     P: AsRef<Path>,
 {
+    const FONT: &str = if cfg!(windows) {
+        "Times New Roman"
+    } else {
+        "Nimbus Roman No9 L"
+    };
     let mut p_max = 0.;
     let mut p_min = f64::INFINITY;
     for (_, curve, _) in curves.iter() {
@@ -57,7 +63,7 @@ where
     let root = SVGBackend::new(&path, (1000, 1000)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let mut chart = ChartBuilder::on(&root)
-        .caption("Curve", ("sans-serif", 50))
+        .caption(title, (FONT, 40))
         .x_label_area_size(40)
         .y_label_area_size(40)
         .margin(20)
@@ -67,6 +73,8 @@ where
         .configure_mesh()
         .disable_x_mesh()
         .disable_y_mesh()
+        .label_style((FONT, 20))
+        .axis_desc_style((FONT, 20))
         .draw()
         .unwrap();
     for (i, &(name, curve, (r, g, b))) in curves.iter().enumerate() {
@@ -82,7 +90,7 @@ where
                 PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2))
             });
         chart
-            .draw_series(curve.iter().step_by(6).map(|&[x, y]| {
+            .draw_series(curve.iter().map(|&[x, y]| {
                 if i % 2 == 1 {
                     Circle::new((x, y), 5, color.stroke_width(1)).into_dyn()
                 } else {
@@ -93,6 +101,7 @@ where
     }
     chart
         .configure_series_labels()
+        .label_font((FONT, 30))
         .background_style(&WHITE.mix(0.8))
         .border_style(&BLACK)
         .draw()
