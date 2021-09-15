@@ -1,7 +1,7 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 use self::guide::guide;
 use crate::{FourBar, Mechanism};
-use efd::{calculate_efd, diff, locus, normalize_efd};
+use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
 use std::f64::consts::TAU;
@@ -52,20 +52,24 @@ impl Planar {
         lb[4] = 0.;
         let norm = if open {
             // Path guiding
-            let distance = diff(&curve, Some(Axis(0))).map_axis(Axis(1), |c| c[0].hypot(c[1]));
-            let max_d = distance.iter().fold(-f64::INFINITY, |a, &b| a.max(b));
-            let min_d = distance.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            let max_d = curve
+                .axis_iter(Axis(0))
+                .fold([-f64::INFINITY; 2], |a, b| [a[0].max(b[0]), a[1].max(b[1])]);
+            let min_d = curve
+                .axis_iter(Axis(0))
+                .fold([f64::INFINITY; 2], |a, b| [a[0].min(b[0]), a[1].min(b[1])]);
+            let max_d = (max_d[0] - min_d[0]).max(max_d[1] - min_d[1]);
             // Open path guiding points
             ub.push(max_d);
-            lb.push(min_d);
+            lb.push(1e-6);
             for _ in 0..3 {
                 ub.push(max_d);
-                lb.push(min_d);
+                lb.push(1e-6);
                 ub.push(TAU);
                 lb.push(0.);
             }
             ub.push(max_d);
-            lb.push(min_d);
+            lb.push(1e-6);
             Norm {
                 target: curve,
                 ..Default::default()
