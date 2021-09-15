@@ -19,12 +19,6 @@ impl Mul<f64> for Point {
     }
 }
 
-impl From<[f64; 2]> for Point {
-    fn from(c: [f64; 2]) -> Self {
-        Self(c[0], c[1])
-    }
-}
-
 pub(crate) fn guide(c: &mut Array2<f64>, v: &[f64]) {
     let last = [c[[c.nrows() - 1, 0]], c[[c.nrows() - 1, 1]]];
     let dx = last[0] - c[[c.nrows() - 2, 0]];
@@ -49,7 +43,7 @@ pub(crate) fn guide(c: &mut Array2<f64>, v: &[f64]) {
     pts.push(first);
     let bs = BSpline::new(
         pts.len(),
-        pts.iter().map(|c| Point::from(*c)).collect(),
+        pts.iter().map(|c| Point(c[0], c[1])).collect(),
         Array1::linspace(0., 1., pts.len() * 2 + 1).to_vec(),
     );
     let mut new_curve = Vec::new();
