@@ -188,7 +188,7 @@ pub fn synthesis(
     gen: u32,
     pop: usize,
     open: bool,
-    callback: impl FnMut(Report) -> bool,
+    callback: impl FnMut(&Report) -> bool,
 ) -> (FourBar, Vec<Report>) {
     let planar = Planar::new(curve, 720, 360, open);
     let s = Solver::solve(
@@ -196,5 +196,5 @@ pub fn synthesis(
         De::default().task(Task::MaxGen(gen)).rpt(1).pop_num(pop),
         callback,
     );
-    (s.result(), s.history())
+    (s.result(), s.reports())
 }
