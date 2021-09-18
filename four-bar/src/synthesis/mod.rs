@@ -51,7 +51,7 @@ impl Planar {
         ub[4] = TAU;
         lb[4] = 0.;
         let norm = if open {
-            // Path guiding
+            // Curve guiding
             let max_d = curve
                 .axis_iter(Axis(0))
                 .fold([-f64::INFINITY; 2], |a, b| [a[0].max(b[0]), a[1].max(b[1])]);

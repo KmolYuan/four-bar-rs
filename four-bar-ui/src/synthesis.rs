@@ -61,8 +61,12 @@ impl Synthesis {
             ui.heading("Synthesis");
             parameter!("Generation: ", self.gen, ui);
             parameter!("Population: ", self.pop, ui);
-            Checkbox::new(&mut self.open, "Open Path").ui(ui);
-            ui.text_edit_multiline(&mut self.curve_csv);
+            Checkbox::new(&mut self.open, "Open Curve").ui(ui);
+            CollapsingHeader::new("Curve Input (CSV)")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ui.text_edit_multiline(&mut self.curve_csv);
+                });
             if self.error {
                 Label::new("The provided comma-separated value is empty or invalid.")
                     .text_color(Color32::RED)
