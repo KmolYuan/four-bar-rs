@@ -39,11 +39,19 @@ pub(crate) fn guide(c: &mut Array2<f64>, v: &[f64]) {
         first[1] + v[v.len() - 1] * a.sin(),
     ]);
     guide.push(first);
-    // TODO: knots
+    // Knots
+    const DEGREE: usize = 4;
+    let end = (guide.len() + 1 - DEGREE) as f64;
     let bs = BSpline::new(
-        4,
+        DEGREE,
         guide.iter().map(|c| Point(c[0], c[1])).collect(),
-        vec![0., 0., 0., 0., 0., 1., 2., 3., 4., 4., 4., 4., 4.],
+        concatenate![
+            Axis(0),
+            Array1::zeros(DEGREE),
+            Array1::range(0., end, 1.),
+            Array1::ones(DEGREE) * end
+        ]
+        .to_vec(),
     );
     let domain = bs.knot_domain();
     let mut new_curve = Vec::new();
