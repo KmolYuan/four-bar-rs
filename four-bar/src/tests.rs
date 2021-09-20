@@ -42,7 +42,7 @@ fn planar() {
     let target = OPEN_CURVE2;
     let gen = 40;
     let pb = ProgressBar::new(gen as u64);
-    let (ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
+    let (ans, history) = synthesis::synthesis(&target, gen, 500, |r| {
         pb.set_position(r.gen as u64);
         true
     });
@@ -115,7 +115,7 @@ where
                 PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2))
             });
         chart
-            .draw_series(curve.iter().map(|&[x, y]| {
+            .draw_series(curve.iter().step_by(6).map(|&[x, y]| {
                 if i % 2 == 1 {
                     Circle::new((x, y), 5, color.stroke_width(1)).into_dyn()
                 } else {

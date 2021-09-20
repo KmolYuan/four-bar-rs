@@ -18,18 +18,13 @@ where
     false
 }
 
-// Normalization information
-#[derive(Default)]
-struct Norm {
+/// Synthesis task of planar four-bar linkage.
+pub struct Planar {
+    curve: Array2<f64>,
     target: Array2<f64>,
     rot: f64,
     scale: f64,
     locus: (f64, f64),
-}
-
-/// Synthesis task of planar four-bar linkage.
-pub struct Planar {
-    norm: Norm,
     n: usize,
     harmonic: usize,
     ub: Vec<f64>,
@@ -46,24 +41,21 @@ impl Planar {
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        let norm = {
-            // Close loop
-            if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
-                || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
-            {
-                curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
-            }
-            let coeffs = calculate_efd(&curve, harmonic);
-            let (target, rot, _, scale) = normalize_efd(&coeffs, true);
-            Norm {
-                target,
-                rot,
-                scale,
-                locus: locus(&curve),
-            }
-        };
+        // Close loop
+        if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
+            || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
+        {
+            curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
+        }
+        let coeffs = calculate_efd(&curve, harmonic);
+        let (target, rot, _, scale) = normalize_efd(&coeffs, true);
+        let locus = locus(&curve);
         Self {
-            norm,
+            curve,
+            target,
+            rot,
+            scale,
+            locus,
             n,
             harmonic,
             ub,
@@ -90,14 +82,26 @@ impl ObjFunc for Planar {
 
     fn fitness(&self, v: &[f64], _: &Report) -> f64 {
         let mut f = Mechanism::four_bar(Self::four_bar(v));
-        let c = arr2(&f.four_bar_loop(0., self.n));
-        if path_is_nan(&c) {
+        let curve = arr2(&f.four_bar_loop(0., self.n));
+        if path_is_nan(&curve) {
             return 1e20;
         }
-        let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+        let mut geo_err = 0.;
+        let ret = Mechanism::four_bar(self.result(v)).four_bar_loop(0., self.n * 2);
+        for tc in self.curve.axis_iter(Axis(0)) {
+            let mut min_err = f64::INFINITY;
+            for c in &ret {
+                let d = (tc[0] - c[0]).hypot(tc[1] - c[1]);
+                if d < min_err {
+                    min_err = d;
+                }
+            }
+            geo_err += min_err;
+        }
+        let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (coeffs, ..) = normalize_efd(&coeffs, true);
-        (coeffs - &self.norm.target).mapv(f64::abs).sum()
+        (coeffs - &self.target).mapv(f64::abs).sum() + geo_err * 1e-2
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
@@ -106,14 +110,14 @@ impl ObjFunc for Planar {
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (_, rot, _, scale) = normalize_efd(&coeffs, true);
         let locus = locus(&curve);
-        let rot = rot - self.norm.rot;
-        let scale = self.norm.scale / scale;
+        let rot = rot - self.rot;
+        let scale = self.scale / scale;
         let locus_rot = locus.1.atan2(locus.0) + rot;
         let d = locus.1.hypot(locus.0) * scale;
         FourBar {
             p0: (
-                self.norm.locus.0 - d * locus_rot.cos(),
-                self.norm.locus.1 - d * locus_rot.sin(),
+                self.locus.0 - d * locus_rot.cos(),
+                self.locus.1 - d * locus_rot.sin(),
             ),
             a: rot,
             l0: v[0] * scale,
