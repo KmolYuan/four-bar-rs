@@ -36,7 +36,6 @@ pub(crate) struct Synthesis {
     progress: Arc<AtomicU32>,
     gen: u32,
     pop: usize,
-    open: bool,
     curve_csv: String,
     error: bool,
 }
@@ -48,7 +47,6 @@ impl Default for Synthesis {
             progress: Default::default(),
             gen: 40,
             pop: 200,
-            open: false,
             curve_csv: String::new(),
             error: false,
         }
@@ -61,7 +59,6 @@ impl Synthesis {
             ui.heading("Synthesis");
             parameter!("Generation: ", self.gen, ui);
             parameter!("Population: ", self.pop, ui);
-            Checkbox::new(&mut self.open, "Open Curve").ui(ui);
             CollapsingHeader::new("Curve Input (CSV)")
                 .default_open(true)
                 .show(ui, |ui| {
@@ -100,11 +97,10 @@ impl Synthesis {
         self.started.store(true, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
-        let open = self.open;
         let started = self.started.clone();
         let progress = self.progress.clone();
         spawn(move || {
-            let (ans, _) = synthesis(&curve, gen, pop, open, |r| {
+            let (ans, _) = synthesis(&curve, gen, pop, |r| {
                 progress.store(r.gen, Ordering::Relaxed);
                 started.load(Ordering::Relaxed)
             });
