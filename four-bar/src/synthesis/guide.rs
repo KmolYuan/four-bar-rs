@@ -41,7 +41,7 @@ pub(crate) fn guide(c: &mut Array2<f64>, v: &[f64]) {
     guide.push(first);
     // Knots
     const DEGREE: usize = 4;
-    let end = (guide.len() + 1 - DEGREE) as f64;
+    let end = (guide.len() - DEGREE) as f64;
     let bs = BSpline::new(
         DEGREE,
         guide.iter().map(|c| Point(c[0], c[1])).collect(),
@@ -49,7 +49,7 @@ pub(crate) fn guide(c: &mut Array2<f64>, v: &[f64]) {
             Axis(0),
             Array1::zeros(DEGREE),
             Array1::range(0., end, 1.),
-            Array1::ones(DEGREE) * end
+            Array1::ones(DEGREE + 1) * end
         ]
         .to_vec(),
     );
