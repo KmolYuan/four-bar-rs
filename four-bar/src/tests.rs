@@ -6,25 +6,49 @@ use std::{f64::consts::TAU, path::Path};
 
 #[test]
 fn planar() {
-    // let target = Mechanism::four_bar((0., 0.), 0., 90., 35., 70., 70., 40., 0.5052948926891512)
-    // let target = Mechanism::four_bar((0., 0.), 0., 90., 35., 70., 70., 84.7387, 0.279854818911)
-    // let target = Mechanism::four_bar((0., 0.), 0., 90., 35., 70., 70., 77.0875, 5.88785793416)
-    // let target = Mechanism::four_bar((0., 0.), 0., 2.9587, 1., 3.4723, 3.5771, 3.3454, 3.3771) // NKhan 1
-    // let target = Mechanism::four_bar((0., 0.), 0., 3., 1., 3., 2.5, 1., 5.) // NKhan 2
-    // .four_bar_loop(TAU / 6., 360);
-    let target = YU1;
+    let target = Mechanism::four_bar(FourBar {
+        p0: (0., 0.),
+        a: 0.,
+        l0: 90.,
+        l1: 35.,
+        l2: 70.,
+        l3: 70.,
+        // l4: 40.,
+        // g: 0.5052948926891512,
+        // l4: 84.7387,
+        // g: 0.279854818911,
+        l4: 77.0875,
+        g: 5.88785793416,
+        /////
+        // NKhan 1
+        // l0: 2.9587,
+        // l1: 1.,
+        // l2: 3.4723,
+        // l3: 3.5771,
+        // l4: 3.3454,
+        // g: 3.3771,
+        // NKhan 2
+        // l0: 3.,
+        // l1: 1.,
+        // l2: 3.,
+        // l3: 2.5,
+        // l4: 1.,
+        // g: 5.,
+    })
+    .four_bar_loop(TAU / 6., 360);
+    // let target = YU1;
     // let target = YU2;
     // let target = PATH_HAND;
     let gen = 40;
     let pb = ProgressBar::new(gen as u64);
-    let (mut ans, history) = synthesis::synthesis(&target, gen, 200, false, |r| {
+    let (ans, history) = synthesis::synthesis(&target, gen, 200, false, |r| {
         pb.set_position(r.gen as u64);
         true
     });
     pb.finish();
     let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot_curve(
-        "Comparison of the Close Curve Process",
+        "Synthesis Test",
         &[
             ("Target", &target, (221, 51, 85)),
             ("Optimized", &path, (118, 182, 222)),

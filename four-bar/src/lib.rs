@@ -6,6 +6,7 @@ pub use crate::four_bar::*;
 pub use crate::mechanism::*;
 pub use crate::point::*;
 
+#[cfg(feature = "synthesis")]
 mod anti_sym_ext;
 mod four_bar;
 mod mechanism;
