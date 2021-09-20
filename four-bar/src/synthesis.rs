@@ -2,7 +2,7 @@
 use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
-use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
+use ndarray::{arr2, concatenate, s, stack, Array1, Array2, AsArray, Axis, Ix2};
 use std::f64::consts::TAU;
 
 fn path_is_nan<'a, V>(path: V) -> bool
@@ -45,7 +45,18 @@ impl Planar {
         if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
             || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
         {
-            curve = concatenate!(Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]]));
+            let d = (curve[[0, 0]] - curve[[1, 0]]).hypot(curve[[0, 1]] - curve[[1, 1]]);
+            let n = ((curve[[0, 0]] - curve[[curve.nrows() - 1, 0]]) / d) as usize;
+            if n > 3 {
+                // By a line
+                let x = Array1::linspace(curve[[curve.nrows() - 1, 0]], curve[[0, 0]], n);
+                let y = Array1::linspace(curve[[curve.nrows() - 1, 1]], curve[[0, 1]], n);
+                let line = stack![Axis(1), x.slice(s![1..]), y.slice(s![1..])];
+                curve = concatenate![Axis(0), curve, line];
+            } else {
+                // By last point
+                curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
+            }
         }
         let coeffs = calculate_efd(&curve, harmonic);
         let (target, rot, _, scale) = normalize_efd(&coeffs, true);

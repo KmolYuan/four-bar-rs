@@ -37,12 +37,12 @@ fn planar() {
     // })
     // .four_bar_loop(TAU / 6., 360);
     // let target = YU1;
-    // let target = YU2;
+    let target = YU2;
     // let target = PATH_HAND;
-    let target = OPEN_CURVE2;
+    // let target = OPEN_CURVE2;
     let gen = 40;
     let pb = ProgressBar::new(gen as u64);
-    let (ans, history) = synthesis::synthesis(&target, gen, 500, |r| {
+    let (ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
         pb.set_position(r.gen as u64);
         true
     });
