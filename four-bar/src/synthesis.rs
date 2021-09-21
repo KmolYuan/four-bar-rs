@@ -102,7 +102,7 @@ impl ObjFunc for Planar {
         for tc in self.curve.axis_iter(Axis(0)) {
             let mut min_err = f64::INFINITY;
             for c in &ret {
-                let d = (tc[0] - c[0]).hypot(tc[1] - c[1]);
+                let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
                 if d < min_err {
                     min_err = d;
                 }
