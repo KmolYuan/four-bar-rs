@@ -18,10 +18,44 @@ where
     false
 }
 
+fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
+    assert!(target.len() >= curve.len());
+    let (mut geo_err, index) = {
+        let mut min_err = f64::INFINITY;
+        let mut index = 0;
+        // Find the head
+        for (i, c) in curve.iter().enumerate() {
+            let d = (target[0][0] - c[0]).powi(2) + (target[0][1] - c[1]).powi(2);
+            if d < min_err {
+                min_err = d;
+                index = i;
+            }
+        }
+        (min_err, index)
+    };
+    let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
+    let mut left = iter.next().unwrap();
+    for tc in target {
+        let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
+        for c in &mut iter {
+            let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
+            if d < last_d {
+                last_d = d;
+            } else {
+                left = c;
+                break;
+            }
+        }
+        geo_err += last_d;
+    }
+    geo_err
+}
+
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
     curve: Array2<f64>,
-    target: Array2<f64>,
+    /// Target coefficient
+    pub target: Array2<f64>,
     rot: f64,
     scale: f64,
     locus: (f64, f64),
@@ -97,18 +131,14 @@ impl ObjFunc for Planar {
         if path_is_nan(&curve) {
             return 1e20;
         }
-        let mut geo_err = 0.;
+        // Precision point error (Geometry error)
         let ret = Mechanism::four_bar(self.result(v)).four_bar_loop(0., self.n * 2);
-        for tc in self.curve.axis_iter(Axis(0)) {
-            let mut min_err = f64::INFINITY;
-            for c in &ret {
-                let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
-                if d < min_err {
-                    min_err = d;
-                }
-            }
-            geo_err += min_err;
-        }
+        let target = self
+            .curve
+            .axis_iter(Axis(0))
+            .map(|c| [c[0], c[1]])
+            .collect();
+        let geo_err = geo_err(target, ret);
         let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (coeffs, ..) = normalize_efd(&coeffs, true);
