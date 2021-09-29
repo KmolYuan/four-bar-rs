@@ -39,7 +39,7 @@ fn planar() {
     // let target = YU1;
     // let target = YU2;
     // let target = PATH_HAND;
-    let target = OPEN_CURVE4;
+    let target = OPEN_CURVE3;
     let gen = 40;
     let pb = ProgressBar::new(gen as u64);
     let (ans, history) = synthesis::synthesis(&target, gen, 500, |r| {

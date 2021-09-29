@@ -19,7 +19,7 @@ where
 }
 
 fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
-    assert!(target.len() >= curve.len());
+    assert!(curve.len() >= target.len());
     let (mut geo_err, index) = {
         let mut min_err = f64::INFINITY;
         let mut index = 0;
