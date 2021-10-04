@@ -34,19 +34,24 @@ fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
         (min_err, index)
     };
     let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
-    let mut left = iter.next().unwrap();
-    for tc in target {
-        let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
-        for c in &mut iter {
-            let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
-            if d < last_d {
-                last_d = d;
-            } else {
-                left = c;
-                break;
+    let start = iter.next().unwrap();
+    let rev_iter = iter.clone().rev();
+    let mut iter: [Box<dyn Iterator<Item = &[f64; 2]>>; 2] = [Box::new(iter), Box::new(rev_iter)];
+    for iter in &mut iter {
+        let mut left = start;
+        for tc in &target {
+            let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
+            for c in &mut *iter {
+                let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
+                if d < last_d {
+                    last_d = d;
+                } else {
+                    left = c;
+                    break;
+                }
             }
+            geo_err += last_d;
         }
-        geo_err += last_d;
     }
     geo_err
 }
