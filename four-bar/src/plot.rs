@@ -9,6 +9,7 @@ const FONT: &str = if cfg!(windows) {
 } else {
     "Nimbus Roman No9 L"
 };
+type Curve<'a> = &'a [(&'a str, &'a [[f64; 2]], (u8, u8, u8))];
 
 /// Plot the synthesis history.
 pub fn plot_history<P>(history: &[Report], path: P)
@@ -74,7 +75,7 @@ where
 }
 
 /// Plot 2D curve.
-pub fn plot_curve<'a, P>(title: &str, curves: &[(&str, &[[f64; 2]], (u8, u8, u8))], path: P)
+pub fn plot_curve<P>(title: &str, curves: Curve, path: P)
 where
     P: AsRef<Path>,
 {
