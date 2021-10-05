@@ -20,24 +20,23 @@ where
 
 fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
     assert!(curve.len() >= target.len());
-    let (mut geo_err, index) = {
-        let mut min_err = f64::INFINITY;
-        let mut index = 0;
-        // Find the head
-        for (i, c) in curve.iter().enumerate() {
-            let d = (target[0][0] - c[0]).powi(2) + (target[0][1] - c[1]).powi(2);
-            if d < min_err {
-                min_err = d;
-                index = i;
-            }
+    let mut geo_err = f64::INFINITY;
+    let mut index = 0;
+    // Find the head
+    for (i, c) in curve.iter().enumerate() {
+        let d = (target[0][0] - c[0]).powi(2) + (target[0][1] - c[1]).powi(2);
+        if d < geo_err {
+            geo_err = d;
+            index = i;
         }
-        (min_err, index)
-    };
+    }
     let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
     let start = iter.next().unwrap();
     let rev_iter = iter.clone().rev();
     let mut iter: [Box<dyn Iterator<Item = &[f64; 2]>>; 2] = [Box::new(iter), Box::new(rev_iter)];
+    let mut geo_min = f64::INFINITY;
     for iter in &mut iter {
+        let mut geo_err = geo_err;
         let mut left = start;
         for tc in &target {
             let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
@@ -52,8 +51,11 @@ fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
             }
             geo_err += last_d;
         }
+        if geo_err < geo_min {
+            geo_min = geo_err;
+        }
     }
-    geo_err
+    geo_min
 }
 
 /// Synthesis task of planar four-bar linkage.
@@ -129,8 +131,9 @@ impl Planar {
 
 impl ObjFunc for Planar {
     type Result = FourBar;
+    type Respond = f64;
 
-    fn fitness(&self, v: &[f64], _: &Report) -> f64 {
+    fn fitness(&self, v: &[f64], r: &Report) -> f64 {
         let mut f = Mechanism::four_bar(Self::four_bar(v));
         let curve = arr2(&f.four_bar_loop(0., self.n));
         if path_is_nan(&curve) {
@@ -147,7 +150,7 @@ impl ObjFunc for Planar {
         let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (coeffs, ..) = normalize_efd(&coeffs, true);
-        (coeffs - &self.target).mapv(f64::abs).sum() + geo_err * 1e-2
+        (coeffs - &self.target).mapv(f64::abs).sum() + dbg!(geo_err) * 1e-5 * dbg!(r.adaptive)
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
@@ -194,7 +197,7 @@ pub fn synthesis(
     let planar = Planar::new(curve, 720, 360);
     let s = Solver::solve(
         planar,
-        De::default().task(Task::MaxGen(gen)).rpt(1).pop_num(pop),
+        setting!(De { +base: { task: Task::MaxGen(gen), pop_num: pop, adaptive: Adaptive::Average } }),
         callback,
     );
     (s.result(), s.reports())
