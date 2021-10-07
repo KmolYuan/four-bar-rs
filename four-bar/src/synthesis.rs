@@ -61,7 +61,7 @@ fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
     curve: Vec<[f64; 2]>,
-    /// Target coefficient
+    /// Target coefficient.
     pub target: Array2<f64>,
     rot: f64,
     scale: f64,
