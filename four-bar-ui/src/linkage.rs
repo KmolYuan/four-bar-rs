@@ -150,7 +150,7 @@ impl Linkage {
             link!("Crank: ", four_bar.l1, interval, ui);
             link!("Coupler: ", four_bar.l2, interval, ui);
             link!("Follower: ", four_bar.l3, interval, ui);
-            ui.checkbox(&mut four_bar.inv, "Inverse");
+            ui.checkbox(&mut four_bar.inv, "Invert follower and coupler");
         });
         ui.group(|ui| {
             ui.heading("Coupler");

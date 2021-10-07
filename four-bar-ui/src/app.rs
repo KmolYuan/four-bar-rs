@@ -1,8 +1,7 @@
 use crate::linkage::Linkage;
 use eframe::{egui::*, epi};
 
-#[macro_export]
-macro_rules! switch_button {
+macro_rules! switch {
     ($ui:expr, $attr:expr, $d_icon:literal, $d_tip:literal, $e_icon:literal, $e_tip:literal) => {
         if $attr {
             if $ui.small_button($d_icon).on_hover_text($d_tip).clicked() {
@@ -51,8 +50,8 @@ impl App {
         } else if ui.small_button("🌙").on_hover_text("Dark").clicked() {
             ctx.set_visuals(Visuals::dark());
         }
-        switch_button!(ui, self.side_panel, "⬅", "Fold", "➡", "Expand");
-        switch_button!(ui, self.menu_up, "⬇", "Menu go down", "⬆", "Menu go up");
+        switch!(ui, self.side_panel, "⬅", "Fold", "➡", "Expand");
+        switch!(ui, self.menu_up, "⬇", "menu go down", "⬆", "menu go up");
         ui.with_layout(Layout::right_to_left(), |ui| {
             if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
                 self.welcome = !self.welcome;

@@ -199,7 +199,7 @@ pub fn synthesis(
     let planar = Planar::new(curve, 720, 360);
     let s = Solver::solve(
         planar,
-        setting!(De { +base: { task: Task::MaxGen(gen), pop_num: pop, adaptive: Adaptive::Average } }),
+        setting!(De { +base: { task: Task::MaxGen(gen), pop_num: pop, average: true } }),
         callback,
     );
     (s.result(), s.reports())
