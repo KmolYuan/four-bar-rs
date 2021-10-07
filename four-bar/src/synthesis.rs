@@ -128,38 +128,70 @@ impl Planar {
             inv,
         }
     }
+
+    fn available_curve(&self, v: &[f64]) -> Vec<(bool, Array2<f64>)> {
+        vec![false, true]
+            .into_iter()
+            .map(|inv| {
+                let curve =
+                    arr2(&Mechanism::four_bar(Self::four_bar(v, inv)).four_bar_loop(0., self.n));
+                (inv, curve)
+            })
+            .filter(|(_, curve)| !path_is_nan(curve))
+            .collect()
+    }
 }
 
 impl ObjFunc for Planar {
     type Result = FourBar;
     type Respond = f64;
 
-    fn fitness(&self, v: &[f64], r: &Report) -> f64 {
-        let mut f = Mechanism::four_bar(Self::four_bar(v, false));
-        let curve = arr2(&f.four_bar_loop(0., self.n));
-        if path_is_nan(&curve) {
-            return 1e20;
+    fn fitness(&self, v: &[f64], _r: &Report) -> f64 {
+        let curves = self.available_curve(v);
+        if curves.is_empty() {
+            return 1e10;
         }
         // Precision point error (Geometry error)
-        let ret = Mechanism::four_bar(self.result(v)).four_bar_loop(0., self.n * 2);
-        let target = self
-            .curve
-            .axis_iter(Axis(0))
-            .map(|c| [c[0], c[1]])
-            .collect();
-        let geo_err = geo_err(target, ret);
-        let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
-        let coeffs = calculate_efd(&curve, self.harmonic);
-        let (coeffs, ..) = normalize_efd(&coeffs, true);
-        (coeffs - &self.target).mapv(f64::abs).sum() + dbg!(geo_err) * 1e-5 * dbg!(r.adaptive)
+        // let ret = Mechanism::four_bar(self.result(v)).four_bar_loop(0., self.n * 2);
+        // let target = self
+        //     .curve
+        //     .axis_iter(Axis(0))
+        //     .map(|c| [c[0], c[1]])
+        //     .collect();
+        // let geo_err = geo_err(target, ret);
+        curves
+            .into_iter()
+            .map(|(_, curve)| {
+                let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
+                let coeffs = calculate_efd(&curve, self.harmonic);
+                let (coeffs, ..) = normalize_efd(&coeffs, true);
+                (coeffs - &self.target).mapv(f64::abs).sum()
+            })
+            .fold(f64::INFINITY, |a, b| a.min(b))
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
-        let c = arr2(&Mechanism::four_bar(Self::four_bar(v, false)).four_bar_loop(0., self.n));
-        let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
-        let coeffs = calculate_efd(&curve, self.harmonic);
-        let (_, rot, _, scale) = normalize_efd(&coeffs, true);
-        let locus = locus(&curve);
+        let curves = self.available_curve(v);
+        let coeffs = curves
+            .iter()
+            .map(|(_, c)| {
+                let curve = concatenate!(Axis(0), *c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
+                calculate_efd(&curve, self.harmonic)
+            })
+            .collect::<Vec<_>>();
+        let mut index = 0;
+        let mut min_err = f64::INFINITY;
+        for (i, coeffs) in coeffs.iter().enumerate() {
+            let (coeffs, ..) = normalize_efd(coeffs, true);
+            let err = (coeffs - &self.target).mapv(f64::abs).sum();
+            if err < min_err {
+                index = i;
+                min_err = err;
+            }
+        }
+        let (inv, curve) = &curves[index];
+        let (_, rot, _, scale) = normalize_efd(&coeffs[index], true);
+        let locus = locus(curve);
         let rot = rot - self.rot;
         let scale = self.scale / scale;
         let locus_rot = locus.1.atan2(locus.0) + rot;
@@ -176,7 +208,7 @@ impl ObjFunc for Planar {
             l3: v[2] * scale,
             l4: v[3] * scale,
             g: v[4],
-            inv: false,
+            inv: *inv,
         }
     }
 
