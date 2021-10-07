@@ -39,7 +39,7 @@ fn planar() {
     // let target = OPEN_CURVE2;
     let gen = 40;
     let pb = ProgressBar::new(gen as u64);
-    let (ans, history) = synthesis::synthesis(&target, gen, 500, |r| {
+    let (ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
         pb.set_position(r.gen as u64);
         true
     });
