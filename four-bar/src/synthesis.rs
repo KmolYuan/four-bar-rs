@@ -18,7 +18,7 @@ where
     false
 }
 
-fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
+fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     assert!(curve.len() >= target.len());
     let mut geo_err = f64::INFINITY;
     let mut index = 0;
@@ -38,7 +38,7 @@ fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
     for iter in &mut iter {
         let mut geo_err = geo_err;
         let mut left = start;
-        for tc in &target {
+        for tc in target {
             let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
             for c in &mut *iter {
                 let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
@@ -60,7 +60,7 @@ fn geo_err(target: Vec<[f64; 2]>, curve: Vec<[f64; 2]>) -> f64 {
 
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
-    curve: Array2<f64>,
+    curve: Vec<[f64; 2]>,
     /// Target coefficient
     pub target: Array2<f64>,
     rot: f64,
@@ -75,22 +75,24 @@ pub struct Planar {
 impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize) -> Self {
-        let mut curve = arr2(curve);
-        let end = curve.nrows() - 1;
+        let mut curve = Vec::from(curve);
+        let end = curve.len() - 1;
+        // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
         // Close loop
-        if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
-            || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
+        if (curve[0][0] - curve[end][0]).abs() > 1e-20
+            || (curve[0][1] - curve[end][1]).abs() > 1e-20
         {
-            curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
+            curve.push(curve[0]);
         }
-        let coeffs = calculate_efd(&curve, harmonic);
+        let curve_arr = arr2(&curve);
+        let coeffs = calculate_efd(&curve_arr, harmonic);
         let (target, rot, _, scale) = normalize_efd(&coeffs, true);
-        let locus = locus(&curve);
+        let locus = locus(&curve_arr);
         Self {
             curve,
             target,
@@ -176,13 +178,8 @@ impl ObjFunc for Planar {
                 let coeffs = calculate_efd(&curve, self.harmonic);
                 let (coeffs, rot, _, scale) = normalize_efd(&coeffs, true);
                 let four_bar = self.four_bar_from_coeff(v, inv, rot, scale, locus(&curve));
-                let ret = Mechanism::four_bar(four_bar).four_bar_loop(0., self.n * 2);
-                let target = self
-                    .curve
-                    .axis_iter(Axis(0))
-                    .map(|c| [c[0], c[1]])
-                    .collect();
-                let geo_err = geo_err(target, ret);
+                let curve = Mechanism::four_bar(four_bar).four_bar_loop(0., self.n * 2);
+                let geo_err = geo_err(&self.curve, &curve);
                 (coeffs - &self.target).mapv(f64::abs).sum() + geo_err * 1e-5
             })
             .fold(f64::INFINITY, |a, b| a.min(b))
