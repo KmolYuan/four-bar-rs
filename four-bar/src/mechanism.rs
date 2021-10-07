@@ -52,7 +52,7 @@ impl Mechanism {
             // Special case
             formulas.push(Formula::Ppp(0, 2, 1, 3));
         } else {
-            formulas.push(Formula::Pllp(2, m.l2, m.l3, 1, false, 3));
+            formulas.push(Formula::Pllp(2, m.l2, m.l3, 1, m.inv, 3));
         }
         formulas.push(Formula::Plap(2, m.l4, m.g, 3, 4));
         Self { joints, formulas }

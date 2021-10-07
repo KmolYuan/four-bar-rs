@@ -115,7 +115,7 @@ impl Planar {
         }
     }
 
-    fn four_bar(v: &[f64]) -> FourBar {
+    fn four_bar(v: &[f64], inv: bool) -> FourBar {
         FourBar {
             p0: (0., 0.),
             a: 0.,
@@ -125,6 +125,7 @@ impl Planar {
             l3: v[2],
             l4: v[3],
             g: v[4],
+            inv,
         }
     }
 }
@@ -134,7 +135,7 @@ impl ObjFunc for Planar {
     type Respond = f64;
 
     fn fitness(&self, v: &[f64], r: &Report) -> f64 {
-        let mut f = Mechanism::four_bar(Self::four_bar(v));
+        let mut f = Mechanism::four_bar(Self::four_bar(v, false));
         let curve = arr2(&f.four_bar_loop(0., self.n));
         if path_is_nan(&curve) {
             return 1e20;
@@ -154,7 +155,7 @@ impl ObjFunc for Planar {
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
-        let c = arr2(&Mechanism::four_bar(Self::four_bar(v)).four_bar_loop(0., self.n));
+        let c = arr2(&Mechanism::four_bar(Self::four_bar(v, false)).four_bar_loop(0., self.n));
         let curve = concatenate!(Axis(0), c, arr2(&[[c[[0, 0]], c[[0, 1]]]]));
         let coeffs = calculate_efd(&curve, self.harmonic);
         let (_, rot, _, scale) = normalize_efd(&coeffs, true);
@@ -175,6 +176,7 @@ impl ObjFunc for Planar {
             l3: v[2] * scale,
             l4: v[3] * scale,
             g: v[4],
+            inv: false,
         }
     }
 

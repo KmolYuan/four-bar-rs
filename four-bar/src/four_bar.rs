@@ -23,6 +23,8 @@ pub struct FourBar {
     pub l4: f64,
     /// Angle of the extended coupler.
     pub g: f64,
+    /// Invert the direction of follower and coupler.
+    pub inv: bool,
 }
 
 impl Default for FourBar {
@@ -37,6 +39,7 @@ impl Default for FourBar {
             l3: 70.,
             l4: 45.,
             g: FRAC_PI_6,
+            inv: false,
         }
     }
 }
