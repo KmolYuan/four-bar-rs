@@ -2,7 +2,7 @@
 use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
-use ndarray::{arr2, concatenate, s, stack, Array1, Array2, AsArray, Axis, Ix2};
+use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
 use std::f64::consts::TAU;
 
 fn path_is_nan<'a, V>(path: V) -> bool
@@ -86,18 +86,7 @@ impl Planar {
         if (curve[[0, 0]] - curve[[end, 0]]).abs() > 1e-20
             || (curve[[0, 1]] - curve[[end, 1]]).abs() > 1e-20
         {
-            let d = (curve[[0, 0]] - curve[[1, 0]]).hypot(curve[[0, 1]] - curve[[1, 1]]);
-            let n = ((curve[[0, 0]] - curve[[curve.nrows() - 1, 0]]) / d) as usize;
-            if n > 3 {
-                // By a line
-                let x = Array1::linspace(curve[[curve.nrows() - 1, 0]], curve[[0, 0]], n);
-                let y = Array1::linspace(curve[[curve.nrows() - 1, 1]], curve[[0, 1]], n);
-                let line = stack![Axis(1), x.slice(s![1..]), y.slice(s![1..])];
-                curve = concatenate![Axis(0), curve, line];
-            } else {
-                // By last point
-                curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
-            }
+            curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
         }
         let coeffs = calculate_efd(&curve, harmonic);
         let (target, rot, _, scale) = normalize_efd(&coeffs, true);
@@ -115,7 +104,7 @@ impl Planar {
         }
     }
 
-    fn four_bar(v: &[f64], inv: bool) -> FourBar {
+    fn four_bar_from_v(v: &[f64], inv: bool) -> FourBar {
         FourBar {
             p0: (0., 0.),
             a: 0.,
@@ -129,12 +118,41 @@ impl Planar {
         }
     }
 
+    fn four_bar_from_coeff(
+        &self,
+        v: &[f64],
+        inv: bool,
+        rot: f64,
+        scale: f64,
+        locus: (f64, f64),
+    ) -> FourBar {
+        let rot = rot - self.rot;
+        let scale = self.scale / scale;
+        let locus_rot = locus.1.atan2(locus.0) + rot;
+        let d = locus.1.hypot(locus.0) * scale;
+        FourBar {
+            p0: (
+                self.locus.0 - d * locus_rot.cos(),
+                self.locus.1 - d * locus_rot.sin(),
+            ),
+            a: rot,
+            l0: v[0] * scale,
+            l1: scale,
+            l2: v[1] * scale,
+            l3: v[2] * scale,
+            l4: v[3] * scale,
+            g: v[4],
+            inv,
+        }
+    }
+
     fn available_curve(&self, v: &[f64]) -> Vec<(bool, Array2<f64>)> {
         vec![false, true]
             .into_iter()
             .map(|inv| {
-                let curve =
-                    arr2(&Mechanism::four_bar(Self::four_bar(v, inv)).four_bar_loop(0., self.n));
+                let curve = arr2(
+                    &Mechanism::four_bar(Self::four_bar_from_v(v, inv)).four_bar_loop(0., self.n),
+                );
                 (inv, curve)
             })
             .filter(|(_, curve)| !path_is_nan(curve))
@@ -151,27 +169,31 @@ impl ObjFunc for Planar {
         if curves.is_empty() {
             return 1e10;
         }
-        // Precision point error (Geometry error)
-        // let ret = Mechanism::four_bar(self.result(v)).four_bar_loop(0., self.n * 2);
-        // let target = self
-        //     .curve
-        //     .axis_iter(Axis(0))
-        //     .map(|c| [c[0], c[1]])
-        //     .collect();
-        // let geo_err = geo_err(target, ret);
         curves
             .into_iter()
-            .map(|(_, curve)| {
+            .map(|(inv, curve)| {
                 let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
                 let coeffs = calculate_efd(&curve, self.harmonic);
-                let (coeffs, ..) = normalize_efd(&coeffs, true);
-                (coeffs - &self.target).mapv(f64::abs).sum()
+                let (coeffs, rot, _, scale) = normalize_efd(&coeffs, true);
+                let four_bar = self.four_bar_from_coeff(v, inv, rot, scale, locus(&curve));
+                let ret = Mechanism::four_bar(four_bar).four_bar_loop(0., self.n * 2);
+                let target = self
+                    .curve
+                    .axis_iter(Axis(0))
+                    .map(|c| [c[0], c[1]])
+                    .collect();
+                let geo_err = geo_err(target, ret);
+                (coeffs - &self.target).mapv(f64::abs).sum() + geo_err * 1e-5
             })
             .fold(f64::INFINITY, |a, b| a.min(b))
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
         let curves = self.available_curve(v);
+        if curves.is_empty() {
+            println!("WARNING: synthesis failed");
+            return Self::four_bar_from_v(v, false);
+        }
         let coeffs = curves
             .iter()
             .map(|(_, c)| {
@@ -191,25 +213,7 @@ impl ObjFunc for Planar {
         }
         let (inv, curve) = &curves[index];
         let (_, rot, _, scale) = normalize_efd(&coeffs[index], true);
-        let locus = locus(curve);
-        let rot = rot - self.rot;
-        let scale = self.scale / scale;
-        let locus_rot = locus.1.atan2(locus.0) + rot;
-        let d = locus.1.hypot(locus.0) * scale;
-        FourBar {
-            p0: (
-                self.locus.0 - d * locus_rot.cos(),
-                self.locus.1 - d * locus_rot.sin(),
-            ),
-            a: rot,
-            l0: v[0] * scale,
-            l1: scale,
-            l2: v[1] * scale,
-            l3: v[2] * scale,
-            l4: v[3] * scale,
-            g: v[4],
-            inv: *inv,
-        }
+        self.four_bar_from_coeff(v, *inv, rot, scale, locus(curve))
     }
 
     fn ub(&self) -> &[f64] {
