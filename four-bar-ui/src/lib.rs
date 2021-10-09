@@ -3,7 +3,6 @@
 pub use crate::app::App;
 
 mod app;
-mod as_values;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod icon;
 mod linkage;
