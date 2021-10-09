@@ -85,9 +85,11 @@ impl epi::App for App {
         }
         .show(ctx, |ui| ui.horizontal(|ui| self.menu(ctx, ui)));
         if self.side_panel {
-            SidePanel::left("side panel").show(ctx, |ui| {
-                ScrollArea::auto_sized().show(ui, |ui| self.linkage.panel(ui));
-            });
+            SidePanel::left("side panel")
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ScrollArea::auto_sized().show(ui, |ui| self.linkage.panel(ui));
+                });
         }
         self.linkage.plot(ctx);
         // Welcome message
