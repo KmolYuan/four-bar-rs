@@ -4,3 +4,4 @@ docs/*.wasm
 docs/*.js
 Cargo.lock
 *.svg
+/four-bar-ui/src/icon.rs
