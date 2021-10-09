@@ -5,6 +5,7 @@ use eframe::egui::*;
 use four_bar::{FourBar, Mechanism};
 use std::{
     f64::consts::{PI, TAU},
+    ops::DerefMut,
     sync::{Arc, Mutex},
 };
 
@@ -85,8 +86,7 @@ macro_rules! draw_path {
 )]
 pub(crate) struct Linkage {
     interval: f64,
-    drive: f64,
-    speed: f64,
+    driver: Driver,
     four_bar: Arc<Mutex<FourBar>>,
     #[cfg(not(target_arch = "wasm32"))]
     synthesis: Synthesis,
@@ -96,13 +96,23 @@ impl Default for Linkage {
     fn default() -> Self {
         Self {
             interval: 1.,
-            drive: 0.,
-            speed: 0.,
+            driver: Default::default(),
             four_bar: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             synthesis: Synthesis::default(),
         }
     }
+}
+
+#[cfg_attr(
+    feature = "persistence",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
+#[derive(Default, PartialEq)]
+struct Driver {
+    drive: f64,
+    speed: f64,
 }
 
 impl Linkage {
@@ -116,12 +126,9 @@ impl Linkage {
         self.parameter(ui);
         ui.group(|ui| {
             ui.heading("Driver");
-            if ui.button("Reset / Stop").clicked() {
-                self.speed = 0.;
-                self.drive = 0.;
-            }
-            angle!("Speed: ", self.speed, ui, "/s");
-            angle!("Angle: ", self.drive, ui);
+            reset_button(ui, &mut self.driver);
+            angle!("Speed: ", self.driver.speed, ui, "/s");
+            angle!("Angle: ", self.driver.drive, ui);
         });
         #[cfg(not(target_arch = "wasm32"))]
         self.synthesis.update(ui, self.four_bar.clone());
@@ -137,9 +144,7 @@ impl Linkage {
         }
         ui.group(|ui| {
             ui.heading("Offset");
-            if ui.button("Reset").clicked() {
-                four_bar.reset();
-            }
+            reset_button(ui, four_bar.deref_mut());
             unit!("X Offset: ", four_bar.p0.0, interval, ui);
             unit!("Y Offset: ", four_bar.p0.1, interval, ui);
             angle!("Rotation: ", four_bar.a, ui);
@@ -162,7 +167,7 @@ impl Linkage {
     pub(crate) fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
             let mut m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
-            m.four_bar_angle(self.drive).unwrap();
+            m.four_bar_angle(self.driver.drive).unwrap();
             let joints = m.joints.clone();
             let path = m.four_bar_loop_all(0., 360);
             plot::Plot::new("canvas")
@@ -185,8 +190,8 @@ impl Linkage {
                 .data_aspect(1.)
                 .legend(plot::Legend::default())
                 .ui(ui);
-            if self.speed != 0. {
-                self.drive += self.speed / 60.;
+            if self.driver.speed != 0. {
+                self.driver.drive += self.driver.speed / 60.;
                 ui.ctx().request_repaint();
             }
         });
