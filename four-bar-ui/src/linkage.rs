@@ -4,7 +4,6 @@ use eframe::egui::*;
 use four_bar::{FourBar, Mechanism};
 use std::{
     f64::consts::{PI, TAU},
-    ops::DerefMut,
     sync::{Arc, Mutex},
 };
 
@@ -107,6 +106,14 @@ impl Default for Linkage {
     }
 }
 
+impl PartialEq for Linkage {
+    fn eq(&self, other: &Self) -> bool {
+        self.interval == other.interval
+            && self.driver == other.driver
+            && *self.four_bar.lock().unwrap() == *other.four_bar.lock().unwrap()
+    }
+}
+
 #[cfg_attr(
     feature = "persistence",
     derive(serde::Deserialize, serde::Serialize),
@@ -120,13 +127,14 @@ struct Driver {
 
 impl Linkage {
     pub(crate) fn panel(&mut self, ui: &mut Ui) {
-        ui.heading("Options");
-        link!("Value interval: ", self.interval, 0.01, ui);
-        ui.heading("Dimension");
-        if ui.button("Default").clicked() {
-            *self = Self::default();
-        }
-        self.parameter(ui);
+        ui.collapsing("Options", |ui| {
+            link!("Value interval: ", self.interval, 0.01, ui);
+        });
+        ui.group(|ui| {
+            ui.heading("Dimension");
+            reset_button(ui, self);
+            self.parameter(ui);
+        });
         ui.group(|ui| {
             ui.heading("Driver");
             reset_button(ui, &mut self.driver);
@@ -147,7 +155,15 @@ impl Linkage {
         }
         ui.group(|ui| {
             ui.heading("Offset");
-            reset_button(ui, four_bar.deref_mut());
+            if Button::new("Reset")
+                .enabled((four_bar.p0.0, four_bar.p0.1, four_bar.a) != (0., 0., 0.))
+                .ui(ui)
+                .clicked()
+            {
+                four_bar.p0.0 = 0.;
+                four_bar.p0.1 = 0.;
+                four_bar.a = 0.;
+            }
             unit!("X Offset: ", four_bar.p0.0, interval, ui);
             unit!("Y Offset: ", four_bar.p0.1, interval, ui);
             angle!("Rotation: ", four_bar.a, ui);
