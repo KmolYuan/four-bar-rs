@@ -86,31 +86,35 @@ fn as_values(iter: impl IntoIterator<Item = [f64; 2]>) -> plot::Values {
     derive(serde::Deserialize, serde::Serialize),
     serde(default)
 )]
+#[derive(Default)]
 pub(crate) struct Linkage {
-    interval: f64,
+    config: Config,
     driver: Driver,
     four_bar: Arc<Mutex<FourBar>>,
     #[cfg(not(target_arch = "wasm32"))]
     synthesis: Synthesis,
 }
 
-impl Default for Linkage {
-    fn default() -> Self {
-        Self {
-            interval: 1.,
-            driver: Default::default(),
-            four_bar: Default::default(),
-            #[cfg(not(target_arch = "wasm32"))]
-            synthesis: Synthesis::default(),
-        }
+impl PartialEq for Linkage {
+    fn eq(&self, other: &Self) -> bool {
+        self.driver == other.driver
+            && *self.four_bar.lock().unwrap() == *other.four_bar.lock().unwrap()
     }
 }
 
-impl PartialEq for Linkage {
-    fn eq(&self, other: &Self) -> bool {
-        self.interval == other.interval
-            && self.driver == other.driver
-            && *self.four_bar.lock().unwrap() == *other.four_bar.lock().unwrap()
+#[cfg_attr(
+    feature = "persistence",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
+#[derive(PartialEq)]
+struct Config {
+    interval: f64,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self { interval: 1. }
     }
 }
 
@@ -128,7 +132,8 @@ struct Driver {
 impl Linkage {
     pub(crate) fn panel(&mut self, ui: &mut Ui) {
         ui.collapsing("Options", |ui| {
-            link!("Value interval: ", self.interval, 0.01, ui);
+            reset_button(ui, &mut self.config);
+            link!("Value interval: ", self.config.interval, 0.01, ui);
         });
         ui.group(|ui| {
             ui.heading("Dimension");
@@ -146,7 +151,7 @@ impl Linkage {
     }
 
     fn parameter(&mut self, ui: &mut Ui) {
-        let interval = self.interval;
+        let interval = self.config.interval;
         let mut four_bar = self.four_bar.lock().unwrap();
         if ui.button("Normalize").clicked() {
             four_bar.reset();
