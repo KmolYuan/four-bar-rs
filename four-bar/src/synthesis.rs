@@ -107,18 +107,11 @@ impl Planar {
     }
 
     fn grashof_transform(v: &[f64]) -> Vec<f64> {
-        let length = vec![v[0], 1., v[1], v[2]];
-        let mut index = (0..4).collect::<Vec<_>>();
-        index.sort_by(|a, b| length[*a].partial_cmp(&length[*b]).unwrap());
-        if length[index[0]] + length[index[3]] > length[index[1]] + length[index[2]] {
-            let l1 = length[index[0]];
-            vec![
-                length[index[1]] / l1,
-                length[index[3]] / l1,
-                length[index[2]] / l1,
-                v[3] / l1,
-                v[4],
-            ]
+        let mut four = vec![v[0], 1., v[1], v[2]];
+        four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        if four[0] + four[3] > four[1] + four[2] {
+            let l1 = four[0];
+            vec![four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
         } else {
             v.to_vec()
         }
