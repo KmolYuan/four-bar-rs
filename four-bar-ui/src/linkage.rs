@@ -1,4 +1,3 @@
-use crate::as_values::AsValues;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::synthesis::Synthesis;
 use eframe::egui::*;
@@ -59,12 +58,12 @@ macro_rules! angle {
 
 macro_rules! draw_link {
     ($a:expr, $b:expr) => {
-        plot::Line::new([$a, $b].as_values())
+        plot::Line::new(as_values([$a, $b]))
             .width(3.)
             .color(Color32::from_rgb(165, 151, 132))
     };
     ($a:expr, $b:expr $(, $c:expr)+) => {
-        plot::Polygon::new([$a, $b $(, $c)+].as_values())
+        plot::Polygon::new(as_values([$a, $b $(, $c)+]))
             .width(3.)
             .fill_alpha(0.6)
             .color(Color32::from_rgb(165, 151, 132))
@@ -73,8 +72,12 @@ macro_rules! draw_link {
 
 macro_rules! draw_path {
     ($name:literal, $path:expr) => {
-        plot::Line::new($path.as_values()).name($name).width(3.)
+        plot::Line::new(as_values($path)).name($name).width(3.)
     };
+}
+
+fn as_values(iter: impl IntoIterator<Item = [f64; 2]>) -> plot::Values {
+    plot::Values::from_values_iter(iter.into_iter().map(|[x, y]| plot::Value::new(x, y)))
 }
 
 /// Linkage data.
@@ -83,52 +86,72 @@ macro_rules! draw_path {
     derive(serde::Deserialize, serde::Serialize),
     serde(default)
 )]
+#[derive(Default)]
 pub(crate) struct Linkage {
-    interval: f64,
-    drive: f64,
-    speed: f64,
+    config: Config,
+    driver: Driver,
     four_bar: Arc<Mutex<FourBar>>,
     #[cfg(not(target_arch = "wasm32"))]
     synthesis: Synthesis,
 }
 
-impl Default for Linkage {
-    fn default() -> Self {
-        Self {
-            interval: 1.,
-            drive: 0.,
-            speed: 0.,
-            four_bar: Default::default(),
-            #[cfg(not(target_arch = "wasm32"))]
-            synthesis: Synthesis::default(),
-        }
+impl PartialEq for Linkage {
+    fn eq(&self, other: &Self) -> bool {
+        self.driver == other.driver
+            && *self.four_bar.lock().unwrap() == *other.four_bar.lock().unwrap()
     }
+}
+
+#[cfg_attr(
+    feature = "persistence",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
+#[derive(PartialEq)]
+struct Config {
+    interval: f64,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self { interval: 1. }
+    }
+}
+
+#[cfg_attr(
+    feature = "persistence",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
+#[derive(Default, PartialEq)]
+struct Driver {
+    drive: f64,
+    speed: f64,
 }
 
 impl Linkage {
     pub(crate) fn panel(&mut self, ui: &mut Ui) {
-        ui.heading("Options");
-        link!("Value interval: ", self.interval, 0.01, ui);
-        ui.heading("Dimension");
-        if ui.button("Default").clicked() {
-            *self = Self::default();
-        }
-        self.parameter(ui);
+        ui.collapsing("Options", |ui| {
+            reset_button(ui, &mut self.config);
+            link!("Value interval: ", self.config.interval, 0.01, ui);
+        });
+        ui.group(|ui| {
+            ui.heading("Dimension");
+            reset_button(ui, self);
+            self.parameter(ui);
+        });
         ui.group(|ui| {
             ui.heading("Driver");
-            if ui.button("Reset / Stop").clicked() {
-                self.speed = 0.;
-                self.drive = 0.;
-            }
-            angle!("Speed: ", self.speed, ui, "/s");
-            angle!("Angle: ", self.drive, ui);
+            reset_button(ui, &mut self.driver);
+            angle!("Speed: ", self.driver.speed, ui, "/s");
+            angle!("Angle: ", self.driver.drive, ui);
         });
         #[cfg(not(target_arch = "wasm32"))]
         self.synthesis.update(ui, self.four_bar.clone());
     }
 
     fn parameter(&mut self, ui: &mut Ui) {
-        let interval = self.interval;
+        let interval = self.config.interval;
         let mut four_bar = self.four_bar.lock().unwrap();
         if ui.button("Normalize").clicked() {
             four_bar.reset();
@@ -137,8 +160,14 @@ impl Linkage {
         }
         ui.group(|ui| {
             ui.heading("Offset");
-            if ui.button("Reset").clicked() {
-                four_bar.reset();
+            if Button::new("Reset")
+                .enabled((four_bar.p0.0, four_bar.p0.1, four_bar.a) != (0., 0., 0.))
+                .ui(ui)
+                .clicked()
+            {
+                four_bar.p0.0 = 0.;
+                four_bar.p0.1 = 0.;
+                four_bar.a = 0.;
             }
             unit!("X Offset: ", four_bar.p0.0, interval, ui);
             unit!("Y Offset: ", four_bar.p0.1, interval, ui);
@@ -162,31 +191,31 @@ impl Linkage {
     pub(crate) fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
             let mut m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
-            m.four_bar_angle(self.drive).unwrap();
+            m.four_bar_angle(self.driver.drive).unwrap();
             let joints = m.joints.clone();
-            let path = m.four_bar_loop_all(0., 360);
+            let [path1, path2, path3] = m.four_bar_loop_all(0., 360);
             plot::Plot::new("canvas")
                 .line(draw_link![joints[0], joints[2]])
                 .line(draw_link![joints[1], joints[3]])
                 .polygon(draw_link![joints[2], joints[3], joints[4]])
                 .points(
-                    plot::Points::new([joints[0], joints[1]].as_values())
+                    plot::Points::new(as_values([joints[0], joints[1]]))
                         .radius(7.)
                         .color(Color32::from_rgb(93, 69, 56)),
                 )
                 .points(
-                    plot::Points::new([joints[2], joints[3], joints[4]].as_values())
+                    plot::Points::new(as_values([joints[2], joints[3], joints[4]]))
                         .radius(5.)
                         .color(Color32::from_rgb(128, 96, 77)),
                 )
-                .line(draw_path!("Crank pivot", path[0]))
-                .line(draw_path!("Follower pivot", path[1]))
-                .line(draw_path!("Coupler pivot", path[2]))
+                .line(draw_path!("Crank pivot", path1))
+                .line(draw_path!("Follower pivot", path2))
+                .line(draw_path!("Coupler pivot", path3))
                 .data_aspect(1.)
                 .legend(plot::Legend::default())
                 .ui(ui);
-            if self.speed != 0. {
-                self.drive += self.speed / 60.;
+            if self.driver.speed != 0. {
+                self.driver.drive += self.driver.speed / 60.;
                 ui.ctx().request_repaint();
             }
         });

@@ -3,7 +3,6 @@
 pub use crate::app::App;
 
 mod app;
-mod as_values;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod icon;
 mod linkage;
@@ -19,7 +18,6 @@ use eframe::wasm_bindgen::{self, prelude::*};
 /// You can add more callbacks like this if you want to call in to your code.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub fn start(canvas_id: &str) -> Result<(), eframe::wasm_bindgen::JsValue> {
-    let app = App::default();
-    eframe::start_web(canvas_id, Box::new(app))
+pub fn start(id: &str) -> Result<(), eframe::wasm_bindgen::JsValue> {
+    eframe::start_web(id, Box::new(App::default()))
 }

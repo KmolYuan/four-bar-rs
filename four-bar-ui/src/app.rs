@@ -69,11 +69,6 @@ impl App {
                     ctx.set_visuals(Visuals::light());
                 }
             }
-        });
-    }
-
-    fn credit(ui: &mut Ui) {
-        ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
             ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("Powered by egui"));
         });
     }
@@ -90,10 +85,11 @@ impl epi::App for App {
         }
         .show(ctx, |ui| ui.horizontal(|ui| self.menu(ctx, ui)));
         if self.side_panel {
-            SidePanel::left("side panel").show(ctx, |ui| {
-                self.linkage.panel(ui);
-                Self::credit(ui);
-            });
+            SidePanel::left("side panel")
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ScrollArea::auto_sized().show(ui, |ui| self.linkage.panel(ui));
+                });
         }
         self.linkage.plot(ctx);
         // Welcome message
