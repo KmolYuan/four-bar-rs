@@ -18,6 +18,31 @@ where
     false
 }
 
+fn grashof_transform(v: &[f64]) -> Vec<f64> {
+    let mut four = vec![v[0], 1., v[1], v[2]];
+    four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    if four[0] + four[3] > four[1] + four[2] {
+        let l1 = four[0];
+        vec![four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
+    } else {
+        v.to_vec()
+    }
+}
+
+fn four_bar_from_v(v: &[f64], inv: bool) -> FourBar {
+    FourBar {
+        p0: (0., 0.),
+        a: 0.,
+        l0: v[0],
+        l1: 1.,
+        l2: v[1],
+        l3: v[2],
+        l4: v[3],
+        g: v[4],
+        inv,
+    }
+}
+
 fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     assert!(curve.len() >= target.len());
     let mut geo_err = f64::INFINITY;
@@ -106,31 +131,6 @@ impl Planar {
         }
     }
 
-    fn grashof_transform(v: &[f64]) -> Vec<f64> {
-        let mut four = vec![v[0], 1., v[1], v[2]];
-        four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        if four[0] + four[3] > four[1] + four[2] {
-            let l1 = four[0];
-            vec![four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
-        } else {
-            v.to_vec()
-        }
-    }
-
-    fn four_bar_from_v(v: &[f64], inv: bool) -> FourBar {
-        FourBar {
-            p0: (0., 0.),
-            a: 0.,
-            l0: v[0],
-            l1: 1.,
-            l2: v[1],
-            l3: v[2],
-            l4: v[3],
-            g: v[4],
-            inv,
-        }
-    }
-
     fn four_bar_from_coeff(
         &self,
         v: &[f64],
@@ -163,9 +163,8 @@ impl Planar {
         vec![false, true]
             .into_iter()
             .map(|inv| {
-                let curve = arr2(
-                    &Mechanism::four_bar(Self::four_bar_from_v(v, inv)).four_bar_loop(0., self.n),
-                );
+                let curve =
+                    arr2(&Mechanism::four_bar(four_bar_from_v(v, inv)).four_bar_loop(0., self.n));
                 (inv, curve)
             })
             .filter(|(_, curve)| !path_is_nan(curve))
@@ -178,7 +177,7 @@ impl ObjFunc for Planar {
     type Respond = f64;
 
     fn fitness(&self, v: &[f64], _r: &Report) -> f64 {
-        let v = Self::grashof_transform(v);
+        let v = grashof_transform(v);
         let curves = self.available_curve(&v);
         if curves.is_empty() {
             return 1e10;
@@ -198,11 +197,11 @@ impl ObjFunc for Planar {
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
-        let v = Self::grashof_transform(v);
+        let v = grashof_transform(v);
         let curves = self.available_curve(&v);
         if curves.is_empty() {
             println!("WARNING: synthesis failed");
-            return Self::four_bar_from_v(&v, false);
+            return four_bar_from_v(&v, false);
         }
         let coeffs = curves
             .iter()
