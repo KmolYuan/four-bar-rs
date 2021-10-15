@@ -2,16 +2,12 @@
 use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
-use ndarray::{arr2, concatenate, Array2, AsArray, Axis, Ix2};
+use ndarray::{arr2, concatenate, Array2, Axis};
 use std::f64::consts::TAU;
 
-fn path_is_nan<'a, V>(path: V) -> bool
-where
-    V: AsArray<'a, f64, Ix2>,
-{
-    let path = path.into();
-    for i in 0..path.nrows() {
-        if path[[i, 0]].is_nan() || path[[i, 1]].is_nan() {
+fn path_is_nan(path: &[[f64; 2]]) -> bool {
+    for c in path {
+        if c[0].is_nan() || c[0].is_nan() {
             return true;
         }
     }
@@ -163,11 +159,11 @@ impl Planar {
         vec![false, true]
             .into_iter()
             .map(|inv| {
-                let curve =
-                    arr2(&Mechanism::four_bar(four_bar_from_v(v, inv)).four_bar_loop(0., self.n));
+                let curve = Mechanism::four_bar(four_bar_from_v(v, inv)).four_bar_loop(0., self.n);
                 (inv, curve)
             })
             .filter(|(_, curve)| !path_is_nan(curve))
+            .map(|(inv, curve)| (inv, arr2(&curve)))
             .collect()
     }
 }
