@@ -8,7 +8,7 @@ description = "Four🍀bar is a simulator, a synthesizing tool for four-bar link
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 ndarray = "0.15"
-metaheuristics-nature = { version = "0.14", features = ["parallel"] }
+metaheuristics-nature = { version = "0.15", features = ["parallel"] }
 efd = "0.5.3"
 plotters = "0.3"
 

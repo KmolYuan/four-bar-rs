@@ -233,14 +233,17 @@ impl ObjFunc for Planar {
 /// Dimensional synthesis with default options.
 pub fn synthesis(
     curve: &[[f64; 2]],
-    gen: u32,
+    gen: u64,
     pop: usize,
     callback: impl FnMut(&Report) -> bool,
 ) -> (FourBar, Vec<Report>) {
     let planar = Planar::new(curve, 720, 360);
     let s = Solver::solve(
         planar,
-        setting!(De { +base: { task: Task::MaxGen(gen), pop_num: pop, average: true } }),
+        De::default()
+            .task(Task::MaxGen(gen))
+            .pop_num(pop)
+            .average(true),
         callback,
     );
     (s.result(), s.reports())

@@ -4,7 +4,7 @@ use four_bar::{synthesis::synthesis, FourBar};
 use std::{
     io::Cursor,
     sync::{
-        atomic::{AtomicBool, AtomicU32, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
     thread::spawn,
@@ -33,8 +33,8 @@ fn read_csv(s: &str) -> Result<Vec<[f64; 2]>, Error> {
 )]
 pub(crate) struct Synthesis {
     started: Arc<AtomicBool>,
-    progress: Arc<AtomicU32>,
-    gen: u32,
+    progress: Arc<AtomicU64>,
+    gen: u64,
     pop: usize,
     curve_csv: String,
     error: bool,
@@ -43,7 +43,7 @@ pub(crate) struct Synthesis {
 impl Default for Synthesis {
     fn default() -> Self {
         Self {
-            started: Arc::new(AtomicBool::new(false)),
+            started: Default::default(),
             progress: Default::default(),
             gen: 40,
             pop: 200,

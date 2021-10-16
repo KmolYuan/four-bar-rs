@@ -1,6 +1,7 @@
 use crate::*;
 use indicatif::ProgressBar;
-// use std::f64::consts::TAU;
+#[allow(unused_imports)]
+use std::f64::consts::TAU;
 
 #[test]
 fn planar() {
@@ -43,9 +44,9 @@ fn planar() {
     let target = CRUNODE;
     // let target = LINE;
     let gen = 40;
-    let pb = ProgressBar::new(gen as u64);
+    let pb = ProgressBar::new(gen);
     let (ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
-        pb.set_position(r.gen as u64);
+        pb.set_position(r.gen);
         true
     });
     pb.finish();
