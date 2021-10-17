@@ -174,7 +174,7 @@ impl ObjFunc for Planar {
     type Result = FourBar;
     type Respond = f64;
 
-    fn fitness(&self, v: &[f64], _r: &Report) -> f64 {
+    fn fitness(&self, v: &[f64], _r: &Report) -> Self::Respond {
         let v = grashof_transform(v);
         let curves = self.available_curve(&v);
         if curves.is_empty() {
