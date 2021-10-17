@@ -13,7 +13,7 @@ fn make_favicon() {
     {
         buf
     } else {
-        panic!("Never failed");
+        panic!("Never failed")
     };
     let doc = format!(
         "\
