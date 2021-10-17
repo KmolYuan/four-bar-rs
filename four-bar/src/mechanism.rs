@@ -50,6 +50,9 @@ impl Mechanism {
         let joints = vec![
             [m.p0.x(), m.p0.y()],
             [m.p0.x() + m.l0 * m.a.cos(), m.p0.y() + m.l0 * m.a.sin()],
+            [0., 0.],
+            [0., 0.],
+            [0., 0.],
         ];
         let mut formulas = Vec::with_capacity(3);
         formulas.push(Formula::Pla(0, m.l1, 0., 2));
@@ -84,8 +87,8 @@ impl Mechanism {
             let a = start + i as f64 * interval;
             let mut ans = [[0., 0.]; 3];
             self.apply(a, [2, 3, 4], &mut ans);
-            for j in 0..3 {
-                path[j][i] = ans[j];
+            for (path, ans) in path.iter_mut().zip(ans) {
+                path[i] = ans;
             }
         }
         path
@@ -94,16 +97,13 @@ impl Mechanism {
     /// Calculate the formula, and write the answer into provided array.
     pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
         let mut joints = self.joints.clone();
-        for _ in 2..5 {
-            joints.push([0., 0.]);
-        }
         let mut formulas = self.formulas.clone();
         four_bar_angle(angle, &mut formulas);
         for f in formulas.iter() {
             f.apply(&mut joints);
         }
-        for i in 0..N {
-            ans[i] = joints[joint[i]];
+        for (ans, joint) in ans.iter_mut().zip(joint) {
+            *ans = joints[joint];
         }
     }
 
