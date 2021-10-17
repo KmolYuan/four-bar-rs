@@ -43,7 +43,7 @@ fn planar() {
     // let target = TRIANGLE;
     let target = CRUNODE;
     // let target = LINE;
-    let gen = 40;
+    let gen = 50;
     let pb = ProgressBar::new(gen);
     let (ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
         pb.set_position(r.gen);

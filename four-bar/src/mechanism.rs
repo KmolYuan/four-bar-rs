@@ -1,5 +1,6 @@
 use crate::{FourBar, Point};
-use std::f64::consts::TAU;
+use rayon::prelude::*;
+use std::{f64::consts::TAU, sync::Arc};
 
 /// Modify the angle of four bar linkage.
 fn four_bar_angle(angle: f64, formulas: &mut [Formula]) {
@@ -77,6 +78,21 @@ impl Mechanism {
             *c = ans[0];
         }
         path
+    }
+
+    /// Get the trajectory by parallel computing.
+    pub fn par_four_bar_loop(self: Arc<Self>, start: f64, n: usize) -> Vec<[f64; 2]> {
+        let interval = TAU / n as f64;
+        (0..n)
+            .into_par_iter()
+            .map(|i| {
+                let four_bar = self.clone();
+                let a = start + i as f64 * interval;
+                let mut ans = [[0., 0.]];
+                four_bar.apply(a, [4], &mut ans);
+                ans[0]
+            })
+            .collect()
     }
 
     /// A loop trajectory for all moving pivot.

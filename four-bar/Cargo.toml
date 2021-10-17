@@ -11,6 +11,7 @@ ndarray = "0.15"
 metaheuristics-nature = { version = "0.15", features = ["parallel"] }
 efd = "0.5.3"
 plotters = "0.3"
+rayon = "1.5"
 
 [dev-dependencies]
 indicatif = "0.16"

@@ -3,7 +3,8 @@ use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array2, Axis};
-use std::f64::consts::TAU;
+use rayon::prelude::*;
+use std::{f64::consts::TAU, sync::Arc};
 
 fn path_is_nan(path: &[[f64; 2]]) -> bool {
     for c in path {
@@ -157,9 +158,10 @@ impl Planar {
 
     fn available_curve(&self, v: &[f64]) -> Vec<(bool, Array2<f64>)> {
         vec![false, true]
-            .into_iter()
+            .into_par_iter()
             .map(|inv| {
-                let curve = Mechanism::four_bar(four_bar_from_v(v, inv)).four_bar_loop(0., self.n);
+                let fourbar = Arc::new(Mechanism::four_bar(four_bar_from_v(v, inv)));
+                let curve = fourbar.par_four_bar_loop(0., self.n);
                 (inv, curve)
             })
             .filter(|(_, curve)| !path_is_nan(curve))
@@ -179,17 +181,19 @@ impl ObjFunc for Planar {
             return 1e10;
         }
         curves
-            .into_iter()
+            .into_par_iter()
             .map(|(inv, curve)| {
                 let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
                 let coeffs = calculate_efd(&curve, self.harmonic);
                 let (coeffs, rot, _, scale) = normalize_efd(&coeffs, true);
                 let four_bar = self.four_bar_from_coeff(&v, inv, rot, scale, locus(&curve));
-                let curve = Mechanism::four_bar(four_bar).four_bar_loop(0., self.n * 2);
+                let four_bar = Arc::new(Mechanism::four_bar(four_bar));
+                let curve = four_bar.par_four_bar_loop(0., self.n * 2);
                 let geo_err = geo_err(&self.curve, &curve);
                 (coeffs - &self.target).mapv(f64::abs).sum() + geo_err * 1e-5
             })
-            .fold(f64::INFINITY, |a, b| a.min(b))
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
