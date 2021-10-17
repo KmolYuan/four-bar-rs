@@ -55,29 +55,29 @@ fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
     let start = iter.next().unwrap();
     let rev_iter = iter.clone().rev();
-    let mut iter: [Box<dyn Iterator<Item = &[f64; 2]>>; 2] = [Box::new(iter), Box::new(rev_iter)];
-    let mut geo_min = f64::INFINITY;
-    for iter in &mut iter {
-        let mut geo_err = geo_err;
-        let mut left = start;
-        for tc in target {
-            let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
-            for c in &mut *iter {
-                let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
-                if d < last_d {
-                    last_d = d;
-                } else {
-                    left = c;
-                    break;
+    let iter: [Box<dyn Iterator<Item = &[f64; 2]> + Send + Sync>; 2] =
+        [Box::new(iter), Box::new(rev_iter)];
+    iter.into_par_iter()
+        .map(|mut iter| {
+            let mut geo_err = geo_err;
+            let mut left = start;
+            for tc in target {
+                let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
+                for c in &mut *iter {
+                    let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
+                    if d < last_d {
+                        last_d = d;
+                    } else {
+                        left = c;
+                        break;
+                    }
                 }
+                geo_err += last_d;
             }
-            geo_err += last_d;
-        }
-        if geo_err < geo_min {
-            geo_min = geo_err;
-        }
-    }
-    geo_min
+            geo_err
+        })
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap()
 }
 
 /// Synthesis task of planar four-bar linkage.
