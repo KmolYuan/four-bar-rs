@@ -1,9 +1,16 @@
 use crate::{FourBar, Point};
-use std::{
-    f64::consts::TAU,
-    io::{Error, ErrorKind, Result},
-};
+use std::f64::consts::TAU;
 
+/// Modify the angle of four bar linkage.
+fn four_bar_angle(angle: f64, formulas: &mut [Formula]) {
+    if let Formula::Pla(_, _, ref mut a, _) = formulas[0] {
+        *a = angle;
+    } else {
+        panic!("invalid four bar")
+    }
+}
+
+#[derive(Clone)]
 enum Formula {
     Pla(usize, f64, f64, usize),
     Plap(usize, f64, f64, usize, usize),
@@ -12,7 +19,7 @@ enum Formula {
 }
 
 impl Formula {
-    fn apply(&self, joints: &mut Vec<impl Point>) {
+    fn apply(&self, joints: &mut [impl Point]) {
         match *self {
             Self::Pla(c1, d0, a0, t) => {
                 joints[t] = joints[c1].pla(d0, a0);
@@ -40,12 +47,10 @@ pub struct Mechanism {
 impl Mechanism {
     /// Create four bar linkages.
     pub fn four_bar(m: FourBar) -> Self {
-        let mut joints = Vec::with_capacity(5);
-        joints.push([m.p0.x(), m.p0.y()]);
-        joints.push([m.p0.x() + m.l0 * m.a.cos(), m.p0.y() + m.l0 * m.a.sin()]);
-        for _ in 2..5 {
-            joints.push([0., 0.]);
-        }
+        let joints = vec![
+            [m.p0.x(), m.p0.y()],
+            [m.p0.x() + m.l0 * m.a.cos(), m.p0.y() + m.l0 * m.a.sin()],
+        ];
         let mut formulas = Vec::with_capacity(3);
         formulas.push(Formula::Pla(0, m.l1, 0., 2));
         if (m.l0 - m.l2).abs() < 1e-20 && (m.l1 - m.l3).abs() < 1e-20 {
@@ -58,54 +63,47 @@ impl Mechanism {
         Self { joints, formulas }
     }
 
-    /// Modify the angle of four bar linkage.
-    pub fn four_bar_angle(&mut self, angle: f64) -> Result<()> {
-        if let Formula::Pla(_, _, ref mut a, _) = self.formulas[0] {
-            *a = angle;
-        } else {
-            return Err(Error::new(ErrorKind::AddrNotAvailable, "invalid four bar"));
-        }
-        self.apply();
-        Ok(())
-    }
-
     /// A loop trajectory for only coupler point.
-    pub fn four_bar_loop(&mut self, start: f64, n: usize) -> Vec<[f64; 2]> {
+    pub fn four_bar_loop(&self, start: f64, n: usize) -> Vec<[f64; 2]> {
         let interval = TAU / n as f64;
         let mut path = vec![[0.; 2]; n];
         for (i, c) in path.iter_mut().enumerate() {
             let a = start + i as f64 * interval;
-            self.four_bar_angle(a).unwrap();
-            *c = self.joints[4];
+            let mut ans = [[0., 0.]];
+            self.apply(a, [4], &mut ans);
+            *c = ans[0];
         }
         path
     }
 
     /// A loop trajectory for all moving pivot.
-    pub fn four_bar_loop_all(&mut self, start: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
+    pub fn four_bar_loop_all(&self, start: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
         let interval = TAU / n as f64;
         let mut path = [vec![[0.; 2]; n], vec![[0.; 2]; n], vec![[0.; 2]; n]];
         for i in 0..n {
             let a = start + i as f64 * interval;
-            self.four_bar_angle(a).unwrap();
-            let mut failed = false;
-            for j in (0..3).rev() {
-                if self.joints[j + 2][0].is_nan() {
-                    failed = true;
-                }
-                if failed {
-                    path[j][i] = [f64::NAN, f64::NAN];
-                } else {
-                    path[j][i] = self.joints[j + 2];
-                }
+            let mut ans = [[0., 0.]; 3];
+            self.apply(a, [2, 3, 4], &mut ans);
+            for j in 0..3 {
+                path[j][i] = ans[j];
             }
         }
         path
     }
 
-    fn apply(&mut self) {
-        for f in self.formulas.iter() {
-            f.apply(&mut self.joints);
+    /// Calculate the formula, and write the answer into provided array.
+    pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
+        let mut joints = self.joints.clone();
+        for _ in 2..5 {
+            joints.push([0., 0.]);
+        }
+        let mut formulas = self.formulas.clone();
+        four_bar_angle(angle, &mut formulas);
+        for f in formulas.iter() {
+            f.apply(&mut joints);
+        }
+        for i in 0..N {
+            ans[i] = joints[joint[i]];
         }
     }
 

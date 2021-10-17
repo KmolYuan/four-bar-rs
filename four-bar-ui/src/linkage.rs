@@ -190,9 +190,9 @@ impl Linkage {
 
     pub(crate) fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
-            let mut m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
-            m.four_bar_angle(self.driver.drive).unwrap();
-            let joints = m.joints.clone();
+            let m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
+            let mut joints = [[0., 0.]; 5];
+            m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut joints);
             let [path1, path2, path3] = m.four_bar_loop_all(0., 360);
             plot::Plot::new("canvas")
                 .line(draw_link![joints[0], joints[2]])
