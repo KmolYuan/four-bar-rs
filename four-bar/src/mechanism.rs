@@ -1,15 +1,6 @@
 use crate::{FourBar, Point};
 use rayon::prelude::*;
-use std::{f64::consts::TAU, sync::Arc};
-
-/// Modify the angle of four bar linkage.
-fn four_bar_angle(angle: f64, formulas: &mut [Formula]) {
-    if let Formula::Pla(_, _, ref mut a, _) = formulas[0] {
-        *a = angle;
-    } else {
-        panic!("invalid four bar")
-    }
-}
+use std::f64::consts::TAU;
 
 #[derive(Clone)]
 enum Formula {
@@ -81,15 +72,14 @@ impl Mechanism {
     }
 
     /// Get the trajectory by parallel computing.
-    pub fn par_four_bar_loop(self: Arc<Self>, start: f64, n: usize) -> Vec<[f64; 2]> {
+    pub fn par_four_bar_loop(&self, start: f64, n: usize) -> Vec<[f64; 2]> {
         let interval = TAU / n as f64;
         (0..n)
             .into_par_iter()
             .map(|i| {
-                let four_bar = self.clone();
                 let a = start + i as f64 * interval;
                 let mut ans = [[0., 0.]];
-                four_bar.apply(a, [4], &mut ans);
+                self.apply(a, [4], &mut ans);
                 ans[0]
             })
             .collect()
@@ -114,8 +104,12 @@ impl Mechanism {
     pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
         let mut joints = self.joints.clone();
         let mut formulas = self.formulas.clone();
-        four_bar_angle(angle, &mut formulas);
-        for f in formulas.iter() {
+        if let Formula::Pla(_, _, ref mut a, _) = formulas[0] {
+            *a = angle;
+        } else {
+            panic!("invalid four bar");
+        }
+        for f in formulas {
             f.apply(&mut joints);
         }
         for (ans, joint) in ans.iter_mut().zip(joint) {

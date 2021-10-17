@@ -4,7 +4,7 @@ use efd::{calculate_efd, locus, normalize_efd};
 pub use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array2, Axis};
 use rayon::prelude::*;
-use std::{f64::consts::TAU, sync::Arc};
+use std::f64::consts::TAU;
 
 fn path_is_nan(path: &[[f64; 2]]) -> bool {
     for c in path {
@@ -157,10 +157,10 @@ impl Planar {
     }
 
     fn available_curve(&self, v: &[f64]) -> Vec<(bool, Array2<f64>)> {
-        vec![false, true]
+        [false, true]
             .into_par_iter()
             .map(|inv| {
-                let fourbar = Arc::new(Mechanism::four_bar(four_bar_from_v(v, inv)));
+                let fourbar = Mechanism::four_bar(four_bar_from_v(v, inv));
                 let curve = fourbar.par_four_bar_loop(0., self.n);
                 (inv, curve)
             })
@@ -187,8 +187,7 @@ impl ObjFunc for Planar {
                 let coeffs = calculate_efd(&curve, self.harmonic);
                 let (coeffs, rot, _, scale) = normalize_efd(&coeffs, true);
                 let four_bar = self.four_bar_from_coeff(&v, inv, rot, scale, locus(&curve));
-                let four_bar = Arc::new(Mechanism::four_bar(four_bar));
-                let curve = four_bar.par_four_bar_loop(0., self.n * 2);
+                let curve = Mechanism::four_bar(four_bar).par_four_bar_loop(0., self.n * 2);
                 let geo_err = geo_err(&self.curve, &curve);
                 (coeffs - &self.target).mapv(f64::abs).sum() + geo_err * 1e-5
             })
