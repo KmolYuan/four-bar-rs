@@ -1,12 +1,10 @@
-Cross-Origin-Embedder-Policy: require-corp
-Cross-Origin-Opener-Policy: same-origin
 <!DOCTYPE html>
 <html lang="en">
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<!-- Disable zooming: -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
 <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!-- Disable zooming: -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Four🍀bar</title>
     <link rel="icon" href="./favicon.png">
     <style>
@@ -46,7 +44,8 @@ Cross-Origin-Opener-Policy: same-origin
     <!-- The WASM code will resize this canvas to cover the entire screen -->
     <canvas id="main_canvas"></canvas>
     <!-- Load the generated WASM library -->
-    <script src="./module-workers-polyfill.min.js"></script>
+    <script src="coi-serviceworker.min.js"></script>
+    <script src="module-workers-polyfill.min.js"></script>
     <script type="module">
         import init, { start, initThreadPool } from './four_bar_ui.js';
         await init();
