@@ -1,14 +1,17 @@
 use csv::{Error, Reader};
 use eframe::egui::*;
 use four_bar::{synthesis::synthesis, FourBar};
+use rayon::spawn;
 use std::{
     io::Cursor,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
-    thread::spawn,
+    time::Instant,
 };
+
+const CRUNODE: &str = include_str!("assets/crunode.csv");
 
 macro_rules! parameter {
     ($label:literal, $attr:expr, $ui:ident) => {
@@ -34,9 +37,11 @@ fn read_csv(s: &str) -> Result<Vec<[f64; 2]>, Error> {
 pub(crate) struct Synthesis {
     started: Arc<AtomicBool>,
     progress: Arc<AtomicU64>,
+    timer: Arc<AtomicU64>,
     gen: u64,
     pop: usize,
     curve_csv: String,
+    pub(crate) curve: Arc<Vec<[f64; 2]>>,
     error: bool,
 }
 
@@ -45,9 +50,11 @@ impl Default for Synthesis {
         Self {
             started: Default::default(),
             progress: Default::default(),
+            timer: Default::default(),
             gen: 40,
             pop: 200,
-            curve_csv: String::new(),
+            curve_csv: CRUNODE.to_string(),
+            curve: Default::default(),
             error: false,
         }
     }
@@ -55,57 +62,67 @@ impl Default for Synthesis {
 
 impl Synthesis {
     pub(crate) fn update(&mut self, ui: &mut Ui, four_bar: Arc<Mutex<FourBar>>) {
-        ui.group(|ui| {
-            ui.heading("Synthesis");
-            parameter!("Generation: ", self.gen, ui);
-            parameter!("Population: ", self.pop, ui);
-            CollapsingHeader::new("Curve Input (CSV)")
-                .default_open(true)
-                .show(ui, |ui| {
-                    ui.text_edit_multiline(&mut self.curve_csv);
-                });
-            if self.error {
-                Label::new("The provided comma-separated value is empty or invalid.")
-                    .text_color(Color32::RED)
-                    .ui(ui);
-            }
-            ui.horizontal(|ui| {
-                let started = self.started.load(Ordering::Relaxed);
-                if started {
-                    if ui.small_button("⏹").on_hover_text("Stop").clicked() {
-                        self.started.store(false, Ordering::Relaxed);
-                    }
-                } else if ui.small_button("▶").on_hover_text("Start").clicked() {
-                    if self.curve_csv.is_empty() {
-                        self.error = true;
-                    } else if let Ok(curve) = read_csv(&self.curve_csv) {
-                        self.error = false;
-                        self.start_syn(curve, four_bar);
-                    } else {
-                        self.error = true;
-                    }
-                }
-                ProgressBar::new(self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32)
-                    .show_percentage()
-                    .animate(started)
-                    .ui(ui);
+        ui.heading("Synthesis");
+        parameter!("Generation: ", self.gen, ui);
+        parameter!("Population: ", self.pop, ui);
+        CollapsingHeader::new("Curve Input (CSV)")
+            .default_open(true)
+            .show(ui, |ui| {
+                ui.text_edit_multiline(&mut self.curve_csv);
             });
+        self.error = true;
+        if !self.curve_csv.is_empty() {
+            if let Ok(curve) = read_csv(&self.curve_csv) {
+                self.curve = Arc::new(curve);
+                self.error = false;
+            }
+        }
+        if self.error {
+            Label::new("The provided comma-separated value is empty or invalid.")
+                .text_color(Color32::RED)
+                .ui(ui);
+        }
+        ui.horizontal(|ui| {
+            let started = self.started.load(Ordering::Relaxed);
+            if started {
+                if ui.small_button("⏹").on_hover_text("Stop").clicked() {
+                    self.started.store(false, Ordering::Relaxed);
+                }
+            } else if ui.small_button("▶").on_hover_text("Start").clicked() {
+                if !self.curve.is_empty() {
+                    self.start_syn(four_bar);
+                }
+            }
+            ProgressBar::new(self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32)
+                .show_percentage()
+                .animate(started)
+                .ui(ui);
         });
+        ui.label(format!(
+            "Time passed: {}s",
+            self.timer.load(Ordering::Relaxed)
+        ));
     }
 
-    fn start_syn(&mut self, curve: Vec<[f64; 2]>, four_bar: Arc<Mutex<FourBar>>) {
+    fn start_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
         self.started.store(true, Ordering::Relaxed);
+        self.timer.store(0, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
         let started = self.started.clone();
         let progress = self.progress.clone();
+        let timer = self.timer.clone();
+        let curve = self.curve.clone();
         spawn(move || {
+            let start_time = Instant::now();
             let (ans, _) = synthesis(&curve, gen, pop, |r| {
                 progress.store(r.gen, Ordering::Relaxed);
+                let time = Instant::now() - start_time;
+                timer.store(time.as_secs(), Ordering::Relaxed);
                 started.load(Ordering::Relaxed)
             });
-            started.store(false, Ordering::Relaxed);
             *four_bar.lock().unwrap() = ans;
+            started.store(false, Ordering::Relaxed);
         });
     }
 }
