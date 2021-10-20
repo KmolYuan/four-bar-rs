@@ -17,6 +17,8 @@ persistence = ["eframe/persistence", "serde", "four-bar/serde"]
 four-bar = { path = "../four-bar" }
 eframe = "0.14"
 serde = { version = "1", features = ["derive"], optional = true }
+rfd = "0.5"
+async-std = "1.9"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 csv = "1.1"

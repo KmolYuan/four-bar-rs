@@ -15,7 +15,7 @@ Powered by <https://github.com/emilk/egui>.
 In Linux, you need to install some library:
 
 ```bash
-sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev
+sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
 ```
 
 Then run with cargo directly:

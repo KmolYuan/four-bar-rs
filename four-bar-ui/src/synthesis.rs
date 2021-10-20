@@ -3,7 +3,9 @@ use csv::{Error, Reader};
 use eframe::egui::*;
 use four_bar::{synthesis::synthesis, FourBar};
 use rayon::spawn;
+use rfd::FileDialog;
 use std::{
+    fs::read_to_string,
     io::Cursor,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -45,7 +47,7 @@ pub(crate) struct Synthesis {
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
     conv: Arc<Mutex<Vec<[f64; 2]>>>,
-    error: bool,
+    error: String,
 }
 
 impl Default for Synthesis {
@@ -60,7 +62,7 @@ impl Default for Synthesis {
             curve: Default::default(),
             conv_open: false,
             conv: Default::default(),
-            error: false,
+            error: String::new(),
         }
     }
 }
@@ -92,22 +94,35 @@ impl Synthesis {
             });
         parameter!("Generation: ", self.gen, ui);
         parameter!("Population: ", self.pop, ui);
+        if ui.button("Open CSV").clicked() {
+            if let Some(file) = FileDialog::new()
+                .add_filter("Delimiter-Separated Values (CSV)", &["txt", "csv"])
+                .set_directory("~")
+                .pick_file()
+            {
+                if let Ok(curve_csv) = read_to_string(file) {
+                    self.curve_csv = curve_csv;
+                } else {
+                    self.error = "Invalid text file.".to_string();
+                }
+            }
+        }
         CollapsingHeader::new("Curve Input (CSV)")
             .default_open(true)
             .show(ui, |ui| {
-                ui.text_edit_multiline(&mut self.curve_csv);
+                if ui.text_edit_multiline(&mut self.curve_csv).changed() {
+                    self.error.clear();
+                }
             });
-        self.error = true;
         if !self.curve_csv.is_empty() {
             if let Ok(curve) = read_csv(&self.curve_csv) {
                 self.curve = Arc::new(curve);
-                self.error = false;
+            } else {
+                self.error = "The provided curve is invalid.".to_string();
             }
         }
-        if self.error {
-            Label::new("The provided comma-separated value is empty or invalid.")
-                .text_color(Color32::RED)
-                .ui(ui);
+        if !self.error.is_empty() {
+            Label::new(&self.error).text_color(Color32::RED).ui(ui);
         }
         ui.horizontal(|ui| {
             let started = self.started.load(Ordering::Relaxed);
