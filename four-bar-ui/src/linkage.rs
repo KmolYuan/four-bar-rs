@@ -1,3 +1,4 @@
+use crate::as_values::as_values;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::synthesis::Synthesis;
 use eframe::egui::*;
@@ -74,10 +75,6 @@ macro_rules! draw_path {
     ($name:literal, $path:expr) => {
         plot::Line::new(as_values(&$path)).name($name).width(3.)
     };
-}
-
-fn as_values(iter: &[[f64; 2]]) -> plot::Values {
-    plot::Values::from_values_iter(iter.into_iter().map(|&[x, y]| plot::Value::new(x, y)))
 }
 
 /// Linkage data.

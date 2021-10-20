@@ -1,3 +1,4 @@
+use crate::as_values::as_values;
 use csv::{Error, Reader};
 use eframe::egui::*;
 use four_bar::{synthesis::synthesis, FourBar};
@@ -42,6 +43,8 @@ pub(crate) struct Synthesis {
     pop: usize,
     curve_csv: String,
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
+    conv_open: bool,
+    conv: Arc<Mutex<Vec<[f64; 2]>>>,
     error: bool,
 }
 
@@ -55,6 +58,8 @@ impl Default for Synthesis {
             pop: 200,
             curve_csv: CRUNODE.to_string(),
             curve: Default::default(),
+            conv_open: false,
+            conv: Default::default(),
             error: false,
         }
     }
@@ -63,6 +68,28 @@ impl Default for Synthesis {
 impl Synthesis {
     pub(crate) fn update(&mut self, ui: &mut Ui, four_bar: Arc<Mutex<FourBar>>) {
         ui.heading("Synthesis");
+        let conv = self.conv.clone();
+        Window::new("Convergence Plot")
+            .open(&mut self.conv_open)
+            .show(ui.ctx(), |ui| {
+                let values = conv.lock().unwrap();
+                plot::Plot::new("conv_canvas")
+                    .line(
+                        plot::Line::new(as_values(&values))
+                            .fill(-1.5)
+                            .name("Best Fitness"),
+                    )
+                    .points(
+                        plot::Points::new(as_values(&values))
+                            .name("Best Fitness")
+                            .stems(0.)
+                            .filled(true),
+                    )
+                    .legend(plot::Legend::default())
+                    .allow_drag(false)
+                    .allow_zoom(false)
+                    .ui(ui);
+            });
         parameter!("Generation: ", self.gen, ui);
         parameter!("Population: ", self.pop, ui);
         CollapsingHeader::new("Curve Input (CSV)")
@@ -98,10 +125,19 @@ impl Synthesis {
                 .animate(started)
                 .ui(ui);
         });
-        ui.label(format!(
-            "Time passed: {}s",
-            self.timer.load(Ordering::Relaxed)
-        ));
+        ui.horizontal(|ui| {
+            if ui
+                .small_button("ℹ")
+                .on_hover_text("Convergence window")
+                .clicked()
+            {
+                self.conv_open = !self.conv_open;
+            }
+            ui.label(format!(
+                "Time passed: {}s",
+                self.timer.load(Ordering::Relaxed)
+            ));
+        });
     }
 
     fn start_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
@@ -113,9 +149,11 @@ impl Synthesis {
         let progress = self.progress.clone();
         let timer = self.timer.clone();
         let curve = self.curve.clone();
+        let conv = self.conv.clone();
         spawn(move || {
             let start_time = Instant::now();
             let (ans, _) = synthesis(&curve, gen, pop, |r| {
+                conv.lock().unwrap().push([r.gen as f64, r.best_f]);
                 progress.store(r.gen, Ordering::Relaxed);
                 let time = Instant::now() - start_time;
                 timer.store(time.as_secs(), Ordering::Relaxed);
