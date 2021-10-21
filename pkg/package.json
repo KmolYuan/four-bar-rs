@@ -1,0 +1,14 @@
+{
+  "name": "four-bar-ui",
+  "collaborators": [
+    "KmolYuan <pyslvs@gmail.com>"
+  ],
+  "description": "Four🍀bar is a simulator, a synthesizing tool for four-bar linkage mechanism.",
+  "version": "0.1.0",
+  "files": [
+    "four_bar_ui_bg.wasm",
+    "four_bar_ui.js"
+  ],
+  "module": "four_bar_ui.js",
+  "sideEffects": false
+}
