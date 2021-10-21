@@ -4,6 +4,7 @@ use indicatif::ProgressBar;
 use std::f64::consts::TAU;
 
 #[test]
+#[cfg(feature = "plotters")]
 fn planar() {
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),
