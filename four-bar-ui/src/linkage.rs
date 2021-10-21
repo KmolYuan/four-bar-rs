@@ -193,6 +193,7 @@ impl Linkage {
             let mut joints = [[0., 0.]; 5];
             m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut joints);
             let [path1, path2, path3] = m.four_bar_loop_all(0., 360);
+            #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
             let mut plot = plot::Plot::new("canvas")
                 .line(draw_link![joints[0], joints[2]])
                 .line(draw_link![joints[1], joints[3]])

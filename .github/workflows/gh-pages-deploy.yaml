@@ -10,11 +10,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - run: |
+          sudo apt update
+          sudo apt install -y binaryen libgtk-3-dev
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --all-features -- -D warnings
-      - run: sudo apt install binaryen
       - run: |
           ./setup_web.sh
           ./build_web.sh -O

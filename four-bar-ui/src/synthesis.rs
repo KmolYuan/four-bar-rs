@@ -130,10 +130,10 @@ impl Synthesis {
                 if ui.small_button("⏹").on_hover_text("Stop").clicked() {
                     self.started.store(false, Ordering::Relaxed);
                 }
-            } else if ui.small_button("▶").on_hover_text("Start").clicked() {
-                if !self.curve.is_empty() {
-                    self.start_syn(four_bar);
-                }
+            } else if ui.small_button("▶").on_hover_text("Start").clicked()
+                && !self.curve.is_empty()
+            {
+                self.start_syn(four_bar);
             }
             ProgressBar::new(self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32)
                 .show_percentage()
