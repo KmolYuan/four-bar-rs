@@ -1,6 +1,10 @@
 #!/bin/bash
 set -eu
 
+cd "$(dirname "${0}")" || exit
+REPODIR=${PWD}
+
+BUILD=release
 CRATE=four-bar-ui # crate name
 CRATE_SNAKE_CASE="${CRATE//-/_}" # for those who name crates with-kebab-case
 
@@ -12,19 +16,9 @@ export RUSTFLAGS=--cfg=web_sys_unstable_apis
 # Clear output from old stuff:
 rm -f docs/${CRATE_SNAKE_CASE}_bg.wasm
 
-echo "Building rust..."
-BUILD=release
-cargo build --${BUILD} --package ${CRATE} --lib --target wasm32-unknown-unknown
-
 echo "Generating JS bindings for wasm..."
 TARGET_NAME="${CRATE_SNAKE_CASE}.wasm"
-wasm-bindgen "target/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
-  --out-dir docs --no-modules --no-typescript
+wasm-pack build --${BUILD} --out-dir ../docs/pkg -t web --no-typescript "${REPODIR}/${CRATE}"
+rm "${REPODIR}/docs/pkg/.gitignore"
 
-# to get wasm-opt:  apt/brew/dnf install binaryen
-if [[ "${1-}" = "-O" ]]; then
-  echo "Optimizing wasm..."
-  wasm-opt docs/${CRATE_SNAKE_CASE}_bg.wasm -O2 -o docs/${CRATE_SNAKE_CASE}_bg.wasm
-fi
-
-echo "Finished: docs/${CRATE_SNAKE_CASE}.wasm"
+echo "Finished"

@@ -1,7 +1,6 @@
 .idea/
 target/
-docs/*.wasm
-docs/*.js
+/docs/pkg/*
 Cargo.lock
 *.svg
 /four-bar-ui/src/icon.rs
