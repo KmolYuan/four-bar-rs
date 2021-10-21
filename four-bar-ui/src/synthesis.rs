@@ -142,6 +142,13 @@ impl Synthesis {
             {
                 self.conv_open = !self.conv_open;
             }
+            if ui
+                .small_button("🗑")
+                .on_hover_text("Clear the past convergence report")
+                .clicked()
+            {
+                self.conv.drain(..self.conv.len() - 1);
+            }
             ui.label(format!(
                 "Time passed: {}s",
                 self.timer.load(Ordering::Relaxed)
@@ -151,10 +158,10 @@ impl Synthesis {
 
     fn start_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
         let started = Arc::new(AtomicBool::new(true));
+        self.started = started.clone();
         self.timer.store(0, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
-        self.started = started.clone();
         let progress = self.progress.clone();
         let timer = self.timer.clone();
         let curve = self.curve.clone();
