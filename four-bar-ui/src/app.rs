@@ -77,7 +77,7 @@ impl App {
 impl epi::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
-    fn update(&mut self, ctx: &CtxRef, _frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &CtxRef, _frame: &mut epi::Frame) {
         if self.menu_up {
             TopBottomPanel::top("menu")
         } else {

@@ -1,7 +1,7 @@
 use crate::as_values::as_values;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::synthesis::Synthesis;
-use eframe::egui::*;
+use eframe::egui::{plot::*, *};
 use four_bar::{FourBar, Mechanism};
 use std::{
     f64::consts::{PI, TAU},
@@ -59,12 +59,12 @@ macro_rules! angle {
 
 macro_rules! draw_link {
     ($a:expr, $b:expr) => {
-        plot::Line::new(as_values(&[$a, $b]))
+        Line::new(as_values(&[$a, $b]))
             .width(3.)
             .color(Color32::from_rgb(165, 151, 132))
     };
     ($a:expr, $b:expr $(, $c:expr)+) => {
-        plot::Polygon::new(as_values(&[$a, $b $(, $c)+]))
+        Polygon::new(as_values(&[$a, $b $(, $c)+]))
             .width(3.)
             .fill_alpha(0.6)
             .color(Color32::from_rgb(165, 151, 132))
@@ -73,7 +73,7 @@ macro_rules! draw_link {
 
 macro_rules! draw_path {
     ($name:literal, $path:expr) => {
-        plot::Line::new(as_values(&$path)).name($name).width(3.)
+        Line::new(as_values(&$path)).name($name).width(3.)
     };
 }
 
@@ -194,17 +194,17 @@ impl Linkage {
             m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut joints);
             let [path1, path2, path3] = m.four_bar_loop_all(0., 360);
             #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
-            let mut plot = plot::Plot::new("canvas")
+            let mut plot = Plot::new("canvas")
                 .line(draw_link![joints[0], joints[2]])
                 .line(draw_link![joints[1], joints[3]])
                 .polygon(draw_link![joints[2], joints[3], joints[4]])
                 .points(
-                    plot::Points::new(as_values(&[joints[0], joints[1]]))
+                    Points::new(as_values(&[joints[0], joints[1]]))
                         .radius(7.)
                         .color(Color32::from_rgb(93, 69, 56)),
                 )
                 .points(
-                    plot::Points::new(as_values(&[joints[2], joints[3], joints[4]]))
+                    Points::new(as_values(&[joints[2], joints[3], joints[4]]))
                         .radius(5.)
                         .color(Color32::from_rgb(128, 96, 77)),
                 )
@@ -215,7 +215,7 @@ impl Linkage {
             if !self.synthesis.curve.is_empty() {
                 plot = plot.line(draw_path!("Synthesis target", self.synthesis.curve));
             }
-            plot.data_aspect(1.).legend(plot::Legend::default()).ui(ui);
+            plot.data_aspect(1.).legend(Legend::default()).ui(ui);
             if self.driver.speed != 0. {
                 self.driver.drive += self.driver.speed / 60.;
                 ui.ctx().request_repaint();

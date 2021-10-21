@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![warn(clippy::all, rust_2018_idioms)]
 pub use crate::app::App;
 
 mod app;
@@ -11,7 +10,7 @@ mod linkage;
 mod synthesis;
 
 #[cfg(target_arch = "wasm32")]
-use eframe::wasm_bindgen::{self, prelude::*};
+use eframe::{wasm_bindgen, wasm_bindgen::JsValue};
 
 /// This is the entry-point for all the web-assembly.
 /// This is called once from the HTML.
@@ -19,6 +18,6 @@ use eframe::wasm_bindgen::{self, prelude::*};
 /// You can add more callbacks like this if you want to call in to your code.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub fn start(id: &str) -> Result<(), eframe::wasm_bindgen::JsValue> {
+pub fn start(id: &str) -> Result<(), JsValue> {
     eframe::start_web(id, Box::new(App::default()))
 }

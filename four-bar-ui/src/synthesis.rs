@@ -1,6 +1,6 @@
 use crate::as_values::as_values;
 use csv::{Error, Reader};
-use eframe::egui::*;
+use eframe::egui::{plot::*, *};
 use four_bar::{synthesis::synthesis, FourBar};
 use rayon::spawn;
 use rfd::FileDialog;
@@ -46,7 +46,7 @@ pub(crate) struct Synthesis {
     curve_csv: String,
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
-    conv: Arc<Mutex<Vec<[f64; 2]>>>,
+    conv: Vec<Arc<Mutex<Vec<[f64; 2]>>>>,
     error: String,
 }
 
@@ -70,24 +70,19 @@ impl Default for Synthesis {
 impl Synthesis {
     pub(crate) fn update(&mut self, ui: &mut Ui, four_bar: Arc<Mutex<FourBar>>) {
         ui.heading("Synthesis");
-        let conv = self.conv.clone();
+        let iter = self.conv.iter().enumerate();
         Window::new("Convergence Plot")
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
-                let values = conv.lock().unwrap();
-                plot::Plot::new("conv_canvas")
-                    .line(
-                        plot::Line::new(as_values(&values))
-                            .fill(-1.5)
-                            .name("Best Fitness"),
-                    )
-                    .points(
-                        plot::Points::new(as_values(&values))
-                            .name("Best Fitness")
-                            .stems(0.)
-                            .filled(true),
-                    )
-                    .legend(plot::Legend::default())
+                let mut plot = Plot::new("conv_canvas");
+                for (i, values) in iter {
+                    let values = values.lock().unwrap();
+                    let name = format!("Best Fitness {}", i + 1);
+                    plot = plot
+                        .line(Line::new(as_values(&values)).fill(-1.5).name(&name))
+                        .points(Points::new(as_values(&values)).name(&name).stems(0.));
+                }
+                plot.legend(Legend::default())
                     .allow_drag(false)
                     .allow_zoom(false)
                     .ui(ui);
@@ -155,15 +150,16 @@ impl Synthesis {
     }
 
     fn start_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
-        self.started.store(true, Ordering::Relaxed);
+        let started = Arc::new(AtomicBool::new(true));
         self.timer.store(0, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
-        let started = self.started.clone();
+        self.started = started.clone();
         let progress = self.progress.clone();
         let timer = self.timer.clone();
         let curve = self.curve.clone();
-        let conv = self.conv.clone();
+        let conv = Arc::new(Mutex::new(Vec::new()));
+        self.conv.push(conv.clone());
         spawn(move || {
             let start_time = Instant::now();
             let (ans, _) = synthesis(&curve, gen, pop, |r| {
