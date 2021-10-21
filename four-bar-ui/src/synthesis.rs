@@ -96,8 +96,7 @@ impl Synthesis {
         parameter!("Population: ", self.pop, ui);
         if ui.button("Open CSV").clicked() {
             if let Some(file) = FileDialog::new()
-                .add_filter("Delimiter-Separated Values (CSV)", &["txt", "csv"])
-                .set_directory("~")
+                .add_filter("Delimiter-Separated Values", &["txt", "csv"])
                 .pick_file()
             {
                 if let Ok(curve_csv) = read_to_string(file) {
