@@ -12,4 +12,5 @@ jobs:
           toolchain: stable
       - run: |
           cargo login ${{ secrets.CRATE_IO }}
-          cargo publish
+          cargo publish -p four-bar
+          cargo publish -p four-bar-ui
