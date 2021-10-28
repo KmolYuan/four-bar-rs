@@ -2,7 +2,7 @@
 
 [![dependency status](https://deps.rs/repo/github/KmolYuan/four-bar-rs/status.svg)](https://deps.rs/repo/github/KmolYuan/four-bar-rs)
 
-Four-bar is a simulator, a synthesizing tool for four-bar linkage mechanism.
+Four-bar is a simulator and a synthesizing tool for four-bar linkage mechanism. The GUI program is called `four-bar-ui`.
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>
 
@@ -26,6 +26,8 @@ cargo run
 
 ## Serving WASM in Localhost
 
+Clone this repository first, then run those scripts:
+
 ```bash
 ./setup_web.sh
 ./build_web.sh
@@ -34,4 +36,4 @@ cargo run
 
 ## Library
 
-The library `four-bar` can also install with Cargo.
+The library `four-bar` is also on crates-io, exclude the ui parts.
