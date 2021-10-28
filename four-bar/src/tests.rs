@@ -1,11 +1,11 @@
-use crate::*;
-use indicatif::ProgressBar;
 #[allow(unused_imports)]
 use std::f64::consts::TAU;
 
-#[test]
 #[cfg(feature = "plotters")]
+#[test]
 fn planar() {
+    use crate::*;
+    use indicatif::ProgressBar;
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),
     //     a: 0.,
