@@ -159,11 +159,8 @@ impl Linkage {
         }
         ui.group(|ui| {
             ui.heading("Offset");
-            if Button::new("Reset")
-                .enabled((four_bar.p0.0, four_bar.p0.1, four_bar.a) != (0., 0., 0.))
-                .ui(ui)
-                .clicked()
-            {
+            let not_default = (four_bar.p0.0, four_bar.p0.1, four_bar.a) != (0., 0., 0.);
+            if ui.add_enabled(not_default, Button::new("Reset")).clicked() {
                 four_bar.p0.0 = 0.;
                 four_bar.p0.1 = 0.;
                 four_bar.a = 0.;

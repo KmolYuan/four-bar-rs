@@ -157,11 +157,11 @@ impl Synthesis {
     }
 
     fn start_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
-        let started = Arc::new(AtomicBool::new(true));
-        self.started = started.clone();
+        self.started = Arc::new(AtomicBool::new(true));
         self.timer.store(0, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
+        let started = self.started.clone();
         let progress = self.progress.clone();
         let timer = self.timer.clone();
         let curve = self.curve.clone();

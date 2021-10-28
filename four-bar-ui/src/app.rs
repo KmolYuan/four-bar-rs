@@ -88,7 +88,7 @@ impl epi::App for App {
             SidePanel::left("side panel")
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ScrollArea::auto_sized().show(ui, |ui| self.linkage.panel(ui));
+                    ScrollArea::vertical().show(ui, |ui| self.linkage.panel(ui));
                 });
         }
         self.linkage.plot(ctx);
