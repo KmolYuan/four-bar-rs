@@ -5,10 +5,20 @@
   ],
   "description": "Four🍀bar is a simulator, a synthesizing tool for four-bar linkage mechanism.",
   "version": "0.1.0",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KmolYuan/four-bar-rs"
+  },
   "files": [
     "four_bar_ui_bg.wasm",
     "four_bar_ui.js"
   ],
   "module": "four_bar_ui.js",
-  "sideEffects": false
+  "sideEffects": false,
+  "keywords": [
+    "mechanism",
+    "simulation",
+    "optimization"
+  ]
 }
