@@ -12,6 +12,14 @@ Powered by <https://github.com/emilk/egui>.
 
 ## Native Execution
 
+In Linux, `libxcb` and `libgtk-3` must be installed. (most desktop already provided)
+
+In Windows, [the support of Visual C++](https://docs.microsoft.com/zh-TW/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
+
+Latest release: <https://github.com/KmolYuan/four-bar-rs/releases/latest>
+
+## Native Build
+
 In Linux, you need to install some library:
 
 ```bash
