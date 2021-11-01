@@ -1,6 +1,6 @@
 [package]
 name = "four-bar-ui"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 description = "Four🍀bar is a simulator, a synthesizing tool for four-bar linkage mechanism."
@@ -18,7 +18,7 @@ default = ["persistence"]
 persistence = ["eframe/persistence", "serde", "four-bar/serde"]
 
 [dependencies]
-four-bar = { version = "0.1.0", path = "../four-bar" }
+four-bar = { path = "../four-bar" }
 serde = { version = "1", features = ["derive"], optional = true }
 eframe = "0.15"
 rfd = "0.5"

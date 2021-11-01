@@ -18,7 +18,7 @@ fn path_is_nan(path: &[[f64; 2]]) -> bool {
 fn grashof_transform(v: &[f64]) -> Vec<f64> {
     let mut four = vec![v[0], 1., v[1], v[2]];
     four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    if four[0] + four[3] > four[1] + four[2] {
+    if four[0] + four[3] - four[1] - four[2] >= 0. {
         let l1 = four[0];
         vec![four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
     } else {
@@ -26,7 +26,7 @@ fn grashof_transform(v: &[f64]) -> Vec<f64> {
     }
 }
 
-fn four_bar_from_v(v: &[f64], inv: bool) -> FourBar {
+fn four_bar_v(v: &[f64], inv: bool) -> FourBar {
     FourBar {
         p0: (0., 0.),
         a: 0.,
@@ -128,7 +128,7 @@ impl Planar {
         }
     }
 
-    fn four_bar_from_coeff(
+    fn four_bar_coeff(
         &self,
         v: &[f64],
         inv: bool,
@@ -160,7 +160,7 @@ impl Planar {
         [false, true]
             .into_par_iter()
             .map(|inv| {
-                let fourbar = Mechanism::four_bar(four_bar_from_v(v, inv));
+                let fourbar = Mechanism::four_bar(four_bar_v(v, inv));
                 let curve = fourbar.par_four_bar_loop(0., self.n);
                 (inv, curve)
             })
@@ -186,7 +186,7 @@ impl ObjFunc for Planar {
                 let curve = concatenate![Axis(0), curve, arr2(&[[curve[[0, 0]], curve[[0, 1]]]])];
                 let coeffs = calculate_efd(&curve, self.harmonic);
                 let (coeffs, rot, _, scale) = normalize_efd(&coeffs, true);
-                let four_bar = self.four_bar_from_coeff(&v, inv, rot, scale, locus(&curve));
+                let four_bar = self.four_bar_coeff(&v, inv, rot, scale, locus(&curve));
                 let curve = Mechanism::four_bar(four_bar).par_four_bar_loop(0., self.n * 2);
                 let geo_err = geo_err(&self.curve, &curve);
                 (coeffs - &self.target).mapv(f64::abs).sum() + geo_err * 1e-5
@@ -200,7 +200,7 @@ impl ObjFunc for Planar {
         let curves = self.available_curve(&v);
         if curves.is_empty() {
             println!("WARNING: synthesis failed");
-            return four_bar_from_v(&v, false);
+            return four_bar_v(&v, false);
         }
         let coeffs = curves
             .iter()
@@ -221,7 +221,7 @@ impl ObjFunc for Planar {
         }
         let (inv, curve) = &curves[index];
         let (_, rot, _, scale) = normalize_efd(&coeffs[index], true);
-        self.four_bar_from_coeff(&v, *inv, rot, scale, locus(curve))
+        self.four_bar_coeff(&v, *inv, rot, scale, locus(curve))
     }
 
     fn ub(&self) -> &[f64] {
