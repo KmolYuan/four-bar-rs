@@ -6,6 +6,15 @@ use ndarray::{arr2, concatenate, Array2, Axis};
 use rayon::prelude::*;
 use std::f64::consts::TAU;
 
+fn guide(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let end = curve.len() - 1;
+    let mut curve = Vec::from(curve);
+    if (curve[0][0] - curve[end][0]).abs() > 1e-20 || (curve[0][1] - curve[end][1]).abs() > 1e-20 {
+        curve.push(curve[0]);
+    }
+    curve
+}
+
 fn path_is_nan(path: &[[f64; 2]]) -> bool {
     for c in path {
         if c[0].is_nan() || c[0].is_nan() {
@@ -82,7 +91,8 @@ fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
 
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
-    curve: Vec<[f64; 2]>,
+    /// Target curve.
+    pub curve: Vec<[f64; 2]>,
     /// Target coefficient.
     pub target: Array2<f64>,
     rot: f64,
@@ -97,8 +107,6 @@ pub struct Planar {
 impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize) -> Self {
-        let mut curve = Vec::from(curve);
-        let end = curve.len() - 1;
         // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
@@ -106,11 +114,7 @@ impl Planar {
         ub[4] = TAU;
         lb[4] = 0.;
         // Close loop
-        if (curve[0][0] - curve[end][0]).abs() > 1e-20
-            || (curve[0][1] - curve[end][1]).abs() > 1e-20
-        {
-            curve.push(curve[0]);
-        }
+        let curve = guide(curve);
         let curve_arr = arr2(&curve);
         let coeffs = calculate_efd(&curve_arr, harmonic);
         let (target, rot, _, scale) = normalize_efd(&coeffs, true);

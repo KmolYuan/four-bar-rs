@@ -1,11 +1,11 @@
+use crate::*;
+use indicatif::ProgressBar;
 #[allow(unused_imports)]
 use std::f64::consts::TAU;
 
 #[cfg(feature = "plotters")]
 #[test]
 fn planar() {
-    use crate::*;
-    use indicatif::ProgressBar;
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),
     //     a: 0.,
@@ -55,6 +55,7 @@ fn planar() {
         "Synthesis Test",
         &[
             ("Target", &target, (221, 51, 85)),
+            ("Guided Target", &target, (221, 51, 85)),
             ("Optimized", &path, (118, 182, 222)),
         ],
         "result.svg",
