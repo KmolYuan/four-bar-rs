@@ -45,10 +45,12 @@ fn planar() {
     // let target = LINE;
     let gen = 40;
     let pb = ProgressBar::new(gen);
-    let (ans, history) = synthesis::synthesis(&target, gen, 200, |r| {
+    let s = synthesis::synthesis(&target, gen, 200, |r| {
         pb.set_position(r.gen);
         true
     });
+    let ans = s.result();
+    let reports = s.reports();
     pb.finish();
     let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot::plot_curve(
@@ -60,7 +62,7 @@ fn planar() {
         ],
         "result.svg",
     );
-    plot::plot_history(&history, "history.svg");
+    plot::plot_history(&reports, "history.svg");
 }
 
 #[allow(dead_code)]

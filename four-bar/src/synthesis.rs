@@ -243,7 +243,7 @@ pub fn synthesis(
     gen: u64,
     pop: usize,
     callback: impl FnMut(&Report) -> bool,
-) -> (FourBar, Vec<Report>) {
+) -> Solver<Planar> {
     let planar = Planar::new(curve, 720, 360);
     let s = Solver::solve(
         planar,
@@ -253,5 +253,5 @@ pub fn synthesis(
             .average(true),
         callback,
     );
-    (s.result(), s.reports())
+    s
 }

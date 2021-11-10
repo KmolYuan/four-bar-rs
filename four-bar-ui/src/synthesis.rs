@@ -169,14 +169,14 @@ impl Synthesis {
         self.conv.push(conv.clone());
         spawn(move || {
             let start_time = Instant::now();
-            let (ans, _) = synthesis(&curve, gen, pop, |r| {
+            let s = synthesis(&curve, gen, pop, |r| {
                 conv.lock().unwrap().push([r.gen as f64, r.best_f]);
                 progress.store(r.gen, Ordering::Relaxed);
                 let time = Instant::now() - start_time;
                 timer.store(time.as_secs(), Ordering::Relaxed);
                 started.load(Ordering::Relaxed)
             });
-            *four_bar.lock().unwrap() = ans;
+            *four_bar.lock().unwrap() = s.result();
             started.store(false, Ordering::Relaxed);
         });
     }
