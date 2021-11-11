@@ -9,7 +9,6 @@ const FONT: &str = if cfg!(windows) {
 } else {
     "Nimbus Roman No9 L"
 };
-type Curve<'a> = &'a [(&'a str, &'a [[f64; 2]], (u8, u8, u8))];
 
 /// Plot the synthesis history.
 pub fn plot_history<P>(history: &[Report], path: P)
@@ -55,7 +54,7 @@ where
         ))
         .unwrap()
         .label("Best Fitness")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
+        .legend(|(x, y)| PathElement::new([(x, y), (x + 20, y)], BLUE));
     const GREEN: RGBColor = RGBColor(187, 222, 13);
     chart
         .draw_secondary_series(LineSeries::new(
@@ -64,7 +63,7 @@ where
         ))
         .unwrap()
         .label("Average Fitness")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], GREEN));
+        .legend(|(x, y)| PathElement::new([(x, y), (x + 20, y)], GREEN));
     chart
         .configure_series_labels()
         .label_font((FONT, 30))
@@ -75,13 +74,11 @@ where
 }
 
 /// Plot 2D curve.
-pub fn plot_curve<P>(title: &str, curves: Curve, path: P)
+pub fn plot_curve<P>(title: &str, curves: &[(&str, &[[f64; 2]])], path: P)
 where
     P: AsRef<Path>,
 {
-    let iter = curves
-        .iter()
-        .flat_map(|(_, c, _)| c.iter().flat_map(|c| *c));
+    let iter = curves.iter().flat_map(|(_, c)| c.iter().flat_map(|c| *c));
     let (p_max, p_min) = find_extreme(iter);
     let root = SVGBackend::new(&path, (1000, 1000)).into_drawing_area();
     root.fill(&WHITE).unwrap();
@@ -100,26 +97,29 @@ where
         .axis_desc_style((FONT, 20))
         .draw()
         .unwrap();
-    for (i, &(name, curve, (r, g, b))) in curves.iter().enumerate() {
-        let color = RGBColor(r, g, b);
+    for (i, &(name, curve)) in curves.iter().enumerate() {
+        let color = Palette99::pick(i);
+        let line = color.stroke_width(2);
         chart
             .draw_series(LineSeries::new(
                 curve.iter().map(|&[x, y]| (x, y)),
-                color.stroke_width(2),
+                line.clone(),
             ))
             .unwrap()
             .label(name)
-            .legend(move |(x, y)| {
-                PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2))
-            });
+            .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], line.clone()));
+        let step = if curve.len() > 20 {
+            curve.len() / 20
+        } else {
+            1
+        };
         chart
-            .draw_series(curve.iter().step_by(6).map(|&[x, y]| {
-                if i % 2 == 1 {
-                    Circle::new((x, y), 5, color.stroke_width(1)).into_dyn()
-                } else {
-                    TriangleMarker::new((x, y), 7, color.stroke_width(1)).into_dyn()
-                }
-            }))
+            .draw_series(
+                curve
+                    .iter()
+                    .step_by(step)
+                    .map(|&[x, y]| TriangleMarker::new((x, y), 7, &color).into_dyn()),
+            )
             .unwrap();
     }
     chart

@@ -245,13 +245,12 @@ pub fn synthesis(
     callback: impl FnMut(&Report) -> bool,
 ) -> Solver<Planar> {
     let planar = Planar::new(curve, 720, 360);
-    let s = Solver::solve(
+    Solver::solve(
         planar,
         De::default()
             .task(Task::MaxGen(gen))
             .pop_num(pop)
             .average(true),
         callback,
-    );
-    s
+    )
 }

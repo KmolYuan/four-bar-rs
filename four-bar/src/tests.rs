@@ -51,14 +51,15 @@ fn planar() {
     });
     let ans = s.result();
     let reports = s.reports();
+    let planar = s.func();
     pb.finish();
     let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot::plot_curve(
         "Synthesis Test",
         &[
-            ("Target", &target, (221, 51, 85)),
-            ("Guided Target", &target, (221, 51, 85)),
-            ("Optimized", &path, (118, 182, 222)),
+            ("Target", &target),
+            ("Guided Target", &planar.curve),
+            ("Optimized", &path),
         ],
         "result.svg",
     );
