@@ -40,8 +40,8 @@ fn planar() {
     // let target = YU1;
     // let target = HAND;
     // let target = OPEN_CURVE1;
-    // let target = TRIANGLE3;
-    let target = CRUNODE;
+    let target = TRIANGLE2;
+    // let target = CRUNODE;
     // let target = LINE;
     let gen = 40;
     let pb = ProgressBar::new(gen);
@@ -57,8 +57,8 @@ fn planar() {
     plot::plot_curve(
         "Synthesis Test",
         &[
-            ("Target", &target),
             ("Guided Target", &planar.curve),
+            ("Target", &target),
             ("Optimized", &path),
         ],
         "result.svg",
