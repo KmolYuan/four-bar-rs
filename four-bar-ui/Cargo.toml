@@ -17,14 +17,13 @@ crate-type = ["cdylib", "rlib"]
 four-bar = { path = "../four-bar", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 eframe = { version = "0.15", features = ["persistence"] }
-rfd = "0.5"
 async-std = "1.9"
 ron = "0.7"
 # use "ehttp" for client side service
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 csv = "1.1"
-rayon = "1.5"
+rfd = "0.5"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

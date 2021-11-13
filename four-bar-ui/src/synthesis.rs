@@ -2,8 +2,6 @@ use crate::as_values::as_values;
 use csv::{Error, Reader};
 use eframe::egui::{plot::*, *};
 use four_bar::{synthesis::synthesis, FourBar};
-use rayon::spawn;
-use rfd::{FileDialog, MessageDialog};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::read_to_string,
@@ -86,14 +84,14 @@ impl Synthesis {
         parameter!("Generation: ", self.gen, ui);
         parameter!("Population: ", self.pop, ui);
         if ui.button("Open CSV").clicked() {
-            if let Some(file) = FileDialog::new()
+            if let Some(file) = rfd::FileDialog::new()
                 .add_filter("Delimiter-Separated Values", &["txt", "csv"])
                 .pick_file()
             {
                 if let Ok(curve_csv) = read_to_string(file) {
                     self.curve_csv = curve_csv;
                 } else {
-                    MessageDialog::new()
+                    rfd::MessageDialog::new()
                         .set_title("Read Error")
                         .set_description("Invalid text file.")
                         .show();
@@ -161,7 +159,7 @@ impl Synthesis {
         let curve = self.curve.clone();
         let conv = Arc::new(Mutex::new(Vec::new()));
         self.conv.push(conv.clone());
-        spawn(move || {
+        std::thread::spawn(move || {
             let start_time = Instant::now();
             let s = synthesis(&curve, gen, pop, |r| {
                 conv.lock().unwrap().push([r.gen as f64, r.best_f]);
