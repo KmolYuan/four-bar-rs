@@ -44,17 +44,16 @@
     import * as wasm from "./pkg/four_bar_ui.js";
 
     function saveFile(s, file_name) {
-        const b = new Blob([s], {type: "text/plain"});
         const a = document.createElement("a");
         a.download = file_name;
-        a.href = window.URL.createObjectURL(b);
+        a.href = window.URL.createObjectURL(new Blob([s], {type: "text/plain"}));
         a.click();
     }
 
     function loadFile(arr) {
         const input = document.createElement("input");
         input.type = "file";
-        input.addEventListener('change', function () {
+        input.addEventListener("change", function () {
             if (this.files.length === 0)
                 return;
             const reader = new FileReader();
