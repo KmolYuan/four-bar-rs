@@ -119,6 +119,6 @@ impl epi::App for App {
     }
 
     fn name(&self) -> &str {
-        "Four🍀bar"
+        "Four bar"
     }
 }
