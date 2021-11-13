@@ -1,6 +1,8 @@
 .idea/
 target/
-/docs/pkg/*
+/docs/*
+!/docs/favicon.png
+!/docs/index.html
 Cargo.lock
 *.svg
 /four-bar-ui/src/icon.rs
