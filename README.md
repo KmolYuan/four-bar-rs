@@ -2,7 +2,7 @@
 
 [![dependency status](https://deps.rs/repo/github/KmolYuan/four-bar-rs/status.svg)](https://deps.rs/repo/github/KmolYuan/four-bar-rs)
 
-Four-bar is a simulator and a synthesizing tool for four-bar linkage mechanism. The GUI program is called `four-bar-ui`.
+Four-bar is a simulator and a synthesizing tool for four-bar linkage mechanism. The GUI program is called `four-bar-ui`.  The library `four-bar` is also on crates-io, exclude the ui parts.
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>
 
@@ -10,13 +10,13 @@ Native icon: <https://icons8.com>
 
 Powered by <https://github.com/emilk/egui>.
 
-## Native Execution
+## Native Executable
 
-In Linux, `libxcb` and `libgtk-3` must be installed. (most desktop already provided)
+In Linux, `libxcb` and `libgtk-3` are required. (most desktop already provided)
 
 In Windows, [the support of Visual C++](https://docs.microsoft.com/zh-TW/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
 
-Latest release: <https://github.com/KmolYuan/four-bar-rs/releases/latest>
+Download: <https://github.com/KmolYuan/four-bar-rs/releases/latest>
 
 ## Native Build
 
@@ -34,7 +34,7 @@ cargo run
 
 ## Serving WASM in Localhost
 
-Clone this repository first, then run those scripts:
+Run those scripts from the repository:
 
 ```bash
 ./setup_web.sh
@@ -42,6 +42,4 @@ Clone this repository first, then run those scripts:
 ./start_server.sh
 ```
 
-## Library
-
-The library `four-bar` is also on crates-io, exclude the ui parts.
+The client-side application is deployed in the `docs` directory (entire files).
