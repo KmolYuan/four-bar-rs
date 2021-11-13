@@ -41,9 +41,9 @@ impl Default for App {
 
 impl App {
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn with_hook(save_fn: js_sys::Function) -> Self {
+    pub(crate) fn with_hook(save_fn: js_sys::Function, load_fn: js_sys::Function) -> Self {
         Self {
-            linkage: Linkage::with_hook(save_fn),
+            linkage: Linkage::with_hook(save_fn, load_fn),
             ..Self::default()
         }
     }

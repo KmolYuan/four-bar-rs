@@ -3,7 +3,7 @@ use crate::as_values::as_values;
 use crate::synthesis::Synthesis;
 use eframe::egui::{plot::*, *};
 use four_bar::{FourBar, Mechanism};
-use ron::to_string;
+use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::{PI, TAU},
@@ -91,6 +91,12 @@ pub(crate) struct Linkage {
     #[cfg(target_arch = "wasm32")]
     #[serde(skip)]
     save_fn: js_sys::Function,
+    #[cfg(target_arch = "wasm32")]
+    #[serde(skip)]
+    load_fn: js_sys::Function,
+    #[cfg(target_arch = "wasm32")]
+    #[serde(skip)]
+    load_str: js_sys::Array,
 }
 
 impl Default for Linkage {
@@ -102,7 +108,11 @@ impl Default for Linkage {
             #[cfg(not(target_arch = "wasm32"))]
             synthesis: Default::default(),
             #[cfg(target_arch = "wasm32")]
-            save_fn: js_sys::Function::new_no_args("dummy"),
+            save_fn: js_sys::Function::new_no_args(""),
+            #[cfg(target_arch = "wasm32")]
+            load_fn: js_sys::Function::new_no_args(""),
+            #[cfg(target_arch = "wasm32")]
+            load_str: js_sys::Array::new(),
         }
     }
 }
@@ -135,9 +145,10 @@ struct Driver {
 
 impl Linkage {
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn with_hook(save_fn: js_sys::Function) -> Self {
+    pub(crate) fn with_hook(save_fn: js_sys::Function, load_fn: js_sys::Function) -> Self {
         Self {
             save_fn,
+            load_fn,
             ..Self::default()
         }
     }
@@ -165,12 +176,42 @@ impl Linkage {
                         std::fs::write(file_name, s).unwrap_or_default();
                     }
                 }
+                if ui.button("🖴 Load").clicked() {
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        let this = wasm_bindgen::JsValue::NULL;
+                        self.load_fn.call1(&this, &self.load_str).unwrap();
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let s = if let Some(file_name) = rfd::FileDialog::new()
+                            .add_filter("Rusty Object Notation", &["ron"])
+                            .pick_file()
+                        {
+                            std::fs::read_to_string(file_name).unwrap_or_default()
+                        } else {
+                            String::new()
+                        };
+                        if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
+                            *self.four_bar.lock().unwrap() = four_bar;
+                        }
+                    }
+                }
             });
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
                 link!("Value interval: ", self.config.interval, 0.01, ui);
             });
         });
+        #[cfg(target_arch = "wasm32")]
+        if self.load_str.length() > 0 {
+            use js_sys::{Array, JsString};
+            let s = String::from(JsString::from(self.load_str.get(0)));
+            if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
+                *self.four_bar.lock().unwrap() = four_bar;
+            }
+            self.load_str = Array::new();
+        }
         ui.group(|ui| {
             ui.heading("Dimension");
             reset_button(ui, self);
