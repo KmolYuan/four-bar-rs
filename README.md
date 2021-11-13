@@ -12,7 +12,7 @@ Powered by <https://github.com/emilk/egui>.
 
 ## Native Executable
 
-In Linux, `libxcb` and `libgtk-3` are required. (most desktop already provided)
+In Linux, `libxcb` and `libgtk-3` are required. (most desktops are already provided)
 
 In Windows, [the support of Visual C++](https://docs.microsoft.com/zh-TW/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
 
