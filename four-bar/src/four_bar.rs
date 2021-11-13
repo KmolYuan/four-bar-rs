@@ -4,8 +4,8 @@ use std::{
 };
 
 /// Data type of the four-bar mechanism.
-#[derive(Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, PartialEq)]
 pub struct FourBar {
     /// Origin.
     pub p0: (f64, f64),

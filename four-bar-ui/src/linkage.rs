@@ -3,6 +3,8 @@ use crate::as_values::as_values;
 use crate::synthesis::Synthesis;
 use eframe::egui::{plot::*, *};
 use four_bar::{FourBar, Mechanism};
+use ron::to_string;
+use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::{PI, TAU},
     sync::{Arc, Mutex},
@@ -78,18 +80,31 @@ macro_rules! draw_path {
 }
 
 /// Linkage data.
-#[cfg_attr(
-    feature = "persistence",
-    derive(serde::Deserialize, serde::Serialize),
-    serde(default)
-)]
-#[derive(Default)]
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
 pub(crate) struct Linkage {
     config: Config,
     driver: Driver,
     four_bar: Arc<Mutex<FourBar>>,
     #[cfg(not(target_arch = "wasm32"))]
     synthesis: Synthesis,
+    #[cfg(target_arch = "wasm32")]
+    #[serde(skip)]
+    save_fn: js_sys::Function,
+}
+
+impl Default for Linkage {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            driver: Default::default(),
+            four_bar: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            synthesis: Default::default(),
+            #[cfg(target_arch = "wasm32")]
+            save_fn: js_sys::Function::new_no_args("dummy"),
+        }
+    }
 }
 
 impl PartialEq for Linkage {
@@ -99,12 +114,8 @@ impl PartialEq for Linkage {
     }
 }
 
-#[cfg_attr(
-    feature = "persistence",
-    derive(serde::Deserialize, serde::Serialize),
-    serde(default)
-)]
-#[derive(PartialEq)]
+#[derive(Deserialize, Serialize, PartialEq)]
+#[serde(default)]
 struct Config {
     interval: f64,
 }
@@ -115,22 +126,50 @@ impl Default for Config {
     }
 }
 
-#[cfg_attr(
-    feature = "persistence",
-    derive(serde::Deserialize, serde::Serialize),
-    serde(default)
-)]
-#[derive(Default, PartialEq)]
+#[derive(Deserialize, Serialize, Default, PartialEq)]
+#[serde(default)]
 struct Driver {
     drive: f64,
     speed: f64,
 }
 
 impl Linkage {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn with_hook(save_fn: js_sys::Function) -> Self {
+        Self {
+            save_fn,
+            ..Self::default()
+        }
+    }
+
     pub(crate) fn panel(&mut self, ui: &mut Ui) {
-        ui.collapsing("Options", |ui| {
-            reset_button(ui, &mut self.config);
-            link!("Value interval: ", self.config.interval, 0.01, ui);
+        ui.group(|ui| {
+            ui.heading("Save and Load");
+            ui.horizontal(|ui| {
+                if ui.button("💾 Save").clicked() {
+                    let s = to_string(&*self.four_bar.lock().unwrap()).unwrap();
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        use js_sys::JsString;
+                        let this = wasm_bindgen::JsValue::NULL;
+                        self.save_fn
+                            .call2(&this, &JsString::from(s), &JsString::from("four_bar.ron"))
+                            .unwrap();
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if let Some(file_name) = rfd::FileDialog::new()
+                        .set_file_name("four_bar.ron")
+                        .add_filter("Rusty Object Notation", &["ron"])
+                        .save_file()
+                    {
+                        std::fs::write(file_name, s).unwrap_or_default();
+                    }
+                }
+            });
+            ui.collapsing("Options", |ui| {
+                reset_button(ui, &mut self.config);
+                link!("Value interval: ", self.config.interval, 0.01, ui);
+            });
         });
         ui.group(|ui| {
             ui.heading("Dimension");

@@ -18,6 +18,6 @@ mod synthesis;
 /// You can add more callbacks like this if you want to call in to your code.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub fn start(id: &str) -> Result<(), JsValue> {
-    eframe::start_web(id, Box::new(App::default()))
+pub fn start(id: &str, save_fn: &js_sys::Function) -> Result<(), JsValue> {
+    eframe::start_web(id, Box::new(App::with_hook(save_fn.clone())))
 }

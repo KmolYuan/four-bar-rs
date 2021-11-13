@@ -203,7 +203,7 @@ impl ObjFunc for Planar {
         let v = grashof_transform(v);
         let curves = self.available_curve(&v);
         if curves.is_empty() {
-            println!("WARNING: synthesis failed");
+            eprintln!("WARNING: synthesis failed");
             return four_bar_v(&v, false);
         }
         let coeffs = curves

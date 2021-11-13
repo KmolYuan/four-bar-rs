@@ -3,7 +3,8 @@ use csv::{Error, Reader};
 use eframe::egui::{plot::*, *};
 use four_bar::{synthesis::synthesis, FourBar};
 use rayon::spawn;
-use rfd::FileDialog;
+use rfd::{FileDialog, MessageDialog};
+use serde::{Deserialize, Serialize};
 use std::{
     fs::read_to_string,
     io::Cursor,
@@ -32,11 +33,8 @@ fn read_csv(s: &str) -> Result<Vec<[f64; 2]>, Error> {
         .collect()
 }
 
-#[cfg_attr(
-    feature = "persistence",
-    derive(serde::Deserialize, serde::Serialize),
-    serde(default)
-)]
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
 pub(crate) struct Synthesis {
     started: Arc<AtomicBool>,
     progress: Arc<AtomicU64>,
@@ -47,7 +45,6 @@ pub(crate) struct Synthesis {
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
     conv: Vec<Arc<Mutex<Vec<[f64; 2]>>>>,
-    error: String,
 }
 
 impl Default for Synthesis {
@@ -62,7 +59,6 @@ impl Default for Synthesis {
             curve: Default::default(),
             conv_open: false,
             conv: Default::default(),
-            error: String::new(),
         }
     }
 }
@@ -97,26 +93,24 @@ impl Synthesis {
                 if let Ok(curve_csv) = read_to_string(file) {
                     self.curve_csv = curve_csv;
                 } else {
-                    self.error = "Invalid text file.".to_string();
+                    MessageDialog::new()
+                        .set_title("Read Error")
+                        .set_description("Invalid text file.")
+                        .show();
                 }
             }
         }
-        CollapsingHeader::new("Curve Input (CSV)")
-            .default_open(true)
-            .show(ui, |ui| {
-                if ui.text_edit_multiline(&mut self.curve_csv).changed() {
-                    self.error.clear();
-                }
-            });
+        ui.collapsing("Curve Input (CSV)", |ui| {
+            ui.text_edit_multiline(&mut self.curve_csv)
+        });
         if !self.curve_csv.is_empty() {
             if let Ok(curve) = read_csv(&self.curve_csv) {
                 self.curve = Arc::new(curve);
             } else {
-                self.error = "The provided curve is invalid.".to_string();
+                Label::new("The provided curve is invalid.\nUses latest valid curve.")
+                    .text_color(Color32::RED)
+                    .ui(ui);
             }
-        }
-        if !self.error.is_empty() {
-            Label::new(&self.error).text_color(Color32::RED).ui(ui);
         }
         ui.horizontal(|ui| {
             let started = self.started.load(Ordering::Relaxed);

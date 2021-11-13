@@ -1,5 +1,6 @@
 use crate::linkage::Linkage;
 use eframe::{egui::*, epi};
+use serde::{Deserialize, Serialize};
 
 macro_rules! switch {
     ($ui:expr, $attr:expr, $d_icon:literal, $d_tip:literal, $e_icon:literal, $e_tip:literal) => {
@@ -16,11 +17,8 @@ macro_rules! switch {
 }
 
 /// Main state.
-#[cfg_attr(
-    feature = "persistence",
-    derive(serde::Deserialize, serde::Serialize),
-    serde(default)
-)]
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
 pub struct App {
     welcome: bool,
     menu_up: bool,
@@ -42,6 +40,14 @@ impl Default for App {
 }
 
 impl App {
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn with_hook(save_fn: js_sys::Function) -> Self {
+        Self {
+            linkage: Linkage::with_hook(save_fn),
+            ..Self::default()
+        }
+    }
+
     fn menu(&mut self, ctx: &CtxRef, ui: &mut Ui) {
         if ctx.style().visuals.dark_mode {
             if ui.small_button("🔆").on_hover_text("Light").clicked() {
@@ -108,7 +114,6 @@ impl epi::App for App {
     }
 
     /// Called by the frame work to save state before shutdown.
-    #[cfg(feature = "persistence")]
     fn save(&mut self, storage: &mut dyn epi::Storage) {
         epi::set_value(storage, epi::APP_KEY, self);
     }
