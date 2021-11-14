@@ -62,6 +62,13 @@ impl App {
         switch!(ui, self.side_panel, "⬅", "Fold", "➡", "Expand");
         switch!(ui, self.menu_up, "⬇", "menu go down", "⬆", "menu go up");
         ui.with_layout(Layout::right_to_left(), |ui| {
+            if ui.small_button("").on_hover_text("Repository").clicked() {
+                ctx.output().open_url(env!("CARGO_PKG_REPOSITORY"));
+            }
+            if ui.small_button("⮋").on_hover_text("Release").clicked() {
+                ctx.output()
+                    .open_url(concat!(env!("CARGO_PKG_REPOSITORY"), "/releases/latest"));
+            }
             if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
                 self.welcome = !self.welcome;
             }
