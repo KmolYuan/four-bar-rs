@@ -1,6 +1,9 @@
 use crate::as_values::as_values;
 use csv::{Error, Reader};
-use eframe::egui::{plot::*, *};
+use eframe::egui::{
+    plot::{Legend, Line, Plot, Points},
+    Color32, DragValue, Label, ProgressBar, Ui, Widget, Window,
+};
 use four_bar::{synthesis::synthesis, FourBar};
 use serde::{Deserialize, Serialize};
 use std::{

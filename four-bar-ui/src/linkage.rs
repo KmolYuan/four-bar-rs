@@ -1,7 +1,10 @@
 use crate::as_values::as_values;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::synthesis::Synthesis;
-use eframe::egui::{plot::*, *};
+use eframe::egui::{
+    plot::{Legend, Line, Plot, Points, Polygon},
+    reset_button, Button, CentralPanel, Color32, CtxRef, DragValue, Ui, Widget,
+};
 use four_bar::{FourBar, Mechanism};
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
@@ -155,19 +158,19 @@ impl Linkage {
 
     pub(crate) fn panel(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
-            ui.heading("Save and Load");
+            ui.heading("File");
             ui.horizontal(|ui| {
+                #[cfg(target_arch = "wasm32")]
+                if ui.button("💾 Download").clicked() {
+                    use js_sys::JsString;
+                    let s = JsString::from(to_string(&*self.four_bar.lock().unwrap()).unwrap());
+                    let path = JsString::from("four_bar.ron");
+                    let this = wasm_bindgen::JsValue::NULL;
+                    self.save_fn.call2(&this, &s, &path).unwrap();
+                }
+                #[cfg(not(target_arch = "wasm32"))]
                 if ui.button("💾 Save").clicked() {
                     let s = to_string(&*self.four_bar.lock().unwrap()).unwrap();
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        use js_sys::JsString;
-                        let this = wasm_bindgen::JsValue::NULL;
-                        self.save_fn
-                            .call2(&this, &JsString::from(s), &JsString::from("four_bar.ron"))
-                            .unwrap();
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
                     if let Some(file_name) = rfd::FileDialog::new()
                         .set_file_name("four_bar.ron")
                         .add_filter("Rusty Object Notation", &["ron"])
@@ -176,25 +179,23 @@ impl Linkage {
                         std::fs::write(file_name, s).unwrap_or_default();
                     }
                 }
-                if ui.button("🖴 Load").clicked() {
-                    #[cfg(target_arch = "wasm32")]
+                #[cfg(target_arch = "wasm32")]
+                if ui.button("🖴 Upload").clicked() {
+                    let this = wasm_bindgen::JsValue::NULL;
+                    self.load_fn.call1(&this, &self.load_str).unwrap();
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                if ui.button("🖴 Open").clicked() {
+                    let s = if let Some(file_name) = rfd::FileDialog::new()
+                        .add_filter("Rusty Object Notation", &["ron"])
+                        .pick_file()
                     {
-                        let this = wasm_bindgen::JsValue::NULL;
-                        self.load_fn.call1(&this, &self.load_str).unwrap();
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        let s = if let Some(file_name) = rfd::FileDialog::new()
-                            .add_filter("Rusty Object Notation", &["ron"])
-                            .pick_file()
-                        {
-                            std::fs::read_to_string(file_name).unwrap_or_default()
-                        } else {
-                            String::new()
-                        };
-                        if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
-                            *self.four_bar.lock().unwrap() = four_bar;
-                        }
+                        std::fs::read_to_string(file_name).unwrap_or_default()
+                    } else {
+                        String::new()
+                    };
+                    if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
+                        *self.four_bar.lock().unwrap() = four_bar;
                     }
                 }
             });
@@ -205,12 +206,11 @@ impl Linkage {
         });
         #[cfg(target_arch = "wasm32")]
         if self.load_str.length() > 0 {
-            use js_sys::{Array, JsString};
-            let s = String::from(JsString::from(self.load_str.get(0)));
+            let s = String::from(js_sys::JsString::from(self.load_str.get(0)));
             if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
                 *self.four_bar.lock().unwrap() = four_bar;
             }
-            self.load_str = Array::new();
+            self.load_str = js_sys::Array::new();
         }
         ui.group(|ui| {
             ui.heading("Dimension");
