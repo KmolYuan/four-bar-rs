@@ -14,11 +14,7 @@ mod linkage;
 #[cfg(not(target_arch = "wasm32"))]
 mod synthesis;
 
-/// This is the entry-point for all the web-assembly.
-///
-/// This is called once from the HTML.
-/// It loads the app, installs some callbacks, then returns.
-/// You can add more callbacks like this if you want to call in to your code.
+/// WebAssembly entry point.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub fn start(id: &str, save_fn: &Function, load_fn: &Function) -> Result<(), JsValue> {

@@ -1,20 +1,16 @@
-use four_bar_ui::{
-    icon::{HEIGHT, ICON, WIDTH},
-    App,
-};
+use eframe::{epi::IconData, NativeOptions};
+use four_bar_ui::{icon, App};
 
 /// Native entry point.
-fn main() {
+fn main() -> ! {
     let app = Box::new(App::default());
-    eframe::run_native(
-        app,
-        eframe::NativeOptions {
-            icon_data: Some(eframe::epi::IconData {
-                rgba: Vec::from(ICON),
-                width: WIDTH,
-                height: HEIGHT,
-            }),
-            ..Default::default()
-        },
-    );
+    let opt = NativeOptions {
+        icon_data: Some(IconData {
+            rgba: Vec::from(icon::ICON),
+            width: icon::WIDTH,
+            height: icon::HEIGHT,
+        }),
+        ..Default::default()
+    };
+    eframe::run_native(app, opt)
 }

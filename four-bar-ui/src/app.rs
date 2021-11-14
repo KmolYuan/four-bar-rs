@@ -1,5 +1,8 @@
 use crate::linkage::Linkage;
-use eframe::{egui::*, epi};
+use eframe::{
+    egui::{CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window},
+    epi,
+};
 use serde::{Deserialize, Serialize};
 
 macro_rules! switch {
@@ -81,8 +84,6 @@ impl App {
 }
 
 impl epi::App for App {
-    /// Called each time the UI needs repainting, which may be many times per second.
-    /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &CtxRef, _frame: &mut epi::Frame) {
         if self.menu_up {
             TopBottomPanel::top("menu")
@@ -98,7 +99,7 @@ impl epi::App for App {
                 });
         }
         self.linkage.plot(ctx);
-        // Welcome message
+        // Welcome message (shown in central area)
         Window::new("Welcome to Four🍀bar!")
             .open(&mut self.welcome)
             .collapsible(false)
@@ -113,7 +114,6 @@ impl epi::App for App {
             });
     }
 
-    /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn epi::Storage) {
         epi::set_value(storage, epi::APP_KEY, self);
     }
