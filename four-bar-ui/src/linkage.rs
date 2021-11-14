@@ -161,7 +161,7 @@ impl Linkage {
             ui.heading("File");
             ui.horizontal(|ui| {
                 #[cfg(target_arch = "wasm32")]
-                if ui.button("💾 Download").clicked() {
+                if ui.button("💾 Save").clicked() {
                     use js_sys::JsString;
                     let s = JsString::from(to_string(&*self.four_bar.lock().unwrap()).unwrap());
                     let path = JsString::from("four_bar.ron");
@@ -180,7 +180,7 @@ impl Linkage {
                     }
                 }
                 #[cfg(target_arch = "wasm32")]
-                if ui.button("🖴 Upload").clicked() {
+                if ui.button("🖴 Open").clicked() {
                     let this = wasm_bindgen::JsValue::NULL;
                     self.load_fn.call1(&this, &self.load_str).unwrap();
                 }
