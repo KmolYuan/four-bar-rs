@@ -43,25 +43,28 @@
 <script type="module">
     import * as wasm from "./pkg/four_bar_ui.js";
 
+    // Module level references
+    const a = document.createElement("a");
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".ron";
+    const reader = new FileReader();
+    input.addEventListener("change", function () {
+        if (this.files.length === 0)
+            return;
+        reader.readAsText(this.files[0]);
+    });
+
     function saveFile(s, file_name) {
-        const a = document.createElement("a");
         a.download = file_name;
-        a.href = window.URL.createObjectURL(new Blob([s], {type: "text/plain"}));
+        a.href = window.URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
         a.click();
     }
 
     function loadFile(arr) {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.addEventListener("change", function () {
-            if (this.files.length === 0)
-                return;
-            const reader = new FileReader();
-            reader.onload = e => {
-                arr.push(e.target.result);
-            };
-            reader.readAsText(this.files[0]);
-        });
+        reader.onload = e => {
+            arr.push(e.target.result);
+        };
         input.click();
     }
 

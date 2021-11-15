@@ -206,15 +206,26 @@ impl Linkage {
         });
         #[cfg(target_arch = "wasm32")]
         if self.load_str.length() > 0 {
-            let s = String::from(js_sys::JsString::from(self.load_str.get(0)));
+            let s = String::from(js_sys::JsString::from(self.load_str.pop()));
             if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
                 *self.four_bar.lock().unwrap() = four_bar;
             }
-            self.load_str = js_sys::Array::new();
         }
         ui.group(|ui| {
             ui.heading("Dimension");
+            #[cfg(not(target_arch = "wasm32"))]
             reset_button(ui, self);
+            #[cfg(target_arch = "wasm32")]
+            if ui
+                .add_enabled(*self != Self::default(), Button::new("Reset"))
+                .clicked()
+            {
+                *self = Self {
+                    save_fn: self.save_fn.clone(),
+                    load_fn: self.load_fn.clone(),
+                    ..Self::default()
+                }
+            }
             self.parameter(ui);
         });
         ui.group(|ui| {
