@@ -244,17 +244,15 @@ impl Linkage {
         let interval = self.config.interval;
         let mut four_bar = self.four_bar.lock().unwrap();
         if ui.button("Normalize").clicked() {
-            four_bar.reset();
-            let l1 = four_bar.l1;
-            *four_bar /= l1;
+            four_bar.normalize();
         }
         ui.group(|ui| {
             ui.heading("Offset");
-            let not_default = (four_bar.p0.0, four_bar.p0.1, four_bar.a) != (0., 0., 0.);
-            if ui.add_enabled(not_default, Button::new("Reset")).clicked() {
-                four_bar.p0.0 = 0.;
-                four_bar.p0.1 = 0.;
-                four_bar.a = 0.;
+            if ui
+                .add_enabled(!four_bar.is_aligned(), Button::new("Reset"))
+                .clicked()
+            {
+                four_bar.align();
             }
             unit!("X Offset: ", four_bar.p0.0, interval, ui);
             unit!("Y Offset: ", four_bar.p0.1, interval, ui);

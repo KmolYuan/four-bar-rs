@@ -45,10 +45,24 @@ impl Default for FourBar {
 }
 
 impl FourBar {
+    /// Return true if the linkage has no offset and offset angle.
+    #[inline(always)]
+    pub fn is_aligned(&self) -> bool {
+        (self.p0, self.a) == ((0., 0.), 0.)
+    }
+
     /// Remove the origin offset and the offset angle.
-    pub fn reset(&mut self) {
+    #[inline(always)]
+    pub fn align(&mut self) {
         self.p0 = (0., 0.);
         self.a = 0.;
+    }
+
+    /// Transform into normalized four-bar linkage.
+    #[inline(always)]
+    pub fn normalize(&mut self) {
+        self.align();
+        *self /= self.l1;
     }
 }
 
