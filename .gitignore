@@ -1,7 +1,6 @@
 .idea/
 target/
 /docs/*
-!/docs/favicon.png
 !/docs/index.html
 Cargo.lock
 *.svg

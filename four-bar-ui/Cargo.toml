@@ -14,7 +14,7 @@ categories = ["algorithms"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-four-bar = { path = "../four-bar", features = ["serde"] }
+four-bar = { version = "0.2", path = "../four-bar", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 eframe = { version = "0.15", features = ["persistence"] }
 async-std = "1.9"

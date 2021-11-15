@@ -7,7 +7,7 @@ fn main() {
 fn make_favicon() {
     use image::{load_from_memory_with_format, DynamicImage, ImageFormat};
     use std::fs::write;
-    const ICON: &[u8] = include_bytes!("../docs/favicon.png");
+    const ICON: &[u8] = include_bytes!("./src/assets/favicon.png");
     let buf = if let DynamicImage::ImageRgba8(buf) =
         load_from_memory_with_format(ICON, ImageFormat::Png).unwrap()
     {
