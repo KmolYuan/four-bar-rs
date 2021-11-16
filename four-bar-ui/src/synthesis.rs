@@ -1,5 +1,4 @@
-use crate::as_values::as_values;
-use csv::{Error, Reader};
+use crate::{as_values::as_values, csv_io::read_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
     Color32, DragValue, Label, ProgressBar, Ui, Widget, Window,
@@ -8,7 +7,6 @@ use four_bar::{synthesis::synthesis, FourBar};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::read_to_string,
-    io::Cursor,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
@@ -26,12 +24,6 @@ macro_rules! parameter {
             .speed(1)
             .ui($ui);
     };
-}
-
-fn read_csv(s: &str) -> Result<Vec<[f64; 2]>, Error> {
-    Reader::from_reader(Cursor::new(s))
-        .deserialize::<[f64; 2]>()
-        .collect()
 }
 
 #[derive(Deserialize, Serialize)]

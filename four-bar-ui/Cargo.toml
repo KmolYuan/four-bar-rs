@@ -19,10 +19,10 @@ serde = { version = "1", features = ["derive"] }
 eframe = { version = "0.15", features = ["persistence"] }
 async-std = "1.9"
 ron = "0.7"
+csv = "1.1"
 # use "ehttp" for client side service
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-csv = "1.1"
 rfd = "0.5"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

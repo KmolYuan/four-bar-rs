@@ -47,7 +47,6 @@
     const a = document.createElement("a");
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".ron";
     const reader = new FileReader();
     input.addEventListener("change", function () {
         if (this.files.length === 0)
@@ -61,10 +60,11 @@
         a.click();
     }
 
-    function loadFile(arr) {
+    function loadFile(arr, format) {
         reader.onload = e => {
             arr.push(e.target.result);
         };
+        input.accept = format;
         input.click();
     }
 

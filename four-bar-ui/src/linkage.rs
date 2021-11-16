@@ -1,4 +1,5 @@
 use crate::as_values::as_values;
+use crate::csv_io::write_csv;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::synthesis::Synthesis;
 use eframe::egui::{
@@ -62,6 +63,16 @@ macro_rules! angle {
     };
 }
 
+macro_rules! num {
+    ($label:literal, $attr:expr, $inter:expr, $min:expr, $ui:ident) => {
+        DragValue::new(&mut $attr)
+            .prefix($label)
+            .clamp_range($min..=9999)
+            .speed($inter)
+            .ui($ui);
+    };
+}
+
 macro_rules! draw_link {
     ($a:expr, $b:expr) => {
         Line::new(as_values(&[$a, $b]))
@@ -82,6 +93,13 @@ macro_rules! draw_path {
     };
 }
 
+#[derive(Deserialize, Serialize, PartialEq)]
+enum Pivot {
+    Crank,
+    Follower,
+    Coupler,
+}
+
 /// Linkage data.
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
@@ -89,6 +107,11 @@ pub(crate) struct Linkage {
     config: Config,
     driver: Driver,
     four_bar: Arc<Mutex<FourBar>>,
+    path1: Vec<[f64; 2]>,
+    path2: Vec<[f64; 2]>,
+    path3: Vec<[f64; 2]>,
+    joints: [[f64; 2]; 5],
+    pivot: Pivot,
     #[cfg(not(target_arch = "wasm32"))]
     synthesis: Synthesis,
     #[cfg(target_arch = "wasm32")]
@@ -108,6 +131,11 @@ impl Default for Linkage {
             config: Default::default(),
             driver: Default::default(),
             four_bar: Default::default(),
+            path1: Default::default(),
+            path2: Default::default(),
+            path3: Default::default(),
+            joints: Default::default(),
+            pivot: Pivot::Coupler,
             #[cfg(not(target_arch = "wasm32"))]
             synthesis: Default::default(),
             #[cfg(target_arch = "wasm32")]
@@ -131,11 +159,15 @@ impl PartialEq for Linkage {
 #[serde(default)]
 struct Config {
     interval: f64,
+    curve_n: usize,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self { interval: 1. }
+        Self {
+            interval: 1.,
+            curve_n: 360,
+        }
     }
 }
 
@@ -156,61 +188,27 @@ impl Linkage {
         }
     }
 
+    fn update_mechanism(&mut self) {
+        let m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
+        m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut self.joints);
+        let [path1, path2, path3] = m.four_bar_loop_all(0., self.config.curve_n);
+        self.path1 = path1;
+        self.path2 = path2;
+        self.path3 = path3;
+    }
+
     pub(crate) fn panel(&mut self, ui: &mut Ui) {
+        self.update_mechanism();
         ui.group(|ui| {
             ui.heading("File");
-            ui.horizontal(|ui| {
-                #[cfg(target_arch = "wasm32")]
-                if ui.button("💾 Save").clicked() {
-                    use js_sys::JsString;
-                    let s = JsString::from(to_string(&*self.four_bar.lock().unwrap()).unwrap());
-                    let path = JsString::from("four_bar.ron");
-                    let this = wasm_bindgen::JsValue::NULL;
-                    self.save_fn.call2(&this, &s, &path).unwrap();
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                if ui.button("💾 Save").clicked() {
-                    let s = to_string(&*self.four_bar.lock().unwrap()).unwrap();
-                    if let Some(file_name) = rfd::FileDialog::new()
-                        .set_file_name("four_bar.ron")
-                        .add_filter("Rusty Object Notation", &["ron"])
-                        .save_file()
-                    {
-                        std::fs::write(file_name, s).unwrap_or_default();
-                    }
-                }
-                #[cfg(target_arch = "wasm32")]
-                if ui.button("🖴 Open").clicked() {
-                    let this = wasm_bindgen::JsValue::NULL;
-                    self.load_fn.call1(&this, &self.load_str).unwrap();
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                if ui.button("🖴 Open").clicked() {
-                    let s = if let Some(file_name) = rfd::FileDialog::new()
-                        .add_filter("Rusty Object Notation", &["ron"])
-                        .pick_file()
-                    {
-                        std::fs::read_to_string(file_name).unwrap_or_default()
-                    } else {
-                        String::new()
-                    };
-                    if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
-                        *self.four_bar.lock().unwrap() = four_bar;
-                    }
-                }
-            });
+            ui.horizontal(|ui| self.file_io(ui));
+            ui.horizontal(|ui| self.curve_io(ui));
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
-                link!("Value interval: ", self.config.interval, 0.01, ui);
+                link!("UI value interval: ", self.config.interval, 0.01, ui);
+                num!("Number of curve points: ", self.config.curve_n, 1, 10, ui);
             });
         });
-        #[cfg(target_arch = "wasm32")]
-        if self.load_str.length() > 0 {
-            let s = String::from(js_sys::JsString::from(self.load_str.pop()));
-            if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
-                *self.four_bar.lock().unwrap() = four_bar;
-            }
-        }
         ui.group(|ui| {
             ui.heading("Dimension");
             #[cfg(not(target_arch = "wasm32"))]
@@ -238,6 +236,87 @@ impl Linkage {
         ui.group(|ui| {
             self.synthesis.update(ui, self.four_bar.clone());
         });
+    }
+
+    fn file_io(&mut self, ui: &mut Ui) {
+        #[cfg(target_arch = "wasm32")]
+        if ui.button("💾 Save").clicked() {
+            use js_sys::JsString;
+            let this = wasm_bindgen::JsValue::NULL;
+            let s = JsString::from(to_string(&*self.four_bar.lock().unwrap()).unwrap());
+            let path = JsString::from("four_bar.ron");
+            self.save_fn.call2(&this, &s, &path).unwrap();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if ui.button("💾 Save").clicked() {
+            let s = to_string(&*self.four_bar.lock().unwrap()).unwrap();
+            if let Some(file_name) = rfd::FileDialog::new()
+                .set_file_name("four_bar.ron")
+                .add_filter("Rusty Object Notation", &["ron"])
+                .save_file()
+            {
+                std::fs::write(file_name, s).unwrap_or_default();
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        if ui.button("🖴 Open").clicked() {
+            use js_sys::JsString;
+            let this = wasm_bindgen::JsValue::NULL;
+            let format = JsString::from(".ron");
+            self.load_fn.call2(&this, &self.load_str, &format).unwrap();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if ui.button("🖴 Open").clicked() {
+            let s = if let Some(file_name) = rfd::FileDialog::new()
+                .add_filter("Rusty Object Notation", &["ron"])
+                .pick_file()
+            {
+                std::fs::read_to_string(file_name).unwrap_or_default()
+            } else {
+                String::new()
+            };
+            if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
+                *self.four_bar.lock().unwrap() = four_bar;
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        if self.load_str.length() > 0 {
+            use js_sys::JsString;
+            let s = String::from(JsString::from(self.load_str.pop()));
+            if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
+                *self.four_bar.lock().unwrap() = four_bar;
+            }
+        }
+    }
+
+    fn curve_io(&mut self, ui: &mut Ui) {
+        let path = match self.pivot {
+            Pivot::Crank => &self.path1,
+            Pivot::Follower => &self.path2,
+            Pivot::Coupler => &self.path3,
+        };
+        #[cfg(target_arch = "wasm32")]
+        if ui.button("💾 Save Curve").clicked() {
+            use js_sys::JsString;
+            let this = wasm_bindgen::JsValue::NULL;
+            let s = JsString::from(write_csv(path).unwrap());
+            let path = JsString::from("curve.csv");
+            self.save_fn.call2(&this, &s, &path).unwrap();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if ui.button("💾 Save Curve").clicked() {
+            let s = write_csv(path).unwrap_or_default();
+            if let Some(file_name) = rfd::FileDialog::new()
+                .set_file_name("curve.csv")
+                .add_filter("Delimiter-Separated Values", &["txt", "csv"])
+                .save_file()
+            {
+                std::fs::write(file_name, s).unwrap_or_default();
+            }
+        }
+        ui.selectable_value(&mut self.pivot, Pivot::Coupler, "Coupler");
+        ui.selectable_value(&mut self.pivot, Pivot::Crank, "Crank");
+        ui.selectable_value(&mut self.pivot, Pivot::Follower, "Follower");
     }
 
     fn parameter(&mut self, ui: &mut Ui) {
@@ -275,28 +354,24 @@ impl Linkage {
 
     pub(crate) fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
-            let m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
-            let mut joints = [[0., 0.]; 5];
-            m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut joints);
-            let [path1, path2, path3] = m.four_bar_loop_all(0., 360);
             #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
             let mut plot = Plot::new("canvas")
-                .line(draw_link![joints[0], joints[2]])
-                .line(draw_link![joints[1], joints[3]])
-                .polygon(draw_link![joints[2], joints[3], joints[4]])
+                .line(draw_link![self.joints[0], self.joints[2]])
+                .line(draw_link![self.joints[1], self.joints[3]])
+                .polygon(draw_link![self.joints[2], self.joints[3], self.joints[4]])
                 .points(
-                    Points::new(as_values(&[joints[0], joints[1]]))
+                    Points::new(as_values(&[self.joints[0], self.joints[1]]))
                         .radius(7.)
                         .color(Color32::from_rgb(93, 69, 56)),
                 )
                 .points(
-                    Points::new(as_values(&[joints[2], joints[3], joints[4]]))
+                    Points::new(as_values(&[self.joints[2], self.joints[3], self.joints[4]]))
                         .radius(5.)
                         .color(Color32::from_rgb(128, 96, 77)),
                 )
-                .line(draw_path!("Crank pivot", path1))
-                .line(draw_path!("Follower pivot", path2))
-                .line(draw_path!("Coupler pivot", path3));
+                .line(draw_path!("Crank pivot", self.path1))
+                .line(draw_path!("Follower pivot", self.path2))
+                .line(draw_path!("Coupler pivot", self.path3));
             #[cfg(not(target_arch = "wasm32"))]
             if !self.synthesis.curve.is_empty() {
                 plot = plot.line(draw_path!("Synthesis target", self.synthesis.curve));
