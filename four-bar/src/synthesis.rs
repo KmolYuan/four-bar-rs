@@ -1,7 +1,7 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, locus, normalize_efd};
-pub use metaheuristics_nature::*;
+use metaheuristics_nature::*;
 use ndarray::{arr2, concatenate, Array2, Axis};
 use rayon::prelude::*;
 use std::f64::consts::TAU;
