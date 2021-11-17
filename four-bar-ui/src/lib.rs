@@ -11,8 +11,6 @@ mod as_values;
 mod csv_io;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod icon;
-mod linkage;
-mod synthesis;
 
 /// WebAssembly entry point.
 #[cfg(target_arch = "wasm32")]

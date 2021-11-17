@@ -1,3 +1,4 @@
+use super::io_ctx::IoCtx;
 use crate::{as_values::as_values, csv_io::read_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
@@ -15,7 +16,7 @@ use {
     },
 };
 
-const CRUNODE: &str = include_str!("assets/crunode.csv");
+const CRUNODE: &str = include_str!("../assets/crunode.csv");
 
 macro_rules! parameter {
     ($label:literal, $attr:expr, $ui:ident) => {
@@ -66,7 +67,7 @@ impl Default for Synthesis {
 }
 
 impl Synthesis {
-    pub(crate) fn update(&mut self, ui: &mut Ui, four_bar: Arc<Mutex<FourBar>>) {
+    pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<Mutex<FourBar>>) {
         ui.heading("Synthesis");
         let iter = self.conv.iter().enumerate();
         Window::new("Convergence Plot")
@@ -88,19 +89,17 @@ impl Synthesis {
         parameter!("Generation: ", self.gen, ui);
         parameter!("Population: ", self.pop, ui);
         if ui.button("Open CSV").clicked() {
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(file) = rfd::FileDialog::new()
-                .add_filter("Delimiter-Separated Values", &["txt", "csv"])
-                .pick_file()
+            #[cfg(target_arch = "wasm32")]
             {
-                if let Ok(curve_csv) = std::fs::read_to_string(file) {
-                    self.curve_csv = curve_csv;
-                } else {
-                    rfd::MessageDialog::new()
-                        .set_title("Read Error")
-                        .set_description("Invalid text file.")
-                        .show();
-                }
+                ctx.open(&["txt", "csv"]);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.curve_csv = ctx.open("Delimiter-Separated Values", &["txt", "csv"]);
+            }
+            #[cfg(target_arch = "wasm32")]
+            if let Some(s) = ctx.open_result() {
+                self.curve_csv = s;
             }
         }
         ui.collapsing("Curve Input (CSV)", |ui| {

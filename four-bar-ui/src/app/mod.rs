@@ -1,9 +1,14 @@
-use crate::linkage::Linkage;
+use self::io_ctx::IoCtx;
+use self::linkage::Linkage;
 use eframe::{
     egui::{CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window},
     epi,
 };
 use serde::{Deserialize, Serialize};
+
+mod io_ctx;
+mod linkage;
+mod synthesis;
 
 macro_rules! switch {
     ($ui:expr, $attr:expr, $d_icon:literal, $d_tip:literal, $e_icon:literal, $e_tip:literal) => {
@@ -27,6 +32,8 @@ pub struct App {
     menu_up: bool,
     side_panel: bool,
     started: bool,
+    #[serde(skip)]
+    ctx: IoCtx,
     linkage: Linkage,
 }
 
@@ -37,7 +44,8 @@ impl Default for App {
             menu_up: true,
             side_panel: true,
             started: false,
-            linkage: Linkage::default(),
+            ctx: Default::default(),
+            linkage: Default::default(),
         }
     }
 }
@@ -46,7 +54,7 @@ impl App {
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn with_hook(save_fn: js_sys::Function, load_fn: js_sys::Function) -> Self {
         Self {
-            linkage: Linkage::with_hook(save_fn, load_fn),
+            ctx: IoCtx::new(save_fn, load_fn),
             ..Self::default()
         }
     }
@@ -102,7 +110,7 @@ impl epi::App for App {
             SidePanel::left("side panel")
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ScrollArea::vertical().show(ui, |ui| self.linkage.panel(ui));
+                    ScrollArea::vertical().show(ui, |ui| self.linkage.ui(ui, &self.ctx));
                 });
         }
         self.linkage.plot(ctx);
