@@ -197,33 +197,26 @@ impl Linkage {
 
     fn file_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         if ui.button("💾 Save").clicked() {
-            let file_name = "four_bar.ron";
+            let name = "four_bar.ron";
             let s = to_string(&*self.four_bar.lock().unwrap()).unwrap();
             #[cfg(target_arch = "wasm32")]
-            {
-                ctx.save(&s, file_name);
-            }
+            let _ = ctx.save(&s, name);
             #[cfg(not(target_arch = "wasm32"))]
-            {
-                ctx.save(&s, file_name, "Rusty Object Notation", &["ron"]);
-            }
+            let _ = ctx.save(&s, name, "Rusty Object Notation", &["ron"]);
         }
         if ui.button("🖴 Open").clicked() {
             #[cfg(target_arch = "wasm32")]
-            {
-                ctx.open(&["ron"]);
-            }
+            let _ = ctx.open(&["ron"]);
             #[cfg(not(target_arch = "wasm32"))]
-            {
-                let s = ctx.open("Rusty Object Notation", &["ron"]);
-                if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
+            if let Some(s) = ctx.open("Rusty Object Notation", &["ron"]) {
+                if let Ok(four_bar) = from_str(s.as_str()) {
                     *self.four_bar.lock().unwrap() = four_bar;
                 }
             }
         }
         #[cfg(target_arch = "wasm32")]
         if let Some(s) = ctx.open_result() {
-            if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
+            if let Ok(four_bar) = from_str(s.as_str()) {
                 *self.four_bar.lock().unwrap() = four_bar;
             }
         }
@@ -236,16 +229,12 @@ impl Linkage {
             Pivot::Coupler => &self.path3,
         };
         if ui.button("💾 Save Curve").clicked() {
-            let file_name = "curve.csv";
+            let name = "curve.csv";
             let s = write_csv(path).unwrap();
             #[cfg(target_arch = "wasm32")]
-            {
-                ctx.save(&s, file_name);
-            }
+            let _ = ctx.save(&s, name);
             #[cfg(not(target_arch = "wasm32"))]
-            {
-                ctx.save(&s, file_name, "Delimiter-Separated Values", &["txt", "csv"]);
-            }
+            let _ = ctx.save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
         }
         ui.selectable_value(&mut self.pivot, Pivot::Coupler, "Coupler");
         ui.selectable_value(&mut self.pivot, Pivot::Crank, "Crank");

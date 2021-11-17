@@ -42,14 +42,14 @@ impl IoCtx {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn open(&self, extensions: &[&str]) {
-        let extensions = extensions
+    pub(crate) fn open(&self, ext: &[&str]) {
+        let ext = ext
             .iter()
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
         let this = JsValue::NULL;
-        let format = JsValue::from(extensions);
+        let format = JsValue::from(ext);
         self.load_fn.call2(&this, &self.load_str, &format).unwrap();
     }
 
@@ -63,11 +63,11 @@ impl IoCtx {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn open(&self, name: &str, extensions: &[&str]) -> String {
-        if let Some(file_name) = FileDialog::new().add_filter(name, extensions).pick_file() {
-            read_to_string(file_name).unwrap_or_default()
+    pub(crate) fn open(&self, fmt: &str, ext: &[&str]) -> Option<String> {
+        if let Some(path) = FileDialog::new().add_filter(fmt, ext).pick_file() {
+            read_to_string(path).ok()
         } else {
-            String::new()
+            None
         }
     }
 
@@ -80,10 +80,10 @@ impl IoCtx {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn save(&self, s: &str, file_name: &str, name: &str, extensions: &[&str]) {
+    pub(crate) fn save(&self, s: &str, name: &str, fmt: &str, ext: &[&str]) {
         if let Some(file_name) = rfd::FileDialog::new()
-            .set_file_name(file_name)
-            .add_filter(name, extensions)
+            .set_file_name(name)
+            .add_filter(fmt, ext)
             .save_file()
         {
             write(file_name, s).unwrap_or_default();

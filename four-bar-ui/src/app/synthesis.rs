@@ -90,17 +90,15 @@ impl Synthesis {
         parameter!("Population: ", self.pop, ui);
         if ui.button("Open CSV").clicked() {
             #[cfg(target_arch = "wasm32")]
-            {
-                ctx.open(&["txt", "csv"]);
-            }
+            let _ = ctx.open(&["csv", "txt"]);
             #[cfg(not(target_arch = "wasm32"))]
-            {
-                self.curve_csv = ctx.open("Delimiter-Separated Values", &["txt", "csv"]);
-            }
-            #[cfg(target_arch = "wasm32")]
-            if let Some(s) = ctx.open_result() {
+            if let Some(s) = ctx.open("Delimiter-Separated Values", &["csv", "txt"]) {
                 self.curve_csv = s;
             }
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(s) = ctx.open_result() {
+            self.curve_csv = s;
         }
         ui.collapsing("Curve Input (CSV)", |ui| {
             ui.text_edit_multiline(&mut self.curve_csv)
