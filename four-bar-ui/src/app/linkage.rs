@@ -98,8 +98,14 @@ enum Pivot {
     Coupler,
 }
 
+impl Default for Pivot {
+    fn default() -> Self {
+        Self::Coupler
+    }
+}
+
 /// Linkage data.
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Linkage {
     config: Config,
@@ -111,22 +117,6 @@ pub(crate) struct Linkage {
     joints: [[f64; 2]; 5],
     pivot: Pivot,
     synthesis: Synthesis,
-}
-
-impl Default for Linkage {
-    fn default() -> Self {
-        Self {
-            config: Default::default(),
-            driver: Default::default(),
-            four_bar: Default::default(),
-            path1: Default::default(),
-            path2: Default::default(),
-            path3: Default::default(),
-            joints: Default::default(),
-            pivot: Pivot::Coupler,
-            synthesis: Default::default(),
-        }
-    }
 }
 
 impl PartialEq for Linkage {
