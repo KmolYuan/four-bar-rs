@@ -223,12 +223,12 @@ impl Linkage {
     }
 
     fn curve_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
-        let path = match self.pivot {
-            Pivot::Crank => &self.path1,
-            Pivot::Follower => &self.path2,
-            Pivot::Coupler => &self.path3,
-        };
         if ui.button("💾 Save Curve").clicked() {
+            let path = match self.pivot {
+                Pivot::Crank => &self.path1,
+                Pivot::Follower => &self.path2,
+                Pivot::Coupler => &self.path3,
+            };
             let name = "curve.csv";
             let s = write_csv(path).unwrap();
             #[cfg(target_arch = "wasm32")]
