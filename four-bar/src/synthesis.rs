@@ -1,4 +1,14 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
+//!
+//! ```
+//! use four_bar::synthesis::synthesis;
+//!
+//! # let curve = [[0., 0.], [1., 0.]];
+//! # let gen = 0;
+//! # let pop = 2;
+//! let s = synthesis(&curve, gen, pop, |_| true);
+//! let result = s.result();
+//! ```
 use crate::{FourBar, Mechanism};
 use efd::{calculate_efd, locus, normalize_efd};
 use metaheuristics_nature::*;
