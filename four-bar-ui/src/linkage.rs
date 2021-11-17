@@ -1,6 +1,5 @@
 use crate::as_values::as_values;
 use crate::csv_io::write_csv;
-#[cfg(not(target_arch = "wasm32"))]
 use crate::synthesis::Synthesis;
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points, Polygon},
@@ -112,7 +111,6 @@ pub(crate) struct Linkage {
     path3: Vec<[f64; 2]>,
     joints: [[f64; 2]; 5],
     pivot: Pivot,
-    #[cfg(not(target_arch = "wasm32"))]
     synthesis: Synthesis,
     #[cfg(target_arch = "wasm32")]
     #[serde(skip)]
@@ -136,7 +134,6 @@ impl Default for Linkage {
             path3: Default::default(),
             joints: Default::default(),
             pivot: Pivot::Coupler,
-            #[cfg(not(target_arch = "wasm32"))]
             synthesis: Default::default(),
             #[cfg(target_arch = "wasm32")]
             save_fn: js_sys::Function::new_no_args(""),
@@ -232,19 +229,16 @@ impl Linkage {
             angle!("Speed: ", self.driver.speed, ui, "/s");
             angle!("Angle: ", self.driver.drive, ui);
         });
-        #[cfg(not(target_arch = "wasm32"))]
-        ui.group(|ui| {
-            self.synthesis.update(ui, self.four_bar.clone());
-        });
+        ui.group(|ui| self.synthesis.update(ui, self.four_bar.clone()));
     }
 
     fn file_io(&mut self, ui: &mut Ui) {
         #[cfg(target_arch = "wasm32")]
         if ui.button("💾 Save").clicked() {
-            use js_sys::JsString;
-            let this = wasm_bindgen::JsValue::NULL;
-            let s = JsString::from(to_string(&*self.four_bar.lock().unwrap()).unwrap());
-            let path = JsString::from("four_bar.ron");
+            use wasm_bindgen::JsValue;
+            let this = JsValue::NULL;
+            let s = JsValue::from(to_string(&*self.four_bar.lock().unwrap()).unwrap());
+            let path = JsValue::from("four_bar.ron");
             self.save_fn.call2(&this, &s, &path).unwrap();
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -260,9 +254,9 @@ impl Linkage {
         }
         #[cfg(target_arch = "wasm32")]
         if ui.button("🖴 Open").clicked() {
-            use js_sys::JsString;
-            let this = wasm_bindgen::JsValue::NULL;
-            let format = JsString::from(".ron");
+            use wasm_bindgen::JsValue;
+            let this = JsValue::NULL;
+            let format = JsValue::from(".ron");
             self.load_fn.call2(&this, &self.load_str, &format).unwrap();
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -281,8 +275,7 @@ impl Linkage {
         }
         #[cfg(target_arch = "wasm32")]
         if self.load_str.length() > 0 {
-            use js_sys::JsString;
-            let s = String::from(JsString::from(self.load_str.pop()));
+            let s = String::from(js_sys::JsString::from(self.load_str.pop()));
             if let Ok(four_bar) = from_str::<FourBar>(s.as_str()) {
                 *self.four_bar.lock().unwrap() = four_bar;
             }
@@ -297,10 +290,10 @@ impl Linkage {
         };
         #[cfg(target_arch = "wasm32")]
         if ui.button("💾 Save Curve").clicked() {
-            use js_sys::JsString;
-            let this = wasm_bindgen::JsValue::NULL;
-            let s = JsString::from(write_csv(path).unwrap());
-            let path = JsString::from("curve.csv");
+            use wasm_bindgen::JsValue;
+            let this = JsValue::NULL;
+            let s = JsValue::from(write_csv(path).unwrap());
+            let path = JsValue::from("curve.csv");
             self.save_fn.call2(&this, &s, &path).unwrap();
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -372,7 +365,6 @@ impl Linkage {
                 .line(draw_path!("Crank pivot", self.path1))
                 .line(draw_path!("Follower pivot", self.path2))
                 .line(draw_path!("Coupler pivot", self.path3));
-            #[cfg(not(target_arch = "wasm32"))]
             if !self.synthesis.curve.is_empty() {
                 plot = plot.line(draw_path!("Synthesis target", self.synthesis.curve));
             }

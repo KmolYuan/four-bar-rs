@@ -3,15 +3,16 @@ use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
     Color32, DragValue, Label, ProgressBar, Ui, Widget, Window,
 };
-use four_bar::{synthesis::synthesis, FourBar};
+use four_bar::FourBar;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::read_to_string,
-    sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex,
+use std::sync::{Arc, Mutex};
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    four_bar::synthesis::synthesis,
+    std::{
+        sync::atomic::{AtomicBool, AtomicU64, Ordering},
+        time::Instant,
     },
-    time::Instant,
 };
 
 const CRUNODE: &str = include_str!("assets/crunode.csv");
@@ -29,8 +30,15 @@ macro_rules! parameter {
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct Synthesis {
+    #[cfg(not(target_arch = "wasm32"))]
     started: Arc<AtomicBool>,
+    #[cfg(target_arch = "wasm32")]
+    started: Arc<Mutex<bool>>,
+    #[cfg(not(target_arch = "wasm32"))]
     progress: Arc<AtomicU64>,
+    #[cfg(target_arch = "wasm32")]
+    progress: Arc<Mutex<u64>>,
+    #[cfg(not(target_arch = "wasm32"))]
     timer: Arc<AtomicU64>,
     gen: u64,
     pop: usize,
@@ -45,6 +53,7 @@ impl Default for Synthesis {
         Self {
             started: Default::default(),
             progress: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
             timer: Default::default(),
             gen: 40,
             pop: 200,
@@ -79,11 +88,12 @@ impl Synthesis {
         parameter!("Generation: ", self.gen, ui);
         parameter!("Population: ", self.pop, ui);
         if ui.button("Open CSV").clicked() {
+            #[cfg(not(target_arch = "wasm32"))]
             if let Some(file) = rfd::FileDialog::new()
                 .add_filter("Delimiter-Separated Values", &["txt", "csv"])
                 .pick_file()
             {
-                if let Ok(curve_csv) = read_to_string(file) {
+                if let Ok(curve_csv) = std::fs::read_to_string(file) {
                     self.curve_csv = curve_csv;
                 } else {
                     rfd::MessageDialog::new()
@@ -106,17 +116,29 @@ impl Synthesis {
             }
         }
         ui.horizontal(|ui| {
+            #[cfg(not(target_arch = "wasm32"))]
             let started = self.started.load(Ordering::Relaxed);
+            #[cfg(target_arch = "wasm32")]
+            let started = false;
             if started {
                 if ui.small_button("⏹").on_hover_text("Stop").clicked() {
+                    #[cfg(not(target_arch = "wasm32"))]
                     self.started.store(false, Ordering::Relaxed);
                 }
             } else if ui.small_button("▶").on_hover_text("Start").clicked()
                 && !self.curve.is_empty()
             {
+                #[cfg(not(target_arch = "wasm32"))]
                 self.start_syn(four_bar);
+                #[cfg(target_arch = "wasm32")]
+                // TODO: Connect to server
+                let _ = four_bar;
             }
-            ProgressBar::new(self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32)
+            #[cfg(not(target_arch = "wasm32"))]
+            let progress = self.progress.load(Ordering::Relaxed);
+            #[cfg(target_arch = "wasm32")]
+            let progress = 0;
+            ProgressBar::new(progress as f32 / self.gen as f32)
                 .show_percentage()
                 .animate(started)
                 .ui(ui);
@@ -133,9 +155,11 @@ impl Synthesis {
                 .small_button("🗑")
                 .on_hover_text("Clear the past convergence report")
                 .clicked()
+                && !self.conv.is_empty()
             {
                 self.conv.drain(..self.conv.len() - 1);
             }
+            #[cfg(not(target_arch = "wasm32"))]
             ui.label(format!(
                 "Time passed: {}s",
                 self.timer.load(Ordering::Relaxed)
@@ -143,6 +167,7 @@ impl Synthesis {
         });
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn start_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
         self.started = Arc::new(AtomicBool::new(true));
         self.timer.store(0, Ordering::Relaxed);
