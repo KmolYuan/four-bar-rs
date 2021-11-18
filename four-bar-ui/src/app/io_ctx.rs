@@ -1,18 +1,26 @@
 #[cfg(target_arch = "wasm32")]
 use {
-    js_sys::{Array, Function, JsString},
-    wasm_bindgen::JsValue,
+    js_sys::{Array, JsString},
+    wasm_bindgen::prelude::wasm_bindgen,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use {
-    rfd::FileDialog,
+    rfd::{FileDialog, MessageDialog},
     std::fs::{read_to_string, write},
 };
 
 #[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+extern "C" {
+    fn alert(s: &str);
+    #[wasm_bindgen(js_name = "saveFile")]
+    fn save_file(s: &str, file_name: &str);
+    #[wasm_bindgen(js_name = "loadFile")]
+    fn load_file(arr: Array, format: &str);
+}
+
+#[cfg(target_arch = "wasm32")]
 pub(crate) struct IoCtx {
-    save_fn: Function,
-    load_fn: Function,
     load_str: Array,
 }
 
@@ -20,8 +28,6 @@ pub(crate) struct IoCtx {
 impl Default for IoCtx {
     fn default() -> Self {
         IoCtx {
-            save_fn: Function::new_no_args(""),
-            load_fn: Function::new_no_args(""),
             load_str: Array::new(),
         }
     }
@@ -33,24 +39,13 @@ pub(crate) struct IoCtx;
 
 impl IoCtx {
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn new(save_fn: Function, load_fn: Function) -> Self {
-        Self {
-            save_fn,
-            load_fn,
-            ..Self::default()
-        }
-    }
-
-    #[cfg(target_arch = "wasm32")]
     pub(crate) fn open(&self, ext: &[&str]) {
-        let ext = ext
+        let format = ext
             .iter()
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
-        let this = JsValue::NULL;
-        let format = JsValue::from(ext);
-        self.load_fn.call2(&this, &self.load_str, &format).unwrap();
+        load_file(self.load_str.clone(), &format);
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -73,10 +68,7 @@ impl IoCtx {
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn save(&self, s: &str, file_name: &str) {
-        let this = JsValue::NULL;
-        let s = JsValue::from(s);
-        let path = JsValue::from(file_name);
-        self.save_fn.call2(&this, &s, &path).unwrap();
+        save_file(s, file_name);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -88,5 +80,17 @@ impl IoCtx {
         {
             write(file_name, s).unwrap_or_default();
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[allow(dead_code)]
+    pub(crate) fn alert(&self, s: &str) {
+        alert(s);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[allow(dead_code)]
+    pub(crate) fn alert(&self, s: &str) {
+        MessageDialog::new().set_title("Alert").set_description(s);
     }
 }

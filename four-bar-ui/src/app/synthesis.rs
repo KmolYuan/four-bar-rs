@@ -128,8 +128,11 @@ impl Synthesis {
                 #[cfg(not(target_arch = "wasm32"))]
                 self.start_syn(four_bar);
                 #[cfg(target_arch = "wasm32")]
-                // TODO: Connect to server
-                let _ = four_bar;
+                {
+                    // TODO: Connect to server
+                    let _ = four_bar;
+                    ctx.alert("Not yet prepared!");
+                }
             }
             #[cfg(not(target_arch = "wasm32"))]
             let progress = self.progress.load(Ordering::Relaxed);

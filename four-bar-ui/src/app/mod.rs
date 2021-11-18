@@ -51,14 +51,6 @@ impl Default for App {
 }
 
 impl App {
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn with_hook(save_fn: js_sys::Function, load_fn: js_sys::Function) -> Self {
-        Self {
-            ctx: IoCtx::new(save_fn, load_fn),
-            ..Self::default()
-        }
-    }
-
     fn menu(&mut self, ctx: &CtxRef, ui: &mut Ui) {
         if ctx.style().visuals.dark_mode {
             if ui.small_button("🔆").on_hover_text("Light").clicked() {
