@@ -58,9 +58,9 @@
         a.href = window.URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
         a.click();
     };
-    window.loadFile = function (arr, format) {
+    window.loadFile = function (buf, format) {
         reader.onload = e => {
-            arr.push(e.target.result);
+            buf.push(e.target.result);
         };
         input.accept = format;
         input.click();
