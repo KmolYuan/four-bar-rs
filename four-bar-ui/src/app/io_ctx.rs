@@ -16,20 +16,18 @@ extern "C" {
     #[wasm_bindgen(js_name = "saveFile")]
     fn save_file(s: &str, file_name: &str);
     #[wasm_bindgen(js_name = "loadFile")]
-    fn load_file(arr: Array, format: &str);
+    fn load_file(buf: Array, format: &str);
 }
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) struct IoCtx {
-    load_str: Array,
+    buf: Array,
 }
 
 #[cfg(target_arch = "wasm32")]
 impl Default for IoCtx {
     fn default() -> Self {
-        IoCtx {
-            load_str: Array::new(),
-        }
+        IoCtx { buf: Array::new() }
     }
 }
 
@@ -45,13 +43,13 @@ impl IoCtx {
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
-        load_file(self.load_str.clone(), &format);
+        load_file(self.buf.clone(), &format);
     }
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn open_result(&self) -> Option<String> {
-        if self.load_str.length() > 0 {
-            Some(String::from(JsString::from(self.load_str.pop())))
+        if self.buf.length() > 0 {
+            Some(String::from(JsString::from(self.buf.pop())))
         } else {
             None
         }
