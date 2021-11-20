@@ -20,6 +20,7 @@ echo "Generating JS bindings for wasm..."
 TARGET_NAME="${CRATE_SNAKE_CASE}.wasm"
 wasm-pack build --${BUILD} --out-dir ../docs/pkg -t web --no-typescript "${REPODIR}/${CRATE}"
 rm "${REPODIR}/docs/pkg/.gitignore"
+rm "${REPODIR}/docs/pkg/package.json"
 cp "${REPODIR}/four-bar-ui/src/assets/favicon.png" "${REPODIR}/docs"
 
 echo "Finished"
