@@ -1,5 +1,5 @@
 [workspace]
-members = ["four-bar", "four-bar-ui"]
+members = ["four-bar", "four-bar-server", "four-bar-ui"]
 
 [profile.release.package.four-bar-ui]
 opt-level = 2 # fast and small wasm

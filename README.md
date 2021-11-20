@@ -2,7 +2,11 @@
 
 [![dependency status](https://deps.rs/repo/github/KmolYuan/four-bar-rs/status.svg)](https://deps.rs/repo/github/KmolYuan/four-bar-rs)
 
-Four-bar is a simulator and a synthesizing tool for four-bar linkage mechanism. The GUI program is called `four-bar-ui`.  The library `four-bar` is also on crates-io, exclude the ui parts.
+Four🍀bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
+
++ GUI program is called `four-bar-ui`.
++ Server program is called `four-bar-server`.
++ Kernel library `four-bar` is on crates-io.
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>
 

@@ -1,0 +1,12 @@
+[package]
+name = "four-bar-server"
+version = "0.2.0"
+edition = "2021"
+description = "Four🍀bar server provides synthesis function for four-bar linkage mechanism."
+license-file = "../LICENSE"
+readme = "README.md"
+repository = "https://github.com/KmolYuan/four-bar-rs"
+keywords = ["mechanism", "simulation", "optimization"]
+categories = ["algorithms"]
+
+[dependencies]
