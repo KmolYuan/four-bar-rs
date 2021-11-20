@@ -17,7 +17,6 @@ crate-type = ["cdylib", "rlib"]
 four-bar = { version = "0.2", path = "../four-bar", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 eframe = { version = "0.15", features = ["persistence"] }
-async-std = "1.9"
 ron = "0.7"
 csv = "1.1"
 # use "ehttp" for client side service
