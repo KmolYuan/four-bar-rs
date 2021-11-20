@@ -9,6 +9,7 @@ fn main() {}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), Box<dyn Error>> {
+    println!("cargo:rerun-if-changed=src/assets/favicon.png");
     let out_dir = PathBuf::from(std::env::var("OUT_DIR")?);
     let img = Reader::open("src/assets/favicon.png")?.decode()?;
     let doc = format!(
