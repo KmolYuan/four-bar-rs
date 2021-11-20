@@ -6,8 +6,6 @@ use wasm_bindgen::prelude::{wasm_bindgen, JsValue};
 mod app;
 mod as_values;
 mod csv_io;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod icon;
 
 /// WebAssembly entry point.
 #[cfg(target_arch = "wasm32")]
