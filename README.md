@@ -36,7 +36,7 @@ Then run with cargo directly:
 cargo run
 ```
 
-## Serving WASM in Localhost
+## Serving WASM Client in Localhost
 
 Run those scripts from the repository:
 
@@ -47,3 +47,7 @@ Run those scripts from the repository:
 ```
 
 The client-side application is deployed in the `docs` directory (entire files).
+
+## Server Connection
+
+Run the server program `four-bar-server`. The `four-bar-ui` WASM must built first.
