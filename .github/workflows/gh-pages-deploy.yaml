@@ -19,7 +19,7 @@ jobs:
           args: --all-features -- -D warnings
       - run: |
           ./setup_web.sh
-          ./build_web.sh -O
+          ./build_web.sh
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@releases/v3
         with:

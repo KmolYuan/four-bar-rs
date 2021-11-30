@@ -3,6 +3,39 @@ on:
   push:
     tags: [ v* ]
 jobs:
+  cargo-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: |
+          cargo login ${{ secrets.CRATE_IO }}
+          cargo publish -p four-bar
+  gh-pages-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: |
+          sudo apt update
+          sudo apt install -y binaryen
+          ./setup_web.sh
+          ./build_web.sh
+      - name: Pack WASM
+        uses: papeloto/action-zip@v1
+        with:
+          files: docs/
+          dest: four-bar-wasm-unknown.zip
+      - name: Upload binaries to release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        with:
+          files: four-bar-wasm-unknown.zip
   gh-release:
     runs-on: ${{ matrix.os }}
     strategy:
