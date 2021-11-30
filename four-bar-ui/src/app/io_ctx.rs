@@ -19,21 +19,18 @@ extern "C" {
     fn load_file(buf: Array, format: &str);
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Default))]
 pub(crate) struct IoCtx {
+    #[cfg(target_arch = "wasm32")]
     buf: Array,
 }
 
 #[cfg(target_arch = "wasm32")]
 impl Default for IoCtx {
     fn default() -> Self {
-        IoCtx { buf: Array::new() }
+        Self { buf: Array::new() }
     }
 }
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Default)]
-pub(crate) struct IoCtx;
 
 impl IoCtx {
     #[cfg(target_arch = "wasm32")]
