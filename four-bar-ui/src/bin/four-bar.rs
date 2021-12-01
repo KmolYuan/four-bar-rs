@@ -1,16 +1,13 @@
-use actix_web::{get, App as WebApp, HttpServer, Responder};
 use clap::{clap_app, AppSettings};
 use eframe::{epi::IconData, NativeOptions};
-use four_bar_ui::{server::ssl, App};
+use four_bar_ui::{
+    server::{serve, update},
+    App,
+};
 use std::io::Result;
 
 mod icon {
     include!(concat!(env!("OUT_DIR"), "/icon.rs"));
-}
-
-#[get("/")]
-async fn index() -> impl Responder {
-    "Hello!"
 }
 
 /// Native entry point.
@@ -24,6 +21,9 @@ async fn main() -> Result<()> {
         (setting: AppSettings::ArgRequiredElseHelp)
         (@subcommand ui =>
             (about: "Run native UI program")
+        )
+        (@subcommand update =>
+            (about: "Download the latest WASM archive")
         )
         (@subcommand serve =>
             (about: "Start web server to host WASM UI program")
@@ -42,6 +42,8 @@ async fn main() -> Result<()> {
             ..Default::default()
         };
         eframe::run_native(app, opt)
+    } else if args.subcommand_matches("update").is_some() {
+        update().await
     } else if let Some(cmd) = args.subcommand_matches("serve") {
         let port = cmd
             .value_of("PORT")
@@ -52,13 +54,4 @@ async fn main() -> Result<()> {
     } else {
         unreachable!()
     }
-}
-
-async fn serve(port: u16) -> Result<()> {
-    println!("Serve at: https://localhost:{}/", port);
-    println!("Press Ctrl+C to close the server...");
-    HttpServer::new(|| WebApp::new().service(index))
-        .bind_openssl(("localhost", port), ssl())?
-        .run()
-        .await
 }

@@ -2,7 +2,7 @@ use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 use rcgen::generate_simple_self_signed;
 use std::{env::current_dir, fs::write};
 
-pub fn ssl() -> SslAcceptorBuilder {
+pub(crate) fn ssl() -> SslAcceptorBuilder {
     let current = current_dir().expect("cannot locate executable");
     let key = current.join("key.pem");
     let cert = current.join("cert.pem");
