@@ -4,8 +4,7 @@
 
 Four🍀bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
-+ GUI program is called `four-bar-ui`.
-+ Server program is called `four-bar-server`.
++ GUI program is called `four-bar-ui`, but runtime is called `four-bar`.
 + Kernel library `four-bar` is on crates-io.
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>
@@ -47,7 +46,3 @@ Run those scripts from the repository:
 ```
 
 The client-side application is deployed in the `docs` directory (entire files).
-
-## Server Connection
-
-Run the server program `four-bar-server`. The `four-bar-ui` WASM must built first.
