@@ -76,11 +76,19 @@ jobs:
           type: zip
           directory: ${{ matrix.artifact_name }}
           filename: ../${{ matrix.asset_name }}.zip
-      - name: Upload artifact
+      - if: matrix.asset_name != 'four-bar-wasm-unknown'
+        name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.asset_name }}.zip
+          name: ${{ matrix.asset_name }}
+          path: target/release/${{ matrix.artifact_name }}
+          if-no-files-found: error
+      - if: matrix.asset_name == 'four-bar-wasm-unknown'
+        name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.artifact_name }}
           if-no-files-found: error
       - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name != 'four-bar-wasm-unknown'
         name: Upload binaries to release
