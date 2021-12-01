@@ -1,4 +1,4 @@
-use clap::{clap_app, AppSettings};
+use clap::clap_app;
 use eframe::{epi::IconData, NativeOptions};
 use four_bar_ui::{
     server::{serve, update},
@@ -14,13 +14,12 @@ mod icon {
 #[actix_web::main]
 async fn main() -> Result<()> {
     let args = clap_app! {
-        (env!("CARGO_PKG_NAME")) =>
+        ("four-bar") =>
         (version: env!("CARGO_PKG_VERSION"))
         (author: env!("CARGO_PKG_AUTHORS"))
         (about: env!("CARGO_PKG_DESCRIPTION"))
-        (setting: AppSettings::ArgRequiredElseHelp)
         (@subcommand ui =>
-            (about: "Run native UI program")
+            (about: "Run native UI program (default)")
         )
         (@subcommand update =>
             (about: "Download the latest WASM archive")
@@ -32,16 +31,7 @@ async fn main() -> Result<()> {
     }
     .get_matches();
     if args.subcommand_matches("ui").is_some() {
-        let app = Box::new(App::default());
-        let opt = NativeOptions {
-            icon_data: Some(IconData {
-                rgba: icon::ICON.to_vec(),
-                width: icon::WIDTH,
-                height: icon::HEIGHT,
-            }),
-            ..Default::default()
-        };
-        eframe::run_native(app, opt)
+        run_native()
     } else if args.subcommand_matches("update").is_some() {
         update().await
     } else if let Some(cmd) = args.subcommand_matches("serve") {
@@ -52,6 +42,19 @@ async fn main() -> Result<()> {
             .expect("invalid port");
         serve(port).await
     } else {
-        unreachable!()
+        run_native()
     }
+}
+
+fn run_native() -> ! {
+    let app = Box::new(App::default());
+    let opt = NativeOptions {
+        icon_data: Some(IconData {
+            rgba: icon::ICON.to_vec(),
+            width: icon::WIDTH,
+            height: icon::HEIGHT,
+        }),
+        ..Default::default()
+    };
+    eframe::run_native(app, opt)
 }
