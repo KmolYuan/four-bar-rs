@@ -1,9 +1,11 @@
 name: Github Deploy
 on:
   push:
+    branches: [ main ]
     tags: [ v* ]
 jobs:
   cargo-publish:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -13,62 +15,78 @@ jobs:
       - run: |
           cargo login ${{ secrets.CRATE_IO }}
           cargo publish -p four-bar
-  gh-pages-release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - run: |
-          sudo apt update
-          sudo apt install -y binaryen
-          ./setup_web.sh
-          ./build_web.sh
-      - name: Pack WASM
-        uses: papeloto/action-zip@v1
-        with:
-          files: docs/
-          dest: four-bar-wasm-unknown.zip
-      - name: Upload binaries to release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-        with:
-          files: four-bar-wasm-unknown.zip
-  gh-release:
+  gh-test-release:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: four-bar-ui
             asset_name: four-bar-linux-amd64
-          - os: macOS-latest
             artifact_name: four-bar-ui
+          - os: ubuntu-latest
+            asset_name: four-bar-wasm-unknown
+            artifact_name: docs/
+          - os: macos-latest
             asset_name: four-bar-macos-amd64
+            artifact_name: four-bar-ui
           - os: windows-latest
-            artifact_name: four-bar-ui.exe
             asset_name: four-bar-windows-amd64
+            artifact_name: four-bar-ui.exe
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - if: ${{ matrix.os == 'ubuntu-latest' }}
+      - if: matrix.asset_name == 'four-bar-linux-amd64'
+        name: Linux requirements
         run: |
           sudo apt update
           sudo apt install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
-      - shell: bash
-        run: cargo build --all-features --release
-      - name: Pack binaries
+      - if: matrix.asset_name == 'four-bar-wasm-unknown'
+        name: Cargo Build
+        run: |
+          sudo apt update
+          sudo apt install -y binaryen
+          ./setup_web.sh
+          ./build_web.sh
+      - name: Cargo Clippy
+        shell: bash
+        run: cargo clippy -- -D warnings
+      - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name != 'four-bar-wasm-unknown'
+        name: Cargo Build
+        shell: bash
+        run: cargo build --release
+      - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name != 'four-bar-wasm-unknown'
+        name: Pack binaries
         uses: papeloto/action-zip@v1
         with:
           files: target/release/${{ matrix.artifact_name }}
           dest: ${{ matrix.asset_name }}.zip
-      - name: Upload binaries to release
+      - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name != 'four-bar-wasm-unknown'
+        name: Upload binaries to release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
         with:
           files: ${{ matrix.asset_name }}.zip
+      - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name == 'four-bar-wasm-unknown'
+        name: Pack WASM
+        uses: papeloto/action-zip@v1
+        with:
+          files: ${{ matrix.artifact_name }}
+          dest: ${{ matrix.asset_name }}.zip
+      - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name == 'four-bar-wasm-unknown'
+        name: Upload binaries to release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        with:
+          files: ${{ matrix.asset_name }}.zip
+      - if: github.ref == 'refs/heads/main' && matrix.asset_name == 'four-bar-wasm-unknown'
+        name: Deploy to gh-pages
+        uses: JamesIves/github-pages-deploy-action@releases/v3
+        with:
+          ACCESS_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: ${{ matrix.artifact_name }}
+          CLEAN: true
