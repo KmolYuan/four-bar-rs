@@ -14,7 +14,8 @@ jobs:
           toolchain: stable
       - run: |
           cargo login ${{ secrets.CRATE_IO }}
-          cargo publish -p four-bar
+          cargo publish -p four-bar || true
+          cargo publish -p four-bar-ui || true
   gh-test-release:
     strategy:
       matrix:
