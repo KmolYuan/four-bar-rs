@@ -32,6 +32,9 @@ jobs:
             asset_name: four-bar-windows-amd64
             artifact_name: four-bar.exe
     runs-on: ${{ matrix.os }}
+    env:
+      OPENSSL_STATIC: 1
+      OPENSSL_LIBS: ssl:crypto
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -47,7 +50,6 @@ jobs:
         run: |
           choco install -y openssl
           echo "OPENSSL_DIR=C:\Program Files\OpenSSL-Win64" | Out-File -FilePath $env:GITHUB_ENV -Append
-          echo "OPENSSL_STATIC=1" | Out-File -FilePath $env:GITHUB_ENV -Append
       - if: matrix.asset_name == 'four-bar-wasm-unknown'
         name: Cargo Build
         run: |
