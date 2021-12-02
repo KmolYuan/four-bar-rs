@@ -37,13 +37,6 @@ In Linux, you need to install some library for GUI:
 sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
 ```
 
-All platforms must meet the requirements of [openssl](https://docs.rs/openssl/latest/openssl/), and the automatic approach is suggested. Among them, Windows platform uses `vcpkg` for MSVC, and uses `pacman` for MSYS2.
-
-```bash
-vcpkg install openssl:x64-windows-static-md
-pacman -S pkg-config openssl
-```
-
 Then run with cargo directly:
 
 ```bash
@@ -59,6 +52,8 @@ The default port is 8080.
 ```bash
 four-bar serve --port PORT
 ```
+
+A security connection (https) can be built with encryption program like [Stunnel](https://www.stunnel.org/).
 
 ### From Repository
 

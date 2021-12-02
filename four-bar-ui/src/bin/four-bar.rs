@@ -30,9 +30,7 @@ async fn main() -> Result<()> {
         )
     }
     .get_matches();
-    if args.subcommand_matches("ui").is_some() {
-        run_native()
-    } else if args.subcommand_matches("update").is_some() {
+    if args.subcommand_matches("update").is_some() {
         update().await
     } else if let Some(cmd) = args.subcommand_matches("serve") {
         let port = cmd
@@ -42,19 +40,15 @@ async fn main() -> Result<()> {
             .expect("invalid port");
         serve(port).await
     } else {
-        run_native()
+        let app = Box::new(App::default());
+        let opt = NativeOptions {
+            icon_data: Some(IconData {
+                rgba: icon::ICON.to_vec(),
+                width: icon::WIDTH,
+                height: icon::HEIGHT,
+            }),
+            ..Default::default()
+        };
+        eframe::run_native(app, opt)
     }
-}
-
-fn run_native() -> ! {
-    let app = Box::new(App::default());
-    let opt = NativeOptions {
-        icon_data: Some(IconData {
-            rgba: icon::ICON.to_vec(),
-            width: icon::WIDTH,
-            height: icon::HEIGHT,
-        }),
-        ..Default::default()
-    };
-    eframe::run_native(app, opt)
 }
