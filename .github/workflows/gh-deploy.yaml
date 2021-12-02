@@ -32,10 +32,6 @@ jobs:
             asset_name: four-bar-windows-amd64
             artifact_name: four-bar.exe
     runs-on: ${{ matrix.os }}
-    env:
-      X86_64_PC_WINDOWS_MSVC_OPENSSL_DIR: C:\Program Files\OpenSSL-Win64
-      OPENSSL_STATIC: 1
-      OPENSSL_LIBS: ssl:crypto
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -48,9 +44,11 @@ jobs:
           sudo apt install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
       - if: matrix.os == 'windows-latest'
         name: Windows requirements
-        run: choco install -y openssl
+        run: |
+          echo "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+          vcpkg install openssl:x64-windows-static-md
       - if: matrix.asset_name == 'four-bar-wasm-unknown'
-        name: Cargo Build
+        name: WASM Build
         run: |
           sudo apt update
           sudo apt install -y binaryen
@@ -58,11 +56,9 @@ jobs:
           ./build_web.sh
       - if: matrix.asset_name != 'four-bar-wasm-unknown'
         name: Cargo Clippy
-        shell: bash
         run: cargo clippy -- -D warnings
       - if: matrix.asset_name != 'four-bar-wasm-unknown'
         name: Cargo Build
-        shell: bash
         run: cargo build --release
       - if: matrix.asset_name != 'four-bar-wasm-unknown'
         name: Pack binaries
