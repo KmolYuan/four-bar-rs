@@ -4,7 +4,7 @@
 
 Four🍀bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
-+ GUI program is called `four-bar-ui`, but runtime is called `four-bar`.
++ GUI program is called `four-bar-ui`, but the runtime is called `four-bar`.
 + Kernel library `four-bar` is on crates-io.
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>
@@ -21,21 +21,46 @@ In Windows, [the support of Visual C++](https://docs.microsoft.com/zh-TW/cpp/win
 
 Download: <https://github.com/KmolYuan/four-bar-rs/releases/latest>
 
+Native GUI is the default startup behaviour, use `--help` option to see more commands.
+
+```bash
+# Equivalent to double-clicking the binary file
+four-bar
+four-bar ui
+```
+
 ## Native Build
 
-In Linux, you need to install some library:
+In Linux, you need to install some library for GUI:
 
 ```bash
 sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
 ```
 
+All platforms must meet the requirements of [openssl](https://docs.rs/openssl/latest/openssl/), and the automatic approach is suggested. Among them, Windows platform uses `vcpkg` for MSVC, and uses `pacman` for MSYS2.
+
+```bash
+vcpkg install openssl:x64-windows-static-md
+pacman -S pkg-config openssl
+```
+
 Then run with cargo directly:
 
 ```bash
-cargo run
+cargo run -- --help
 ```
 
 ## Serving WASM Client in Localhost
+
+### From Releases
+
+The default port is 8080.
+
+```bash
+four-bar serve --port PORT
+```
+
+### From Repository
 
 Run those scripts from the repository:
 
