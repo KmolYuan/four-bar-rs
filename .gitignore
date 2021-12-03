@@ -4,4 +4,3 @@ target/
 !/docs/index.html
 Cargo.lock
 *.svg
-*.pem
