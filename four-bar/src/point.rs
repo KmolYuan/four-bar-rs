@@ -14,7 +14,7 @@ pub trait Point: Sized {
 
     /// Solve the geometry constraint between two points and an angle.
     fn plap(&self, d0: f64, a0: f64, rhs: &Self) -> Self {
-        let a1 = f64::atan2(rhs.y() - self.y(), rhs.x() - self.x()) + a0;
+        let a1 = (rhs.y() - self.y()).atan2(rhs.x() - self.x()) + a0;
         Self::point(self.x() + d0 * a1.cos(), self.y() + d0 * a1.sin())
     }
 

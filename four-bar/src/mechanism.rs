@@ -33,7 +33,7 @@ impl Formula {
 pub struct Mechanism {
     /// The joint positions.
     pub joints: Vec<[f64; 2]>,
-    formulas: Vec<Formula>,
+    fs: Vec<Formula>,
 }
 
 impl Mechanism {
@@ -46,16 +46,16 @@ impl Mechanism {
             [0., 0.],
             [0., 0.],
         ];
-        let mut formulas = Vec::with_capacity(3);
-        formulas.push(Formula::Pla(0, m.l1, 0., 2));
+        let mut fs = Vec::with_capacity(3);
+        fs.push(Formula::Pla(0, m.l1, 0., 2));
         if (m.l0 - m.l2).abs() < 1e-20 && (m.l1 - m.l3).abs() < 1e-20 {
             // Special case
-            formulas.push(Formula::Ppp(0, 2, 1, 3));
+            fs.push(Formula::Ppp(0, 2, 1, 3));
         } else {
-            formulas.push(Formula::Pllp(2, m.l2, m.l3, 1, m.inv, 3));
+            fs.push(Formula::Pllp(2, m.l2, m.l3, 1, m.inv, 3));
         }
-        formulas.push(Formula::Plap(2, m.l4, m.g, 3, 4));
-        Self { joints, formulas }
+        fs.push(Formula::Plap(2, m.l4, m.g, 3, 4));
+        Self { joints, fs }
     }
 
     /// A loop trajectory for only coupler point.
@@ -103,7 +103,7 @@ impl Mechanism {
     /// Calculate the formula, and write the answer into provided array.
     pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
         let mut joints = self.joints.clone();
-        let mut formulas = self.formulas.clone();
+        let mut formulas = self.fs.clone();
         if let Formula::Pla(_, _, ref mut a, _) = formulas[0] {
             *a = angle;
         } else {
