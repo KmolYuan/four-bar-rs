@@ -62,7 +62,6 @@ Run those scripts from the repository:
 ```bash
 ./setup_web.sh
 ./build_web.sh
-./start_server.sh
 ```
 
 The client-side application is deployed in the `docs` directory (entire files).

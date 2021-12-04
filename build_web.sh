@@ -23,4 +23,11 @@ rm "${REPODIR}/docs/pkg/.gitignore"
 rm "${REPODIR}/docs/pkg/package.json"
 cp "${REPODIR}/four-bar-ui/src/assets/favicon.png" "${REPODIR}/docs"
 
+echo "Make the archive..."
+cd "${REPODIR}/docs" || exit
+RELEASE="${REPODIR}/target/release"
+if command -v zip &> /dev/null && [ -d ${RELEASE} ]; then
+  zip -r "${RELEASE}/four-bar-wasm-unknown.zip" *
+fi
+
 echo "Finished"
