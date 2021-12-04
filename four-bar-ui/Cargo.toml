@@ -28,6 +28,7 @@ temp-dir = "0.1"
 zip = "0.5"
 reqwest = "0.11"
 actix-web = "4.0.0-beta.13"
+actix-identity = "0.4.0-beta"
 actix-files = "0.6.0-beta"
 rfd = "0.6"
 

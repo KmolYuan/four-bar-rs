@@ -1,9 +1,6 @@
 use clap::clap_app;
 use eframe::{epi::IconData, NativeOptions};
-use four_bar_ui::{
-    server::{serve, update},
-    App,
-};
+use four_bar_ui::{server::*, App};
 use std::io::Result;
 
 mod icon {
