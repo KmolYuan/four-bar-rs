@@ -13,13 +13,12 @@ use {
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
-    #[wasm_bindgen(js_name = "saveFile")]
     fn save_file(s: &str, file_name: &str);
-    #[wasm_bindgen(js_name = "loadFile")]
     fn load_file(buf: Array, format: &str);
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), derive(Default))]
+#[derive(Clone)]
 pub(crate) struct IoCtx {
     #[cfg(target_arch = "wasm32")]
     buf: Array,
@@ -79,13 +78,13 @@ impl IoCtx {
 
     #[cfg(target_arch = "wasm32")]
     #[allow(dead_code)]
-    pub(crate) fn alert(&self, s: &str) {
+    pub(crate) fn alert(s: &str) {
         alert(s);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     #[allow(dead_code)]
-    pub(crate) fn alert(&self, s: &str) {
+    pub(crate) fn alert(s: &str) {
         MessageDialog::new().set_title("Alert").set_description(s);
     }
 }

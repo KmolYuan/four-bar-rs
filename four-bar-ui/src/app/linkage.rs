@@ -1,4 +1,4 @@
-use super::{io_ctx::IoCtx, synthesis::Synthesis};
+use super::{synthesis::Synthesis, IoCtx};
 use crate::{as_values::as_values, csv_io::write_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points, Polygon},

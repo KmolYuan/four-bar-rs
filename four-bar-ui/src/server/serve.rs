@@ -1,7 +1,9 @@
 use super::update::extract;
 use actix_files::{Files, NamedFile};
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
+use actix_web::web::Json;
 use actix_web::{get, post, web::Data, App, HttpResponse, HttpServer, Responder};
+use serde::Deserialize;
 use std::{
     io::{Error, Result},
     path::PathBuf,
@@ -11,20 +13,26 @@ use temp_dir::TempDir;
 // Store the index path
 struct IndexPath(PathBuf);
 
+#[derive(Deserialize)]
+struct LoginInfo {
+    account: String,
+    password: String,
+}
+
 #[get("/")]
-async fn index(id: Identity, index: Data<IndexPath>) -> Result<NamedFile> {
-    if let Some(id) = id.identity() {
-        println!("login: {}", id);
-    } else {
-        println!("not login");
-    }
+async fn index(index: Data<IndexPath>) -> Result<NamedFile> {
     NamedFile::open(&index.0)
 }
 
 #[post("/login")]
-async fn login(id: Identity) -> impl Responder {
-    id.remember("logged".to_string());
-    HttpResponse::Ok()
+async fn login(id: Identity, json: Json<LoginInfo>) -> impl Responder {
+    if json.account == "guest" {
+        id.remember(json.account.clone());
+        HttpResponse::Ok()
+    } else {
+        // TODO
+        HttpResponse::Forbidden()
+    }
 }
 
 #[post("/logout")]

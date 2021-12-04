@@ -1,4 +1,4 @@
-use super::io_ctx::IoCtx;
+use super::{remote::Remote, IoCtx};
 use crate::{as_values::as_values, csv_io::read_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
@@ -47,6 +47,7 @@ pub(crate) struct Synthesis {
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
     conv: Vec<Arc<Mutex<Vec<[f64; 2]>>>>,
+    remote: Remote,
 }
 
 impl Default for Synthesis {
@@ -62,6 +63,7 @@ impl Default for Synthesis {
             curve: Default::default(),
             conv_open: false,
             conv: Default::default(),
+            remote: Default::default(),
         }
     }
 }
@@ -131,7 +133,7 @@ impl Synthesis {
                 {
                     // TODO: Connect to server
                     let _ = four_bar;
-                    ctx.alert("Not yet prepared!");
+                    IoCtx::alert("Not yet prepared!");
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -165,6 +167,7 @@ impl Synthesis {
                 self.timer.load(Ordering::Relaxed)
             ));
         });
+        ui.group(|ui| self.remote.ui(ui, ctx));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
