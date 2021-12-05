@@ -25,9 +25,10 @@ cp "${REPODIR}/four-bar-ui/src/assets/favicon.png" "${REPODIR}/docs"
 
 echo "Make the archive..."
 cd "${REPODIR}/docs" || exit
-RELEASE="${REPODIR}/target/release"
-if command -v zip &> /dev/null && [ -d ${RELEASE} ]; then
-  zip -r "${RELEASE}/four-bar-wasm-unknown.zip" *
-fi
+for RELEASE in "${REPODIR}/target/debug" "${REPODIR}/target/release"; do
+  if command -v zip &> /dev/null && [ -d ${RELEASE} ]; then
+    zip -r "${RELEASE}/four-bar-wasm-unknown.zip" *
+  fi
+done
 
 echo "Finished"
