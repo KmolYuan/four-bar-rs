@@ -53,17 +53,21 @@
             return;
         reader.readAsText(this.files[0]);
     });
-    window.saveFile = function (s, file_name) {
+
+    window.save_file = function (s, file_name) {
         a.download = file_name;
         a.href = window.URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
         a.click();
     };
-    window.loadFile = function (buf, format) {
+    window.load_file = function (buf, format) {
         reader.onload = e => {
             buf.push(e.target.result);
         };
         input.accept = format;
         input.click();
+    };
+    window.get_link = function () {
+        return location.href;
     };
 
     (async () => {
