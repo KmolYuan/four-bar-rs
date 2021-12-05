@@ -4,3 +4,4 @@ target/
 !/docs/index.html
 Cargo.lock
 *.svg
+users.csv

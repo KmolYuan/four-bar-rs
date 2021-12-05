@@ -12,7 +12,11 @@ extern "C" {
     fn get_link() -> String;
 }
 
-#[derive(Deserialize, Serialize)]
+pub(crate) fn sha512(s: &str) -> String {
+    Hash::hash(s).map(|n| format!("{:02x?}", n)).join("")
+}
+
+#[derive(Deserialize, Serialize, Clone)]
 pub(crate) struct LoginInfo {
     pub(crate) account: String,
     pub(crate) password: String,
@@ -29,12 +33,10 @@ impl Default for LoginInfo {
 
 impl LoginInfo {
     pub(crate) fn to_json(&self) -> String {
-        let password = Hash::hash(&self.password)
-            .map(|n| format!("{:02x?}", n))
-            .join("");
         format!(
             "{{\"account\": \"{}\", \"password\": \"{}\"}}",
-            self.account, password
+            self.account,
+            sha512(&self.password)
         )
     }
 }

@@ -1,45 +1,41 @@
 use super::update::extract;
-use crate::app::remote::LoginInfo;
-use actix_files::{Files, NamedFile};
+use crate::{
+    app::remote::{sha512, LoginInfo},
+    csv_io::{read_csv, write_csv},
+};
+use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
 use actix_web::{
-    get, post,
+    post,
     web::{Data, Json},
     App, HttpResponse, HttpServer, Responder,
 };
 use std::{
-    io::{Error, Result},
-    path::PathBuf,
+    collections::BTreeMap,
+    env::current_dir,
+    fs::{read_to_string, write},
+    io::Result,
+    slice::from_ref,
 };
 use temp_dir::TempDir;
 
-// Store the index path
-struct IndexPath(PathBuf);
-
-#[get("/")]
-async fn index(index: Data<IndexPath>) -> Result<NamedFile> {
-    NamedFile::open(&index.0)
-}
+// Usernames
+struct Users(BTreeMap<String, String>);
 
 #[post("/login")]
-async fn login(id: Identity, json: Json<LoginInfo>) -> impl Responder {
-    if json.account == "guest" {
-        id.remember(json.account.clone());
-        HttpResponse::Ok()
-    } else {
-        // TODO
-        HttpResponse::Forbidden()
+async fn login(users: Data<Users>, id: Identity, json: Json<LoginInfo>) -> impl Responder {
+    match users.0.get(&json.account) {
+        Some(pwd) if sha512(pwd) == json.password => {
+            id.remember(json.account.clone());
+            HttpResponse::Ok()
+        }
+        _ => HttpResponse::Forbidden(),
     }
 }
 
-#[post("/logout")]
-async fn logout(id: Identity) -> impl Responder {
-    id.forget();
-    HttpResponse::Ok()
-}
-
 pub async fn serve(port: u16) -> Result<()> {
-    let temp = TempDir::new().map_err(|e| Error::new(e.kind(), e.to_string()))?;
+    let users = Data::new(users()?);
+    let temp = TempDir::new()?;
     extract(temp.path()).await?;
     let path = temp.path().to_path_buf();
     println!("Serve at: http://localhost:{}/", port);
@@ -52,13 +48,26 @@ pub async fn serve(port: u16) -> Result<()> {
                     .name("auth-cookie")
                     .secure(true),
             ))
-            .app_data(Data::new(IndexPath(path.join("index.html"))))
-            .service(index)
+            .app_data(users.clone())
             .service(login)
-            .service(logout)
-            .service(Files::new("/", &path))
+            .service(Files::new("/", &path).index_file("index.html"))
     })
     .bind(("localhost", port))?
     .run()
     .await
+}
+
+fn users() -> Result<Users> {
+    let users = current_dir()?.join("users.csv");
+    let mut map = BTreeMap::new();
+    if users.is_file() {
+        for user in read_csv::<LoginInfo>(&read_to_string(users)?).unwrap() {
+            map.insert(user.account, user.password);
+        }
+    } else {
+        let user = LoginInfo::default();
+        write(&users, write_csv(from_ref(&user)).unwrap())?;
+        map.insert(user.account, user.password);
+    }
+    Ok(Users(map))
 }
