@@ -1,9 +1,12 @@
 use super::update::extract;
+use crate::app::remote::LoginInfo;
 use actix_files::{Files, NamedFile};
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
-use actix_web::web::Json;
-use actix_web::{get, post, web::Data, App, HttpResponse, HttpServer, Responder};
-use serde::Deserialize;
+use actix_web::{
+    get, post,
+    web::{Data, Json},
+    App, HttpResponse, HttpServer, Responder,
+};
 use std::{
     io::{Error, Result},
     path::PathBuf,
@@ -12,12 +15,6 @@ use temp_dir::TempDir;
 
 // Store the index path
 struct IndexPath(PathBuf);
-
-#[derive(Deserialize)]
-struct LoginInfo {
-    account: String,
-    password: String,
-}
 
 #[get("/")]
 async fn index(index: Data<IndexPath>) -> Result<NamedFile> {

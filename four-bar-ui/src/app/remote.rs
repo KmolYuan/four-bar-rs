@@ -1,8 +1,8 @@
-use super::IoCtx;
+use super::{Atomic, IoCtx};
 use eframe::egui::{TextEdit, Ui};
 use ehttp::{fetch, Request};
+use hmac_sha512::Hash;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -13,11 +13,39 @@ extern "C" {
 }
 
 #[derive(Deserialize, Serialize)]
+pub(crate) struct LoginInfo {
+    pub(crate) account: String,
+    pub(crate) password: String,
+}
+
+impl Default for LoginInfo {
+    fn default() -> Self {
+        Self {
+            account: "guest".to_string(),
+            password: String::new(),
+        }
+    }
+}
+
+impl LoginInfo {
+    pub(crate) fn to_json(&self) -> String {
+        let password = Hash::hash(&self.password)
+            .map(|n| format!("{:02x?}", n))
+            .join("");
+        format!(
+            "{{\"account\": \"{}\", \"password\": \"{}\"}}",
+            self.account, password
+        )
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct Remote {
     address: String,
-    account: String,
-    password: String,
+    info: LoginInfo,
+    #[serde(skip)]
+    is_login: Atomic<bool>,
 }
 
 impl Default for Remote {
@@ -28,8 +56,8 @@ impl Default for Remote {
         let address = "http://localhost:8080/".to_string();
         Self {
             address,
-            account: "guest".to_string(),
-            password: String::new(),
+            is_login: Atomic::new(false),
+            info: Default::default(),
         }
     }
 }
@@ -43,24 +71,18 @@ impl Remote {
         });
         ui.horizontal(|ui| {
             ui.label("Account");
-            ui.text_edit_singleline(&mut self.account);
+            ui.text_edit_singleline(&mut self.info.account);
         });
         ui.horizontal(|ui| {
             ui.label("Password");
-            ui.add(TextEdit::singleline(&mut self.password).password(true));
+            ui.add(TextEdit::singleline(&mut self.info.password).password(true));
         });
         if ui.button("login").clicked() {
-            let mut headers = BTreeMap::new();
-            headers.insert("content-type".to_string(), "application/json".to_string());
-            let body = format!(
-                "{{\"account\": \"{}\", \"password\": \"{}\"}}",
-                self.account, self.password
-            );
             let req = Request {
                 method: "POST".to_string(),
                 url: format!("{}/login", self.address.trim_end_matches('/')),
-                body: body.into_bytes(),
-                headers,
+                body: self.info.to_json().into_bytes(),
+                headers: Request::create_headers_map(&[("content-type", "application/json")]),
             };
             fetch(req, |r| match r {
                 Ok(r) if r.ok => IoCtx::alert("Login successfully!"),

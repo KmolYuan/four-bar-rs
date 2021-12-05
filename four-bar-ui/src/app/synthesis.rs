@@ -1,4 +1,4 @@
-use super::{remote::Remote, IoCtx};
+use super::{remote::Remote, Atomic, IoCtx};
 use crate::{as_values::as_values, csv_io::read_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
@@ -8,13 +8,7 @@ use four_bar::FourBar;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
-use {
-    four_bar::synthesis::synthesis,
-    std::{
-        sync::atomic::{AtomicBool, AtomicU64, Ordering},
-        time::Instant,
-    },
-};
+use {four_bar::synthesis::synthesis, std::time::Instant};
 
 const CRUNODE: &str = include_str!("../assets/crunode.csv");
 
@@ -31,16 +25,13 @@ macro_rules! parameter {
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct Synthesis {
+    #[serde(skip)]
+    started: Atomic<bool>,
+    #[serde(skip)]
+    progress: Atomic<u64>,
     #[cfg(not(target_arch = "wasm32"))]
-    started: Arc<AtomicBool>,
-    #[cfg(target_arch = "wasm32")]
-    started: Arc<Mutex<bool>>,
-    #[cfg(not(target_arch = "wasm32"))]
-    progress: Arc<AtomicU64>,
-    #[cfg(target_arch = "wasm32")]
-    progress: Arc<Mutex<u64>>,
-    #[cfg(not(target_arch = "wasm32"))]
-    timer: Arc<AtomicU64>,
+    #[serde(skip)]
+    timer: Atomic<u64>,
     gen: u64,
     pop: usize,
     curve_csv: String,
@@ -115,20 +106,16 @@ impl Synthesis {
             }
         }
         ui.horizontal(|ui| {
-            #[cfg(not(target_arch = "wasm32"))]
-            let started = self.started.load(Ordering::Relaxed);
-            #[cfg(target_arch = "wasm32")]
-            let started = false;
+            let started = self.started.load();
             if started {
                 if ui.small_button("⏹").on_hover_text("Stop").clicked() {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    self.started.store(false, Ordering::Relaxed);
+                    self.started.store(false);
                 }
             } else if ui.small_button("▶").on_hover_text("Start").clicked()
                 && !self.curve.is_empty()
             {
                 #[cfg(not(target_arch = "wasm32"))]
-                self.start_syn(four_bar);
+                self.native_syn(four_bar);
                 #[cfg(target_arch = "wasm32")]
                 {
                     // TODO: Connect to server
@@ -136,11 +123,7 @@ impl Synthesis {
                     IoCtx::alert("Not yet prepared!");
                 }
             }
-            #[cfg(not(target_arch = "wasm32"))]
-            let progress = self.progress.load(Ordering::Relaxed);
-            #[cfg(target_arch = "wasm32")]
-            let progress = 0;
-            ProgressBar::new(progress as f32 / self.gen as f32)
+            ProgressBar::new(self.progress.load() as f32 / self.gen as f32)
                 .show_percentage()
                 .animate(started)
                 .ui(ui);
@@ -162,18 +145,15 @@ impl Synthesis {
                 self.conv.drain(..self.conv.len() - 1);
             }
             #[cfg(not(target_arch = "wasm32"))]
-            ui.label(format!(
-                "Time passed: {}s",
-                self.timer.load(Ordering::Relaxed)
-            ));
+            ui.label(format!("Time passed: {}s", self.timer.load()));
         });
         ui.group(|ui| self.remote.ui(ui, ctx));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn start_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
-        self.started = Arc::new(AtomicBool::new(true));
-        self.timer.store(0, Ordering::Relaxed);
+    fn native_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
+        self.started = Atomic::new(true);
+        self.timer.store(0);
         let gen = self.gen;
         let pop = self.pop;
         let started = self.started.clone();
@@ -186,13 +166,13 @@ impl Synthesis {
             let start_time = Instant::now();
             let s = synthesis(&curve, gen, pop, |r| {
                 conv.lock().unwrap().push([r.gen as f64, r.best_f]);
-                progress.store(r.gen, Ordering::Relaxed);
+                progress.store(r.gen);
                 let time = Instant::now() - start_time;
-                timer.store(time.as_secs(), Ordering::Relaxed);
-                started.load(Ordering::Relaxed)
+                timer.store(time.as_secs());
+                started.load()
             });
             *four_bar.lock().unwrap() = s.result();
-            started.store(false, Ordering::Relaxed);
+            started.store(false);
         });
     }
 }

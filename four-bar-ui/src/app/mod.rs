@@ -1,4 +1,4 @@
-use self::{io_ctx::IoCtx, linkage::Linkage};
+use self::{io_ctx::IoCtx, linkage::Linkage, mutex::Atomic};
 use eframe::{
     egui::{CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window},
     epi,
@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 
 mod io_ctx;
 mod linkage;
-mod remote;
+mod mutex;
+pub(crate) mod remote;
 mod synthesis;
 
 macro_rules! switch {

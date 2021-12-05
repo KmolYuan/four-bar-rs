@@ -1,8 +1,9 @@
-use reqwest::get;
+use ehttp::{fetch_blocking, Request};
+use std::io::ErrorKind;
 use std::{
     env::current_exe,
     fs::{write, File},
-    io::Result,
+    io::{Error, Result},
     path::Path,
 };
 use zip::ZipArchive;
@@ -21,9 +22,11 @@ macro_rules! wasm_url {
 
 pub async fn update() -> Result<()> {
     println!(concat!("Downloading archive from ", wasm_url!()));
-    let b = get(wasm_url!()).await.unwrap().bytes().await.unwrap();
     let archive = current_exe()?.with_file_name(concat!(archive!(), ".zip"));
-    write(archive, b)?;
+    match fetch_blocking(&Request::get(wasm_url!())) {
+        Ok(r) if r.ok => write(archive, r.bytes),
+        _ => Err(Error::new(ErrorKind::NotFound, "Fetch failed")),
+    }?;
     println!("Done");
     Ok(())
 }

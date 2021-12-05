@@ -77,14 +77,15 @@ impl IoCtx {
     }
 
     #[cfg(target_arch = "wasm32")]
-    #[allow(dead_code)]
     pub(crate) fn alert(s: &str) {
         alert(s);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    #[allow(dead_code)]
     pub(crate) fn alert(s: &str) {
-        MessageDialog::new().set_title("Alert").set_description(s);
+        MessageDialog::new()
+            .set_title("Message")
+            .set_description(s)
+            .show();
     }
 }
