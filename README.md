@@ -62,6 +62,7 @@ Run those scripts from the repository:
 ```bash
 ./setup_web.sh
 ./build_web.sh
+cargo run -- serve --port PORT
 ```
 
 The client-side application is deployed in the `docs` directory (entire files).
