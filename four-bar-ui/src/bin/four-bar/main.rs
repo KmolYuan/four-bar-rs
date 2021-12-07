@@ -1,8 +1,10 @@
 use clap::clap_app;
 use eframe::{epi::IconData, NativeOptions};
-use four_bar_ui::{server::*, App};
+use four_bar_ui::App;
 use std::io::Result;
 
+mod serve;
+mod update;
 mod icon {
     include!(concat!(env!("OUT_DIR"), "/icon.rs"));
 }
@@ -28,14 +30,14 @@ async fn main() -> Result<()> {
     }
     .get_matches();
     if args.subcommand_matches("update").is_some() {
-        update().await
+        update::update().await
     } else if let Some(cmd) = args.subcommand_matches("serve") {
         let port = cmd
             .value_of("PORT")
             .unwrap_or("8080")
             .parse()
             .expect("invalid port");
-        serve(port).await
+        serve::serve(port).await
     } else {
         let app = Box::new(App::default());
         let opt = NativeOptions {

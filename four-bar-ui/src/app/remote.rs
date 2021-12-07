@@ -12,14 +12,14 @@ extern "C" {
     fn get_link() -> String;
 }
 
-pub(crate) fn sha512(s: &str) -> String {
+pub fn sha512(s: &str) -> String {
     Hash::hash(s).map(|n| format!("{:02x?}", n)).join("")
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub(crate) struct LoginInfo {
-    pub(crate) account: String,
-    pub(crate) password: String,
+pub struct LoginInfo {
+    pub account: String,
+    pub password: String,
 }
 
 impl Default for LoginInfo {

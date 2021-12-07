@@ -1,3 +1,4 @@
+pub use self::remote::{sha512, LoginInfo};
 use self::{io_ctx::IoCtx, linkage::Linkage, mutex::Atomic};
 use eframe::{
     egui::{CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window},
@@ -8,7 +9,7 @@ use serde::{Deserialize, Serialize};
 mod io_ctx;
 mod linkage;
 mod mutex;
-pub(crate) mod remote;
+mod remote;
 mod synthesis;
 
 macro_rules! switch {

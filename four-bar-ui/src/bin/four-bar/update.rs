@@ -1,9 +1,8 @@
 use ehttp::{fetch_blocking, Request};
-use std::io::ErrorKind;
 use std::{
     env::current_exe,
     fs::{write, File},
-    io::{Error, Result},
+    io::{Error, ErrorKind, Result},
     path::Path,
 };
 use zip::ZipArchive;
