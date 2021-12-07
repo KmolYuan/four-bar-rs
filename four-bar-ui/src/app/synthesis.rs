@@ -54,6 +54,9 @@ impl Default for Synthesis {
             curve: Default::default(),
             conv_open: false,
             conv: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            remote: Remote::with_address("http://localhost:8080/"),
+            #[cfg(target_arch = "wasm32")]
             remote: Default::default(),
         }
     }
@@ -152,7 +155,7 @@ impl Synthesis {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
-        self.started = Atomic::new(true);
+        self.started = Atomic::from(true);
         self.timer.store(0);
         let gen = self.gen;
         let pop = self.pop;

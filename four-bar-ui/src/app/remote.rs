@@ -43,35 +43,33 @@ impl LoginInfo {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Remote {
+    #[cfg(not(target_arch = "wasm32"))]
     address: String,
     info: LoginInfo,
     #[serde(skip)]
     is_login: Atomic<bool>,
 }
 
-impl Default for Remote {
-    fn default() -> Self {
-        #[cfg(target_arch = "wasm32")]
-        let address = get_link();
-        #[cfg(not(target_arch = "wasm32"))]
-        let address = "http://localhost:8080/".to_string();
+impl Remote {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn with_address(a: impl ToString) -> Self {
         Self {
-            address,
-            is_login: Atomic::new(false),
-            info: Default::default(),
+            address: a.to_string(),
+            ..Self::default()
         }
     }
-}
 
-impl Remote {
     pub(crate) fn ui(&mut self, ui: &mut Ui, _ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
         ui.horizontal(|ui| {
             ui.label("Address");
-            ui.text_edit_singleline(&mut self.address);
+            #[cfg(target_arch = "wasm32")]
+            let _ = ui.label(get_link());
+            #[cfg(not(target_arch = "wasm32"))]
+            let _ = ui.text_edit_singleline(&mut self.address);
         });
         ui.horizontal(|ui| {
             ui.label("Account");
@@ -82,9 +80,13 @@ impl Remote {
             ui.add(TextEdit::singleline(&mut self.info.password).password(true));
         });
         if ui.button("login").clicked() {
+            #[cfg(target_arch = "wasm32")]
+            let address = get_link();
+            #[cfg(not(target_arch = "wasm32"))]
+            let address = &self.address;
             let req = Request {
                 method: "POST".to_string(),
-                url: format!("{}/login", self.address.trim_end_matches('/')),
+                url: format!("{}/login", address.trim_end_matches('/')),
                 body: self.info.to_json().into_bytes(),
                 headers: Request::create_headers_map(&[("content-type", "application/json")]),
             };
