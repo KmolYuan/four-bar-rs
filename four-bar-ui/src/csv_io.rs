@@ -2,14 +2,16 @@ use csv::{Error as CsvError, Reader, Writer};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, io::Cursor};
 
-pub fn read_csv<D>(s: &str) -> Result<Vec<D>, CsvError>
+/// Parse CSV from string.
+pub fn parse_csv<D>(s: &str) -> Result<Vec<D>, CsvError>
 where
     D: DeserializeOwned,
 {
     Reader::from_reader(Cursor::new(s)).deserialize().collect()
 }
 
-pub fn write_csv<S>(arr: &[S]) -> Result<String, Box<dyn Error>>
+/// Dump CSV to string.
+pub fn dump_csv<S>(arr: &[S]) -> Result<String, Box<dyn Error>>
 where
     S: Serialize + Clone,
 {

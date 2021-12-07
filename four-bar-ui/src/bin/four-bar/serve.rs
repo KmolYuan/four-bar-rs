@@ -6,7 +6,7 @@ use actix_web::{
     web::{Data, Json},
     App, HttpResponse, HttpServer, Responder,
 };
-use four_bar_ui::{read_csv, sha512, write_csv, LoginInfo};
+use four_bar_ui::{dump_csv, parse_csv, sha512, LoginInfo};
 use std::{
     collections::BTreeMap,
     env::current_dir,
@@ -30,7 +30,7 @@ async fn login(users: Data<Users>, id: Identity, json: Json<LoginInfo>) -> impl 
     }
 }
 
-pub async fn serve(port: u16) -> Result<()> {
+pub(crate) async fn serve(port: u16) -> Result<()> {
     let users = Data::new(users()?);
     let temp = TempDir::new()?;
     extract(temp.path()).await?;
@@ -58,12 +58,12 @@ fn users() -> Result<Users> {
     let users = current_dir()?.join("users.csv");
     let mut map = BTreeMap::new();
     if users.is_file() {
-        for user in read_csv::<LoginInfo>(&read_to_string(users)?).unwrap() {
+        for user in parse_csv::<LoginInfo>(&read_to_string(users)?).unwrap() {
             map.insert(user.account, user.password);
         }
     } else {
         let user = LoginInfo::default();
-        write(&users, write_csv(from_ref(&user)).unwrap())?;
+        write(&users, dump_csv(from_ref(&user)).unwrap())?;
         map.insert(user.account, user.password);
     }
     Ok(Users(map))

@@ -19,7 +19,7 @@ macro_rules! wasm_url {
     };
 }
 
-pub async fn update() -> Result<()> {
+pub(crate) async fn update() -> Result<()> {
     println!(concat!("Downloading archive from ", wasm_url!()));
     let archive = current_exe()?.with_file_name(concat!(archive!(), ".zip"));
     match fetch_blocking(&Request::get(wasm_url!())) {

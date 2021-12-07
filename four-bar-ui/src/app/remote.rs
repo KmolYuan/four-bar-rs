@@ -12,10 +12,12 @@ extern "C" {
     fn get_link() -> String;
 }
 
+/// Sha512 encrypt function.
 pub fn sha512(s: &str) -> String {
     Hash::hash(s).map(|n| format!("{:02x?}", n)).join("")
 }
 
+/// Store the login information.
 #[derive(Deserialize, Serialize, Clone)]
 pub struct LoginInfo {
     pub account: String,

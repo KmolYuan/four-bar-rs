@@ -1,5 +1,5 @@
 use super::{synthesis::Synthesis, IoCtx};
-use crate::{as_values::as_values, csv_io::write_csv};
+use crate::{as_values::as_values, csv_io::dump_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points, Polygon},
     reset_button, Button, CentralPanel, Color32, CtxRef, DragValue, Ui, Widget,
@@ -220,7 +220,7 @@ impl Linkage {
                 Pivot::Coupler => &self.path3,
             };
             let name = "curve.csv";
-            let s = write_csv(path).unwrap();
+            let s = dump_csv(path).unwrap();
             #[cfg(target_arch = "wasm32")]
             let _ = ctx.save(&s, name);
             #[cfg(not(target_arch = "wasm32"))]

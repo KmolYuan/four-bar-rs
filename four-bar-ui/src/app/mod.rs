@@ -26,7 +26,7 @@ macro_rules! switch {
     };
 }
 
-/// Main state.
+/// Main app state.
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub struct App {

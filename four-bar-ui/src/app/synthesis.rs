@@ -1,5 +1,5 @@
 use super::{remote::Remote, Atomic, IoCtx};
-use crate::{as_values::as_values, csv_io::read_csv};
+use crate::{as_values::as_values, csv_io::parse_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
     Color32, DragValue, Label, ProgressBar, Ui, Widget, Window,
@@ -97,7 +97,7 @@ impl Synthesis {
             ui.text_edit_multiline(&mut self.curve_csv)
         });
         if !self.curve_csv.is_empty() {
-            if let Ok(curve) = read_csv(&self.curve_csv) {
+            if let Ok(curve) = parse_csv(&self.curve_csv) {
                 self.curve = Arc::new(curve);
             } else {
                 Label::new("The provided curve is invalid.\nUses latest valid curve.")
