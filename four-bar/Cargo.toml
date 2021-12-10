@@ -20,6 +20,7 @@ rayon = "1.5"
 
 [dev-dependencies]
 indicatif = "0.16"
+ron = "0.7"
 
 [package.metadata.docs.rs]
 all-features = true

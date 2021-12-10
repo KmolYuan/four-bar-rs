@@ -2,6 +2,8 @@ use crate::*;
 use indicatif::ProgressBar;
 #[allow(unused_imports)]
 use std::f64::consts::TAU;
+use ron::to_string;
+use std::fs::write;
 
 #[cfg(feature = "plotters")]
 #[test]
@@ -40,8 +42,8 @@ fn planar() {
     // let target = YU1;
     // let target = HAND;
     // let target = OPEN_CURVE1;
-    let target = TRIANGLE2;
-    // let target = CRUNODE;
+    // let target = TRIANGLE2;
+    let target = CRUNODE;
     // let target = LINE;
     let gen = 40;
     let pb = ProgressBar::new(gen);
@@ -53,6 +55,7 @@ fn planar() {
     let reports = s.reports();
     let planar = s.func();
     pb.finish();
+    write("result.ron", to_string(&ans).unwrap()).unwrap();
     let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot::plot_curve(
         "Synthesis Test",
