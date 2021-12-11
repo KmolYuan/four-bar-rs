@@ -2,8 +2,9 @@ use crate::update::extract;
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
 use actix_web::{
+    middleware::Logger,
     post,
-    web::{Data, Json},
+    web::{Data, Json, Path},
     App, HttpResponse, HttpServer, Responder,
 };
 use four_bar_ui::{dump_csv, parse_csv, sha512, LoginInfo};
@@ -19,11 +20,16 @@ use temp_dir::TempDir;
 // Usernames
 struct Users(BTreeMap<String, String>);
 
-#[post("/login")]
-async fn login(users: Data<Users>, id: Identity, json: Json<LoginInfo>) -> impl Responder {
-    match users.0.get(&json.account) {
-        Some(pwd) if sha512(pwd) == json.password => {
-            id.remember(json.account.clone());
+#[post("/login/{user}")]
+async fn login(
+    users: Data<Users>,
+    user: Path<String>,
+    id: Identity,
+    json: Json<LoginInfo>,
+) -> impl Responder {
+    match users.0.get(user.as_ref()) {
+        Some(pwd) if sha512(&user) == json.account && sha512(pwd) == json.password => {
+            id.remember(user.into_inner());
             HttpResponse::Ok()
         }
         _ => HttpResponse::Forbidden(),
@@ -36,7 +42,7 @@ pub(crate) async fn serve(port: u16) -> Result<()> {
     extract(temp.path()).await?;
     let path = temp.path().to_path_buf();
     println!("Serve at: http://localhost:{}/", port);
-    println!("Global archive at: {:?}", &path);
+    println!("Unpacked archive at: {:?}", &path);
     println!("Press Ctrl+C to close the server...");
     HttpServer::new(move || {
         App::new()
@@ -45,6 +51,7 @@ pub(crate) async fn serve(port: u16) -> Result<()> {
                     .name("auth-cookie")
                     .secure(true),
             ))
+            .wrap(Logger::default())
             .app_data(users.clone())
             .service(login)
             .service(Files::new("/", &path).index_file("index.html"))
