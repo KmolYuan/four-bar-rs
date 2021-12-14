@@ -252,15 +252,13 @@ pub fn synthesis(
     curve: &[[f64; 2]],
     gen: u64,
     pop: usize,
-    callback: impl FnMut(&Report) -> bool,
+    mut callback: impl FnMut(&Report) -> bool,
 ) -> Solver<Planar> {
     let planar = Planar::new(curve, 720, 360);
-    Solver::solve(
-        planar,
-        De::default()
-            .task(Task::MaxGen(gen))
-            .pop_num(pop)
-            .average(true),
-        callback,
-    )
+    Solver::build(De::default())
+        .task(Task::MaxGen(gen))
+        .pop_num(pop)
+        .average(true)
+        .callback(&mut callback)
+        .solve(planar)
 }
