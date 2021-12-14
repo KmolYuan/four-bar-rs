@@ -93,7 +93,7 @@ macro_rules! draw_path {
 
 #[derive(Deserialize, Serialize, PartialEq)]
 enum Pivot {
-    Crank,
+    Driver,
     Follower,
     Coupler,
 }
@@ -215,7 +215,7 @@ impl Linkage {
     fn curve_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         if ui.button("💾 Save Curve").clicked() {
             let path = match self.pivot {
-                Pivot::Crank => &self.path1,
+                Pivot::Driver => &self.path1,
                 Pivot::Follower => &self.path2,
                 Pivot::Coupler => &self.path3,
             };
@@ -227,7 +227,7 @@ impl Linkage {
             let _ = ctx.save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
         }
         ui.selectable_value(&mut self.pivot, Pivot::Coupler, "Coupler");
-        ui.selectable_value(&mut self.pivot, Pivot::Crank, "Crank");
+        ui.selectable_value(&mut self.pivot, Pivot::Driver, "Driver");
         ui.selectable_value(&mut self.pivot, Pivot::Follower, "Follower");
     }
 
@@ -252,7 +252,7 @@ impl Linkage {
         ui.group(|ui| {
             ui.heading("Parameters");
             link!("Ground: ", four_bar.l0, interval, ui);
-            link!("Crank: ", four_bar.l1, interval, ui);
+            link!("Driver: ", four_bar.l1, interval, ui);
             link!("Coupler: ", four_bar.l2, interval, ui);
             link!("Follower: ", four_bar.l3, interval, ui);
             ui.checkbox(&mut four_bar.inv, "Invert follower and coupler");

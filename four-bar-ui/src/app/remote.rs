@@ -37,7 +37,7 @@ impl LoginInfo {
     pub(crate) fn to_json(&self) -> String {
         format!(
             "{{\"account\": \"{}\", \"password\": \"{}\"}}",
-            self.account,
+            sha512(&self.account),
             sha512(&self.password)
         )
     }
@@ -84,9 +84,10 @@ impl Remote {
             let address = get_link();
             #[cfg(not(target_arch = "wasm32"))]
             let address = &self.address;
+            let url = [address.trim_end_matches('/'), "login", &self.info.account].join("/");
             let req = Request {
                 method: "POST".to_string(),
-                url: format!("{}/login", address.trim_end_matches('/')),
+                url,
                 body: self.info.to_json().into_bytes(),
                 headers: Request::create_headers_map(&[("content-type", "application/json")]),
             };

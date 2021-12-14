@@ -13,15 +13,15 @@ pub struct FourBar {
     pub a: f64,
     /// Length of the ground link.
     pub l0: f64,
-    /// Length of the crank link.
+    /// Length of the driver link.
     pub l1: f64,
     /// Length of the coupler link.
     pub l2: f64,
     /// Length of te follower link.
     pub l3: f64,
-    /// Length of the extended link.
+    /// Length of the extended link on coupler.
     pub l4: f64,
-    /// Angle of the extended coupler.
+    /// Angle of the extended link on coupler.
     pub g: f64,
     /// Invert the direction of follower and coupler.
     pub inv: bool,
