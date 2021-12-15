@@ -22,6 +22,7 @@ wasm-pack build --${BUILD} --out-dir ../docs/pkg -t web --no-typescript "${REPOD
 rm "${REPODIR}/docs/pkg/.gitignore"
 rm "${REPODIR}/docs/pkg/package.json"
 cp "${REPODIR}/four-bar-ui/src/assets/favicon.png" "${REPODIR}/docs"
+cp "${REPODIR}/LICENSE" "${REPODIR}/docs"
 
 echo "Make the archive..."
 cd "${REPODIR}/docs" || exit
