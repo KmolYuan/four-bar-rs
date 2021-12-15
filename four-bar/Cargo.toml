@@ -14,8 +14,7 @@ categories = ["algorithms"]
 serde = { version = "1", features = ["derive"], optional = true }
 metaheuristics-nature = { version = "0.18", features = ["parallel"] }
 plotters = { version = "0.3", optional = true }
-ndarray = "0.15"
-efd = "0.5.3"
+efd = "0.6"
 rayon = "1.5"
 
 [dev-dependencies]
