@@ -1,14 +1,14 @@
 pub use self::remote::{sha512, LoginInfo};
-use self::{io_ctx::IoCtx, linkage::Linkage, mutex::Atomic};
+use self::{atomic::Atomic, io_ctx::IoCtx, linkage::Linkage};
 use eframe::{
     egui::{CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window},
     epi,
 };
 use serde::{Deserialize, Serialize};
 
+mod atomic;
 mod io_ctx;
 mod linkage;
-mod mutex;
 mod remote;
 mod synthesis;
 

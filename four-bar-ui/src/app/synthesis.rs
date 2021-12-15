@@ -6,7 +6,7 @@ use eframe::egui::{
 };
 use four_bar::FourBar;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 #[cfg(not(target_arch = "wasm32"))]
 use {four_bar::synthesis::synthesis, std::time::Instant};
 
@@ -37,7 +37,7 @@ pub(crate) struct Synthesis {
     curve_csv: String,
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
-    conv: Vec<Arc<Mutex<Vec<[f64; 2]>>>>,
+    conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
 }
 
@@ -63,7 +63,7 @@ impl Default for Synthesis {
 }
 
 impl Synthesis {
-    pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<Mutex<FourBar>>) {
+    pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<RwLock<FourBar>>) {
         ui.heading("Synthesis");
         let iter = self.conv.iter().enumerate();
         Window::new("Convergence Plot")
@@ -71,7 +71,7 @@ impl Synthesis {
             .show(ui.ctx(), |ui| {
                 let mut plot = Plot::new("conv_canvas");
                 for (i, values) in iter {
-                    let values = values.lock().unwrap();
+                    let values = values.read().unwrap();
                     let name = format!("Best Fitness {}", i + 1);
                     plot = plot
                         .line(Line::new(as_values(&values)).fill(-1.5).name(&name))
@@ -154,7 +154,7 @@ impl Synthesis {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn native_syn(&mut self, four_bar: Arc<Mutex<FourBar>>) {
+    fn native_syn(&mut self, four_bar: Arc<RwLock<FourBar>>) {
         self.started = Atomic::from(true);
         self.timer.store(0);
         let gen = self.gen;
@@ -163,18 +163,18 @@ impl Synthesis {
         let progress = self.progress.clone();
         let timer = self.timer.clone();
         let curve = self.curve.clone();
-        let conv = Arc::new(Mutex::new(Vec::new()));
+        let conv = Arc::new(RwLock::new(Vec::new()));
         self.conv.push(conv.clone());
         std::thread::spawn(move || {
             let start_time = Instant::now();
             let s = synthesis(&curve, gen, pop, |r| {
-                conv.lock().unwrap().push([r.gen as f64, r.best_f]);
+                conv.write().unwrap().push([r.gen as f64, r.best_f]);
                 progress.store(r.gen);
                 let time = Instant::now() - start_time;
                 timer.store(time.as_secs());
                 started.load()
             });
-            *four_bar.lock().unwrap() = s.result();
+            *four_bar.write().unwrap() = s.result();
             started.store(false);
         });
     }

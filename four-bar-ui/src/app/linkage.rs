@@ -9,7 +9,7 @@ use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::{PI, TAU},
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 macro_rules! unit {
@@ -110,7 +110,7 @@ impl Default for Pivot {
 pub(crate) struct Linkage {
     config: Config,
     driver: Driver,
-    four_bar: Arc<Mutex<FourBar>>,
+    four_bar: Arc<RwLock<FourBar>>,
     path1: Vec<[f64; 2]>,
     path2: Vec<[f64; 2]>,
     path3: Vec<[f64; 2]>,
@@ -122,7 +122,7 @@ pub(crate) struct Linkage {
 impl PartialEq for Linkage {
     fn eq(&self, other: &Self) -> bool {
         self.driver == other.driver
-            && *self.four_bar.lock().unwrap() == *other.four_bar.lock().unwrap()
+            && *self.four_bar.read().unwrap() == *other.four_bar.read().unwrap()
     }
 }
 
@@ -151,7 +151,7 @@ struct Driver {
 
 impl Linkage {
     fn update_mechanism(&mut self) {
-        let m = Mechanism::four_bar(self.four_bar.lock().unwrap().clone());
+        let m = Mechanism::four_bar(self.four_bar.read().unwrap().clone());
         m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut self.joints);
         let [path1, path2, path3] = m.four_bar_loop_all(0., self.config.curve_n);
         self.path1 = path1;
@@ -188,7 +188,7 @@ impl Linkage {
     fn file_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         if ui.button("💾 Save").clicked() {
             let name = "four_bar.ron";
-            let s = to_string(&*self.four_bar.lock().unwrap()).unwrap();
+            let s = to_string(&*self.four_bar.read().unwrap()).unwrap();
             #[cfg(target_arch = "wasm32")]
             let _ = ctx.save(&s, name);
             #[cfg(not(target_arch = "wasm32"))]
@@ -200,14 +200,14 @@ impl Linkage {
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(s) = ctx.open("Rusty Object Notation", &["ron"]) {
                 if let Ok(four_bar) = from_str(s.as_str()) {
-                    *self.four_bar.lock().unwrap() = four_bar;
+                    *self.four_bar.write().unwrap() = four_bar;
                 }
             }
         }
         #[cfg(target_arch = "wasm32")]
         if let Some(s) = ctx.open_result() {
             if let Ok(four_bar) = from_str(s.as_str()) {
-                *self.four_bar.lock().unwrap() = four_bar;
+                *self.four_bar.write().unwrap() = four_bar;
             }
         }
     }
@@ -233,10 +233,10 @@ impl Linkage {
 
     fn parameter(&mut self, ui: &mut Ui) {
         let interval = self.config.interval;
-        let mut four_bar = self.four_bar.lock().unwrap();
         if ui.button("Normalize").clicked() {
-            four_bar.normalize();
+            self.four_bar.write().unwrap().normalize();
         }
+        let mut four_bar = self.four_bar.write().unwrap();
         ui.group(|ui| {
             ui.heading("Offset");
             if ui
