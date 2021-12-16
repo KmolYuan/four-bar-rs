@@ -1,15 +1,15 @@
 #![doc(hidden)]
 
 #[cfg(feature = "plotters")]
+#[allow(unused_imports)]
 #[test]
 fn planar() {
     use crate::*;
     use indicatif::ProgressBar;
     use metaheuristics_nature::ObjFunc;
-    use ron::to_string;
-    #[allow(unused_imports)]
+    use ron::{from_str, to_string};
     use std::f64::consts::TAU;
-    use std::fs::write;
+    use std::fs::{read_to_string, write};
 
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),
@@ -54,13 +54,9 @@ fn planar() {
         pb.set_position(r.gen);
         true
     });
-    let ans = s.result();
-    let reports = s.reports();
-    let planar = s.func();
-    let param = s.best_parameters();
-    dbg!(param);
-    assert_eq!(planar.fitness(param, &Default::default()), s.best_fitness());
     pb.finish();
+    plot::plot_history(&s.reports(), "history.svg");
+    let ans = s.result();
     write("result.ron", to_string(&ans).unwrap()).unwrap();
     let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot::plot_curve(
@@ -68,7 +64,6 @@ fn planar() {
         &[("Target", &target), ("Optimized", &path)],
         "result.svg",
     );
-    plot::plot_history(&reports, "history.svg");
 }
 
 pub const HAND: &[[f64; 2]] = &[

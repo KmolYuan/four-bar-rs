@@ -2,7 +2,7 @@ use super::{synthesis::Synthesis, IoCtx};
 use crate::{as_values::as_values, csv_io::dump_csv};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points, Polygon},
-    reset_button, Button, CentralPanel, Color32, CtxRef, DragValue, Ui, Widget,
+    reset_button, Button, CentralPanel, Color32, CtxRef, DragValue, Ui,
 };
 use four_bar::{FourBar, Mechanism};
 use ron::{from_str, to_string};
@@ -14,43 +14,47 @@ use std::{
 
 macro_rules! unit {
     ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
-        DragValue::new(&mut $attr)
-            .prefix($label)
-            .speed($inter)
-            .ui($ui);
+        $ui.add(DragValue::new(&mut $attr).prefix($label).speed($inter));
     };
 }
 
 macro_rules! link {
     ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
-        DragValue::new(&mut $attr)
-            .prefix($label)
-            .clamp_range(0.0001..=9999.)
-            .speed($inter)
-            .ui($ui);
+        $ui.add(
+            DragValue::new(&mut $attr)
+                .prefix($label)
+                .clamp_range(0.0001..=9999.)
+                .speed($inter),
+        );
     };
 }
 
 macro_rules! angle {
     ($label:literal, $attr:expr, $ui:ident, $t:literal) => {
         $ui.horizontal(|ui| {
-            let mut deg = $attr / PI * 180.;
-            if DragValue::new(&mut deg)
-                .prefix($label)
-                .suffix(concat![" deg", $t])
-                .clamp_range(0..=360)
-                .speed(1.)
-                .ui(ui)
+            if $attr < 0. {
+                $attr += TAU;
+            }
+            let mut deg = $attr.to_degrees();
+            if ui
+                .add(
+                    DragValue::new(&mut deg)
+                        .prefix($label)
+                        .suffix(concat![" deg", $t])
+                        .clamp_range(0..=360)
+                        .speed(1.),
+                )
                 .changed()
             {
-                $attr = deg / 180. * PI;
+                $attr = deg.to_radians();
             }
-            DragValue::new(&mut $attr)
-                .suffix(concat![" rad", $t])
-                .min_decimals(2)
-                .clamp_range((0.)..=TAU)
-                .speed(0.01)
-                .ui(ui);
+            ui.add(
+                DragValue::new(&mut $attr)
+                    .suffix(concat![" rad", $t])
+                    .min_decimals(2)
+                    .clamp_range((0.)..=TAU)
+                    .speed(0.01),
+            );
         });
     };
     ($label:literal, $attr:expr, $ui:ident) => {
@@ -63,11 +67,12 @@ macro_rules! angle {
 
 macro_rules! num {
     ($label:literal, $attr:expr, $inter:expr, $min:expr, $ui:ident) => {
-        DragValue::new(&mut $attr)
-            .prefix($label)
-            .clamp_range($min..=9999)
-            .speed($inter)
-            .ui($ui);
+        $ui.add(
+            DragValue::new(&mut $attr)
+                .prefix($label)
+                .clamp_range($min..=9999)
+                .speed($inter),
+        );
     };
 }
 
@@ -297,7 +302,7 @@ impl Linkage {
             if !self.synthesis.curve.is_empty() {
                 plot = plot.line(draw_path!("Synthesis target", self.synthesis.curve));
             }
-            plot.data_aspect(1.).legend(Legend::default()).ui(ui);
+            ui.add(plot.data_aspect(1.).legend(Legend::default()));
             if self.driver.speed != 0. {
                 self.driver.drive += self.driver.speed / 60.;
                 ui.ctx().request_repaint();
