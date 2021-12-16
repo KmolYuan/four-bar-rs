@@ -13,7 +13,7 @@ use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
 use metaheuristics_nature::*;
 use rayon::prelude::*;
-use std::f64::consts::{FRAC_2_PI, PI, TAU};
+use std::f64::consts::{FRAC_2_PI, TAU};
 
 fn guide(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let end = curve.len() - 1;
@@ -139,8 +139,8 @@ impl Planar {
 
     fn four_bar_coeff(&self, v: &[f64], inv: bool, geo: GeoInfo) -> FourBar {
         let mut a = geo.semi_major_axis_angle - self.geo.semi_major_axis_angle;
-        if a > PI || a < 0. {
-            a -= FRAC_2_PI;
+        if a.sin() < 0. {
+            a += FRAC_2_PI.copysign(a.cos());
         }
         let scale = self.geo.scale / geo.scale;
         let locus_a = geo.locus.1.atan2(geo.locus.0) + a;
