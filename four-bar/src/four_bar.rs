@@ -19,11 +19,11 @@ pub struct FourBar {
     pub l2: f64,
     /// Length of te follower link.
     pub l3: f64,
-    /// Length of the extended link on coupler.
+    /// Length of the extended link on the coupler.
     pub l4: f64,
-    /// Angle of the extended link on coupler.
+    /// Angle of the extended link on the coupler.
     pub g: f64,
-    /// Invert the direction of follower and coupler.
+    /// Invert the direction of the follower and the  coupler.
     pub inv: bool,
 }
 

@@ -1,16 +1,17 @@
 use super::{remote::Remote, Atomic, IoCtx};
-use crate::{as_values::as_values, csv_io::parse_csv};
+use crate::{
+    as_values::as_values,
+    csv_io::{dump_csv, parse_csv},
+};
 use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
     Color32, DragValue, Label, ProgressBar, Ui, Widget, Window,
 };
-use four_bar::FourBar;
+use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 #[cfg(not(target_arch = "wasm32"))]
 use {four_bar::synthesis::synthesis, std::time::Instant};
-
-const CRUNODE: &str = include_str!("../assets/crunode.csv");
 
 macro_rules! parameter {
     ($label:literal, $attr:expr, $ui:ident) => {
@@ -50,8 +51,8 @@ impl Default for Synthesis {
             timer: Default::default(),
             gen: 40,
             pop: 200,
-            curve_csv: CRUNODE.to_string(),
-            curve: Default::default(),
+            curve_csv: dump_csv(CRUNODE).unwrap(),
+            curve: Arc::new(CRUNODE.to_vec()),
             conv_open: false,
             conv: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]

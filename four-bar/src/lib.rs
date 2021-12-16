@@ -20,5 +20,4 @@ mod mechanism;
 pub mod plot;
 mod point;
 pub mod synthesis;
-#[cfg(test)]
-mod tests;
+pub mod tests;

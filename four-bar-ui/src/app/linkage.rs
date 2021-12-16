@@ -111,6 +111,8 @@ pub(crate) struct Linkage {
     config: Config,
     driver: Driver,
     four_bar: Arc<RwLock<FourBar>>,
+    inv_gnd: bool,
+    inv_coupler: bool,
     path1: Vec<[f64; 2]>,
     path2: Vec<[f64; 2]>,
     path3: Vec<[f64; 2]>,
@@ -151,7 +153,14 @@ struct Driver {
 
 impl Linkage {
     fn update_mechanism(&mut self) {
-        let m = Mechanism::four_bar(self.four_bar.read().unwrap().clone());
+        let mut four_bar = self.four_bar.read().unwrap().clone();
+        if self.inv_gnd {
+            four_bar.a += PI;
+        }
+        if self.inv_coupler {
+            four_bar.g = -four_bar.g;
+        }
+        let m = Mechanism::four_bar(four_bar);
         m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut self.joints);
         let [path1, path2, path3] = m.four_bar_loop_all(0., self.config.curve_n);
         self.path1 = path1;
@@ -256,6 +265,8 @@ impl Linkage {
             link!("Coupler: ", four_bar.l2, interval, ui);
             link!("Follower: ", four_bar.l3, interval, ui);
             ui.checkbox(&mut four_bar.inv, "Invert follower and coupler");
+            ui.checkbox(&mut self.inv_gnd, "Invert ground");
+            ui.checkbox(&mut self.inv_coupler, "Invert coupler point");
         });
         ui.group(|ui| {
             ui.heading("Coupler");

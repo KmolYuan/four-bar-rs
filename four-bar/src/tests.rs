@@ -1,14 +1,16 @@
-use crate::*;
-use indicatif::ProgressBar;
-use metaheuristics_nature::ObjFunc;
-use ron::to_string;
-#[allow(unused_imports)]
-use std::f64::consts::TAU;
-use std::fs::write;
+#![doc(hidden)]
 
 #[cfg(feature = "plotters")]
 #[test]
 fn planar() {
+    use crate::*;
+    use indicatif::ProgressBar;
+    use metaheuristics_nature::ObjFunc;
+    use ron::to_string;
+    #[allow(unused_imports)]
+    use std::f64::consts::TAU;
+    use std::fs::write;
+
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),
     //     a: 0.,
@@ -56,6 +58,7 @@ fn planar() {
     let reports = s.reports();
     let planar = s.func();
     let param = s.best_parameters();
+    dbg!(param);
     assert_eq!(planar.fitness(param, &Default::default()), s.best_fitness());
     pb.finish();
     write("result.ron", to_string(&ans).unwrap()).unwrap();
@@ -68,8 +71,7 @@ fn planar() {
     plot::plot_history(&reports, "history.svg");
 }
 
-#[allow(dead_code)]
-const HAND: &[[f64; 2]] = &[
+pub const HAND: &[[f64; 2]] = &[
     [107.31911969201228, 81.59276839878613],
     [107.2463224148719, 82.21336703713774],
     [107.09767748992344, 82.8096978257258],
@@ -431,8 +433,7 @@ const HAND: &[[f64; 2]] = &[
     [107.24054530086866, 80.29841724027493],
     [107.31668526773566, 80.95277825132874],
 ];
-#[allow(dead_code)]
-const YU1: &[[f64; 2]] = &[
+pub const YU1: &[[f64; 2]] = &[
     [-27., 1.],
     [-21.857, -3.214],
     [-16.7, -7.428],
@@ -454,8 +455,7 @@ const YU1: &[[f64; 2]] = &[
     [-28., 11.],
     [-29., 5.],
 ];
-#[allow(dead_code)]
-const YU2: &[[f64; 2]] = &[
+pub const YU2: &[[f64; 2]] = &[
     [-24., 40.],
     [-30., 41.],
     [-34., 40.],
@@ -477,8 +477,7 @@ const YU2: &[[f64; 2]] = &[
     [6., 27.],
     [0., 31.],
 ];
-#[allow(dead_code)]
-const OPEN_CURVE1: &[[f64; 2]] = &[
+pub const OPEN_CURVE1: &[[f64; 2]] = &[
     [0.028607755880487345, 47.07692307692308],
     [6.182453909726641, 52.76923076923077],
     [14.797838525111256, 57.07692307692308],
@@ -491,8 +490,7 @@ const OPEN_CURVE1: &[[f64; 2]] = &[
     [67.41322314049587, 25.384615384615383],
     [60.6439923712651, 18.153846153846153],
 ];
-#[allow(dead_code)]
-const TRIANGLE1: &[[f64; 2]] = &[
+pub const TRIANGLE1: &[[f64; 2]] = &[
     [140.1207548649233, 240.19095327938354],
     [122.18597225622764, 236.93008371416616],
     [107.51205921274939, 233.1257358880792],
@@ -518,8 +516,7 @@ const TRIANGLE1: &[[f64; 2]] = &[
     [172.7294505170972, 246.71269240981832],
     [155.8816244301407, 243.9953011054705],
 ];
-#[allow(dead_code)]
-const TRIANGLE2: &[[f64; 2]] = &[
+pub const TRIANGLE2: &[[f64; 2]] = &[
     [2., 3.5],
     [2.1333, 3.5],
     [2.2667, 3.5],
@@ -556,8 +553,7 @@ const TRIANGLE2: &[[f64; 2]] = &[
     [3.396, 1.6449],
     [3.25, 1.701],
 ];
-#[allow(dead_code)]
-const TRIANGLE3: &[[f64; 2]] = &[
+pub const TRIANGLE3: &[[f64; 2]] = &[
     [5.515148442627067, -8.11495936079062],
     [6.787164098204367, -6.84294370521332],
     [8.10810343284233, -5.619851728696687],
@@ -578,8 +574,7 @@ const TRIANGLE3: &[[f64; 2]] = &[
     [3.0689644895937995, -10.707914351005883],
     [4.340980145171098, -9.435898695428584],
 ];
-#[allow(dead_code)]
-const CRUNODE: &[[f64; 2]] = &[
+pub const CRUNODE: &[[f64; 2]] = &[
     [91.29891650574413, 21.948985854733884],
     [90.60723299336192, 21.302180946414268],
     [89.90175662044871, 20.644050755972415],
@@ -941,8 +936,7 @@ const CRUNODE: &[[f64; 2]] = &[
     [92.64021990145054, 23.205751567322388],
     [91.97662694346114, 22.583739593379768],
 ];
-#[allow(dead_code)]
-const LINE: &[[f64; 2]] = &[
+pub const LINE: &[[f64; 2]] = &[
     [20., 20.],
     [20., 25.],
     [20., 30.],
@@ -950,8 +944,7 @@ const LINE: &[[f64; 2]] = &[
     [20., 40.],
     [20., 45.],
 ];
-#[allow(dead_code)]
-const HAND_NORMAL: &[[f64; 2]] = &[
+pub const HAND_NORMAL: &[[f64; 2]] = &[
     [0.5, 1.1],
     [0.4, 1.1],
     [0.3, 1.1],
@@ -971,8 +964,7 @@ const HAND_NORMAL: &[[f64; 2]] = &[
     [0.6, 0.9],
     [0.6, 1.],
 ];
-#[allow(dead_code)]
-const HAND_CRUNODE: &[[f64; 2]] = &[
+pub const HAND_CRUNODE: &[[f64; 2]] = &[
     [4.15, 2.21],
     [4.5, 2.18],
     [4.53, 1.83],
@@ -986,8 +978,7 @@ const HAND_CRUNODE: &[[f64; 2]] = &[
     [3.49, 1.45],
     [3.76, 1.87],
 ];
-#[allow(dead_code)]
-const HAND_CUSP: &[[f64; 2]] = &[
+pub const HAND_CUSP: &[[f64; 2]] = &[
     [7.03, 5.99],
     [6.95, 5.45],
     [6.77, 5.03],

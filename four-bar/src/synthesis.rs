@@ -137,24 +137,17 @@ impl Planar {
         }
     }
 
-    fn four_bar_coeff(
-        &self,
-        v: &[f64],
-        inv: bool,
-        rot: f64,
-        scale: f64,
-        locus: (f64, f64),
-    ) -> FourBar {
-        let rot = rot - self.geo.semi_major_axis_angle;
-        let scale = self.geo.scale / scale;
-        let locus_rot = locus.1.atan2(locus.0) + rot;
-        let d = locus.1.hypot(locus.0) * scale;
+    fn four_bar_coeff(&self, v: &[f64], inv: bool, geo: GeoInfo) -> FourBar {
+        let a = geo.semi_major_axis_angle - self.geo.semi_major_axis_angle;
+        let scale = self.geo.scale / geo.scale;
+        let locus_a = geo.locus.1.atan2(geo.locus.0) + a;
+        let d = geo.locus.1.hypot(geo.locus.0) * scale;
         FourBar {
             p0: (
-                self.geo.locus.0 - d * locus_rot.cos(),
-                self.geo.locus.1 - d * locus_rot.sin(),
+                self.geo.locus.0 - d * locus_a.cos(),
+                self.geo.locus.1 - d * locus_a.sin(),
             ),
-            a: rot,
+            a,
             l0: v[0] * scale,
             l1: scale,
             l2: v[1] * scale,
@@ -178,14 +171,14 @@ impl Planar {
             .collect()
     }
 
-    fn efd_cal(&self, v: &[f64], inv: bool, curve: &[[f64; 2]]) -> (f64, GeoInfo) {
+    fn efd_cal(&self, v: &[f64], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
         let mut efd = Efd::from_curve(curve, Some(self.harmonic));
         let geo = efd.normalize();
-        let four_bar = self.four_bar_coeff(v, inv, geo.semi_major_axis_angle, geo.scale, geo.locus);
-        let curve = Mechanism::four_bar(four_bar).par_four_bar_loop(0., self.n * 2);
+        let four_bar = self.four_bar_coeff(v, inv, geo);
+        let curve = Mechanism::four_bar(four_bar.clone()).par_four_bar_loop(0., self.n * 2);
         let geo_err = geo_err(&self.curve, &curve);
         let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
-        (fitness, geo)
+        (fitness, four_bar)
     }
 }
 
@@ -213,15 +206,15 @@ impl ObjFunc for Planar {
             eprintln!("WARNING: synthesis failed");
             return four_bar_v(&v, false);
         }
-        let (_, inv, geo) = curves
+        let (_, four_bar) = curves
             .into_par_iter()
             .map(|(inv, curve)| {
-                let (fitness, geo) = self.efd_cal(&v, inv, &curve);
-                (fitness, inv, geo)
+                let (fitness, four_bar) = self.efd_cal(&v, inv, &curve);
+                (fitness, four_bar)
             })
-            .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
+            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
             .unwrap();
-        self.four_bar_coeff(&v, inv, geo.semi_major_axis_angle, geo.scale, geo.locus)
+        four_bar
     }
 
     fn ub(&self) -> &[f64] {
