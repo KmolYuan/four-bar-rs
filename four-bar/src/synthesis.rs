@@ -106,7 +106,7 @@ pub struct Planar {
     pub efd: Efd,
     // Geometric information
     geo: GeoInfo,
-    // How many points need to generated / compared
+    // How many points need to be generated / compared
     n: usize,
     harmonic: usize,
     ub: Vec<f64>,
@@ -177,6 +177,16 @@ impl Planar {
             .filter(|(_, curve)| !path_is_nan(curve))
             .collect()
     }
+
+    fn efd_cal(&self, v: &[f64], inv: bool, curve: &[[f64; 2]]) -> (f64, GeoInfo) {
+        let mut efd = Efd::from_curve(curve, Some(self.harmonic));
+        let geo = efd.normalize();
+        let four_bar = self.four_bar_coeff(v, inv, geo.semi_major_axis_angle, geo.scale, geo.locus);
+        let curve = Mechanism::four_bar(four_bar).par_four_bar_loop(0., self.n * 2);
+        let geo_err = geo_err(&self.curve, &curve);
+        let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
+        (fitness, geo)
+    }
 }
 
 impl ObjFunc for Planar {
@@ -191,15 +201,7 @@ impl ObjFunc for Planar {
         }
         curves
             .into_par_iter()
-            .map(|(inv, curve)| {
-                let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
-                let geo = efd.normalize();
-                let four_bar =
-                    self.four_bar_coeff(&v, inv, geo.semi_major_axis_angle, geo.scale, geo.locus);
-                let curve = Mechanism::four_bar(four_bar).par_four_bar_loop(0., self.n * 2);
-                let geo_err = geo_err(&self.curve, &curve);
-                (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5
-            })
+            .map(|(inv, curve)| self.efd_cal(&v, inv, &curve).0)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap()
     }
@@ -211,18 +213,13 @@ impl ObjFunc for Planar {
             eprintln!("WARNING: synthesis failed");
             return four_bar_v(&v, false);
         }
-        let (inv, _, geo) = curves
+        let (_, inv, geo) = curves
             .into_par_iter()
-            .map(|(inv, c)| {
-                let mut efd = Efd::from_curve(&c, Some(self.harmonic));
-                let geo = efd.normalize();
-                (inv, efd, geo)
+            .map(|(inv, curve)| {
+                let (fitness, geo) = self.efd_cal(&v, inv, &curve);
+                (fitness, inv, geo)
             })
-            .min_by(|(_, a, _), (_, b, _)| {
-                let a = (&a.c - &self.efd.c).mapv(f64::abs).sum();
-                let b = (&b.c - &self.efd.c).mapv(f64::abs).sum();
-                a.partial_cmp(&b).unwrap()
-            })
+            .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
             .unwrap();
         self.four_bar_coeff(&v, inv, geo.semi_major_axis_angle, geo.scale, geo.locus)
     }

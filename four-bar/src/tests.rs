@@ -1,8 +1,9 @@
 use crate::*;
 use indicatif::ProgressBar;
+use metaheuristics_nature::ObjFunc;
+use ron::to_string;
 #[allow(unused_imports)]
 use std::f64::consts::TAU;
-use ron::to_string;
 use std::fs::write;
 
 #[cfg(feature = "plotters")]
@@ -54,16 +55,14 @@ fn planar() {
     let ans = s.result();
     let reports = s.reports();
     let planar = s.func();
+    let param = s.best_parameters();
+    assert_eq!(planar.fitness(param, &Default::default()), s.best_fitness());
     pb.finish();
     write("result.ron", to_string(&ans).unwrap()).unwrap();
     let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
     plot::plot_curve(
         "Synthesis Test",
-        &[
-            ("Guided Target", &planar.curve),
-            ("Target", &target),
-            ("Optimized", &path),
-        ],
+        &[("Target", &target), ("Optimized", &path)],
         "result.svg",
     );
     plot::plot_history(&reports, "history.svg");

@@ -78,8 +78,10 @@ pub fn plot_curve<P>(title: &str, curves: &[(&str, &[[f64; 2]])], path: P)
 where
     P: AsRef<Path>,
 {
-    let iter = curves.iter().flat_map(|(_, c)| c.iter().flat_map(|c| *c));
-    let (p_max, p_min) = find_extreme(iter);
+    let xs = curves.iter().flat_map(|(_, c)| c.iter().map(|c| c[0]));
+    let ys = curves.iter().flat_map(|(_, c)| c.iter().map(|c| c[1]));
+    let (x_max, x_min) = find_extreme(xs);
+    let (y_max, y_min) = find_extreme(ys);
     let root = SVGBackend::new(&path, (1000, 1000)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let mut chart = ChartBuilder::on(&root)
@@ -87,7 +89,7 @@ where
         .x_label_area_size(40)
         .y_label_area_size(40)
         .margin(20)
-        .build_cartesian_2d(p_min..p_max, p_min..p_max)
+        .build_cartesian_2d((x_min - 4.)..x_max + 4., (y_min - 4.)..y_max + 4.)
         .unwrap();
     chart
         .configure_mesh()
