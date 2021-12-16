@@ -8,7 +8,7 @@ use four_bar::{FourBar, Mechanism};
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::{
-    f64::consts::{PI, TAU},
+    f64::consts::TAU,
     sync::{Arc, RwLock},
 };
 
@@ -116,7 +116,6 @@ pub(crate) struct Linkage {
     config: Config,
     driver: Driver,
     four_bar: Arc<RwLock<FourBar>>,
-    inv_gnd: bool,
     inv_coupler: bool,
     path1: Vec<[f64; 2]>,
     path2: Vec<[f64; 2]>,
@@ -159,9 +158,6 @@ struct Driver {
 impl Linkage {
     fn update_mechanism(&mut self) {
         let mut four_bar = self.four_bar.read().unwrap().clone();
-        if self.inv_gnd {
-            four_bar.a += PI;
-        }
         if self.inv_coupler {
             four_bar.g = -four_bar.g;
         }
@@ -270,7 +266,6 @@ impl Linkage {
             link!("Coupler: ", four_bar.l2, interval, ui);
             link!("Follower: ", four_bar.l3, interval, ui);
             ui.checkbox(&mut four_bar.inv, "Invert follower and coupler");
-            ui.checkbox(&mut self.inv_gnd, "Invert ground");
             ui.checkbox(&mut self.inv_coupler, "Invert coupler point");
         });
         ui.group(|ui| {
