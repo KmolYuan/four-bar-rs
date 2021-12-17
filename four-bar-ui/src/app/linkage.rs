@@ -116,7 +116,6 @@ pub(crate) struct Linkage {
     config: Config,
     driver: Driver,
     four_bar: Arc<RwLock<FourBar>>,
-    inv_coupler: bool,
     path1: Vec<[f64; 2]>,
     path2: Vec<[f64; 2]>,
     path3: Vec<[f64; 2]>,
@@ -278,7 +277,6 @@ impl Linkage {
             link!("Coupler: ", four_bar.l2, interval, ui);
             link!("Follower: ", four_bar.l3, interval, ui);
             ui.checkbox(&mut four_bar.inv, "Invert follower and coupler");
-            ui.checkbox(&mut self.inv_coupler, "Invert coupler point");
         });
         ui.group(|ui| {
             ui.heading("Coupler");
