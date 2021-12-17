@@ -17,8 +17,10 @@ async fn main() -> Result<()> {
         (version: env!("CARGO_PKG_VERSION"))
         (author: env!("CARGO_PKG_AUTHORS"))
         (about: env!("CARGO_PKG_DESCRIPTION"))
+        (@arg FILE: +takes_value "File path")
         (@subcommand ui =>
             (about: "Run native UI program (default)")
+            (@arg FILE: +takes_value "File path")
         )
         (@subcommand update =>
             (about: "Download the latest WASM archive")
@@ -39,7 +41,12 @@ async fn main() -> Result<()> {
             .expect("invalid port");
         serve::serve(port).await
     } else {
-        let app = Box::new(App::default());
+        let file = if let Some(cmd) = args.subcommand_matches("ui") {
+            cmd.value_of("FILE")
+        } else {
+            args.value_of("FILE")
+        };
+        let app = Box::new(App::open(file));
         let opt = NativeOptions {
             icon_data: Some(IconData {
                 rgba: icon::ICON.to_vec(),

@@ -156,6 +156,22 @@ struct Driver {
 }
 
 impl Linkage {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn open(file: Option<&str>) -> Self {
+        use std::fs::read_to_string;
+
+        let four_bar = if let Some(file) = file {
+            let s = read_to_string(file).expect("Read file error");
+            Arc::new(RwLock::new(from_str(&s).expect("Deserialize error")))
+        } else {
+            Default::default()
+        };
+        Self {
+            four_bar,
+            ..Self::default()
+        }
+    }
+
     fn update_mechanism(&mut self) {
         let m = Mechanism::four_bar(&*self.four_bar.read().unwrap());
         m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut self.joints);
