@@ -38,7 +38,7 @@ pub struct Mechanism {
 
 impl Mechanism {
     /// Create four bar linkages.
-    pub fn four_bar(m: FourBar) -> Self {
+    pub fn four_bar(m: &FourBar) -> Self {
         let joints = vec![
             [m.p0.x(), m.p0.y()],
             [m.p0.x() + m.l0 * m.a.cos(), m.p0.y() + m.l0 * m.a.sin()],

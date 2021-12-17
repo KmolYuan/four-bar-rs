@@ -165,7 +165,7 @@ impl Planar {
         [false, true]
             .into_par_iter()
             .map(|inv| {
-                let fourbar = Mechanism::four_bar(four_bar_v(v, inv));
+                let fourbar = Mechanism::four_bar(&four_bar_v(v, inv));
                 let mut c = fourbar.par_four_bar_loop(0., self.n);
                 c.push(c[0]);
                 (inv, c)
@@ -178,7 +178,7 @@ impl Planar {
         let mut efd = Efd::from_curve(curve, Some(self.harmonic));
         let geo = efd.normalize();
         let four_bar = self.four_bar_coeff(v, inv, geo);
-        let curve = Mechanism::four_bar(four_bar.clone()).par_four_bar_loop(0., self.n * 2);
+        let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
         let geo_err = geo_err(&self.curve, &curve);
         let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
         (fitness, four_bar)
@@ -191,33 +191,24 @@ impl ObjFunc for Planar {
 
     fn fitness(&self, v: &[f64], _r: &Report) -> Self::Respond {
         let v = grashof_transform(v);
-        let curves = self.available_curve(&v);
-        if curves.is_empty() {
-            return 1e10;
-        }
-        curves
+        self.available_curve(&v)
             .into_par_iter()
             .map(|(inv, curve)| self.efd_cal(&v, inv, &curve).0)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap()
+            .unwrap_or(1e10)
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
         let v = grashof_transform(v);
-        let curves = self.available_curve(&v);
-        if curves.is_empty() {
-            eprintln!("WARNING: synthesis failed");
-            return four_bar_v(&v, false);
-        }
-        let (_, four_bar) = curves
+        self.available_curve(&v)
             .into_par_iter()
-            .map(|(inv, curve)| {
-                let (fitness, four_bar) = self.efd_cal(&v, inv, &curve);
-                (fitness, four_bar)
-            })
+            .map(|(inv, curve)| self.efd_cal(&v, inv, &curve))
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-            .unwrap();
-        four_bar
+            .unwrap_or_else(|| {
+                eprintln!("WARNING: synthesis failed");
+                (0., four_bar_v(&v, false))
+            })
+            .1
     }
 
     fn ub(&self) -> &[f64] {

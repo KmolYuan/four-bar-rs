@@ -157,11 +157,7 @@ struct Driver {
 
 impl Linkage {
     fn update_mechanism(&mut self) {
-        let mut four_bar = self.four_bar.read().unwrap().clone();
-        if self.inv_coupler {
-            four_bar.g = -four_bar.g;
-        }
-        let m = Mechanism::four_bar(four_bar);
+        let m = Mechanism::four_bar(&*self.four_bar.read().unwrap());
         m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut self.joints);
         let [path1, path2, path3] = m.four_bar_loop_all(0., self.config.curve_n);
         self.path1 = path1;

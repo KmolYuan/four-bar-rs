@@ -58,7 +58,7 @@ fn planar() {
     plot::plot_history(&s.reports(), "history.svg");
     let ans = s.result();
     write("result.ron", to_string(&ans).unwrap()).unwrap();
-    let path = Mechanism::four_bar(ans).four_bar_loop(0., 360);
+    let path = Mechanism::four_bar(&ans).four_bar_loop(0., 360);
     plot::plot_curve(
         "Synthesis Test",
         &[("Target", &target), ("Optimized", &path)],
