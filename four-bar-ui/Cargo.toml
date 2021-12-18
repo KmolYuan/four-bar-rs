@@ -44,7 +44,7 @@ js-sys = "0.3"
 image = "0.23"
 
 [target.'cfg(windows)'.build-dependencies]
-embed-resource = "1.6"
+winres = "0.1"
 
 [package.metadata.wasm-pack.profile.dev]
 wasm-opt = ['-O4']

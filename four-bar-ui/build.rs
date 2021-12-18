@@ -23,9 +23,10 @@ pub const ICON: &[u8] = &{:?};",
     {
         let ico_path = out_dir.join("icon.ico");
         img.save(&ico_path)?;
-        let win_rc = out_dir.join("resource.rc");
-        write(&win_rc, format!("four_bar ICON \"{:?}\"\r\n", ico_path))?;
-        embed_resource::compile(win_rc);
+        winres::WindowsResource::new()
+            .set_icon(ico_path.to_str().unwrap())
+            .compile()
+            .unwrap();
     }
     Ok(())
 }
