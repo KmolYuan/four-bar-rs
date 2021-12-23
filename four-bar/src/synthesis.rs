@@ -6,7 +6,7 @@
 //! # let curve = [[0., 0.], [1., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
-//! let s = synthesis(&curve, pop, |ctx| ctx.gen == gen);
+//! let s = synthesis(&curve, pop, |ctx| ctx.gen == gen, |ctx| ctx.best_f);
 //! let result = s.result();
 //! ```
 use crate::{FourBar, Mechanism};
