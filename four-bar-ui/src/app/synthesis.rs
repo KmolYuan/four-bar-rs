@@ -168,14 +168,20 @@ impl Synthesis {
         self.conv.push(conv.clone());
         std::thread::spawn(move || {
             let start_time = Instant::now();
-            let s = synthesis(&curve, gen, pop, |r| {
-                conv.write().unwrap().push([r.gen as f64, r.best_f]);
-                progress.store(r.gen);
-                let time = Instant::now() - start_time;
-                timer.store(time.as_secs());
-                started.load()
-            });
-            *four_bar.write().unwrap() = s.result();
+            let started_inner = started.clone();
+            *four_bar.write().unwrap() = synthesis(
+                &curve,
+                pop,
+                move |ctx| {
+                    conv.write().unwrap().push([ctx.gen as f64, ctx.best_f]);
+                    progress.store(ctx.gen);
+                    let time = Instant::now() - start_time;
+                    timer.store(time.as_secs());
+                    ctx.gen == gen || !started_inner.load()
+                },
+                |_| (),
+            )
+            .result();
             started.store(false);
         });
     }

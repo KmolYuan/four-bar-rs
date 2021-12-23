@@ -6,12 +6,12 @@
 //! # let curve = [[0., 0.], [1., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
-//! let s = synthesis(&curve, gen, pop, |_| true);
+//! let s = synthesis(&curve, pop, |ctx| ctx.gen == gen);
 //! let result = s.result();
 //! ```
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-use metaheuristics_nature::*;
+use metaheuristics_nature::{utility::Context, De, ObjFunc, Solver};
 use rayon::prelude::*;
 use std::f64::consts::{FRAC_2_PI, TAU};
 
@@ -187,9 +187,9 @@ impl Planar {
 
 impl ObjFunc for Planar {
     type Result = FourBar;
-    type Respond = f64;
+    type Fitness = f64;
 
-    fn fitness(&self, v: &[f64], _r: &Report) -> Self::Respond {
+    fn fitness(&self, v: &[f64], _: f64) -> Self::Fitness {
         let v = grashof_transform(v);
         self.available_curve(&v)
             .into_par_iter()
@@ -221,17 +221,16 @@ impl ObjFunc for Planar {
 }
 
 /// Dimensional synthesis with default options.
-pub fn synthesis(
+pub fn synthesis<R>(
     curve: &[[f64; 2]],
-    gen: u64,
     pop: usize,
-    mut callback: impl FnMut(&Report) -> bool,
-) -> Solver<Planar> {
+    task: impl Fn(&Context<Planar>) -> bool + 'static,
+    record: impl Fn(&Context<Planar>) -> R + 'static,
+) -> Solver<Planar, R> {
     let planar = Planar::new(curve, 720, 360);
     Solver::build(De::default())
-        .task(Task::MaxGen(gen))
+        .task(task)
         .pop_num(pop)
-        .average(true)
-        .callback(&mut callback)
+        .record(record)
         .solve(planar)
 }

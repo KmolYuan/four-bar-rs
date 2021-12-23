@@ -50,12 +50,18 @@ fn planar() {
     // let target = LINE;
     let gen = 40;
     let pb = ProgressBar::new(gen);
-    let s = synthesis::synthesis(&target, gen, 200, |r| {
-        pb.set_position(r.gen);
-        true
-    });
+    let pb_inner = pb.clone();
+    let s = synthesis::synthesis(
+        &target,
+        200,
+        move |ctx| {
+            pb_inner.set_position(ctx.gen);
+            ctx.gen == gen
+        },
+        |ctx| (ctx.gen, ctx.best_f),
+    );
     pb.finish();
-    plot::plot_history(&s.reports(), "history.svg");
+    plot::plot_history(s.report(), "history.svg");
     let ans = s.result();
     write("result.ron", to_string(&ans).unwrap()).unwrap();
     let path = Mechanism::four_bar(&ans).four_bar_loop(0., 360);
