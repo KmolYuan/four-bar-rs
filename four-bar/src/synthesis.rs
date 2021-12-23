@@ -36,7 +36,7 @@ fn path_is_nan(path: &[[f64; 2]]) -> bool {
 fn grashof_transform(v: &[f64]) -> [f64; 5] {
     let mut four = [v[0], 1., v[1], v[2]];
     four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    if four[0] + four[3] - four[1] - four[2] < 0. {
+    if four[0] + four[3] - four[1] - four[2] < 0. && (four[0] == 1. || four[0] == v[0]) {
         [v[0], v[1], v[2], v[3], v[4]]
     } else {
         let l1 = four[0];
