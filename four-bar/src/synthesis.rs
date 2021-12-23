@@ -33,18 +33,18 @@ fn path_is_nan(path: &[[f64; 2]]) -> bool {
     false
 }
 
-fn grashof_transform(v: &[f64]) -> Vec<f64> {
-    let mut four = vec![v[0], 1., v[1], v[2]];
+fn grashof_transform(v: &[f64]) -> [f64; 5] {
+    let mut four = [v[0], 1., v[1], v[2]];
     four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    if four[0] + four[3] - four[1] - four[2] >= 0. {
-        let l1 = four[0];
-        vec![four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
+    if four[0] + four[3] - four[1] - four[2] < 0. {
+        [v[0], v[1], v[2], v[3], v[4]]
     } else {
-        v.to_vec()
+        let l1 = four[0];
+        [four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
     }
 }
 
-fn four_bar_v(v: &[f64], inv: bool) -> FourBar {
+fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
     FourBar {
         p0: (0., 0.),
         a: 0.,
@@ -109,16 +109,16 @@ pub struct Planar {
     // How many points need to be generated / compared
     n: usize,
     harmonic: usize,
-    ub: Vec<f64>,
-    lb: Vec<f64>,
+    ub: [f64; 5],
+    lb: [f64; 5],
 }
 
 impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize) -> Self {
         // linkages
-        let mut ub = vec![10.; 5];
-        let mut lb = vec![1e-6; 5];
+        let mut ub = [10.; 5];
+        let mut lb = [1e-6; 5];
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
@@ -137,7 +137,7 @@ impl Planar {
         }
     }
 
-    fn four_bar_coeff(&self, v: &[f64], inv: bool, geo: GeoInfo) -> FourBar {
+    fn four_bar_coeff(&self, v: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
         let mut a = geo.semi_major_axis_angle - self.geo.semi_major_axis_angle;
         if a.sin() < 0. {
             a += FRAC_2_PI.copysign(a.cos());
@@ -161,7 +161,7 @@ impl Planar {
         }
     }
 
-    fn available_curve(&self, v: &[f64]) -> Vec<(bool, Vec<[f64; 2]>)> {
+    fn available_curve(&self, v: &[f64; 5]) -> Vec<(bool, Vec<[f64; 2]>)> {
         [false, true]
             .into_par_iter()
             .map(|inv| {
@@ -174,7 +174,7 @@ impl Planar {
             .collect()
     }
 
-    fn efd_cal(&self, v: &[f64], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
+    fn efd_cal(&self, v: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
         let mut efd = Efd::from_curve(curve, Some(self.harmonic));
         let geo = efd.normalize();
         let four_bar = self.four_bar_coeff(v, inv, geo);
