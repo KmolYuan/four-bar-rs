@@ -10,21 +10,20 @@ const FONT: &str = if cfg!(windows) {
 };
 
 /// Plot the synthesis history.
-pub fn plot_history<P>(history: &[(u64, f64)], path: P)
+pub fn plot_history<P>(history: &[f64], path: P)
 where
     P: AsRef<Path>,
 {
     let root = SVGBackend::new(&path, (1600, 900)).into_drawing_area();
     root.fill(&WHITE).unwrap();
-    let gen_max = history.iter().map(|r| r.0).max().unwrap();
-    let (max_best, _) = find_extreme(history.iter().map(|r| r.1));
+    let (max_best, _) = find_extreme(history.iter().cloned());
     let mut chart = ChartBuilder::on(&root)
         .caption("History", (FONT, 50))
         .x_label_area_size(45)
         .y_label_area_size(50)
         .right_y_label_area_size(50)
         .margin(20)
-        .build_cartesian_2d(0..gen_max, 0f64..max_best)
+        .build_cartesian_2d(0..history.len(), 0f64..max_best)
         .unwrap();
     chart
         .configure_mesh()
@@ -39,7 +38,7 @@ where
     const BLUE: RGBColor = RGBColor(118, 182, 222);
     chart
         .draw_series(LineSeries::new(
-            history.iter().cloned(),
+            history.iter().cloned().enumerate(),
             BLUE.stroke_width(5),
         ))
         .unwrap()

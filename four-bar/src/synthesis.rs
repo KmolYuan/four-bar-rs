@@ -1,17 +1,26 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 //!
 //! ```
-//! use four_bar::synthesis::synthesis;
+//! use four_bar::synthesis::{
+//!     mh::{Rga, Solver},
+//!     Planar,
+//! };
 //!
 //! # let curve = [[0., 0.], [1., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
-//! let s = synthesis(&curve, pop, |ctx| ctx.gen == gen, |ctx| ctx.best_f);
+//! let s = Solver::build(Rga::default())
+//!     .task(move |ctx| ctx.gen == gen)
+//!     .pop_num(pop)
+//!     .record(|ctx| ctx.best_f)
+//!     .solve(Planar::new(&curve, 720, 360));
 //! let result = s.result();
 //! ```
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-use metaheuristics_nature::{utility::Context, De, ObjFunc, Solver};
+#[doc(no_inline)]
+pub use metaheuristics_nature as mh;
+use metaheuristics_nature::ObjFunc;
 use rayon::prelude::*;
 use std::f64::consts::{FRAC_2_PI, TAU};
 
@@ -218,19 +227,4 @@ impl ObjFunc for Planar {
     fn lb(&self) -> &[f64] {
         &self.lb
     }
-}
-
-/// Dimensional synthesis with default options.
-pub fn synthesis<R>(
-    curve: &[[f64; 2]],
-    pop: usize,
-    task: impl Fn(&Context<Planar>) -> bool + 'static,
-    record: impl Fn(&Context<Planar>) -> R + 'static,
-) -> Solver<Planar, R> {
-    let planar = Planar::new(curve, 720, 360);
-    Solver::build(De::default())
-        .task(task)
-        .pop_num(pop)
-        .record(record)
-        .solve(planar)
 }

@@ -7,11 +7,16 @@ use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
     Color32, DragValue, Label, ProgressBar, Ui, Widget, Window,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use four_bar::synthesis::{
+    mh::{De, Solver},
+    Planar,
+};
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 #[cfg(not(target_arch = "wasm32"))]
-use {four_bar::synthesis::synthesis, std::time::Instant};
+use std::time::Instant;
 
 macro_rules! parameter {
     ($label:literal, $attr:expr, $ui:ident) => {
@@ -169,19 +174,16 @@ impl Synthesis {
         std::thread::spawn(move || {
             let start_time = Instant::now();
             let started_inner = started.clone();
-            *four_bar.write().unwrap() = synthesis(
-                &curve,
-                pop,
-                move |ctx| {
+            *four_bar.write().unwrap() = Solver::build(De::default())
+                .pop_num(pop)
+                .task(move |ctx| ctx.gen == gen || !started_inner.load())
+                .callback(|ctx| {
                     conv.write().unwrap().push([ctx.gen as f64, ctx.best_f]);
                     progress.store(ctx.gen);
-                    let time = Instant::now() - start_time;
-                    timer.store(time.as_secs());
-                    ctx.gen == gen || !started_inner.load()
-                },
-                |_| (),
-            )
-            .result();
+                    timer.store((Instant::now() - start_time).as_secs());
+                })
+                .solve(Planar::new(&curve, 720, 360))
+                .result();
             started.store(false);
         });
     }

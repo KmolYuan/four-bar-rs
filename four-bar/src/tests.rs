@@ -4,12 +4,20 @@
 #[allow(unused_imports)]
 #[test]
 fn planar() {
-    use crate::*;
+    use crate::{
+        plot::{plot_curve, plot_history},
+        synthesis::{
+            mh::{De, Solver},
+            Planar,
+        },
+        Mechanism,
+    };
     use indicatif::ProgressBar;
-    use metaheuristics_nature::ObjFunc;
     use ron::{from_str, to_string};
-    use std::f64::consts::TAU;
-    use std::fs::{read_to_string, write};
+    use std::{
+        f64::consts::TAU,
+        fs::{read_to_string, write},
+    };
 
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),
@@ -50,22 +58,18 @@ fn planar() {
     // let target = LINE;
     let gen = 40;
     let pb = ProgressBar::new(gen);
-    let pb_inner = pb.clone();
-    let s = synthesis::synthesis(
-        &target,
-        200,
-        move |ctx| {
-            pb_inner.set_position(ctx.gen);
-            ctx.gen == gen
-        },
-        |ctx| (ctx.gen, ctx.best_f),
-    );
+    let s = Solver::build(De::default())
+        .task(move |ctx| ctx.gen == gen)
+        .callback(|ctx| pb.set_position(ctx.gen))
+        .pop_num(200)
+        .record(|ctx| ctx.best_f)
+        .solve(Planar::new(target, 720, 360));
     pb.finish();
-    plot::plot_history(s.report(), "history.svg");
+    plot_history(s.report(), "history.svg");
     let ans = s.result();
     write("result.ron", to_string(&ans).unwrap()).unwrap();
     let path = Mechanism::four_bar(&ans).four_bar_loop(0., 360);
-    plot::plot_curve(
+    plot_curve(
         "Synthesis Test",
         &[("Target", &target), ("Optimized", &path)],
         "result.svg",
