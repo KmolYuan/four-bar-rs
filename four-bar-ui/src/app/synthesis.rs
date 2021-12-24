@@ -173,10 +173,9 @@ impl Synthesis {
         self.conv.push(conv.clone());
         std::thread::spawn(move || {
             let start_time = Instant::now();
-            let started_inner = started.clone();
             *four_bar.write().unwrap() = Solver::build(De::default())
                 .pop_num(pop)
-                .task(move |ctx| ctx.gen == gen || !started_inner.load())
+                .task(|ctx| ctx.gen == gen || !started.load())
                 .callback(|ctx| {
                     conv.write().unwrap().push([ctx.gen as f64, ctx.best_f]);
                     progress.store(ctx.gen);

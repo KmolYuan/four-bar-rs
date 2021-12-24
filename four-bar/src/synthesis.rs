@@ -10,7 +10,7 @@
 //! # let gen = 0;
 //! # let pop = 2;
 //! let s = Solver::build(Rga::default())
-//!     .task(move |ctx| ctx.gen == gen)
+//!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
 //!     .solve(Planar::new(&curve, 720, 360));

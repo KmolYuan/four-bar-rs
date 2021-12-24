@@ -59,7 +59,7 @@ fn planar() {
     let gen = 40;
     let pb = ProgressBar::new(gen);
     let s = Solver::build(De::default())
-        .task(move |ctx| ctx.gen == gen)
+        .task(|ctx| ctx.gen == gen)
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(200)
         .record(|ctx| ctx.best_f)
