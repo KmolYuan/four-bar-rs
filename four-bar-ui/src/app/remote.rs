@@ -71,7 +71,7 @@ impl Remote {
         });
         if self.is_login.load() {
             if ui.button("logout").clicked() {
-                // TODO logout
+                ctx.logout(&self.address, self.is_login.clone());
             }
         } else {
             ui.horizontal(|ui| {

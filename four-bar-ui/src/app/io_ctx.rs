@@ -17,6 +17,7 @@ extern "C" {
     fn save_file(s: &str, file_name: &str);
     fn load_file(buf: Array, format: &str);
     fn login(account: &str, body: &str, done: JsValue);
+    fn logout(done: JsValue);
 }
 
 #[derive(Clone)]
@@ -98,24 +99,58 @@ impl IoCtx {
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn login(&self, _url: &str, account: &str, body: &str, state: Atomic<bool>) {
-        let done = Closure::once_into_js(move |b| state.store(b));
+        let done = Closure::once_into_js(move |b| {
+            if b {
+                Self::alert("Login successfully!");
+            } else {
+                Self::alert("Login failed!");
+            }
+            state.store(b)
+        });
         login(account, body, done);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn login(&self, url: &str, account: &str, body: &str, state: Atomic<bool>) {
-        if self
+        let b = self
             .agent
             .post(&[url.trim_end_matches('/'), "login", account].join("/"))
             .set("content-type", "application/json")
             .send_bytes(body.as_bytes())
-            .is_ok()
-        {
+            .is_ok();
+        if b {
             Self::alert("Login successfully!");
-            state.store(true);
         } else {
             Self::alert("Login failed!");
+        }
+        state.store(b);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn logout(&self, _url: &str, state: Atomic<bool>) {
+        let done = Closure::once_into_js(move |b| {
+            if b {
+                Self::alert("Logout successfully!");
+                state.store(false)
+            } else {
+                Self::alert("Logout failed!");
+            }
+        });
+        logout(done);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn logout(&self, url: &str, state: Atomic<bool>) {
+        if self
+            .agent
+            .post(&[url.trim_end_matches('/'), "logout"].join("/"))
+            .call()
+            .is_ok()
+        {
+            Self::alert("Logout successfully!");
             state.store(false);
+        } else {
+            Self::alert("Logout failed!");
         }
     }
 }

@@ -75,14 +75,13 @@
             body: body,
             headers: {"content-type": "application/json"},
             mode: "cors",
-        }).then(res => {
-            if (res.ok) {
-                alert("Login successfully!");
-            } else {
-                alert("Login failed!");
-            }
-            done(res.ok);
-        })
+        }).then(res => done(res.ok));
+    };
+    window.logout = function (done) {
+        fetch(location.href + "logout", {
+            method: "POST",
+            mode: "cors",
+        }).then(res => done(res.ok));
     };
 
     (async () => {

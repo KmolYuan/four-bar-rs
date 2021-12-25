@@ -36,6 +36,12 @@ async fn login(
     }
 }
 
+#[post("/logout")]
+async fn logout(id: Identity) -> impl Responder {
+    id.forget();
+    HttpResponse::Ok()
+}
+
 pub(crate) async fn serve(port: u16) -> Result<()> {
     let users = Data::new(users()?);
     let temp = TempDir::new()?;
@@ -54,6 +60,7 @@ pub(crate) async fn serve(port: u16) -> Result<()> {
             .wrap(Logger::default())
             .app_data(users.clone())
             .service(login)
+            .service(logout)
             .service(Files::new("/", &path).index_file("index.html"))
     })
     .bind(("localhost", port))?
