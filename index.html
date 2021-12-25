@@ -69,7 +69,7 @@
     window.get_link = function () {
         return location.href;
     };
-    window.login = function (account, body) {
+    window.login = function (account, body, done) {
         fetch(location.href + "login/" + account, {
             method: "POST",
             body: body,
@@ -81,6 +81,7 @@
             } else {
                 alert("Login failed!");
             }
+            done(res.ok);
         })
     };
 
