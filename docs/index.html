@@ -69,6 +69,20 @@
     window.get_link = function () {
         return location.href;
     };
+    window.login = function (account, body) {
+        fetch(location.href + "login/" + account, {
+            method: "POST",
+            body: body,
+            headers: {"content-type": "application/json"},
+            mode: "cors",
+        }).then(res => {
+            if (res.ok) {
+                alert("Login successfully!");
+            } else {
+                alert("Login failed!");
+            }
+        })
+    };
 
     (async () => {
         await wasm.default();

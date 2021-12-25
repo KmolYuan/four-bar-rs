@@ -15,19 +15,25 @@ extern "C" {
     fn alert(s: &str);
     fn save_file(s: &str, file_name: &str);
     fn load_file(buf: Array, format: &str);
+    fn login(account: &str, body: &str);
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), derive(Default))]
 #[derive(Clone)]
 pub(crate) struct IoCtx {
     #[cfg(target_arch = "wasm32")]
     buf: Array,
+    #[cfg(not(target_arch = "wasm32"))]
+    agent: ureq::Agent,
 }
 
-#[cfg(target_arch = "wasm32")]
 impl Default for IoCtx {
     fn default() -> Self {
-        Self { buf: Array::new() }
+        Self {
+            #[cfg(target_arch = "wasm32")]
+            buf: Array::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            agent: ureq::Agent::new(),
+        }
     }
 }
 
@@ -87,5 +93,25 @@ impl IoCtx {
             .set_title("Message")
             .set_description(s)
             .show();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn login(&self, _url: &str, account: &str, body: &str) {
+        login(account, body);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn login(&self, url: &str, account: &str, body: &str) {
+        if self
+            .agent
+            .post(&[url.trim_end_matches('/'), "login", account].join("/"))
+            .set("content-type", "application/json")
+            .send_bytes(body.as_bytes())
+            .is_ok()
+        {
+            Self::alert("Login successfully!");
+        } else {
+            Self::alert("Login failed!");
+        }
     }
 }

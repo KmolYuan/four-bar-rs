@@ -1,10 +1,10 @@
-use ehttp::{fetch_blocking, Request};
 use std::{
     env::current_exe,
-    fs::{write, File},
-    io::{Error, ErrorKind, Result},
+    fs::File,
+    io::{copy, Error, ErrorKind, Result},
     path::Path,
 };
+use ureq::agent;
 use zip::ZipArchive;
 
 macro_rules! archive {
@@ -22,8 +22,8 @@ macro_rules! wasm_url {
 pub(crate) async fn update() -> Result<()> {
     println!(concat!("Downloading archive from ", wasm_url!()));
     let archive = current_exe()?.with_file_name(concat!(archive!(), ".zip"));
-    match fetch_blocking(&Request::get(wasm_url!())) {
-        Ok(r) if r.ok => write(archive, r.bytes),
+    match agent().get(wasm_url!()).call() {
+        Ok(r) => copy(&mut r.into_reader(), &mut File::create(archive)?),
         _ => Err(Error::new(ErrorKind::NotFound, "Fetch failed")),
     }?;
     println!("Done");

@@ -1,6 +1,5 @@
 use super::{Atomic, IoCtx};
 use eframe::egui::{TextEdit, Ui};
-use ehttp::{fetch, Request};
 use hmac_sha512::Hash;
 use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
@@ -46,7 +45,6 @@ impl LoginInfo {
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Remote {
-    #[cfg(not(target_arch = "wasm32"))]
     address: String,
     info: LoginInfo,
     #[serde(skip)]
@@ -62,7 +60,7 @@ impl Remote {
         }
     }
 
-    pub(crate) fn ui(&mut self, ui: &mut Ui, _ctx: &IoCtx) {
+    pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
         ui.horizontal(|ui| {
             ui.label("Address");
@@ -80,21 +78,7 @@ impl Remote {
             ui.add(TextEdit::singleline(&mut self.info.password).password(true));
         });
         if ui.button("login").clicked() {
-            #[cfg(target_arch = "wasm32")]
-            let address = get_link();
-            #[cfg(not(target_arch = "wasm32"))]
-            let address = &self.address;
-            let url = [address.trim_end_matches('/'), "login", &self.info.account].join("/");
-            let req = Request {
-                method: "POST".to_string(),
-                url,
-                body: self.info.to_json().into_bytes(),
-                headers: Request::create_headers_map(&[("content-type", "application/json")]),
-            };
-            fetch(req, |r| match r {
-                Ok(r) if r.ok => IoCtx::alert("Login successfully!"),
-                _ => IoCtx::alert("Login failed!"),
-            });
+            ctx.login(&self.address, &self.info.account, &self.info.to_json());
         }
     }
 }
