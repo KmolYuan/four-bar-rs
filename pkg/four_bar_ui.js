@@ -326,8 +326,8 @@ async function init(input) {
     imports.wbg.__wbg_loadfile_e0123cd7015e1887 = function(arg0, arg1, arg2) {
         load_file(takeObject(arg0), getStringFromWasm0(arg1, arg2));
     };
-    imports.wbg.__wbg_fetchmessage_e5b0114e257d92b5 = function(arg0, arg1, arg2, arg3) {
-        fetch_message(getStringFromWasm0(arg0, arg1), getStringFromWasm0(arg2, arg3));
+    imports.wbg.__wbg_login_4cca1afe5385bb7b = function(arg0, arg1, arg2, arg3) {
+        login(getStringFromWasm0(arg0, arg1), getStringFromWasm0(arg2, arg3));
     };
     imports.wbg.__wbg_getlink_274a9cfd8c72bfa0 = function(arg0) {
         var ret = get_link();
