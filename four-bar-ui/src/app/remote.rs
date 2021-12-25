@@ -42,7 +42,7 @@ impl LoginInfo {
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct Remote {
     address: String,
@@ -51,34 +51,45 @@ pub(crate) struct Remote {
     is_login: Atomic<bool>,
 }
 
-impl Remote {
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn with_address(a: impl ToString) -> Self {
+impl Default for Remote {
+    fn default() -> Self {
         Self {
-            address: a.to_string(),
-            ..Self::default()
+            address: "http://localhost:8080/".to_string(),
+            info: Default::default(),
+            is_login: Default::default(),
         }
     }
+}
 
+impl Remote {
     pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
-        ui.horizontal(|ui| {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _ = ui.horizontal(|ui| {
             ui.label("Address");
-            #[cfg(target_arch = "wasm32")]
-            let _ = ui.label(get_link());
-            #[cfg(not(target_arch = "wasm32"))]
-            let _ = ui.text_edit_singleline(&mut self.address);
+            ui.text_edit_singleline(&mut self.address);
         });
-        ui.horizontal(|ui| {
-            ui.label("Account");
-            ui.text_edit_singleline(&mut self.info.account);
-        });
-        ui.horizontal(|ui| {
-            ui.label("Password");
-            ui.add(TextEdit::singleline(&mut self.info.password).password(true));
-        });
-        if ui.button("login").clicked() {
-            ctx.login(&self.address, &self.info.account, &self.info.to_json());
+        if self.is_login.load() {
+            if ui.button("logout").clicked() {
+                // TODO logout
+            }
+        } else {
+            ui.horizontal(|ui| {
+                ui.label("Account");
+                ui.text_edit_singleline(&mut self.info.account);
+            });
+            ui.horizontal(|ui| {
+                ui.label("Password");
+                ui.add(TextEdit::singleline(&mut self.info.password).password(true));
+            });
+            if ui.button("login").clicked() {
+                ctx.login(
+                    &self.address,
+                    &self.info.account,
+                    &self.info.to_json(),
+                    self.is_login.clone(),
+                );
+            }
         }
     }
 }

@@ -61,7 +61,7 @@ impl Default for Synthesis {
             conv_open: false,
             conv: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
-            remote: Remote::with_address("http://localhost:8080/"),
+            remote: Remote::default(),
             #[cfg(target_arch = "wasm32")]
             remote: Default::default(),
         }

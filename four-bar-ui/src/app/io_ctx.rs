@@ -1,7 +1,8 @@
+use crate::app::Atomic;
 #[cfg(target_arch = "wasm32")]
 use {
     js_sys::{Array, JsString},
-    wasm_bindgen::prelude::wasm_bindgen,
+    wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue},
 };
 #[cfg(not(target_arch = "wasm32"))]
 use {
@@ -15,7 +16,7 @@ extern "C" {
     fn alert(s: &str);
     fn save_file(s: &str, file_name: &str);
     fn load_file(buf: Array, format: &str);
-    fn login(account: &str, body: &str);
+    fn login(account: &str, body: &str, done: JsValue);
 }
 
 #[derive(Clone)]
@@ -96,12 +97,13 @@ impl IoCtx {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn login(&self, _url: &str, account: &str, body: &str) {
-        login(account, body);
+    pub(crate) fn login(&self, _url: &str, account: &str, body: &str, state: Atomic<bool>) {
+        let done = Closure::once_into_js(move |b| state.store(b));
+        login(account, body, done);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn login(&self, url: &str, account: &str, body: &str) {
+    pub(crate) fn login(&self, url: &str, account: &str, body: &str, state: Atomic<bool>) {
         if self
             .agent
             .post(&[url.trim_end_matches('/'), "login", account].join("/"))
@@ -110,8 +112,10 @@ impl IoCtx {
             .is_ok()
         {
             Self::alert("Login successfully!");
+            state.store(true);
         } else {
             Self::alert("Login failed!");
+            state.store(false);
         }
     }
 }
