@@ -339,11 +339,11 @@ async function init(input) {
     imports.wbg.__wbg_savefile_56f37ed82ce85a2d = function(arg0, arg1, arg2, arg3) {
         save_file(getStringFromWasm0(arg0, arg1), getStringFromWasm0(arg2, arg3));
     };
-    imports.wbg.__wbg_alert_24be68779cb6a77d = function(arg0, arg1) {
-        alert(getStringFromWasm0(arg0, arg1));
-    };
     imports.wbg.__wbg_loadfile_e0123cd7015e1887 = function(arg0, arg1, arg2) {
         load_file(getStringFromWasm0(arg0, arg1), takeObject(arg2));
+    };
+    imports.wbg.__wbg_alert_24be68779cb6a77d = function(arg0, arg1) {
+        alert(getStringFromWasm0(arg0, arg1));
     };
     imports.wbg.__wbg_gethost_187d4ec935d62e07 = function(arg0) {
         var ret = get_host();
