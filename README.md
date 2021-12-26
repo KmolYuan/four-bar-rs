@@ -43,7 +43,7 @@ Then run with cargo directly:
 cargo run -- --help
 ```
 
-## Serving WASM Client in Localhost
+## Serving WebAssembly Client in Localhost
 
 ### From Releases
 
@@ -66,3 +66,7 @@ cargo run -- serve --port PORT
 ```
 
 The client-side application is deployed in the `docs` directory (entire files).
+
+### Cloud Computing Service
+
+Cloud Computing Services are optional for native clients and are designed to improve performance by sending the synthesis task to another machine. But WebAssembly clients are not support to run the task in a web browser, and for security reasons, they should use the cloud computing services hosted by their domain.

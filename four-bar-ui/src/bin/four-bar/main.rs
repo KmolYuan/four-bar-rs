@@ -23,10 +23,10 @@ async fn main() -> Result<()> {
             (@arg FILE: +takes_value "File path")
         )
         (@subcommand update =>
-            (about: "Download the latest WASM archive")
+            (about: "Download the latest WebAssembly archive")
         )
         (@subcommand serve =>
-            (about: "Start web server to host WASM UI program")
+            (about: "Start web server to host WebAssembly UI program")
             (@arg PORT: --port +takes_value "Set port")
         )
     }
