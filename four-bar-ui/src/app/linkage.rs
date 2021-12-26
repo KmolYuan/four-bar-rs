@@ -157,16 +157,14 @@ struct Driver {
 impl Linkage {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn open(file: Option<&str>) -> Self {
-        use std::fs::read_to_string;
-
-        let four_bar = if let Some(file) = file {
-            let s = read_to_string(file).expect("Read file error");
-            Arc::new(RwLock::new(from_str(&s).expect("Deserialize error")))
-        } else {
-            Default::default()
-        };
         Self {
-            four_bar,
+            four_bar: match file {
+                Some(file) => {
+                    let s = std::fs::read_to_string(file).expect("Read file error");
+                    Arc::new(RwLock::new(from_str(&s).expect("Deserialize error")))
+                }
+                None => Default::default(),
+            },
             ..Self::default()
         }
     }

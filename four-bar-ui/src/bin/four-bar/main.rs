@@ -41,10 +41,9 @@ async fn main() -> Result<()> {
             .expect("invalid port");
         serve::serve(port).await
     } else {
-        let file = if let Some(cmd) = args.subcommand_matches("ui") {
-            cmd.value_of("FILE")
-        } else {
-            args.value_of("FILE")
+        let file = match args.subcommand_matches("ui") {
+            Some(cmd) => cmd.value_of("FILE"),
+            None => args.value_of("FILE"),
         };
         let app = Box::new(App::open(file));
         let opt = NativeOptions {

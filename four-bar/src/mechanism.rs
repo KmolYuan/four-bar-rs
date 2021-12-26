@@ -104,10 +104,9 @@ impl Mechanism {
     pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
         let mut joints = self.joints.clone();
         let mut formulas = self.fs.clone();
-        if let Formula::Pla(_, _, ref mut a, _) = formulas[0] {
-            *a = angle;
-        } else {
-            panic!("invalid four bar");
+        match formulas[0] {
+            Formula::Pla(_, _, ref mut a, _) => *a = angle,
+            _ => panic!("invalid four bar"),
         }
         for f in formulas {
             f.apply(&mut joints);

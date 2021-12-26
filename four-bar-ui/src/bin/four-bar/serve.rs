@@ -2,10 +2,11 @@ use crate::update::extract;
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
 use actix_web::{
+    cookie::{Cookie, SameSite},
     middleware::Logger,
     post,
     web::{Data, Json, Path},
-    App, HttpResponse, HttpServer, Responder,
+    App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use four_bar_ui::{dump_csv, parse_csv, sha512, LoginInfo};
 use std::{
@@ -27,19 +28,28 @@ async fn login(
     id: Identity,
     json: Json<LoginInfo>,
 ) -> impl Responder {
-    match users.0.get(user.as_ref()) {
+    let user = user.into_inner();
+    match users.0.get(&user) {
         Some(pwd) if sha512(&user) == json.account && sha512(pwd) == json.password => {
-            id.remember(user.into_inner());
-            HttpResponse::Ok()
+            id.remember(user.clone());
+            let cookie = Cookie::build("username", user)
+                .same_site(SameSite::Lax)
+                .path("/")
+                .finish();
+            HttpResponse::Ok().cookie(cookie).finish()
         }
-        _ => HttpResponse::Forbidden(),
+        _ => HttpResponse::Forbidden().finish(),
     }
 }
 
 #[post("/logout")]
-async fn logout(id: Identity) -> impl Responder {
+async fn logout(id: Identity, req: HttpRequest) -> impl Responder {
     id.forget();
-    HttpResponse::Ok()
+    let mut builder = HttpResponse::Ok();
+    if let Some(ref cookie) = req.cookie("username") {
+        builder.del_cookie(cookie);
+    }
+    builder.finish()
 }
 
 pub(crate) async fn serve(port: u16) -> Result<()> {

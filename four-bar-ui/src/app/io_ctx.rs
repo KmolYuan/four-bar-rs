@@ -7,6 +7,8 @@ extern "C" {
     fn alert(s: &str);
     fn save_file(s: &str, file_name: &str);
     fn load_file(format: &str, done: JsValue);
+    fn get_host() -> String;
+    fn identity() -> String;
     fn login(account: &str, body: &str, done: JsValue);
     fn logout(done: JsValue);
 }
@@ -45,10 +47,9 @@ impl IoCtx {
     where
         C: FnOnce(String) + 'static,
     {
-        let s = if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            std::fs::read_to_string(path).unwrap_or_default()
-        } else {
-            String::new()
+        let s = match rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
+            Some(path) => std::fs::read_to_string(path).unwrap_or_default(),
+            None => String::new(),
         };
         done(s);
     }
@@ -80,6 +81,24 @@ impl IoCtx {
             .set_title("Message")
             .set_description(s)
             .show();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn get_host() -> String {
+        get_host()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn identity(&self, _url: &str) -> String {
+        identity()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn identity(&self, url: &str) -> String {
+        match self.agent.cookie_store().get(url, "/", "username") {
+            Some(name) => name.value().to_string(),
+            None => String::new(),
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
