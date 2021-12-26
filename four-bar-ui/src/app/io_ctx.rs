@@ -1,10 +1,5 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
-#[cfg(not(target_arch = "wasm32"))]
-use {
-    rfd::{FileDialog, MessageDialog},
-    std::fs::{read_to_string, write},
-};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -50,8 +45,8 @@ impl IoCtx {
     where
         C: FnOnce(String) + 'static,
     {
-        let s = if let Some(path) = FileDialog::new().add_filter(fmt, ext).pick_file() {
-            read_to_string(path).unwrap_or_default()
+        let s = if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
+            std::fs::read_to_string(path).unwrap_or_default()
         } else {
             String::new()
         };
@@ -70,7 +65,7 @@ impl IoCtx {
             .add_filter(fmt, ext)
             .save_file()
         {
-            write(file_name, s).unwrap_or_default();
+            std::fs::write(file_name, s).unwrap_or_default();
         }
     }
 
@@ -81,7 +76,7 @@ impl IoCtx {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn alert(s: &str) {
-        MessageDialog::new()
+        rfd::MessageDialog::new()
             .set_title("Message")
             .set_description(s)
             .show();
