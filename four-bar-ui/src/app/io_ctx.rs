@@ -1,8 +1,5 @@
 #[cfg(target_arch = "wasm32")]
-use {
-    js_sys::{Array, JsString},
-    wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue},
-};
+use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 #[cfg(not(target_arch = "wasm32"))]
 use {
     rfd::{FileDialog, MessageDialog},
@@ -14,15 +11,13 @@ use {
 extern "C" {
     fn alert(s: &str);
     fn save_file(s: &str, file_name: &str);
-    fn load_file(buf: Array, format: &str);
+    fn load_file(format: &str, done: JsValue);
     fn login(account: &str, body: &str, done: JsValue);
     fn logout(done: JsValue);
 }
 
 #[derive(Clone)]
 pub(crate) struct IoCtx {
-    #[cfg(target_arch = "wasm32")]
-    buf: Array,
     #[cfg(not(target_arch = "wasm32"))]
     agent: ureq::Agent,
 }
@@ -30,8 +25,6 @@ pub(crate) struct IoCtx {
 impl Default for IoCtx {
     fn default() -> Self {
         Self {
-            #[cfg(target_arch = "wasm32")]
-            buf: Array::new(),
             #[cfg(not(target_arch = "wasm32"))]
             agent: ureq::Agent::new(),
         }
@@ -40,31 +33,29 @@ impl Default for IoCtx {
 
 impl IoCtx {
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn open(&self, ext: &[&str]) {
+    pub(crate) fn open<C>(&self, _fmt: &str, ext: &[&str], done: C)
+    where
+        C: FnOnce(String) + 'static,
+    {
         let format = ext
             .iter()
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
-        load_file(self.buf.clone(), &format);
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn open_result(&self) -> Option<String> {
-        if self.buf.length() > 0 {
-            Some(String::from(JsString::from(self.buf.pop())))
-        } else {
-            None
-        }
+        load_file(&format, Closure::once_into_js(done));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn open(&self, fmt: &str, ext: &[&str]) -> Option<String> {
-        if let Some(path) = FileDialog::new().add_filter(fmt, ext).pick_file() {
-            read_to_string(path).ok()
+    pub(crate) fn open<C>(&self, fmt: &str, ext: &[&str], done: C)
+    where
+        C: FnOnce(String) + 'static,
+    {
+        let s = if let Some(path) = FileDialog::new().add_filter(fmt, ext).pick_file() {
+            read_to_string(path).unwrap_or_default()
         } else {
-            None
-        }
+            String::new()
+        };
+        done(s);
     }
 
     #[cfg(target_arch = "wasm32")]

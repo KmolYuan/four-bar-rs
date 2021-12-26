@@ -216,20 +216,12 @@ impl Linkage {
             let _ = ctx.save(&s, name, "Rusty Object Notation", &["ron"]);
         }
         if ui.button("🖴 Open").clicked() {
-            #[cfg(target_arch = "wasm32")]
-            let _ = ctx.open(&["ron"]);
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(s) = ctx.open("Rusty Object Notation", &["ron"]) {
-                if let Ok(four_bar) = from_str(s.as_str()) {
-                    *self.four_bar.write().unwrap() = four_bar;
+            let four_bar = self.four_bar.clone();
+            ctx.open("Rusty Object Notation", &["ron"], move |s| {
+                if let Ok(fb) = from_str(&s) {
+                    *four_bar.write().unwrap() = fb;
                 }
-            }
-        }
-        #[cfg(target_arch = "wasm32")]
-        if let Some(s) = ctx.open_result() {
-            if let Ok(four_bar) = from_str(s.as_str()) {
-                *self.four_bar.write().unwrap() = four_bar;
-            }
+            });
         }
     }
 

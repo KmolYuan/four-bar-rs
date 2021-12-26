@@ -40,7 +40,7 @@ pub(crate) struct Synthesis {
     timer: Atomic<u64>,
     gen: u64,
     pop: usize,
-    curve_csv: String,
+    curve_csv: Arc<RwLock<String>>,
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
     conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
@@ -56,7 +56,7 @@ impl Default for Synthesis {
             timer: Default::default(),
             gen: 40,
             pop: 200,
-            curve_csv: dump_csv(CRUNODE).unwrap(),
+            curve_csv: Arc::new(RwLock::new(dump_csv(CRUNODE).unwrap())),
             curve: Arc::new(CRUNODE.to_vec()),
             conv_open: false,
             conv: Default::default(),
@@ -91,22 +91,16 @@ impl Synthesis {
         parameter!("Generation: ", self.gen, ui);
         parameter!("Population: ", self.pop, ui);
         if ui.button("Open CSV").clicked() {
-            #[cfg(target_arch = "wasm32")]
-            let _ = ctx.open(&["csv", "txt"]);
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(s) = ctx.open("Delimiter-Separated Values", &["csv", "txt"]) {
-                self.curve_csv = s;
-            }
-        }
-        #[cfg(target_arch = "wasm32")]
-        if let Some(s) = ctx.open_result() {
-            self.curve_csv = s;
+            let curve_csv = self.curve_csv.clone();
+            ctx.open("Delimiter-Separated Values", &["csv", "txt"], move |s| {
+                *curve_csv.write().unwrap() = s;
+            });
         }
         ui.collapsing("Curve Input (CSV)", |ui| {
-            ui.text_edit_multiline(&mut self.curve_csv)
+            ui.text_edit_multiline(&mut *self.curve_csv.write().unwrap())
         });
-        if !self.curve_csv.is_empty() {
-            if let Ok(curve) = parse_csv(&self.curve_csv) {
+        if !self.curve_csv.read().unwrap().is_empty() {
+            if let Ok(curve) = parse_csv(&self.curve_csv.read().unwrap()) {
                 self.curve = Arc::new(curve);
             } else {
                 Label::new("The provided curve is invalid.\nUses latest valid curve.")
