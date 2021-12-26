@@ -89,15 +89,19 @@ impl IoCtx {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn identity(&self, _url: &str) -> String {
-        identity()
+    pub(crate) fn identity(&self, _url: &str) -> Option<String> {
+        Some(identity())
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn identity(&self, url: &str) -> String {
-        match self.agent.cookie_store().get(url, "/", "username") {
-            Some(name) => name.value().to_string(),
-            None => String::new(),
+    pub(crate) fn identity(&self, url: &str) -> Option<String> {
+        if self.agent.get(url).call().is_err() {
+            None
+        } else {
+            match self.agent.cookie_store().get(url, "/", "username") {
+                Some(name) => Some(name.value().to_string()),
+                _ => Some(String::new()),
+            }
         }
     }
 

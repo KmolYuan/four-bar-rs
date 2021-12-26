@@ -58,10 +58,7 @@ impl Default for Synthesis {
             curve: Arc::new(CRUNODE.to_vec()),
             conv_open: false,
             conv: Default::default(),
-            #[cfg(not(target_arch = "wasm32"))]
             remote: Remote::default(),
-            #[cfg(target_arch = "wasm32")]
-            remote: Default::default(),
         }
     }
 }
@@ -115,13 +112,15 @@ impl Synthesis {
             } else if ui.small_button("▶").on_hover_text("Start").clicked()
                 && !self.curve.is_empty()
             {
-                #[cfg(not(target_arch = "wasm32"))]
-                self.native_syn(four_bar);
-                #[cfg(target_arch = "wasm32")]
-                {
+                if self.remote.is_login() {
                     // TODO: Connect to server
                     let _ = four_bar;
                     IoCtx::alert("Not yet prepared!");
+                } else {
+                    #[cfg(target_arch = "wasm32")]
+                    let _ = IoCtx::alert("Please login first!");
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let _ = self.native_syn(four_bar);
                 }
             }
             let pb = ProgressBar::new(self.progress.load() as f32 / self.gen as f32)

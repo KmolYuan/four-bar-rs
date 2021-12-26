@@ -62,6 +62,10 @@ impl Default for Remote {
 }
 
 impl Remote {
+    pub(crate) fn is_login(&self) -> bool {
+        self.is_login.load()
+    }
+
     pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
         if self.is_connected {
@@ -84,12 +88,20 @@ impl Remote {
             let _ = ui.text_edit_singleline(&mut self.address);
         });
         if ui.button("Connect").clicked() {
-            let identity = ctx.identity(&self.address);
-            if !identity.is_empty() {
-                self.info.account = identity;
-                self.is_login.store(true);
+            let id = ctx.identity(&self.address);
+            self.is_connected = id.is_some();
+            match id {
+                Some(id) => {
+                    if !id.is_empty() {
+                        self.info.account = id;
+                        self.is_login.store(true);
+                    }
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                None => IoCtx::alert("Connection failed!"),
+                #[cfg(target_arch = "wasm32")]
+                None => unreachable!(),
             }
-            self.is_connected = true;
         }
     }
 
