@@ -4,8 +4,9 @@ use crate::{
     csv_io::{dump_csv, parse_csv},
 };
 use eframe::egui::{
+    emath::Numeric,
     plot::{Legend, Line, Plot, Points},
-    Color32, DragValue, Label, ProgressBar, Ui, Widget, Window,
+    Color32, DragValue, Label, ProgressBar, Ui, Window,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use four_bar::synthesis::{
@@ -18,14 +19,11 @@ use std::sync::{Arc, RwLock};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
-macro_rules! parameter {
-    ($label:literal, $attr:expr, $ui:ident) => {
-        DragValue::new(&mut $attr)
-            .prefix($label)
-            .clamp_range(0..=5000)
-            .speed(1)
-            .ui($ui);
-    };
+fn parameter<'a>(label: &'a str, attr: &'a mut impl Numeric) -> DragValue<'a> {
+    DragValue::new(attr)
+        .prefix(label)
+        .clamp_range(0..=10000)
+        .speed(1)
 }
 
 #[derive(Deserialize, Serialize)]
@@ -75,7 +73,10 @@ impl Synthesis {
         Window::new("Convergence Plot")
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
-                let mut plot = Plot::new("conv_canvas");
+                let mut plot = Plot::new("conv_canvas")
+                    .legend(Legend::default())
+                    .allow_drag(false)
+                    .allow_zoom(false);
                 for (i, values) in iter {
                     let values = values.read().unwrap();
                     let name = format!("Best Fitness {}", i + 1);
@@ -83,13 +84,10 @@ impl Synthesis {
                         .line(Line::new(as_values(&values)).fill(-1.5).name(&name))
                         .points(Points::new(as_values(&values)).name(&name).stems(0.));
                 }
-                plot.legend(Legend::default())
-                    .allow_drag(false)
-                    .allow_zoom(false)
-                    .ui(ui);
+                ui.add(plot);
             });
-        parameter!("Generation: ", self.gen, ui);
-        parameter!("Population: ", self.pop, ui);
+        ui.add(parameter("Generation: ", &mut self.gen));
+        ui.add(parameter("Population: ", &mut self.pop));
         if ui.button("Open CSV").clicked() {
             let curve_csv = self.curve_csv.clone();
             ctx.open("Delimiter-Separated Values", &["csv", "txt"], move |s| {
@@ -103,9 +101,9 @@ impl Synthesis {
             if let Ok(curve) = parse_csv(&self.curve_csv.read().unwrap()) {
                 self.curve = Arc::new(curve);
             } else {
-                Label::new("The provided curve is invalid.\nUses latest valid curve.")
-                    .text_color(Color32::RED)
-                    .ui(ui);
+                let label = Label::new("The provided curve is invalid.\nUses latest valid curve.")
+                    .text_color(Color32::RED);
+                ui.add(label);
             }
         }
         ui.horizontal(|ui| {
@@ -126,10 +124,10 @@ impl Synthesis {
                     IoCtx::alert("Not yet prepared!");
                 }
             }
-            ProgressBar::new(self.progress.load() as f32 / self.gen as f32)
+            let pb = ProgressBar::new(self.progress.load() as f32 / self.gen as f32)
                 .show_percentage()
-                .animate(started)
-                .ui(ui);
+                .animate(started);
+            ui.add(pb);
         });
         ui.horizontal(|ui| {
             if ui

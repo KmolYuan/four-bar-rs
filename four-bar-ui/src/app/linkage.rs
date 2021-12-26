@@ -1,6 +1,7 @@
 use super::{synthesis::Synthesis, IoCtx};
 use crate::{as_values::as_values, csv_io::dump_csv};
 use eframe::egui::{
+    emath::Numeric,
     plot::{Legend, Line, Plot, Points, Polygon},
     reset_button, Button, CentralPanel, Color32, CtxRef, DragValue, Ui,
 };
@@ -12,88 +13,63 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-macro_rules! unit {
-    ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
-        $ui.add(DragValue::new(&mut $attr).prefix($label).speed($inter));
-    };
+fn unit<'a>(label: &'a str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
+    DragValue::new(attr).prefix(label).speed(inter)
 }
 
-macro_rules! link {
-    ($label:literal, $attr:expr, $inter:expr, $ui:ident) => {
-        $ui.add(
-            DragValue::new(&mut $attr)
-                .prefix($label)
-                .clamp_range(0.0001..=9999.)
-                .speed($inter),
-        );
-    };
+fn link<'a>(label: &'a str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
+    DragValue::new(attr)
+        .prefix(label)
+        .clamp_range(0.0001..=f64::MAX)
+        .speed(inter)
 }
 
-macro_rules! angle {
-    ($label:literal, $attr:expr, $ui:ident, $t:literal) => {
-        $ui.horizontal(|ui| {
-            if $attr < 0. {
-                $attr += TAU;
-            }
-            let mut deg = $attr.to_degrees();
-            if ui
-                .add(
-                    DragValue::new(&mut deg)
-                        .prefix($label)
-                        .suffix(concat![" deg", $t])
-                        .clamp_range(0..=360)
-                        .speed(1.),
-                )
-                .changed()
-            {
-                $attr = deg.to_radians();
-            }
-            ui.add(
-                DragValue::new(&mut $attr)
-                    .suffix(concat![" rad", $t])
-                    .min_decimals(2)
-                    .clamp_range((0.)..=TAU)
-                    .speed(0.01),
-            );
-        });
-    };
-    ($label:literal, $attr:expr, $ui:ident) => {
-        if TAU - $attr < 1e-20 {
-            $attr = 0.;
+fn angle(ui: &mut Ui, label: &str, attr: &mut f64, suffix: &'static str) {
+    if suffix.is_empty() && TAU - *attr < 1e-20 {
+        *attr = 0.;
+    }
+    ui.horizontal(|ui| {
+        if *attr < 0. {
+            *attr += TAU;
         }
-        angle!($label, $attr, $ui, "");
-    };
+        let mut deg = attr.to_degrees();
+        let dv = DragValue::new(&mut deg)
+            .prefix(label)
+            .suffix(String::from(" deg") + suffix)
+            .speed(1.);
+        if ui.add(dv).changed() {
+            *attr = deg.to_radians();
+        }
+        let dv = DragValue::new(attr)
+            .suffix(String::from(" rad") + suffix)
+            .min_decimals(2)
+            .speed(0.01);
+        ui.add(dv);
+    });
 }
 
-macro_rules! num {
-    ($label:literal, $attr:expr, $inter:expr, $min:expr, $ui:ident) => {
-        $ui.add(
-            DragValue::new(&mut $attr)
-                .prefix($label)
-                .clamp_range($min..=9999)
-                .speed($inter),
-        );
-    };
+fn num<'a>(label: &'a str, attr: &'a mut impl Numeric, inter: f64, min: f64) -> DragValue<'a> {
+    DragValue::new(attr)
+        .prefix(label)
+        .clamp_range(min..=f64::MAX)
+        .speed(inter)
 }
 
-macro_rules! draw_link {
-    ($a:expr, $b:expr) => {
-        Line::new(as_values(&[$a, $b]))
-            .width(3.)
-            .color(Color32::from_rgb(165, 151, 132))
-    };
-    ($a:expr, $b:expr $(, $c:expr)+) => {
-        Polygon::new(as_values(&[$a, $b $(, $c)+]))
-            .width(3.)
-            .fill_alpha(0.6)
-            .color(Color32::from_rgb(165, 151, 132))
-    };
+fn draw_link2(a: [f64; 2], b: [f64; 2]) -> Line {
+    Line::new(as_values(&[a, b]))
+        .width(3.)
+        .color(Color32::from_rgb(165, 151, 132))
 }
 
-macro_rules! draw_path {
-    ($name:literal, $path:expr) => {
-        Line::new(as_values(&$path)).name($name).width(3.)
-    };
+fn draw_link3(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> Polygon {
+    Polygon::new(as_values(&[a, b, c]))
+        .width(3.)
+        .fill_alpha(0.6)
+        .color(Color32::from_rgb(165, 151, 132))
+}
+
+fn draw_path(name: &str, path: &[[f64; 2]]) -> Line {
+    Line::new(as_values(path)).name(name).width(3.)
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -186,8 +162,13 @@ impl Linkage {
             ui.horizontal(|ui| self.curve_io(ui, ctx));
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
-                link!("UI value interval: ", self.config.interval, 0.01, ui);
-                num!("Number of curve points: ", self.config.curve_n, 1, 10, ui);
+                ui.add(link("UI value interval: ", &mut self.config.interval, 0.01));
+                ui.add(num(
+                    "Number of curve points: ",
+                    &mut self.config.curve_n,
+                    1.,
+                    10.,
+                ));
             });
         });
         ui.group(|ui| {
@@ -198,8 +179,8 @@ impl Linkage {
         ui.group(|ui| {
             ui.heading("Driver");
             reset_button(ui, &mut self.driver);
-            angle!("Speed: ", self.driver.speed, ui, "/s");
-            angle!("Angle: ", self.driver.drive, ui);
+            angle(ui, "Speed: ", &mut self.driver.speed, "/s");
+            angle(ui, "Angle: ", &mut self.driver.drive, "");
         });
         ui.group(|ui| self.synthesis.ui(ui, ctx, self.four_bar.clone()));
     }
@@ -256,31 +237,31 @@ impl Linkage {
             {
                 four_bar.align();
             }
-            unit!("X Offset: ", four_bar.p0.0, interval, ui);
-            unit!("Y Offset: ", four_bar.p0.1, interval, ui);
-            angle!("Rotation: ", four_bar.a, ui);
+            ui.add(unit("X Offset: ", &mut four_bar.p0.0, interval));
+            ui.add(unit("Y Offset: ", &mut four_bar.p0.1, interval));
+            angle(ui, "Rotation: ", &mut four_bar.a, "");
         });
         ui.group(|ui| {
             ui.heading("Parameters");
-            link!("Ground: ", four_bar.l0, interval, ui);
-            link!("Driver: ", four_bar.l1, interval, ui);
-            link!("Coupler: ", four_bar.l2, interval, ui);
-            link!("Follower: ", four_bar.l3, interval, ui);
+            ui.add(link("Ground: ", &mut four_bar.l0, interval));
+            ui.add(link("Driver: ", &mut four_bar.l1, interval));
+            ui.add(link("Coupler: ", &mut four_bar.l2, interval));
+            ui.add(link("Follower: ", &mut four_bar.l3, interval));
             ui.checkbox(&mut four_bar.inv, "Invert follower and coupler");
         });
         ui.group(|ui| {
             ui.heading("Coupler");
-            link!("Extended: ", four_bar.l4, interval, ui);
-            angle!("Angle: ", four_bar.g, ui);
+            ui.add(link("Extended: ", &mut four_bar.l4, interval));
+            angle(ui, "Angle: ", &mut four_bar.g, "");
         });
     }
 
     pub(crate) fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
             let mut plot = Plot::new("canvas")
-                .line(draw_link![self.joints[0], self.joints[2]])
-                .line(draw_link![self.joints[1], self.joints[3]])
-                .polygon(draw_link![self.joints[2], self.joints[3], self.joints[4]])
+                .line(draw_link2(self.joints[0], self.joints[2]))
+                .line(draw_link2(self.joints[1], self.joints[3]))
+                .polygon(draw_link3(self.joints[2], self.joints[3], self.joints[4]))
                 .points(
                     Points::new(as_values(&[self.joints[0], self.joints[1]]))
                         .radius(7.)
@@ -291,11 +272,11 @@ impl Linkage {
                         .radius(5.)
                         .color(Color32::from_rgb(128, 96, 77)),
                 )
-                .line(draw_path!("Crank pivot", self.path1))
-                .line(draw_path!("Follower pivot", self.path2))
-                .line(draw_path!("Coupler pivot", self.path3));
+                .line(draw_path("Crank pivot", &self.path1))
+                .line(draw_path("Follower pivot", &self.path2))
+                .line(draw_path("Coupler pivot", &self.path3));
             if !self.synthesis.curve.is_empty() {
-                plot = plot.line(draw_path!("Synthesis target", self.synthesis.curve));
+                plot = plot.line(draw_path("Synthesis target", &self.synthesis.curve));
             }
             ui.add(plot.data_aspect(1.).legend(Legend::default()));
             if self.driver.speed != 0. {

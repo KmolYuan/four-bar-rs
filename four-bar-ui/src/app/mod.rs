@@ -1,8 +1,7 @@
 pub use self::remote::{sha512, LoginInfo};
 use self::{atomic::Atomic, io_ctx::IoCtx, linkage::Linkage};
-use eframe::{
-    egui::{CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window},
-    epi,
+use eframe::egui::{
+    CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window,
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,18 +11,14 @@ mod linkage;
 mod remote;
 mod synthesis;
 
-macro_rules! switch {
-    ($ui:expr, $attr:expr, $d_icon:literal, $d_tip:literal, $e_icon:literal, $e_tip:literal) => {
-        if $attr {
-            if $ui.small_button($d_icon).on_hover_text($d_tip).clicked() {
-                $attr = false;
-            }
-        } else {
-            if $ui.small_button($e_icon).on_hover_text($e_tip).clicked() {
-                $attr = true;
-            }
+fn switch(ui: &mut Ui, attr: &mut bool, d_icon: &str, d_tip: &str, e_icon: &str, e_tip: &str) {
+    if *attr {
+        if ui.small_button(d_icon).on_hover_text(d_tip).clicked() {
+            *attr = false;
         }
-    };
+    } else if ui.small_button(e_icon).on_hover_text(e_tip).clicked() {
+        *attr = true;
+    }
 }
 
 /// Main app state.
@@ -69,8 +64,15 @@ impl App {
         } else if ui.small_button("🌙").on_hover_text("Dark").clicked() {
             ctx.set_visuals(Visuals::dark());
         }
-        switch!(ui, self.side_panel, "⬅", "Fold", "➡", "Expand");
-        switch!(ui, self.menu_up, "⬇", "menu go down", "⬆", "menu go up");
+        switch(ui, &mut self.side_panel, "⬅", "Fold", "➡", "Expand");
+        switch(
+            ui,
+            &mut self.menu_up,
+            "⬇",
+            "menu go down",
+            "⬆",
+            "menu go up",
+        );
         ui.with_layout(Layout::right_to_left(), |ui| {
             if ui.small_button("").on_hover_text("Repository").clicked() {
                 ctx.output().open_url(env!("CARGO_PKG_REPOSITORY"));
@@ -100,8 +102,8 @@ impl App {
     }
 }
 
-impl epi::App for App {
-    fn update(&mut self, ctx: &CtxRef, _frame: &mut epi::Frame) {
+impl eframe::epi::App for App {
+    fn update(&mut self, ctx: &CtxRef, _frame: &mut eframe::epi::Frame) {
         if self.menu_up {
             TopBottomPanel::top("menu")
         } else {
@@ -131,8 +133,8 @@ impl epi::App for App {
             });
     }
 
-    fn save(&mut self, storage: &mut dyn epi::Storage) {
-        epi::set_value(storage, epi::APP_KEY, self);
+    fn save(&mut self, storage: &mut dyn eframe::epi::Storage) {
+        eframe::epi::set_value(storage, eframe::epi::APP_KEY, self);
     }
 
     fn name(&self) -> &str {
