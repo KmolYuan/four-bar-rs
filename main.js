@@ -22,8 +22,21 @@ window.load_file = function (format, done) {
     input.accept = format;
     input.click();
 };
-window.get_link = function () {
+window.get_host = function () {
     return location.href;
+};
+window.identity = function () {
+    let i = 0;
+    while (i < document.cookie.length) {
+        const j = i + "username=".length;
+        let end = document.cookie.indexOf(";", j);
+        if (end === -1)
+            end = document.cookie.length;
+        if (document.cookie.substring(i, j) === "username=")
+            return document.cookie.substring(j, end);
+        i = end;
+    }
+    return "";
 };
 window.login = function (account, body, done) {
     fetch(location.href + "login/" + account, {
