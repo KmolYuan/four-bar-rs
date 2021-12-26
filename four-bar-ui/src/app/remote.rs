@@ -2,14 +2,6 @@ use super::{Atomic, IoCtx};
 use eframe::egui::{TextEdit, Ui};
 use hmac_sha512::Hash;
 use serde::{Deserialize, Serialize};
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::wasm_bindgen;
-
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen]
-extern "C" {
-    fn get_link() -> String;
-}
 
 /// Sha512 encrypt function.
 pub fn sha512(s: &str) -> String {
@@ -71,7 +63,16 @@ impl Remote {
         });
         if self.is_login.load() {
             if ui.button("logout").clicked() {
-                ctx.logout(&self.address, self.is_login.clone());
+                let is_login = self.is_login.clone();
+                let done = move |b| {
+                    if b {
+                        IoCtx::alert("Logout successfully!");
+                        is_login.store(false)
+                    } else {
+                        IoCtx::alert("Logout failed!");
+                    }
+                };
+                ctx.logout(&self.address, done);
             }
         } else {
             ui.horizontal(|ui| {
@@ -83,12 +84,17 @@ impl Remote {
                 ui.add(TextEdit::singleline(&mut self.info.password).password(true));
             });
             if ui.button("login").clicked() {
-                ctx.login(
-                    &self.address,
-                    &self.info.account,
-                    &self.info.to_json(),
-                    self.is_login.clone(),
-                );
+                let body = self.info.to_json();
+                let is_login = self.is_login.clone();
+                let done = move |b| {
+                    if b {
+                        IoCtx::alert("Login successfully!");
+                    } else {
+                        IoCtx::alert("Login failed!");
+                    }
+                    is_login.store(b)
+                };
+                ctx.login(&self.address, &self.info.account, &body, done);
             }
         }
     }

@@ -1,4 +1,3 @@
-use crate::app::Atomic;
 #[cfg(target_arch = "wasm32")]
 use {
     js_sys::{Array, JsString},
@@ -98,59 +97,45 @@ impl IoCtx {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn login(&self, _url: &str, account: &str, body: &str, state: Atomic<bool>) {
-        let done = Closure::once_into_js(move |b| {
-            if b {
-                Self::alert("Login successfully!");
-            } else {
-                Self::alert("Login failed!");
-            }
-            state.store(b)
-        });
-        login(account, body, done);
+    pub(crate) fn login<C>(&self, _url: &str, account: &str, body: &str, done: C)
+    where
+        C: FnOnce(bool) + 'static,
+    {
+        login(account, body, Closure::once_into_js(done));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn login(&self, url: &str, account: &str, body: &str, state: Atomic<bool>) {
+    pub(crate) fn login<C>(&self, url: &str, account: &str, body: &str, done: C)
+    where
+        C: FnOnce(bool) + 'static,
+    {
         let b = self
             .agent
             .post(&[url.trim_end_matches('/'), "login", account].join("/"))
             .set("content-type", "application/json")
             .send_bytes(body.as_bytes())
             .is_ok();
-        if b {
-            Self::alert("Login successfully!");
-        } else {
-            Self::alert("Login failed!");
-        }
-        state.store(b);
+        done(b);
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn logout(&self, _url: &str, state: Atomic<bool>) {
-        let done = Closure::once_into_js(move |b| {
-            if b {
-                Self::alert("Logout successfully!");
-                state.store(false)
-            } else {
-                Self::alert("Logout failed!");
-            }
-        });
-        logout(done);
+    pub(crate) fn logout<C>(&self, _url: &str, done: C)
+    where
+        C: FnOnce(bool) + 'static,
+    {
+        logout(Closure::once_into_js(done));
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn logout(&self, url: &str, state: Atomic<bool>) {
-        if self
+    pub(crate) fn logout<C>(&self, url: &str, done: C)
+    where
+        C: FnOnce(bool) + 'static,
+    {
+        let b = self
             .agent
             .post(&[url.trim_end_matches('/'), "logout"].join("/"))
             .call()
-            .is_ok()
-        {
-            Self::alert("Logout successfully!");
-            state.store(false);
-        } else {
-            Self::alert("Logout failed!");
-        }
+            .is_ok();
+        done(b);
     }
 }
