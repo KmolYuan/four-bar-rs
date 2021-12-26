@@ -1,11 +1,12 @@
 use super::{Atomic, IoCtx};
 use eframe::egui::{TextEdit, Ui};
-use hmac_sha512::Hash;
 use serde::{Deserialize, Serialize};
 
 /// Sha512 encrypt function.
 pub fn sha512(s: &str) -> String {
-    Hash::hash(s).map(|n| format!("{:02x?}", n)).join("")
+    hmac_sha512::Hash::hash(s)
+        .map(|n| format!("{:02x?}", n))
+        .join("")
 }
 
 /// Store the login information.
@@ -28,7 +29,7 @@ impl LoginInfo {
     pub(crate) fn to_json(&self) -> String {
         format!(
             "{{\"account\": \"{}\", \"password\": \"{}\"}}",
-            sha512(&self.account),
+            self.account,
             sha512(&self.password)
         )
     }

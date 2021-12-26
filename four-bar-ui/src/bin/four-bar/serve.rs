@@ -14,12 +14,21 @@ use std::{
     env::current_dir,
     fs::{read_to_string, write},
     io::Result,
+    ops::Deref,
     slice::from_ref,
 };
 use temp_dir::TempDir;
 
 // Usernames
 struct Users(BTreeMap<String, String>);
+
+impl Deref for Users {
+    type Target = BTreeMap<String, String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[post("/login/{user}")]
 async fn login(
@@ -29,8 +38,8 @@ async fn login(
     json: Json<LoginInfo>,
 ) -> impl Responder {
     let user = user.into_inner();
-    match users.0.get(&user) {
-        Some(pwd) if sha512(&user) == json.account && sha512(pwd) == json.password => {
+    match users.get(&user) {
+        Some(pwd) if user == json.account && pwd == &json.password => {
             id.remember(user.clone());
             let cookie = Cookie::build("username", user)
                 .same_site(SameSite::Lax)
@@ -86,7 +95,8 @@ fn users() -> Result<Users> {
             map.insert(user.account, user.password);
         }
     } else {
-        let user = LoginInfo::default();
+        let mut user = LoginInfo::default();
+        user.password = sha512(&user.password);
         write(&users, dump_csv(from_ref(&user)).unwrap())?;
         map.insert(user.account, user.password);
     }
