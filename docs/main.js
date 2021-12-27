@@ -25,19 +25,8 @@ window.load_file = function (format, done) {
 window.get_host = function () {
     return location.href;
 };
-window.identity = function () {
-    const name = "username=";
-    let i = 0;
-    while (i < document.cookie.length) {
-        const j = i + name.length;
-        let end = document.cookie.indexOf(";", j);
-        if (end === -1)
-            end = document.cookie.length;
-        if (document.cookie.substring(i, j) === name)
-            return document.cookie.substring(j, end);
-        i = end;
-    }
-    return "";
+window.get_cookies = function () {
+    return document.cookie;
 };
 window.login = function (account, body, done) {
     fetch(location.href + "login/" + account, {

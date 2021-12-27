@@ -8,7 +8,7 @@ extern "C" {
     fn save_file(s: &str, file_name: &str);
     fn load_file(format: &str, done: JsValue);
     fn get_host() -> String;
-    fn identity() -> String;
+    fn get_cookies() -> String;
     fn login(account: &str, body: &str, done: JsValue);
     fn logout(done: JsValue);
 }
@@ -28,8 +28,8 @@ impl Default for IoCtx {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl IoCtx {
-    #[cfg(target_arch = "wasm32")]
     pub(crate) fn open<C>(&self, _fmt: &str, ext: &[&str], done: C)
     where
         C: FnOnce(String) + 'static,
@@ -42,7 +42,50 @@ impl IoCtx {
         load_file(&format, Closure::once_into_js(done));
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn save(&self, s: &str, file_name: &str) {
+        save_file(s, file_name);
+    }
+
+    pub(crate) fn alert(s: &str) {
+        alert(s);
+    }
+
+    pub(crate) fn identity(&self, _url: &str) -> Option<String> {
+        const NAME: &str = "username=";
+        let cookies = get_cookies();
+        let mut i = 0;
+        while i < cookies.len() {
+            let j = i + NAME.len();
+            let end = cookies[j..].find(';').unwrap_or(cookies.len());
+            if &cookies[i..j] == NAME {
+                return Some(cookies[j..end].to_string());
+            }
+            i = end;
+        }
+        Some(String::new())
+    }
+
+    pub(crate) fn login<C>(&self, _url: &str, account: &str, body: &str, done: C)
+    where
+        C: FnOnce(bool) + 'static,
+    {
+        login(account, body, Closure::once_into_js(done));
+    }
+
+    pub(crate) fn logout<C>(&self, _url: &str, done: C)
+    where
+        C: FnOnce(bool) + 'static,
+    {
+        logout(Closure::once_into_js(done));
+    }
+
+    pub(crate) fn get_host() -> String {
+        get_host()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl IoCtx {
     pub(crate) fn open<C>(&self, fmt: &str, ext: &[&str], done: C)
     where
         C: FnOnce(String) + 'static,
@@ -54,12 +97,6 @@ impl IoCtx {
         done(s);
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn save(&self, s: &str, file_name: &str) {
-        save_file(s, file_name);
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn save(&self, s: &str, name: &str, fmt: &str, ext: &[&str]) {
         if let Some(file_name) = rfd::FileDialog::new()
             .set_file_name(name)
@@ -70,12 +107,6 @@ impl IoCtx {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn alert(s: &str) {
-        alert(s);
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn alert(s: &str) {
         rfd::MessageDialog::new()
             .set_title("Message")
@@ -83,17 +114,6 @@ impl IoCtx {
             .show();
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn get_host() -> String {
-        get_host()
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn identity(&self, _url: &str) -> Option<String> {
-        Some(identity())
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn identity(&self, url: &str) -> Option<String> {
         if self.agent.get(url).call().is_err() {
             None
@@ -111,15 +131,6 @@ impl IoCtx {
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn login<C>(&self, _url: &str, account: &str, body: &str, done: C)
-    where
-        C: FnOnce(bool) + 'static,
-    {
-        login(account, body, Closure::once_into_js(done));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn login<C>(&self, url: &str, account: &str, body: &str, done: C)
     where
         C: FnOnce(bool) + 'static,
@@ -133,15 +144,6 @@ impl IoCtx {
         done(b);
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) fn logout<C>(&self, _url: &str, done: C)
-    where
-        C: FnOnce(bool) + 'static,
-    {
-        logout(Closure::once_into_js(done));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn logout<C>(&self, url: &str, done: C)
     where
         C: FnOnce(bool) + 'static,
@@ -153,10 +155,7 @@ impl IoCtx {
             .is_ok();
         done(b);
     }
-}
 
-#[cfg(not(target_arch = "wasm32"))]
-impl IoCtx {
     pub(crate) fn get_cookies(&self) -> String {
         let mut v = Vec::new();
         self.agent.cookie_store().save_json(&mut v).unwrap();
