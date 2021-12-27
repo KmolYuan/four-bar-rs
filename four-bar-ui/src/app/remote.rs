@@ -75,33 +75,38 @@ impl Remote {
                 self.before_login(ui, ctx);
             }
         } else {
-            self.before_connect(ui, ctx);
+            #[cfg(target_arch = "wasm32")]
+            let _ = self.connect(ctx);
+            #[cfg(not(target_arch = "wasm32"))]
+            let _ = self.before_connect(ui, ctx);
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn before_connect(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.horizontal(|ui| {
             ui.label("Address");
-            #[cfg(target_arch = "wasm32")]
-            let _ = ui.label(&self.address);
-            #[cfg(not(target_arch = "wasm32"))]
-            let _ = ui.text_edit_singleline(&mut self.address);
+            ui.text_edit_singleline(&mut self.address);
         });
         if ui.button("Connect").clicked() {
-            let id = ctx.identity(&self.address);
-            self.is_connected = id.is_some();
-            match id {
-                Some(id) => {
-                    if !id.is_empty() {
-                        self.info.account = id;
-                        self.is_login.store(true);
-                    }
+            self.connect(ctx);
+        }
+    }
+
+    fn connect(&mut self, ctx: &IoCtx) {
+        let id = ctx.identity(&self.address);
+        self.is_connected = id.is_some();
+        match id {
+            Some(id) => {
+                if !id.is_empty() {
+                    self.info.account = id;
+                    self.is_login.store(true);
                 }
-                #[cfg(not(target_arch = "wasm32"))]
-                None => IoCtx::alert("Connection failed!"),
-                #[cfg(target_arch = "wasm32")]
-                None => unreachable!(),
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            None => IoCtx::alert("Connection failed!"),
+            #[cfg(target_arch = "wasm32")]
+            None => unreachable!(),
         }
     }
 
