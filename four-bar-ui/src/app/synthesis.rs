@@ -48,16 +48,16 @@ pub(crate) struct Synthesis {
 impl Default for Synthesis {
     fn default() -> Self {
         Self {
-            started: Default::default(),
-            progress: Default::default(),
+            started: Atomic::from(false),
+            progress: Atomic::from(0),
             #[cfg(not(target_arch = "wasm32"))]
-            timer: Default::default(),
+            timer: Atomic::from(0),
             gen: 40,
             pop: 200,
             curve_csv: Arc::new(RwLock::new(dump_csv(CRUNODE).unwrap())),
             curve: Arc::new(CRUNODE.to_vec()),
             conv_open: false,
-            conv: Default::default(),
+            conv: Vec::new(),
             remote: Remote::default(),
         }
     }

@@ -54,7 +54,7 @@ impl Default for Remote {
         let address = "http://localhost:8080/".to_string();
         Self {
             address,
-            info: Default::default(),
+            info: LoginInfo::default(),
             is_connected: false,
             is_login: Atomic::from(false),
         }

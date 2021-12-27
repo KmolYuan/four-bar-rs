@@ -41,8 +41,8 @@ impl Default for App {
             menu_up: true,
             side_panel: true,
             started: false,
-            ctx: Default::default(),
-            linkage: Default::default(),
+            ctx: IoCtx::default(),
+            linkage: Linkage::default(),
         }
     }
 }
