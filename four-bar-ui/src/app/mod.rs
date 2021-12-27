@@ -11,6 +11,9 @@ mod linkage;
 mod remote;
 mod synthesis;
 
+#[cfg(not(target_arch = "wasm32"))]
+const COOKIE_KEY: &str = "cookies";
+
 fn switch(ui: &mut Ui, attr: &mut bool, d_icon: &str, d_tip: &str, e_icon: &str, e_tip: &str) {
     if *attr {
         if ui.small_button(d_icon).on_hover_text(d_tip).clicked() {
@@ -133,8 +136,27 @@ impl eframe::epi::App for App {
             });
     }
 
+    fn setup(
+        &mut self,
+        _ctx: &CtxRef,
+        _frame: &mut eframe::epi::Frame<'_>,
+        storage: Option<&dyn eframe::epi::Storage>,
+    ) {
+        if let Some(storage) = storage {
+            if let Some(app) = eframe::epi::get_value(storage, eframe::epi::APP_KEY) {
+                *self = app;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(cookies) = storage.get_string(COOKIE_KEY) {
+                self.ctx.load_cookies(cookies);
+            }
+        }
+    }
+
     fn save(&mut self, storage: &mut dyn eframe::epi::Storage) {
         eframe::epi::set_value(storage, eframe::epi::APP_KEY, self);
+        #[cfg(not(target_arch = "wasm32"))]
+        storage.set_string(COOKIE_KEY, self.ctx.get_cookies());
     }
 
     fn name(&self) -> &str {

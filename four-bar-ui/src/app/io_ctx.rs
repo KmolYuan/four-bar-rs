@@ -97,11 +97,17 @@ impl IoCtx {
     pub(crate) fn identity(&self, url: &str) -> Option<String> {
         if self.agent.get(url).call().is_err() {
             None
-        } else {
-            match self.agent.cookie_store().get(url, "/", "username") {
+        } else if let Ok(uri) = url.parse::<actix_web::http::Uri>() {
+            match self
+                .agent
+                .cookie_store()
+                .get(uri.host().unwrap_or_default(), "/", "username")
+            {
                 Some(name) => Some(name.value().to_string()),
-                _ => Some(String::new()),
+                None => Some(String::new()),
             }
+        } else {
+            None
         }
     }
 
@@ -146,5 +152,20 @@ impl IoCtx {
             .call()
             .is_ok();
         done(b);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl IoCtx {
+    pub(crate) fn get_cookies(&self) -> String {
+        let mut v = Vec::new();
+        self.agent.cookie_store().save_json(&mut v).unwrap();
+        String::from_utf8(v).unwrap()
+    }
+
+    pub(crate) fn load_cookies(&mut self, cookies: String) {
+        let r = std::io::Cursor::new(cookies.as_bytes());
+        let cookies = cookie_store::CookieStore::load_json(r).expect("load cookie failed");
+        self.agent = ureq::AgentBuilder::new().cookie_store(cookies).build();
     }
 }

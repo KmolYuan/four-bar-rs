@@ -18,6 +18,9 @@ use std::{
     slice::from_ref,
 };
 use temp_dir::TempDir;
+use time::Duration;
+
+const COOKIE_LIFE: Duration = Duration::weeks(1);
 
 // Usernames
 struct Users(BTreeMap<String, String>);
@@ -43,6 +46,7 @@ async fn login(
             id.remember(user.clone());
             let cookie = Cookie::build("username", user)
                 .same_site(SameSite::Lax)
+                .max_age(COOKIE_LIFE)
                 .path("/")
                 .finish();
             HttpResponse::Ok().cookie(cookie).finish()
@@ -74,6 +78,7 @@ pub(crate) async fn serve(port: u16) -> Result<()> {
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&[0; 32])
                     .name("auth-cookie")
+                    .max_age(COOKIE_LIFE)
                     .secure(true),
             ))
             .wrap(Logger::default())

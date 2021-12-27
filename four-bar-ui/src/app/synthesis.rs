@@ -41,6 +41,7 @@ pub(crate) struct Synthesis {
     curve_csv: Arc<RwLock<String>>,
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
+    #[serde(skip)]
     conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
 }
