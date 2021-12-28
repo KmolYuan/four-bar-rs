@@ -16,7 +16,7 @@ extern "C" {
 #[derive(Clone)]
 pub(crate) struct IoCtx {
     #[cfg(not(target_arch = "wasm32"))]
-    agent: ureq::Agent,
+    pub(crate) agent: ureq::Agent,
 }
 
 impl Default for IoCtx {
@@ -143,17 +143,5 @@ impl IoCtx {
             .call()
             .is_ok();
         done(b);
-    }
-
-    pub(crate) fn get_cookies(&self) -> String {
-        let mut v = Vec::new();
-        self.agent.cookie_store().save_json(&mut v).unwrap();
-        String::from_utf8(v).unwrap()
-    }
-
-    pub(crate) fn load_cookies(&mut self, cookies: String) {
-        let r = std::io::Cursor::new(cookies.as_bytes());
-        let cookies = cookie_store::CookieStore::load_json(r).expect("load cookie failed");
-        self.agent = ureq::AgentBuilder::new().cookie_store(cookies).build();
     }
 }

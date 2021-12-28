@@ -147,8 +147,8 @@ impl eframe::epi::App for App {
                 *self = app;
             }
             #[cfg(not(target_arch = "wasm32"))]
-            if let Some(cookies) = storage.get_string(COOKIE_KEY) {
-                self.ctx.load_cookies(cookies);
+            if let Some(cookies) = eframe::epi::get_value(storage, COOKIE_KEY) {
+                self.ctx.agent = ureq::AgentBuilder::new().cookie_store(cookies).build();
             }
         }
     }
@@ -156,7 +156,7 @@ impl eframe::epi::App for App {
     fn save(&mut self, storage: &mut dyn eframe::epi::Storage) {
         eframe::epi::set_value(storage, eframe::epi::APP_KEY, self);
         #[cfg(not(target_arch = "wasm32"))]
-        storage.set_string(COOKIE_KEY, self.ctx.get_cookies());
+        eframe::epi::set_value(storage, COOKIE_KEY, &*self.ctx.agent.cookie_store());
     }
 
     fn name(&self) -> &str {
