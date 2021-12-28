@@ -16,13 +16,14 @@
 //!     .solve(Planar::new(&curve, 720, 360));
 //! let result = s.result();
 //! ```
+use self::mh::ObjFunc;
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-#[doc(no_inline)]
-pub use metaheuristics_nature as mh;
-use metaheuristics_nature::ObjFunc;
 use rayon::prelude::*;
 use std::f64::consts::{FRAC_2_PI, TAU};
+
+#[doc(no_inline)]
+pub use metaheuristics_nature as mh;
 
 fn guide(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let end = curve.len() - 1;
@@ -31,6 +32,27 @@ fn guide(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
         curve.push(curve[0]);
     }
     curve
+}
+
+/// Anti-symmetric extension function.
+pub fn anti_sym_ext(polygon: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let mut polygon = Vec::from(polygon);
+    let n = polygon.len() - 1;
+    let [x0, y0] = [polygon[0][0], polygon[0][1]];
+    let [xn, yn] = [polygon[n][0], polygon[n][1]];
+    for i in 0..polygon.len() {
+        polygon[i][0] -= x0 + (xn - x0) * i as f64 / n as f64;
+        polygon[i][1] -= y0 + (yn - y0) * i as f64 / n as f64;
+    }
+    let iter = polygon
+        .iter()
+        .take(polygon.len() - 1)
+        .skip(1)
+        .rev()
+        .cloned()
+        .collect::<Vec<_>>();
+    polygon.extend(iter);
+    polygon
 }
 
 fn path_is_nan(path: &[[f64; 2]]) -> bool {
