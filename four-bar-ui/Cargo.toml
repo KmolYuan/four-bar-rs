@@ -14,7 +14,7 @@ categories = ["algorithms"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-four-bar = { version = "0.3", path = "../four-bar", features = ["serde", "parallel"] }
+four-bar = { version = "0.3", path = "../four-bar", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 eframe = { version = "0.15", features = ["persistence"] }
 hmac-sha512 = "1"
