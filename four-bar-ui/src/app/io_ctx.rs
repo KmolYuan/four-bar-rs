@@ -8,7 +8,7 @@ extern "C" {
     fn save_file(s: &str, file_name: &str);
     fn load_file(format: &str, done: JsValue);
     fn get_host() -> String;
-    fn get_cookies() -> String;
+    fn get_username() -> String;
     fn login(account: &str, body: &str, done: JsValue);
     fn logout(done: JsValue);
 }
@@ -50,19 +50,8 @@ impl IoCtx {
         alert(s);
     }
 
-    pub(crate) fn identity(&self, _url: &str) -> Option<String> {
-        const NAME: &str = "username=";
-        let cookies = get_cookies();
-        let mut i = 0;
-        while i < cookies.len() {
-            let j = i + NAME.len();
-            let end = cookies[j..].find(';').unwrap_or(cookies.len());
-            if &cookies[i..j] == NAME {
-                return Some(cookies[j..end].to_string());
-            }
-            i = end;
-        }
-        Some(String::new())
+    pub(crate) fn get_username(&self, _url: &str) -> Option<String> {
+        Some(get_username())
     }
 
     pub(crate) fn login<C>(&self, _url: &str, account: &str, body: &str, done: C)
@@ -114,7 +103,7 @@ impl IoCtx {
             .show();
     }
 
-    pub(crate) fn identity(&self, url: &str) -> Option<String> {
+    pub(crate) fn get_username(&self, url: &str) -> Option<String> {
         if self.agent.get(url).call().is_err() {
             None
         } else if let Ok(uri) = url.parse::<actix_web::http::Uri>() {

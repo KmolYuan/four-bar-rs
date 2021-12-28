@@ -25,8 +25,11 @@ window.load_file = function (format, done) {
 window.get_host = function () {
     return location.href;
 };
-window.get_cookies = function () {
-    return document.cookie;
+window.get_username = function () {
+    const parts = ("; " + document.cookie).split("; username=");
+    if (parts.length === 2)
+        return parts.pop().split(";").shift();
+    return "";
 };
 window.login = function (account, body, done) {
     fetch(location.href + "login/" + account, {

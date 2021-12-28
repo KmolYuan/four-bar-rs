@@ -94,7 +94,7 @@ impl Remote {
     }
 
     fn connect(&mut self, ctx: &IoCtx) {
-        match ctx.identity(&self.address) {
+        match ctx.get_username(&self.address) {
             Some(id) => {
                 self.is_connected = true;
                 if !id.is_empty() {
