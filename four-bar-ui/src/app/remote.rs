@@ -94,10 +94,9 @@ impl Remote {
     }
 
     fn connect(&mut self, ctx: &IoCtx) {
-        let id = ctx.identity(&self.address);
-        self.is_connected = id.is_some();
-        match id {
+        match ctx.identity(&self.address) {
             Some(id) => {
+                self.is_connected = true;
                 if !id.is_empty() {
                     self.info.account = id;
                     self.is_login.store(true);
