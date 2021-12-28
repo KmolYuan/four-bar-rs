@@ -2,7 +2,7 @@
 name = "four-bar"
 version = "0.3.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Four🍀bar library provides simulation and synthesis function for four-bar linkage mechanism."
 license = "AGPL-3.0-or-later"
 readme = "README.md"
@@ -10,10 +10,13 @@ repository = "https://github.com/KmolYuan/four-bar-rs"
 keywords = ["mechanism", "simulation", "optimization"]
 categories = ["algorithms"]
 
+[features]
+parallel = ["metaheuristics-nature/parallel"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
-metaheuristics-nature = { version = "0.20", features = ["parallel"] }
 plotters = { version = "0.3", optional = true }
+metaheuristics-nature = "0.21"
 efd = "0.6"
 rayon = "1.5"
 

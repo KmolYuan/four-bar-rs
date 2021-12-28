@@ -14,7 +14,7 @@ categories = ["algorithms"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-four-bar = { version = "0.3", path = "../four-bar", features = ["serde"] }
+four-bar = { version = "0.3", path = "../four-bar", features = ["serde", "parallel"] }
 serde = { version = "1", features = ["derive"] }
 eframe = { version = "0.15", features = ["persistence"] }
 hmac-sha512 = "1"
@@ -38,7 +38,6 @@ time = "0.2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # wasm here!
-getrandom = { version = "0.2", features = ["js"] }
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 
