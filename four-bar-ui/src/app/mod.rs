@@ -100,13 +100,16 @@ impl App {
                     ctx.set_visuals(Visuals::light());
                 }
             }
-            ui.add(Hyperlink::new("https://github.com/emilk/egui/").text("Powered by egui"));
+            ui.add(Hyperlink::from_label_and_url(
+                "Powered by egui",
+                "https://github.com/emilk/egui/",
+            ));
         });
     }
 }
 
 impl eframe::epi::App for App {
-    fn update(&mut self, ctx: &CtxRef, _frame: &mut eframe::epi::Frame) {
+    fn update(&mut self, ctx: &CtxRef, _frame: &eframe::epi::Frame) {
         if self.menu_up {
             TopBottomPanel::top("menu")
         } else {
@@ -139,7 +142,7 @@ impl eframe::epi::App for App {
     fn setup(
         &mut self,
         _ctx: &CtxRef,
-        _frame: &mut eframe::epi::Frame<'_>,
+        _frame: &eframe::epi::Frame,
         storage: Option<&dyn eframe::epi::Storage>,
     ) {
         if let Some(storage) = storage {

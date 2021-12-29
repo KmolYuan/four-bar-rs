@@ -258,27 +258,30 @@ impl Linkage {
 
     pub(crate) fn plot(&mut self, ctx: &CtxRef) {
         CentralPanel::default().show(ctx, |ui| {
-            let mut plot = Plot::new("canvas")
-                .line(draw_link2(self.joints[0], self.joints[2]))
-                .line(draw_link2(self.joints[1], self.joints[3]))
-                .polygon(draw_link3(self.joints[2], self.joints[3], self.joints[4]))
-                .points(
-                    Points::new(as_values(&[self.joints[0], self.joints[1]]))
-                        .radius(7.)
-                        .color(Color32::from_rgb(93, 69, 56)),
-                )
-                .points(
-                    Points::new(as_values(&[self.joints[2], self.joints[3], self.joints[4]]))
-                        .radius(5.)
-                        .color(Color32::from_rgb(128, 96, 77)),
-                )
-                .line(draw_path("Crank pivot", &self.path1))
-                .line(draw_path("Follower pivot", &self.path2))
-                .line(draw_path("Coupler pivot", &self.path3));
-            if !self.synthesis.curve.is_empty() {
-                plot = plot.line(draw_path("Synthesis target", &self.synthesis.curve));
-            }
-            ui.add(plot.data_aspect(1.).legend(Legend::default()));
+            Plot::new("canvas")
+                .data_aspect(1.)
+                .legend(Legend::default())
+                .show(ui, |ui| {
+                    ui.line(draw_link2(self.joints[0], self.joints[2]));
+                    ui.line(draw_link2(self.joints[1], self.joints[3]));
+                    ui.polygon(draw_link3(self.joints[2], self.joints[3], self.joints[4]));
+                    ui.points(
+                        Points::new(as_values(&[self.joints[0], self.joints[1]]))
+                            .radius(7.)
+                            .color(Color32::from_rgb(93, 69, 56)),
+                    );
+                    ui.points(
+                        Points::new(as_values(&[self.joints[2], self.joints[3], self.joints[4]]))
+                            .radius(5.)
+                            .color(Color32::from_rgb(128, 96, 77)),
+                    );
+                    ui.line(draw_path("Crank pivot", &self.path1));
+                    ui.line(draw_path("Follower pivot", &self.path2));
+                    ui.line(draw_path("Coupler pivot", &self.path3));
+                    if !self.synthesis.curve.is_empty() {
+                        ui.line(draw_path("Synthesis target", &self.synthesis.curve));
+                    }
+                });
             if self.driver.speed != 0. {
                 self.driver.drive += self.driver.speed / 60.;
                 ui.ctx().request_repaint();

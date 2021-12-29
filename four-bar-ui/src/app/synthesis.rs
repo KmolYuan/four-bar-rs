@@ -6,7 +6,7 @@ use crate::{
 use eframe::egui::{
     emath::Numeric,
     plot::{Legend, Line, Plot, Points},
-    Color32, DragValue, Label, ProgressBar, Ui, Window,
+    Color32, DragValue, Label, ProgressBar, RichText, Ui, Window,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use four_bar::synthesis::{
@@ -71,18 +71,18 @@ impl Synthesis {
         Window::new("Convergence Plot")
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
-                let mut plot = Plot::new("conv_canvas")
+                Plot::new("conv_canvas")
                     .legend(Legend::default())
                     .allow_drag(false)
-                    .allow_zoom(false);
-                for (i, values) in iter {
-                    let values = values.read().unwrap();
-                    let name = format!("Best Fitness {}", i + 1);
-                    plot = plot
-                        .line(Line::new(as_values(&values)).fill(-1.5).name(&name))
-                        .points(Points::new(as_values(&values)).name(&name).stems(0.));
-                }
-                ui.add(plot);
+                    .allow_zoom(false)
+                    .show(ui, |ui| {
+                        for (i, values) in iter {
+                            let values = values.read().unwrap();
+                            let name = format!("Best Fitness {}", i + 1);
+                            ui.line(Line::new(as_values(&values)).fill(-1.5).name(&name));
+                            ui.points(Points::new(as_values(&values)).name(&name).stems(0.));
+                        }
+                    });
             });
         ui.add(parameter("Generation: ", &mut self.gen));
         ui.add(parameter("Population: ", &mut self.pop));
@@ -99,9 +99,10 @@ impl Synthesis {
             if let Ok(curve) = parse_csv(&self.curve_csv.read().unwrap()) {
                 self.curve = Arc::new(curve);
             } else {
-                let label = Label::new("The provided curve is invalid.\nUses latest valid curve.")
-                    .text_color(Color32::RED);
-                ui.add(label);
+                let text =
+                    RichText::new("The provided curve is invalid.\nUses latest valid curve.")
+                        .color(Color32::RED);
+                ui.add(Label::new(text));
             }
         }
         ui.horizontal(|ui| {
