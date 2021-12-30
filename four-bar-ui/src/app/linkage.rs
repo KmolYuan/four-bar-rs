@@ -92,9 +92,13 @@ pub(crate) struct Linkage {
     config: Config,
     driver: Driver,
     four_bar: Arc<RwLock<FourBar>>,
+    #[serde(skip)]
     path1: Vec<[f64; 2]>,
+    #[serde(skip)]
     path2: Vec<[f64; 2]>,
+    #[serde(skip)]
     path3: Vec<[f64; 2]>,
+    #[serde(skip)]
     joints: [[f64; 2]; 5],
     pivot: Pivot,
     synthesis: Synthesis,
@@ -173,7 +177,7 @@ impl Linkage {
         });
         ui.group(|ui| {
             ui.heading("Dimension");
-            reset_button(ui, self);
+            reset_button(ui, &mut *self.four_bar.write().unwrap());
             self.parameter(ui);
         });
         ui.group(|ui| {

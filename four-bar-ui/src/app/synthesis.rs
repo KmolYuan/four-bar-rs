@@ -34,14 +34,12 @@ pub(crate) struct Synthesis {
     #[serde(skip)]
     progress: Atomic<u64>,
     #[cfg(not(target_arch = "wasm32"))]
-    #[serde(skip)]
     timer: Atomic<u64>,
     gen: u64,
     pop: usize,
     curve_csv: Arc<RwLock<String>>,
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
-    #[serde(skip)]
     conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
 }
