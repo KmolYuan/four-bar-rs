@@ -10,8 +10,7 @@ mod icon {
 }
 
 /// Native entry point.
-#[actix_web::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let args = clap_app! {
         ("four-bar") =>
         (version: env!("CARGO_PKG_VERSION"))
@@ -32,14 +31,14 @@ async fn main() -> Result<()> {
     }
     .get_matches();
     if args.subcommand_matches("update").is_some() {
-        update::update().await
+        actix_web::rt::System::new().block_on(async { update::update().await })
     } else if let Some(cmd) = args.subcommand_matches("serve") {
         let port = cmd
             .value_of("PORT")
             .unwrap_or("8080")
             .parse()
             .expect("invalid port");
-        serve::serve(port).await
+        actix_web::rt::System::new().block_on(async { serve::serve(port).await })
     } else {
         let file = match args.subcommand_matches("ui") {
             Some(cmd) => cmd.value_of("FILE"),

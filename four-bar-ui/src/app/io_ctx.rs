@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
@@ -13,9 +14,11 @@ extern "C" {
     fn logout(done: JsValue);
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct IoCtx {
     #[cfg(not(target_arch = "wasm32"))]
+    #[serde(serialize_with = "self::serde_agent::serialize")]
+    #[serde(deserialize_with = "self::serde_agent::deserialize")]
     pub(crate) agent: ureq::Agent,
 }
 
@@ -143,5 +146,25 @@ impl IoCtx {
             .call()
             .is_ok();
         done(b);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+mod serde_agent {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub(super) fn serialize<S>(agent: &ureq::Agent, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        agent.cookie_store().serialize(serializer)
+    }
+
+    pub(super) fn deserialize<'a, D>(deserializer: D) -> Result<ureq::Agent, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        let cookies = Deserialize::deserialize(deserializer)?;
+        Ok(ureq::AgentBuilder::new().cookie_store(cookies).build())
     }
 }

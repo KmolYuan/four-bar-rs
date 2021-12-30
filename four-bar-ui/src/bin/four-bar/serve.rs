@@ -2,7 +2,7 @@ use crate::update::extract;
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
 use actix_web::{
-    cookie::{Cookie, SameSite},
+    cookie::{time::Duration, Cookie, SameSite},
     middleware::Logger,
     post,
     web::{Data, Json, Path},
@@ -18,7 +18,6 @@ use std::{
     slice::from_ref,
 };
 use temp_dir::TempDir;
-use time::Duration;
 
 const COOKIE_LIFE: Duration = Duration::weeks(1);
 
