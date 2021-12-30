@@ -53,6 +53,8 @@ fn main() -> Result<()> {
             }),
             ..Default::default()
         };
+        #[cfg(windows)]
+        let _ = unsafe { winapi::um::wincon::FreeConsole() };
         eframe::run_native(app, opt)
     }
 }
