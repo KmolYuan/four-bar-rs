@@ -119,10 +119,7 @@ impl Synthesis {
                     let _ = four_bar;
                     IoCtx::alert("Not yet prepared!");
                 } else {
-                    #[cfg(target_arch = "wasm32")]
-                    let _ = IoCtx::alert("Please login first!");
-                    #[cfg(not(target_arch = "wasm32"))]
-                    let _ = self.native_syn(four_bar);
+                    self.native_syn(four_bar);
                 }
             }
             let pb = ProgressBar::new(self.progress.load() as f32 / self.gen as f32)
@@ -150,6 +147,11 @@ impl Synthesis {
             ui.label(format!("Time passed: {}s", self.timer.load()));
         });
         ui.group(|ui| self.remote.ui(ui, ctx));
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn native_syn(&mut self, _four_bar: Arc<RwLock<FourBar>>) {
+        IoCtx::alert("Please login first!");
     }
 
     #[cfg(not(target_arch = "wasm32"))]
