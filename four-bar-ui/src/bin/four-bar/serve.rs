@@ -63,30 +63,32 @@ async fn logout(id: Identity, req: HttpRequest) -> impl Responder {
     builder.finish()
 }
 
-pub(crate) async fn serve(port: u16) -> Result<()> {
+pub(crate) fn serve(port: u16) -> Result<()> {
     let users = Data::new(users()?);
     let temp = TempDir::new()?;
-    extract(temp.path()).await?;
+    extract(temp.path())?;
     let path = temp.path().to_path_buf();
     println!("Serve at: http://localhost:{}/", port);
     println!("Unpacked archive at: {:?}", &path);
     println!("Press Ctrl+C to close the server...");
-    HttpServer::new(move || {
-        App::new()
-            .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(&[0; 32])
-                    .name("auth-cookie")
-                    .max_age(COOKIE_LIFE)
-                    .secure(true),
-            ))
-            .app_data(users.clone())
-            .service(login)
-            .service(logout)
-            .service(Files::new("/", &path).index_file("index.html"))
+    actix_web::rt::System::new().block_on(async {
+        HttpServer::new(move || {
+            App::new()
+                .wrap(IdentityService::new(
+                    CookieIdentityPolicy::new(&[0; 32])
+                        .name("auth-cookie")
+                        .max_age(COOKIE_LIFE)
+                        .secure(true),
+                ))
+                .app_data(users.clone())
+                .service(login)
+                .service(logout)
+                .service(Files::new("/", &path).index_file("index.html"))
+        })
+        .bind(("localhost", port))?
+        .run()
+        .await
     })
-    .bind(("localhost", port))?
-    .run()
-    .await
 }
 
 fn users() -> Result<Users> {

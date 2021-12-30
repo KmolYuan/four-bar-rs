@@ -19,7 +19,7 @@ macro_rules! wasm_url {
     };
 }
 
-pub(crate) async fn update() -> Result<()> {
+pub(crate) fn update() -> Result<()> {
     println!(concat!("Downloading archive from ", wasm_url!()));
     let archive = current_exe()?.with_file_name(concat!(archive!(), ".zip"));
     match agent().get(wasm_url!()).call() {
@@ -30,13 +30,13 @@ pub(crate) async fn update() -> Result<()> {
     Ok(())
 }
 
-pub(crate) async fn extract<D>(d: D) -> Result<()>
+pub(crate) fn extract<D>(d: D) -> Result<()>
 where
     D: AsRef<Path>,
 {
     let path = current_exe()?.with_file_name(concat!(archive!(), ".zip"));
     if !path.exists() {
-        update().await?;
+        update()?;
     }
     ZipArchive::new(File::open(path)?)
         .unwrap()

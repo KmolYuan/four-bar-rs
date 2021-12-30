@@ -31,14 +31,14 @@ fn main() -> Result<()> {
     }
     .get_matches();
     if args.subcommand_matches("update").is_some() {
-        actix_web::rt::System::new().block_on(async { update::update().await })
+        update::update()
     } else if let Some(cmd) = args.subcommand_matches("serve") {
         let port = cmd
             .value_of("PORT")
             .unwrap_or("8080")
             .parse()
             .expect("invalid port");
-        actix_web::rt::System::new().block_on(async { serve::serve(port).await })
+        serve::serve(port)
     } else {
         let file = match args.subcommand_matches("ui") {
             Some(cmd) => cmd.value_of("FILE"),
