@@ -3,7 +3,6 @@ use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, Identity, IdentityService};
 use actix_web::{
     cookie::{time::Duration, Cookie, SameSite},
-    middleware::Logger,
     post,
     web::{Data, Json, Path},
     App, HttpRequest, HttpResponse, HttpServer, Responder,
@@ -80,7 +79,6 @@ pub(crate) async fn serve(port: u16) -> Result<()> {
                     .max_age(COOKIE_LIFE)
                     .secure(true),
             ))
-            .wrap(Logger::default())
             .app_data(users.clone())
             .service(login)
             .service(logout)
