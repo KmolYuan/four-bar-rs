@@ -7,7 +7,7 @@ use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 extern "C" {
     fn alert(s: &str);
     fn save_file(s: &str, file_name: &str);
-    fn load_file(format: &str, done: JsValue);
+    fn open_file(format: &str, done: JsValue);
     fn get_host() -> String;
     fn get_username() -> String;
     fn login(account: &str, body: &str, done: JsValue);
@@ -42,7 +42,7 @@ impl IoCtx {
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
-        load_file(&format, Closure::once_into_js(done));
+        open_file(&format, Closure::once_into_js(done));
     }
 
     pub(crate) fn save(&self, s: &str, file_name: &str) {

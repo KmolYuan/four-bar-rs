@@ -185,6 +185,15 @@ impl Linkage {
                 }
             });
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let [file] = &ui.ctx().input().raw.dropped_files[..] {
+            if let Some(path) = &file.path {
+                let s = std::fs::read_to_string(path).unwrap_or_default();
+                if let Ok(fb) = from_str(&s) {
+                    *self.four_bar.write().unwrap() = fb;
+                }
+            }
+        }
     }
 
     fn curve_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
