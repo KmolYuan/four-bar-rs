@@ -6,9 +6,8 @@ const input = document.createElement("input");
 input.type = "file";
 const reader = new FileReader();
 input.addEventListener("change", function () {
-    if (this.files.length === 0)
-        return;
-    reader.readAsText(this.files[0]);
+    if (this.files.length !== 0)
+        reader.readAsText(this.files[0]);
 });
 
 // Utility functions
@@ -27,9 +26,7 @@ window.get_host = function () {
 };
 window.get_username = function () {
     const parts = ("; " + document.cookie).split("; username=");
-    if (parts.length === 2)
-        return parts.pop().split(";").shift();
-    return "";
+    return parts.length === 2 ? parts.pop().split(";").shift() : "";
 };
 window.login = function (account, body, done) {
     fetch(location.href + "login/" + account, {
