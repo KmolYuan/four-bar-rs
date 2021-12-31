@@ -89,7 +89,7 @@ where
             ))
             .unwrap()
             .label(name)
-            .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], line));
+            .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], line.clone()));
         let step = if curve.len() > 20 {
             curve.len() / 20
         } else {
