@@ -16,7 +16,7 @@ window.save_file = function (s, file_name) {
     a.href = window.URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
     a.click();
 };
-window.load_file = function (format, done) {
+window.open_file = function (format, done) {
     reader.onload = e => done(e.target.result);
     input.accept = format;
     input.click();

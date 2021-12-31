@@ -362,8 +362,8 @@ async function init(input) {
     imports.wbg.__wbg_savefile_7cc3697b6dcc4b71 = function(arg0, arg1, arg2, arg3) {
         save_file(getStringFromWasm0(arg0, arg1), getStringFromWasm0(arg2, arg3));
     };
-    imports.wbg.__wbg_loadfile_782d75a9e2294ee7 = function(arg0, arg1, arg2) {
-        load_file(getStringFromWasm0(arg0, arg1), takeObject(arg2));
+    imports.wbg.__wbg_openfile_bedf2a3f412780d1 = function(arg0, arg1, arg2) {
+        open_file(getStringFromWasm0(arg0, arg1), takeObject(arg2));
     };
     imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
         takeObject(arg0);
