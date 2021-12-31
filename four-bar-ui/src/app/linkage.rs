@@ -125,7 +125,7 @@ impl Linkage {
                     let s = std::fs::read_to_string(file).expect("Read file error");
                     Arc::new(RwLock::new(from_str(&s).expect("Deserialize error")))
                 }
-                None => Arc::new(RwLock::new(FourBar::example1())),
+                None => Default::default(),
                 #[cfg(target_arch = "wasm32")]
                 _ => unreachable!(),
             },

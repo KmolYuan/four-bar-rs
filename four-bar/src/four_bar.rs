@@ -5,7 +5,7 @@ use std::{
 
 /// Data type of the four-bar mechanism.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Default, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct FourBar {
     /// Origin.
     pub p0: (f64, f64),
@@ -27,9 +27,9 @@ pub struct FourBar {
     pub inv: bool,
 }
 
-impl FourBar {
+impl Default for FourBar {
     /// An example crank rocker.
-    pub fn example1() -> Self {
+    fn default() -> Self {
         Self {
             p0: (0., 0.),
             a: 0.,
@@ -45,6 +45,21 @@ impl FourBar {
 }
 
 impl FourBar {
+    /// Create empty fields.
+    pub const fn empty() -> Self {
+        Self {
+            p0: (0.0, 0.0),
+            a: 0.0,
+            l0: 0.0,
+            l1: 0.0,
+            l2: 0.0,
+            l3: 0.0,
+            l4: 0.0,
+            g: 0.0,
+            inv: false,
+        }
+    }
+
     /// Return true if the linkage has no offset and offset angle.
     #[inline(always)]
     pub fn is_aligned(&self) -> bool {

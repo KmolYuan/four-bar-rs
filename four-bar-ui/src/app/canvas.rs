@@ -29,19 +29,11 @@ pub(crate) struct Canvas {
     pub(crate) path2: Vec<[f64; 2]>,
     pub(crate) path3: Vec<[f64; 2]>,
     joints: [[f64; 2]; 5],
-    four_bar: FourBar,
 }
 
 impl Canvas {
     pub(crate) fn update(&mut self, four_bar: Arc<RwLock<FourBar>>, angle: f64, n: usize) {
-        let m = {
-            let four_bar = four_bar.read().unwrap();
-            if *four_bar == self.four_bar {
-                return;
-            }
-            self.four_bar = four_bar.clone();
-            Mechanism::four_bar(&*four_bar)
-        };
+        let m = Mechanism::four_bar(&*four_bar.read().unwrap());
         m.apply(angle, [0, 1, 2, 3, 4], &mut self.joints);
         let [path1, path2, path3] = m.four_bar_loop_all(0., n);
         self.path1 = path1;
