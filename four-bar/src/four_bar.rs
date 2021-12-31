@@ -5,7 +5,7 @@ use std::{
 
 /// Data type of the four-bar mechanism.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct FourBar {
     /// Origin.
     pub p0: (f64, f64),
@@ -27,9 +27,9 @@ pub struct FourBar {
     pub inv: bool,
 }
 
-impl Default for FourBar {
-    fn default() -> Self {
-        // A example mechanism
+impl FourBar {
+    /// An example crank rocker.
+    pub fn example1() -> Self {
         Self {
             p0: (0., 0.),
             a: 0.,

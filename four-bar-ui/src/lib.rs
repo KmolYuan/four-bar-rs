@@ -14,6 +14,6 @@ mod csv_io;
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub fn start(id: &str) -> Result<(), JsValue> {
-    let app = Box::new(App::default());
+    let app = Box::new(App::open(None));
     eframe::start_web(id, app)
 }

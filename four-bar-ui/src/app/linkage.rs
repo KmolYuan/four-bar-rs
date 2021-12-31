@@ -1,11 +1,15 @@
-use super::{synthesis::Synthesis, IoCtx};
-use crate::{as_values::as_values, csv_io::dump_csv};
+use super::{
+    canvas::{draw_path, Canvas},
+    synthesis::Synthesis,
+    IoCtx,
+};
+use crate::csv_io::dump_csv;
 use eframe::egui::{
     emath::Numeric,
-    plot::{Legend, Line, Plot, Points, Polygon},
-    reset_button, Button, CentralPanel, Color32, CtxRef, DragValue, Ui,
+    plot::{Legend, Plot},
+    reset_button, Button, CentralPanel, CtxRef, DragValue, Ui,
 };
-use four_bar::{FourBar, Mechanism};
+use four_bar::FourBar;
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -55,23 +59,6 @@ fn num<'a>(label: &'a str, attr: &'a mut impl Numeric, inter: f64, min: f64) -> 
         .speed(inter)
 }
 
-fn draw_link2(a: [f64; 2], b: [f64; 2]) -> Line {
-    Line::new(as_values(&[a, b]))
-        .width(3.)
-        .color(Color32::from_rgb(165, 151, 132))
-}
-
-fn draw_link3(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> Polygon {
-    Polygon::new(as_values(&[a, b, c]))
-        .width(3.)
-        .fill_alpha(0.6)
-        .color(Color32::from_rgb(165, 151, 132))
-}
-
-fn draw_path(name: &str, path: &[[f64; 2]]) -> Line {
-    Line::new(as_values(path)).name(name).width(3.)
-}
-
 #[derive(Deserialize, Serialize, PartialEq)]
 enum Pivot {
     Driver,
@@ -93,13 +80,7 @@ pub(crate) struct Linkage {
     driver: Driver,
     four_bar: Arc<RwLock<FourBar>>,
     #[serde(skip)]
-    path1: Vec<[f64; 2]>,
-    #[serde(skip)]
-    path2: Vec<[f64; 2]>,
-    #[serde(skip)]
-    path3: Vec<[f64; 2]>,
-    #[serde(skip)]
-    joints: [[f64; 2]; 5],
+    canvas: Canvas,
     pivot: Pivot,
     synthesis: Synthesis,
 }
@@ -130,36 +111,34 @@ impl Default for Config {
 #[derive(Deserialize, Serialize, Default, PartialEq)]
 #[serde(default)]
 struct Driver {
-    drive: f64,
+    angle: f64,
+    #[serde(skip)]
     speed: f64,
 }
 
 impl Linkage {
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn open(file: Option<&str>) -> Self {
         Self {
             four_bar: match file {
+                #[cfg(not(target_arch = "wasm32"))]
                 Some(file) => {
                     let s = std::fs::read_to_string(file).expect("Read file error");
                     Arc::new(RwLock::new(from_str(&s).expect("Deserialize error")))
                 }
-                None => Default::default(),
+                None => Arc::new(RwLock::new(FourBar::example1())),
+                #[cfg(target_arch = "wasm32")]
+                _ => unreachable!(),
             },
             ..Self::default()
         }
     }
 
-    fn update_mechanism(&mut self) {
-        let m = Mechanism::four_bar(&*self.four_bar.read().unwrap());
-        m.apply(self.driver.drive, [0, 1, 2, 3, 4], &mut self.joints);
-        let [path1, path2, path3] = m.four_bar_loop_all(0., self.config.curve_n);
-        self.path1 = path1;
-        self.path2 = path2;
-        self.path3 = path3;
-    }
-
     pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx) {
-        self.update_mechanism();
+        self.canvas.update(
+            self.four_bar.clone(),
+            self.driver.angle,
+            self.config.curve_n,
+        );
         ui.group(|ui| {
             ui.heading("File");
             ui.horizontal(|ui| self.file_io(ui, ctx));
@@ -184,7 +163,7 @@ impl Linkage {
             ui.heading("Driver");
             reset_button(ui, &mut self.driver);
             angle(ui, "Speed: ", &mut self.driver.speed, "/s");
-            angle(ui, "Angle: ", &mut self.driver.drive, "");
+            angle(ui, "Angle: ", &mut self.driver.angle, "");
         });
         ui.group(|ui| self.synthesis.ui(ui, ctx, self.four_bar.clone()));
     }
@@ -211,9 +190,9 @@ impl Linkage {
     fn curve_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         if ui.button("💾 Save Curve").clicked() {
             let path = match self.pivot {
-                Pivot::Driver => &self.path1,
-                Pivot::Follower => &self.path2,
-                Pivot::Coupler => &self.path3,
+                Pivot::Driver => &self.canvas.path1,
+                Pivot::Follower => &self.canvas.path2,
+                Pivot::Coupler => &self.canvas.path3,
             };
             let name = "curve.csv";
             let s = dump_csv(path).unwrap();
@@ -266,28 +245,13 @@ impl Linkage {
                 .data_aspect(1.)
                 .legend(Legend::default())
                 .show(ui, |ui| {
-                    ui.line(draw_link2(self.joints[0], self.joints[2]));
-                    ui.line(draw_link2(self.joints[1], self.joints[3]));
-                    ui.polygon(draw_link3(self.joints[2], self.joints[3], self.joints[4]));
-                    ui.points(
-                        Points::new(as_values(&[self.joints[0], self.joints[1]]))
-                            .radius(7.)
-                            .color(Color32::from_rgb(93, 69, 56)),
-                    );
-                    ui.points(
-                        Points::new(as_values(&[self.joints[2], self.joints[3], self.joints[4]]))
-                            .radius(5.)
-                            .color(Color32::from_rgb(128, 96, 77)),
-                    );
-                    ui.line(draw_path("Crank pivot", &self.path1));
-                    ui.line(draw_path("Follower pivot", &self.path2));
-                    ui.line(draw_path("Coupler pivot", &self.path3));
+                    self.canvas.ui(ui);
                     if !self.synthesis.curve.is_empty() {
                         ui.line(draw_path("Synthesis target", &self.synthesis.curve));
                     }
                 });
             if self.driver.speed != 0. {
-                self.driver.drive += self.driver.speed / 60.;
+                self.driver.angle += self.driver.speed / 60.;
                 ui.ctx().request_repaint();
             }
         });

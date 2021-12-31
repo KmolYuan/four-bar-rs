@@ -6,6 +6,7 @@ use eframe::egui::{
 use serde::{Deserialize, Serialize};
 
 mod atomic;
+mod canvas;
 mod io_ctx;
 mod linkage;
 mod remote;
@@ -47,7 +48,6 @@ impl Default for App {
 }
 
 impl App {
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn open(file: Option<&str>) -> Self {
         Self {
             linkage: Linkage::open(file),
