@@ -1,9 +1,5 @@
-#[cfg(not(target_arch = "wasm32"))]
-use atomic::{Atomic as InnerAtomic, Ordering};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-#[cfg(target_arch = "wasm32")]
-use std::sync::RwLock;
 
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub(crate) struct Atomic<T: Copy> {
@@ -14,38 +10,41 @@ pub(crate) struct Atomic<T: Copy> {
         serialize = "T: Serialize",
         deserialize = "T: serde::de::DeserializeOwned"
     ))]
-    inner: Arc<InnerAtomic<T>>,
+    inner: Arc<atomic::Atomic<T>>,
     #[cfg(target_arch = "wasm32")]
-    inner: Arc<RwLock<T>>,
+    inner: Arc<std::sync::RwLock<T>>,
 }
 
 impl<T: Copy> From<T> for Atomic<T> {
     fn from(v: T) -> Self {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
-            inner: Arc::new(InnerAtomic::new(v)),
+            inner: Arc::new(atomic::Atomic::new(v)),
             #[cfg(target_arch = "wasm32")]
-            inner: Arc::new(RwLock::new(v)),
+            inner: Arc::new(std::sync::RwLock::new(v)),
         }
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl<T: Copy> Atomic<T> {
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn load(&self) -> T {
-        self.inner.load(Ordering::Relaxed)
-    }
-
-    #[cfg(target_arch = "wasm32")]
     pub(crate) fn load(&self) -> T {
         *self.inner.read().unwrap()
     }
 
     pub(crate) fn store(&self, v: T) {
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = self.inner.store(v, Ordering::Relaxed);
-        #[cfg(target_arch = "wasm32")]
-        let _ = *self.inner.write().unwrap() = v;
+        *self.inner.write().unwrap() = v;
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<T: Copy> Atomic<T> {
+    pub(crate) fn load(&self) -> T {
+        self.inner.load(atomic::Ordering::Relaxed)
+    }
+
+    pub(crate) fn store(&self, v: T) {
+        self.inner.store(v, atomic::Ordering::Relaxed)
     }
 }
 

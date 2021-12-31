@@ -45,7 +45,7 @@ impl IoCtx {
         open_file(&format, Closure::once_into_js(done));
     }
 
-    pub(crate) fn save(&self, s: &str, file_name: &str) {
+    pub(crate) fn save(&self, s: &str, file_name: &str, _fmt: &str, _ext: &[&str]) {
         save_file(s, file_name);
     }
 

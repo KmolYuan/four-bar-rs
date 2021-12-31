@@ -75,11 +75,13 @@ impl Remote {
                 self.before_login(ui, ctx);
             }
         } else {
-            #[cfg(target_arch = "wasm32")]
-            let _ = self.connect(ctx);
-            #[cfg(not(target_arch = "wasm32"))]
-            let _ = self.before_connect(ui, ctx);
+            self.before_connect(ui, ctx);
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn before_connect(&mut self, _ui: &mut Ui, ctx: &IoCtx) {
+        self.connect(ctx);
     }
 
     #[cfg(not(target_arch = "wasm32"))]

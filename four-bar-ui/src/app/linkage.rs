@@ -172,10 +172,7 @@ impl Linkage {
         if ui.button("💾 Save").clicked() {
             let name = "four_bar.ron";
             let s = to_string(&*self.four_bar.read().unwrap()).unwrap();
-            #[cfg(target_arch = "wasm32")]
-            let _ = ctx.save(&s, name);
-            #[cfg(not(target_arch = "wasm32"))]
-            let _ = ctx.save(&s, name, "Rusty Object Notation", &["ron"]);
+            ctx.save(&s, name, "Rusty Object Notation", &["ron"]);
         }
         if ui.button("🖴 Open").clicked() {
             let four_bar = self.four_bar.clone();
@@ -205,10 +202,7 @@ impl Linkage {
             };
             let name = "curve.csv";
             let s = dump_csv(path).unwrap();
-            #[cfg(target_arch = "wasm32")]
-            let _ = ctx.save(&s, name);
-            #[cfg(not(target_arch = "wasm32"))]
-            let _ = ctx.save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
+            ctx.save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
         }
         ui.selectable_value(&mut self.pivot, Pivot::Coupler, "Coupler");
         ui.selectable_value(&mut self.pivot, Pivot::Driver, "Driver");

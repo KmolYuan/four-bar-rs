@@ -8,16 +8,9 @@ use eframe::egui::{
     plot::{Legend, Line, Plot, Points},
     Color32, DragValue, Label, ProgressBar, RichText, Ui, Window,
 };
-#[cfg(not(target_arch = "wasm32"))]
-use four_bar::synthesis::{
-    mh::{De, Solver},
-    Planar,
-};
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::Instant;
 
 fn parameter<'a>(label: &'a str, attr: &'a mut impl Numeric) -> DragValue<'a> {
     DragValue::new(attr)
@@ -33,7 +26,6 @@ pub(crate) struct Synthesis {
     started: Atomic<bool>,
     #[serde(skip)]
     progress: Atomic<u64>,
-    #[cfg(not(target_arch = "wasm32"))]
     timer: Atomic<u64>,
     gen: u64,
     pop: usize,
@@ -49,7 +41,6 @@ impl Default for Synthesis {
         Self {
             started: Atomic::from(false),
             progress: Atomic::from(0),
-            #[cfg(not(target_arch = "wasm32"))]
             timer: Atomic::from(0),
             gen: 40,
             pop: 200,
@@ -141,7 +132,6 @@ impl Synthesis {
             {
                 self.conv.drain(..self.conv.len() - 1);
             }
-            #[cfg(not(target_arch = "wasm32"))]
             ui.label(format!("Time passed: {}s", self.timer.load()));
         });
         ui.group(|ui| self.remote.ui(ui, ctx));
@@ -165,14 +155,18 @@ impl Synthesis {
         let conv = Arc::new(RwLock::new(Vec::new()));
         self.conv.push(conv.clone());
         std::thread::spawn(move || {
-            let start_time = Instant::now();
+            use four_bar::synthesis::{
+                mh::{De, Solver},
+                Planar,
+            };
+            let start_time = std::time::Instant::now();
             *four_bar.write().unwrap() = Solver::build(De::default())
                 .pop_num(pop)
                 .task(|ctx| ctx.gen == gen || !started.load())
                 .callback(|ctx| {
                     conv.write().unwrap().push([ctx.gen as f64, ctx.best_f]);
                     progress.store(ctx.gen);
-                    timer.store((Instant::now() - start_time).as_secs());
+                    timer.store((std::time::Instant::now() - start_time).as_secs());
                 })
                 .solve(Planar::new(&curve, 720, 360))
                 .result();
