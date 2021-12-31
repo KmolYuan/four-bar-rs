@@ -47,7 +47,4 @@ window.logout = function (done) {
 };
 
 // Startup WebAssembly
-(async () => {
-    await wasm.default();
-    await wasm.start("main_canvas");
-})();
+wasm.default().then(() => wasm.start("main_canvas"));
