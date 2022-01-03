@@ -22,10 +22,7 @@ window.open_file = (format, done) => {
     input.click();
 };
 window.get_host = () => location.href;
-window.get_username = () => {
-    const parts = ("; " + document.cookie).split("; username=");
-    return parts.length === 2 ? parts.pop().split(";").shift() : "";
-};
+window.get_username = () => ("; " + document.cookie).split("; username=").pop().split(";").shift();
 window.login = (account, body, done) =>
     fetch(location.href + "login/" + account, {
         method: "POST",
