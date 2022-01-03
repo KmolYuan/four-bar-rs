@@ -1,5 +1,5 @@
 pub use self::remote::{sha512, LoginInfo};
-use self::{atomic::Atomic, io_ctx::IoCtx, linkage::Linkage};
+use self::{io_ctx::IoCtx, linkage::Linkage};
 use eframe::{
     egui::{
         CentralPanel, CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui,
@@ -9,7 +9,6 @@ use eframe::{
 };
 use serde::{Deserialize, Serialize};
 
-mod atomic;
 mod canvas;
 mod io_ctx;
 mod linkage;

@@ -8,6 +8,7 @@ use wasm_bindgen::prelude::{wasm_bindgen, JsValue};
 
 mod app;
 mod as_values;
+mod atomic;
 mod csv_io;
 
 /// WebAssembly entry point.

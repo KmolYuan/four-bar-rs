@@ -1,4 +1,4 @@
-use super::{remote::Remote, Atomic, IoCtx};
+use super::{remote::Remote, IoCtx};
 use crate::{
     as_values::as_values,
     csv_io::{dump_csv, parse_csv},
@@ -10,7 +10,10 @@ use eframe::egui::{
 };
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc, RwLock,
+};
 
 fn parameter<'a>(label: &'a str, attr: &'a mut impl Numeric) -> DragValue<'a> {
     DragValue::new(attr)
@@ -23,10 +26,14 @@ fn parameter<'a>(label: &'a str, attr: &'a mut impl Numeric) -> DragValue<'a> {
 #[serde(default)]
 pub(crate) struct Synthesis {
     #[serde(skip)]
-    started: Atomic<bool>,
+    started: Arc<AtomicBool>,
     #[serde(skip)]
-    progress: Atomic<u64>,
-    timer: Atomic<u64>,
+    progress: Arc<AtomicU64>,
+    #[serde(
+        serialize_with = "crate::atomic::serialize_u64",
+        deserialize_with = "crate::atomic::deserialize_u64"
+    )]
+    timer: Arc<AtomicU64>,
     gen: u64,
     pop: usize,
     curve_csv: Arc<RwLock<String>>,
@@ -39,9 +46,9 @@ pub(crate) struct Synthesis {
 impl Default for Synthesis {
     fn default() -> Self {
         Self {
-            started: Atomic::from(false),
-            progress: Atomic::from(0),
-            timer: Atomic::from(0),
+            started: Default::default(),
+            progress: Default::default(),
+            timer: Default::default(),
             gen: 40,
             pop: 200,
             curve_csv: Arc::new(RwLock::new(dump_csv(CRUNODE).unwrap())),
@@ -95,10 +102,10 @@ impl Synthesis {
             }
         }
         ui.horizontal(|ui| {
-            let started = self.started.load();
+            let started = self.started.load(Ordering::Relaxed);
             if started {
                 if ui.small_button("⏹").on_hover_text("Stop").clicked() {
-                    self.started.store(false);
+                    self.started.store(false, Ordering::Relaxed);
                 }
             } else if ui.small_button("▶").on_hover_text("Start").clicked()
                 && !self.curve.is_empty()
@@ -111,10 +118,8 @@ impl Synthesis {
                     self.native_syn(four_bar);
                 }
             }
-            let pb = ProgressBar::new(self.progress.load() as f32 / self.gen as f32)
-                .show_percentage()
-                .animate(started);
-            ui.add(pb);
+            let pb = self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32;
+            ui.add(ProgressBar::new(pb).show_percentage().animate(started));
         });
         ui.horizontal(|ui| {
             if ui
@@ -132,7 +137,10 @@ impl Synthesis {
             {
                 self.conv.drain(..self.conv.len() - 1);
             }
-            ui.label(format!("Time passed: {}s", self.timer.load()));
+            ui.label(format!(
+                "Time passed: {}s",
+                self.timer.load(Ordering::Relaxed)
+            ));
         });
         ui.group(|ui| self.remote.ui(ui, ctx));
     }
@@ -144,8 +152,8 @@ impl Synthesis {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, four_bar: Arc<RwLock<FourBar>>) {
-        self.started = Atomic::from(true);
-        self.timer.store(0);
+        self.started.store(true, Ordering::Relaxed);
+        self.timer.store(0, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
         let started = self.started.clone();
@@ -162,15 +170,18 @@ impl Synthesis {
             let start_time = std::time::Instant::now();
             *four_bar.write().unwrap() = Solver::build(De::default())
                 .pop_num(pop)
-                .task(|ctx| ctx.gen == gen || !started.load())
+                .task(|ctx| ctx.gen == gen || !started.load(Ordering::Relaxed))
                 .callback(|ctx| {
                     conv.write().unwrap().push([ctx.gen as f64, ctx.best_f]);
-                    progress.store(ctx.gen);
-                    timer.store((std::time::Instant::now() - start_time).as_secs());
+                    progress.store(ctx.gen, Ordering::Relaxed);
+                    timer.store(
+                        (std::time::Instant::now() - start_time).as_secs(),
+                        Ordering::Relaxed,
+                    );
                 })
                 .solve(Planar::new(&curve, 720, 360))
                 .result();
-            started.store(false);
+            started.store(false, Ordering::Relaxed);
         });
     }
 }

@@ -1,6 +1,10 @@
-use super::{Atomic, IoCtx};
+use super::IoCtx;
 use eframe::egui::{TextEdit, Ui};
 use serde::{Deserialize, Serialize};
+use std::sync::{
+    atomic::{AtomicBool, Ordering::Relaxed},
+    Arc,
+};
 
 /// Sha512 encrypt function.
 pub fn sha512(s: &str) -> String {
@@ -43,7 +47,7 @@ pub(crate) struct Remote {
     #[serde(skip)]
     is_connected: bool,
     #[serde(skip)]
-    is_login: Atomic<bool>,
+    is_login: Arc<AtomicBool>,
 }
 
 impl Default for Remote {
@@ -56,20 +60,20 @@ impl Default for Remote {
             address,
             info: LoginInfo::default(),
             is_connected: false,
-            is_login: Atomic::from(false),
+            is_login: Default::default(),
         }
     }
 }
 
 impl Remote {
     pub(crate) fn is_login(&self) -> bool {
-        self.is_login.load()
+        self.is_login.load(Relaxed)
     }
 
     pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
         if self.is_connected {
-            if self.is_login.load() {
+            if self.is_login.load(Relaxed) {
                 self.after_login(ui, ctx);
             } else {
                 self.before_login(ui, ctx);
@@ -101,7 +105,7 @@ impl Remote {
                 self.is_connected = true;
                 if !id.is_empty() {
                     self.info.account = id;
-                    self.is_login.store(true);
+                    self.is_login.store(true, Relaxed);
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -129,7 +133,7 @@ impl Remote {
                 } else {
                     IoCtx::alert("Login failed!");
                 }
-                is_login.store(b)
+                is_login.store(b, Relaxed)
             };
             ctx.login(&self.address, &self.info.account, &body, done);
         }
@@ -145,7 +149,7 @@ impl Remote {
             let done = move |b| {
                 if b {
                     IoCtx::alert("Logout successfully!");
-                    is_login.store(false)
+                    is_login.store(false, Relaxed);
                 } else {
                     IoCtx::alert("Logout failed!");
                 }
