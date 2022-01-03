@@ -113,7 +113,7 @@ struct Driver {
 }
 
 impl Linkage {
-    pub(crate) fn open(file: Option<&str>) -> Self {
+    pub(crate) fn open(file: Option<String>) -> Self {
         Self {
             four_bar: match file {
                 #[cfg(not(target_arch = "wasm32"))]

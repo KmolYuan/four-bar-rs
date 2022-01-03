@@ -51,7 +51,7 @@ impl Default for App {
 }
 
 impl App {
-    pub fn open(file: Option<&str>) -> Self {
+    pub fn open(file: Option<String>) -> Self {
         Self {
             linkage: Linkage::open(file),
             ..Self::default()
