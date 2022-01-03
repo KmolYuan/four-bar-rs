@@ -1,7 +1,11 @@
 pub use self::remote::{sha512, LoginInfo};
 use self::{atomic::Atomic, io_ctx::IoCtx, linkage::Linkage};
-use eframe::egui::{
-    CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window,
+use eframe::{
+    egui::{
+        CentralPanel, CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui,
+        Visuals, Window,
+    },
+    epi::{Frame, Storage, APP_KEY},
 };
 use serde::{Deserialize, Serialize};
 
@@ -105,7 +109,7 @@ impl App {
 }
 
 impl eframe::epi::App for App {
-    fn update(&mut self, ctx: &CtxRef, _frame: &eframe::epi::Frame) {
+    fn update(&mut self, ctx: &CtxRef, _frame: &Frame) {
         if self.menu_up {
             TopBottomPanel::top("menu")
         } else {
@@ -119,7 +123,7 @@ impl eframe::epi::App for App {
                     ScrollArea::vertical().show(ui, |ui| self.linkage.ui(ui, &self.ctx));
                 });
         }
-        self.linkage.plot(ctx);
+        CentralPanel::default().show(ctx, |ui| self.linkage.plot(ui));
         // Welcome message (shown in central area)
         Window::new("Welcome to Four🍀bar!")
             .open(&mut self.welcome)
@@ -135,21 +139,16 @@ impl eframe::epi::App for App {
             });
     }
 
-    fn setup(
-        &mut self,
-        _ctx: &CtxRef,
-        _frame: &eframe::epi::Frame,
-        storage: Option<&dyn eframe::epi::Storage>,
-    ) {
+    fn setup(&mut self, _ctx: &CtxRef, _frame: &Frame, storage: Option<&dyn Storage>) {
         if let Some(storage) = storage {
-            if let Some(app) = eframe::epi::get_value(storage, eframe::epi::APP_KEY) {
+            if let Some(app) = eframe::epi::get_value(storage, APP_KEY) {
                 *self = app;
             }
         }
     }
 
-    fn save(&mut self, storage: &mut dyn eframe::epi::Storage) {
-        eframe::epi::set_value(storage, eframe::epi::APP_KEY, self);
+    fn save(&mut self, storage: &mut dyn Storage) {
+        eframe::epi::set_value(storage, APP_KEY, self);
     }
 
     fn name(&self) -> &str {

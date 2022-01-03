@@ -1,13 +1,9 @@
-use super::{
-    canvas::{draw_path, Canvas},
-    synthesis::Synthesis,
-    IoCtx,
-};
-use crate::csv_io::dump_csv;
+use super::{canvas::Canvas, synthesis::Synthesis, IoCtx};
+use crate::{as_values::as_values, csv_io::dump_csv};
 use eframe::egui::{
     emath::Numeric,
-    plot::{Legend, Plot},
-    reset_button, Button, CentralPanel, CtxRef, DragValue, Ui,
+    plot::{Legend, Line, LineStyle, Plot},
+    reset_button, Button, DragValue, Ui,
 };
 use four_bar::FourBar;
 use ron::{from_str, to_string};
@@ -196,9 +192,9 @@ impl Linkage {
     fn curve_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         if ui.button("💾 Save Curve").clicked() {
             let path = match self.pivot {
-                Pivot::Driver => &self.canvas.path1,
-                Pivot::Follower => &self.canvas.path2,
-                Pivot::Coupler => &self.canvas.path3,
+                Pivot::Driver => &self.canvas.path[0],
+                Pivot::Follower => &self.canvas.path[1],
+                Pivot::Coupler => &self.canvas.path[2],
             };
             let name = "curve.csv";
             let s = dump_csv(path).unwrap();
@@ -242,21 +238,23 @@ impl Linkage {
         });
     }
 
-    pub(crate) fn plot(&mut self, ctx: &CtxRef) {
-        CentralPanel::default().show(ctx, |ui| {
-            Plot::new("canvas")
-                .data_aspect(1.)
-                .legend(Legend::default())
-                .show(ui, |ui| {
-                    self.canvas.ui(ui);
-                    if !self.synthesis.curve.is_empty() {
-                        ui.line(draw_path("Synthesis target", &self.synthesis.curve));
-                    }
-                });
-            if self.driver.speed != 0. {
-                self.driver.angle += self.driver.speed / 60.;
-                ui.ctx().request_repaint();
-            }
-        });
+    pub(crate) fn plot(&mut self, ui: &mut Ui) {
+        Plot::new("canvas")
+            .data_aspect(1.)
+            .legend(Legend::default())
+            .show(ui, |ui| {
+                self.canvas.ui(ui);
+                if !self.synthesis.curve.is_empty() {
+                    let line = Line::new(as_values(&self.synthesis.curve))
+                        .name("Synthesis target")
+                        .style(LineStyle::dashed_loose())
+                        .width(3.);
+                    ui.line(line);
+                }
+            });
+        if self.driver.speed != 0. {
+            self.driver.angle += self.driver.speed / 60.;
+            ui.ctx().request_repaint();
+        }
     }
 }

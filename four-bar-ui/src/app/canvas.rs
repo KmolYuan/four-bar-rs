@@ -6,28 +6,29 @@ use eframe::egui::{
 use four_bar::{FourBar, Mechanism};
 use std::sync::{Arc, RwLock};
 
-fn draw_link2(a: [f64; 2], b: [f64; 2]) -> Line {
-    Line::new(as_values(&[a, b]))
-        .width(3.)
-        .color(Color32::from_rgb(165, 151, 132))
+const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
+const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
+
+fn draw_link(ui: &mut PlotUi, points: &[[f64; 2]]) {
+    let values = as_values(points);
+    if points.len() == 2 {
+        ui.line(Line::new(values).width(3.).color(LINK_COLOR));
+    } else {
+        let polygon = Polygon::new(values)
+            .width(3.)
+            .fill_alpha(0.6)
+            .color(LINK_COLOR);
+        ui.polygon(polygon);
+    }
 }
 
-fn draw_link3(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> Polygon {
-    Polygon::new(as_values(&[a, b, c]))
-        .width(3.)
-        .fill_alpha(0.6)
-        .color(Color32::from_rgb(165, 151, 132))
-}
-
-pub(crate) fn draw_path(name: &str, path: &[[f64; 2]]) -> Line {
-    Line::new(as_values(path)).name(name).width(3.)
+fn draw_joints(ui: &mut PlotUi, points: &[[f64; 2]]) {
+    ui.points(Points::new(as_values(points)).radius(5.).color(JOINT_COLOR));
 }
 
 #[derive(Default)]
 pub(crate) struct Canvas {
-    pub(crate) path1: Vec<[f64; 2]>,
-    pub(crate) path2: Vec<[f64; 2]>,
-    pub(crate) path3: Vec<[f64; 2]>,
+    pub(crate) path: [Vec<[f64; 2]>; 3],
     joints: [[f64; 2]; 5],
 }
 
@@ -36,27 +37,19 @@ impl Canvas {
         let m = Mechanism::four_bar(&*four_bar.read().unwrap());
         m.apply(angle, [0, 1, 2, 3, 4], &mut self.joints);
         let [path1, path2, path3] = m.four_bar_loop_all(0., n);
-        self.path1 = path1;
-        self.path2 = path2;
-        self.path3 = path3;
+        self.path[0] = path1;
+        self.path[1] = path2;
+        self.path[2] = path3;
     }
 
     pub(crate) fn ui(&self, ui: &mut PlotUi) {
-        ui.line(draw_link2(self.joints[0], self.joints[2]));
-        ui.line(draw_link2(self.joints[1], self.joints[3]));
-        ui.polygon(draw_link3(self.joints[2], self.joints[3], self.joints[4]));
-        ui.points(
-            Points::new(as_values(&[self.joints[0], self.joints[1]]))
-                .radius(7.)
-                .color(Color32::from_rgb(93, 69, 56)),
-        );
-        ui.points(
-            Points::new(as_values(&[self.joints[2], self.joints[3], self.joints[4]]))
-                .radius(5.)
-                .color(Color32::from_rgb(128, 96, 77)),
-        );
-        ui.line(draw_path("Crank pivot", &self.path1));
-        ui.line(draw_path("Follower pivot", &self.path2));
-        ui.line(draw_path("Coupler pivot", &self.path3));
+        draw_link(ui, &[self.joints[0], self.joints[2]]);
+        draw_link(ui, &[self.joints[1], self.joints[3]]);
+        draw_link(ui, &[self.joints[2], self.joints[3], self.joints[4]]);
+        draw_joints(ui, &self.joints);
+        let path_names = ["Crank pivot", "Follower pivot", "Coupler pivot"];
+        for (path, name) in self.path.iter().zip(path_names) {
+            ui.line(Line::new(as_values(path)).name(name).width(3.));
+        }
     }
 }
