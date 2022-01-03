@@ -26,20 +26,18 @@ window.get_username = () => {
     const parts = ("; " + document.cookie).split("; username=");
     return parts.length === 2 ? parts.pop().split(";").shift() : "";
 };
-window.login = (account, body, done) => {
+window.login = (account, body, done) =>
     fetch(location.href + "login/" + account, {
         method: "POST",
         body: body,
         headers: {"content-type": "application/json"},
         mode: "cors",
     }).then(res => done(res.ok));
-};
-window.logout = done =>  {
+window.logout = done =>
     fetch(location.href + "logout", {
         method: "POST",
         mode: "cors",
     }).then(res => done(res.ok));
-};
 
 // Startup WebAssembly
 wasm.default().then(() => wasm.start("main_canvas"));
