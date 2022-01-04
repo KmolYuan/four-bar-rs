@@ -6,7 +6,7 @@ use crate::{
 use eframe::egui::{
     emath::Numeric,
     plot::{Legend, Line, Plot, Points},
-    Color32, DragValue, Label, ProgressBar, RichText, Ui, Window,
+    Color32, DragValue, ProgressBar, Ui, Window,
 };
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
@@ -36,6 +36,7 @@ pub(crate) struct Synthesis {
     timer: Arc<AtomicU64>,
     gen: u64,
     pop: usize,
+    open_curve: bool,
     curve_csv: Arc<RwLock<String>>,
     pub(crate) curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
@@ -51,6 +52,7 @@ impl Default for Synthesis {
             timer: Default::default(),
             gen: 40,
             pop: 200,
+            open_curve: false,
             curve_csv: Arc::new(RwLock::new(dump_csv(CRUNODE).unwrap())),
             curve: Arc::new(CRUNODE.to_vec()),
             conv_open: false,
@@ -82,6 +84,7 @@ impl Synthesis {
             });
         ui.add(parameter("Generation: ", &mut self.gen));
         ui.add(parameter("Population: ", &mut self.pop));
+        ui.checkbox(&mut self.open_curve, "Is open curve");
         if ui.button("Open CSV").clicked() {
             let curve_csv = self.curve_csv.clone();
             ctx.open("Delimiter-Separated Values", &["csv", "txt"], move |s| {
@@ -95,10 +98,8 @@ impl Synthesis {
             if let Ok(curve) = parse_csv(&self.curve_csv.read().unwrap()) {
                 self.curve = Arc::new(curve);
             } else {
-                let text =
-                    RichText::new("The provided curve is invalid.\nUses latest valid curve.")
-                        .color(Color32::RED);
-                ui.add(Label::new(text));
+                const TEXT: &str = "The provided curve is invalid.\nUses latest valid curve.";
+                ui.colored_label(Color32::RED, TEXT);
             }
         }
         ui.horizontal(|ui| {
@@ -156,6 +157,7 @@ impl Synthesis {
         self.timer.store(0, Ordering::Relaxed);
         let gen = self.gen;
         let pop = self.pop;
+        let open_curve = self.open_curve;
         let started = self.started.clone();
         let progress = self.progress.clone();
         let timer = self.timer.clone();
@@ -179,7 +181,7 @@ impl Synthesis {
                         Ordering::Relaxed,
                     );
                 })
-                .solve(Planar::new(&curve, 720, 360))
+                .solve(Planar::new(&curve, 720, 360, open_curve))
                 .result();
             started.store(false, Ordering::Relaxed);
         });

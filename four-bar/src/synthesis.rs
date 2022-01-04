@@ -13,7 +13,7 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(Planar::new(&curve, 720, 360));
+//!     .solve(Planar::new(&curve, 720, 360, false));
 //! let result = s.result();
 //! ```
 use self::mh::ObjFunc;
@@ -142,11 +142,13 @@ pub struct Planar {
     harmonic: usize,
     ub: [f64; 5],
     lb: [f64; 5],
+    // TODO: Open curve synthesis
+    open: bool,
 }
 
 impl Planar {
     /// Create a new task.
-    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize) -> Self {
+    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
         // linkages
         let mut ub = [10.; 5];
         let mut lb = [1e-6; 5];
@@ -165,7 +167,13 @@ impl Planar {
             harmonic,
             ub,
             lb,
+            open,
         }
+    }
+
+    /// Check if the target is defined as  open curve.
+    pub fn is_open(&self) -> bool {
+        self.open
     }
 
     fn four_bar_coeff(&self, v: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
@@ -174,12 +182,12 @@ impl Planar {
             a += FRAC_2_PI.copysign(a.cos());
         }
         let scale = self.geo.scale / geo.scale;
-        let locus_a = geo.locus.1.atan2(geo.locus.0) + a;
-        let d = geo.locus.1.hypot(geo.locus.0) * scale;
+        let center = geo.center.1.atan2(geo.center.0) + a;
+        let d = geo.center.1.hypot(geo.center.0) * scale;
         FourBar {
             p0: (
-                self.geo.locus.0 - d * locus_a.cos(),
-                self.geo.locus.1 - d * locus_a.sin(),
+                self.geo.center.0 - d * center.cos(),
+                self.geo.center.1 - d * center.sin(),
             ),
             a,
             l0: v[0] * scale,
