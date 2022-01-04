@@ -1,8 +1,8 @@
 use super::{canvas::Canvas, synthesis::Synthesis, IoCtx};
-use crate::{as_values::as_values, csv_io::dump_csv};
+use crate::csv_io::dump_csv;
 use eframe::egui::{
     emath::Numeric,
-    plot::{Legend, Line, LineStyle, Plot},
+    plot::{Legend, Plot},
     reset_button, Button, DragValue, Ui,
 };
 use four_bar::FourBar;
@@ -13,18 +13,18 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-fn unit<'a>(label: &'a str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
+fn unit<'a>(label: &'static str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
     DragValue::new(attr).prefix(label).speed(inter)
 }
 
-fn link<'a>(label: &'a str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
+fn link<'a>(label: &'static str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
     DragValue::new(attr)
         .prefix(label)
         .clamp_range(0.0001..=f64::MAX)
         .speed(inter)
 }
 
-fn angle(ui: &mut Ui, label: &str, attr: &mut f64, suffix: &'static str) {
+fn angle(ui: &mut Ui, label: &'static str, attr: &mut f64, suffix: &'static str) {
     if suffix.is_empty() && TAU - *attr < 1e-20 {
         *attr = 0.;
     }
@@ -244,13 +244,7 @@ impl Linkage {
             .legend(Legend::default())
             .show(ui, |ui| {
                 self.canvas.ui(ui);
-                if !self.synthesis.curve.is_empty() {
-                    let line = Line::new(as_values(&self.synthesis.curve))
-                        .name("Synthesis target")
-                        .style(LineStyle::dashed_loose())
-                        .width(3.);
-                    ui.line(line);
-                }
+                self.synthesis.plot(ui);
             });
         if self.driver.speed != 0. {
             self.driver.angle += self.driver.speed / 60.;

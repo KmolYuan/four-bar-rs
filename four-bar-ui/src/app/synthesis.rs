@@ -5,8 +5,8 @@ use crate::{
 };
 use eframe::egui::{
     emath::Numeric,
-    plot::{Legend, Line, Plot, Points},
-    Color32, DragValue, ProgressBar, Ui, Window,
+    plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
+    reset_button, Color32, DragValue, ProgressBar, Ui, Window,
 };
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
@@ -15,14 +15,11 @@ use std::sync::{
     Arc, RwLock,
 };
 
-fn parameter<'a>(label: &'a str, attr: &'a mut impl Numeric) -> DragValue<'a> {
-    DragValue::new(attr)
-        .prefix(label)
-        .clamp_range(0..=10000)
-        .speed(1)
+fn parameter<'a>(label: &'static str, attr: &'a mut impl Numeric) -> DragValue<'a> {
+    DragValue::new(attr).prefix(label).speed(1)
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Synthesis {
     #[serde(skip)]
@@ -34,37 +31,48 @@ pub(crate) struct Synthesis {
         deserialize_with = "crate::atomic::deserialize_u64"
     )]
     timer: Arc<AtomicU64>,
-    gen: u64,
-    pop: usize,
-    open_curve: bool,
-    curve_csv: Arc<RwLock<String>>,
-    pub(crate) curve: Arc<Vec<[f64; 2]>>,
+    config: SynConfig,
     conv_open: bool,
     conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
 }
 
-impl Default for Synthesis {
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
+struct SynConfig {
+    gen: u64,
+    pop: usize,
+    open: bool,
+    curve_csv: Arc<RwLock<String>>,
+    curve: Arc<Vec<[f64; 2]>>,
+}
+
+impl Default for SynConfig {
     fn default() -> Self {
         Self {
-            started: Default::default(),
-            progress: Default::default(),
-            timer: Default::default(),
             gen: 40,
             pop: 200,
-            open_curve: false,
+            open: false,
             curve_csv: Arc::new(RwLock::new(dump_csv(CRUNODE).unwrap())),
             curve: Arc::new(CRUNODE.to_vec()),
-            conv_open: false,
-            conv: Vec::new(),
-            remote: Remote::default(),
         }
+    }
+}
+
+impl PartialEq for SynConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.gen == other.gen
+            && self.pop == other.pop
+            && self.open == other.open
+            && *self.curve_csv.read().unwrap() == *other.curve_csv.read().unwrap()
+            && self.curve == other.curve
     }
 }
 
 impl Synthesis {
     pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<RwLock<FourBar>>) {
         ui.heading("Synthesis");
+        reset_button(ui, &mut self.config);
         let iter = self.conv.iter().enumerate();
         Window::new("Convergence Plot")
             .open(&mut self.conv_open)
@@ -82,21 +90,21 @@ impl Synthesis {
                         }
                     });
             });
-        ui.add(parameter("Generation: ", &mut self.gen));
-        ui.add(parameter("Population: ", &mut self.pop));
-        ui.checkbox(&mut self.open_curve, "Is open curve");
+        ui.add(parameter("Generation: ", &mut self.config.gen));
+        ui.add(parameter("Population: ", &mut self.config.pop));
+        ui.checkbox(&mut self.config.open, "Is open curve");
         if ui.button("Open CSV").clicked() {
-            let curve_csv = self.curve_csv.clone();
+            let curve_csv = self.config.curve_csv.clone();
             ctx.open("Delimiter-Separated Values", &["csv", "txt"], move |s| {
                 *curve_csv.write().unwrap() = s;
             });
         }
         ui.collapsing("Curve Input (CSV)", |ui| {
-            ui.text_edit_multiline(&mut *self.curve_csv.write().unwrap())
+            ui.text_edit_multiline(&mut *self.config.curve_csv.write().unwrap())
         });
-        if !self.curve_csv.read().unwrap().is_empty() {
-            if let Ok(curve) = parse_csv(&self.curve_csv.read().unwrap()) {
-                self.curve = Arc::new(curve);
+        if !self.config.curve_csv.read().unwrap().is_empty() {
+            if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
+                self.config.curve = Arc::new(curve);
             } else {
                 const TEXT: &str = "The provided curve is invalid.\nUses latest valid curve.";
                 ui.colored_label(Color32::RED, TEXT);
@@ -109,7 +117,7 @@ impl Synthesis {
                     self.started.store(false, Ordering::Relaxed);
                 }
             } else if ui.small_button("▶").on_hover_text("Start").clicked()
-                && !self.curve.is_empty()
+                && !self.config.curve.is_empty()
             {
                 if self.remote.is_login() {
                     // TODO: Connect to server
@@ -119,7 +127,7 @@ impl Synthesis {
                     self.native_syn(four_bar);
                 }
             }
-            let pb = self.progress.load(Ordering::Relaxed) as f32 / self.gen as f32;
+            let pb = self.progress.load(Ordering::Relaxed) as f32 / self.config.gen as f32;
             ui.add(ProgressBar::new(pb).show_percentage().animate(started));
         });
         ui.horizontal(|ui| {
@@ -138,12 +146,20 @@ impl Synthesis {
             {
                 self.conv.drain(..self.conv.len() - 1);
             }
-            ui.label(format!(
-                "Time passed: {}s",
-                self.timer.load(Ordering::Relaxed)
-            ));
+            let time = self.timer.load(Ordering::Relaxed);
+            ui.label(format!("Time passed: {}s", time));
         });
         ui.group(|ui| self.remote.ui(ui, ctx));
+    }
+
+    pub(crate) fn plot(&self, ui: &mut PlotUi) {
+        if !self.config.curve.is_empty() {
+            let line = Line::new(as_values(&self.config.curve))
+                .name("Synthesis target")
+                .style(LineStyle::dashed_loose())
+                .width(3.);
+            ui.line(line);
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -155,13 +171,13 @@ impl Synthesis {
     fn native_syn(&mut self, four_bar: Arc<RwLock<FourBar>>) {
         self.started.store(true, Ordering::Relaxed);
         self.timer.store(0, Ordering::Relaxed);
-        let gen = self.gen;
-        let pop = self.pop;
-        let open_curve = self.open_curve;
+        let gen = self.config.gen;
+        let pop = self.config.pop;
+        let open = self.config.open;
         let started = self.started.clone();
         let progress = self.progress.clone();
         let timer = self.timer.clone();
-        let curve = self.curve.clone();
+        let curve = self.config.curve.clone();
         let conv = Arc::new(RwLock::new(Vec::new()));
         self.conv.push(conv.clone());
         std::thread::spawn(move || {
@@ -181,7 +197,7 @@ impl Synthesis {
                         Ordering::Relaxed,
                     );
                 })
-                .solve(Planar::new(&curve, 720, 360, open_curve))
+                .solve(Planar::new(&curve, 720, 360, open))
                 .result();
             started.store(false, Ordering::Relaxed);
         });
