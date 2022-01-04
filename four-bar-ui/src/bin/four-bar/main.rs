@@ -9,7 +9,7 @@ mod icon {
     include!(concat!(env!("OUT_DIR"), "/icon.rs"));
 }
 
-#[derive(clap::Parser)]
+#[derive(Parser)]
 #[clap(
     name = "four-bar",
     version = env!("CARGO_PKG_VERSION"),
