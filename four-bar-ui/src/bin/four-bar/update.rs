@@ -20,8 +20,8 @@ macro_rules! wasm_url {
 }
 
 pub(crate) fn update() -> Result<()> {
-    println!(concat!("Downloading archive from ", wasm_url!()));
-    let archive = current_exe()?.with_file_name(concat!(archive!(), ".zip"));
+    println!(concat!["Downloading archive from ", wasm_url!()]);
+    let archive = current_exe()?.with_file_name(concat![archive!(), ".zip"]);
     match agent().get(wasm_url!()).call() {
         Ok(r) => copy(&mut r.into_reader(), &mut File::create(archive)?),
         _ => Err(Error::new(ErrorKind::NotFound, "Fetch failed")),
@@ -34,7 +34,7 @@ pub(crate) fn extract<D>(d: D) -> Result<()>
 where
     D: AsRef<Path>,
 {
-    let path = current_exe()?.with_file_name(concat!(archive!(), ".zip"));
+    let path = current_exe()?.with_file_name(concat![archive!(), ".zip"]);
     if !path.exists() {
         update()?;
     }

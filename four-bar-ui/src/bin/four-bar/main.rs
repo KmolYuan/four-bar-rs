@@ -6,7 +6,7 @@ use std::io::Result;
 mod serve;
 mod update;
 mod icon {
-    include!(concat!(env!("OUT_DIR"), "/icon.rs"));
+    include!(concat![env!("OUT_DIR"), "/icon.rs"]);
 }
 
 #[derive(Parser)]

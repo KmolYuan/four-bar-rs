@@ -81,7 +81,7 @@ impl App {
             }
             if ui.small_button("⮋").on_hover_text("Release").clicked() {
                 ctx.output()
-                    .open_url(concat!(env!("CARGO_PKG_REPOSITORY"), "/releases/latest"));
+                    .open_url(concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"]);
             }
             if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
                 self.welcome = !self.welcome;
@@ -128,7 +128,7 @@ impl eframe::epi::App for App {
             .open(&mut self.welcome)
             .collapsible(false)
             .show(ctx, |ui| {
-                ui.label(concat!("Version: v", env!("CARGO_PKG_VERSION")));
+                ui.label(concat!["Version: v", env!("CARGO_PKG_VERSION")]);
                 ui.label(env!("CARGO_PKG_DESCRIPTION"));
                 ui.heading("Author");
                 ui.label(env!("CARGO_PKG_AUTHORS"));
