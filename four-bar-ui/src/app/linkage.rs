@@ -25,24 +25,22 @@ fn link<'a>(label: &'static str, attr: &'a mut f64, inter: f64) -> DragValue<'a>
 }
 
 fn angle(ui: &mut Ui, label: &'static str, attr: &mut f64, suffix: &'static str) {
-    if suffix.is_empty() && TAU - *attr < 1e-20 {
-        *attr = 0.;
-    }
     ui.horizontal(|ui| {
-        if *attr < 0. {
-            *attr += TAU;
+        if suffix.is_empty() {
+            *attr = attr.rem_euclid(TAU);
         }
         let mut deg = attr.to_degrees();
         let dv = DragValue::new(&mut deg)
             .prefix(label)
             .suffix(String::from(" deg") + suffix)
+            .min_decimals(2)
             .speed(1.);
         if ui.add(dv).changed() {
             *attr = deg.to_radians();
         }
         let dv = DragValue::new(attr)
             .suffix(String::from(" rad") + suffix)
-            .min_decimals(2)
+            .min_decimals(4)
             .speed(0.01);
         ui.add(dv);
     });
