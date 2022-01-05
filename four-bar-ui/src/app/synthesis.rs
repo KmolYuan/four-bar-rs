@@ -32,6 +32,8 @@ pub(crate) struct Synthesis {
     )]
     timer: Arc<AtomicU64>,
     config: SynConfig,
+    #[serde(skip)]
+    curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
     conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
@@ -44,7 +46,6 @@ struct SynConfig {
     pop: usize,
     open: bool,
     curve_csv: Arc<RwLock<String>>,
-    curve: Arc<Vec<[f64; 2]>>,
 }
 
 impl Default for SynConfig {
@@ -54,7 +55,6 @@ impl Default for SynConfig {
             pop: 200,
             open: false,
             curve_csv: Arc::new(RwLock::new(dump_csv(CRUNODE).unwrap())),
-            curve: Arc::new(CRUNODE.to_vec()),
         }
     }
 }
@@ -65,7 +65,6 @@ impl PartialEq for SynConfig {
             && self.pop == other.pop
             && self.open == other.open
             && *self.curve_csv.read().unwrap() == *other.curve_csv.read().unwrap()
-            && self.curve == other.curve
     }
 }
 
@@ -104,7 +103,7 @@ impl Synthesis {
         });
         if !self.config.curve_csv.read().unwrap().is_empty() {
             if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
-                self.config.curve = Arc::new(curve);
+                self.curve = Arc::new(curve);
             } else {
                 const TEXT: &str = "The provided curve is invalid.\nUses latest valid curve.";
                 ui.colored_label(Color32::RED, TEXT);
@@ -117,7 +116,7 @@ impl Synthesis {
                     self.started.store(false, Ordering::Relaxed);
                 }
             } else if ui.small_button("▶").on_hover_text("Start").clicked()
-                && !self.config.curve.is_empty()
+                && !self.curve.is_empty()
             {
                 if self.remote.is_login() {
                     // TODO: Connect to server
@@ -153,8 +152,8 @@ impl Synthesis {
     }
 
     pub(crate) fn plot(&self, ui: &mut PlotUi) {
-        if !self.config.curve.is_empty() {
-            let line = Line::new(as_values(&self.config.curve))
+        if !self.curve.is_empty() {
+            let line = Line::new(as_values(&self.curve))
                 .name("Synthesis target")
                 .style(LineStyle::dashed_loose())
                 .width(3.);
@@ -177,7 +176,7 @@ impl Synthesis {
         let started = self.started.clone();
         let progress = self.progress.clone();
         let timer = self.timer.clone();
-        let curve = self.config.curve.clone();
+        let curve = self.curve.clone();
         let conv = Arc::new(RwLock::new(Vec::new()));
         self.conv.push(conv.clone());
         std::thread::spawn(move || {
