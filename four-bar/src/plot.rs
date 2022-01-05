@@ -9,7 +9,7 @@ const FONT: &str = if cfg!(windows) {
     "Nimbus Roman No9 L"
 };
 
-/// Plot the synthesis history.
+/// Plot the synthesis history. (SVG)
 pub fn plot_history<P>(history: &[f64], path: P)
 where
     P: AsRef<Path>,
@@ -53,7 +53,7 @@ where
         .unwrap();
 }
 
-/// Plot 2D curve.
+/// Plot 2D curve. (SVG)
 pub fn plot_curve<P>(title: &str, curves: &[(&str, &[[f64; 2]])], path: P)
 where
     P: AsRef<Path>,

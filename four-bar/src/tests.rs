@@ -1,6 +1,19 @@
 #![doc(hidden)]
 
 #[cfg(feature = "plotters")]
+#[test]
+fn anti_symmetry_extension() {
+    use crate::{plot::plot_curve, synthesis::anti_sym_ext};
+    let curve = OPEN_CURVE1;
+    let ans = anti_sym_ext(curve);
+    plot_curve(
+        "Anti-Symmetry Extension",
+        &[("Open curve", curve), ("Transformed", &ans)],
+        "anti-sym.svg",
+    );
+}
+
+#[cfg(feature = "plotters")]
 #[allow(unused_imports)]
 #[test]
 fn planar() {
@@ -63,7 +76,7 @@ fn planar() {
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(200)
         .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, 360));
+        .solve(Planar::new(target, 720, 360, false));
     pb.finish();
     plot_history(s.report(), "history.svg");
     let ans = s.result();
