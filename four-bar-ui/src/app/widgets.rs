@@ -27,11 +27,9 @@ where
 }
 
 pub(crate) fn link<'a>(label: &'static str, val: &'a mut f64, n: f64) -> DragValue<'a> {
-    DragValue::new(val)
-        .prefix(label)
+    unit(label, val, n)
         .clamp_range(1e-4..=f64::MAX)
         .min_decimals(2)
-        .speed(n)
 }
 
 pub(crate) fn angle(ui: &mut Ui, label: &'static str, val: &mut f64, suffix: &'static str) {
