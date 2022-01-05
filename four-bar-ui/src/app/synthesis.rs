@@ -6,7 +6,7 @@ use crate::{
 use eframe::egui::{
     emath::Numeric,
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
-    reset_button, Color32, DragValue, ProgressBar, Ui, Window,
+    reset_button, Button, Color32, DragValue, ProgressBar, Ui, Window,
 };
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
@@ -94,20 +94,25 @@ impl Synthesis {
         ui.checkbox(&mut self.config.open, "Is open curve");
         if ui.button("Open CSV").clicked() {
             let curve_csv = self.config.curve_csv.clone();
-            ctx.open("Delimiter-Separated Values", &["csv", "txt"], move |s| {
-                *curve_csv.write().unwrap() = s;
-            });
+            let done = move |s| *curve_csv.write().unwrap() = s;
+            ctx.open("Delimiter-Separated Values", &["csv", "txt"], done);
         }
         ui.collapsing("Curve Input (CSV)", |ui| {
             ui.text_edit_multiline(&mut *self.config.curve_csv.write().unwrap())
         });
+        let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
             if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
                 self.curve = Arc::new(curve);
             } else {
-                const TEXT: &str = "The provided curve is invalid.\nUses latest valid curve.";
-                ui.colored_label(Color32::RED, TEXT);
+                error = "The provided curve is invalid.";
             }
+        } else {
+            error = "The target curve is empty.";
+        }
+        if !error.is_empty() {
+            ui.colored_label(Color32::RED, error);
+            self.curve = Default::default();
         }
         ui.horizontal(|ui| {
             let started = self.started.load(Ordering::Relaxed);
@@ -115,8 +120,10 @@ impl Synthesis {
                 if ui.small_button("⏹").on_hover_text("Stop").clicked() {
                     self.started.store(false, Ordering::Relaxed);
                 }
-            } else if ui.small_button("▶").on_hover_text("Start").clicked()
-                && !self.curve.is_empty()
+            } else if ui
+                .add_enabled(error.is_empty(), Button::new("▶").small())
+                .on_hover_text("Start")
+                .clicked()
             {
                 if self.remote.is_login() {
                     // TODO: Connect to server
