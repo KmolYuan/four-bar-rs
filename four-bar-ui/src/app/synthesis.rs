@@ -90,7 +90,7 @@ impl Synthesis {
         if ui.button("Open CSV").clicked() {
             let curve_csv = self.config.curve_csv.clone();
             let done = move |s| *curve_csv.write().unwrap() = s;
-            ctx.open("Delimiter-Separated Values", &["csv", "txt"], done);
+            IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
         }
         ui.collapsing("Curve Input (CSV)", |ui| {
             ui.text_edit_multiline(&mut *self.config.curve_csv.write().unwrap())

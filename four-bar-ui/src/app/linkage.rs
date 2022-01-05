@@ -4,7 +4,6 @@ use super::{
     widgets::{angle, link, unit},
     IoCtx,
 };
-use crate::csv_io::dump_csv;
 use eframe::egui::{
     plot::{Legend, Plot},
     reset_button, Button, Ui,
@@ -82,12 +81,8 @@ impl Linkage {
         );
         ui.group(|ui| {
             ui.heading("File");
-            ui.horizontal(|ui| self.file_io(ui, ctx));
-            self.canvas.curve_io(ui, |p| {
-                let name = "curve.csv";
-                let s = dump_csv(p).unwrap();
-                ctx.save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
-            });
+            ui.horizontal(|ui| self.file_io(ui));
+            ui.horizontal(|ui| self.canvas.curve_io(ui));
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
                 ui.add(link("UI value interval: ", &mut self.config.interval, 0.01));
@@ -108,15 +103,15 @@ impl Linkage {
         ui.group(|ui| self.synthesis.ui(ui, ctx, self.four_bar.clone()));
     }
 
-    fn file_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    fn file_io(&mut self, ui: &mut Ui) {
         if ui.button("💾 Save").clicked() {
             let name = "four_bar.ron";
             let s = to_string(&*self.four_bar.read().unwrap()).unwrap();
-            ctx.save(&s, name, "Rusty Object Notation", &["ron"]);
+            IoCtx::save(&s, name, "Rusty Object Notation", &["ron"]);
         }
         if ui.button("🖴 Open").clicked() {
             let four_bar = self.four_bar.clone();
-            ctx.open("Rusty Object Notation", &["ron"], move |s| {
+            IoCtx::open("Rusty Object Notation", &["ron"], move |s| {
                 if let Ok(fb) = from_str(&s) {
                     *four_bar.write().unwrap() = fb;
                 }

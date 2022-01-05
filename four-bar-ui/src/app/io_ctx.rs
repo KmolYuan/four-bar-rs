@@ -33,7 +33,7 @@ impl Default for IoCtx {
 
 #[cfg(target_arch = "wasm32")]
 impl IoCtx {
-    pub(crate) fn open<C>(&self, _fmt: &str, ext: &[&str], done: C)
+    pub(crate) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
         C: FnOnce(String) + 'static,
     {
@@ -45,12 +45,16 @@ impl IoCtx {
         open_file(&format, Closure::once_into_js(done));
     }
 
-    pub(crate) fn save(&self, s: &str, file_name: &str, _fmt: &str, _ext: &[&str]) {
+    pub(crate) fn save(s: &str, file_name: &str, _fmt: &str, _ext: &[&str]) {
         save_file(s, file_name);
     }
 
     pub(crate) fn alert(s: &str) {
         alert(s);
+    }
+
+    pub(crate) fn get_host() -> String {
+        get_host()
     }
 
     pub(crate) fn get_username(&self, _url: &str) -> Option<String> {
@@ -70,15 +74,11 @@ impl IoCtx {
     {
         logout(Closure::once_into_js(done));
     }
-
-    pub(crate) fn get_host() -> String {
-        get_host()
-    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl IoCtx {
-    pub(crate) fn open<C>(&self, fmt: &str, ext: &[&str], done: C)
+    pub(crate) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
         C: FnOnce(String) + 'static,
     {
@@ -89,7 +89,7 @@ impl IoCtx {
         done(s);
     }
 
-    pub(crate) fn save(&self, s: &str, name: &str, fmt: &str, ext: &[&str]) {
+    pub(crate) fn save(s: &str, name: &str, fmt: &str, ext: &[&str]) {
         if let Some(file_name) = rfd::FileDialog::new()
             .set_file_name(name)
             .add_filter(fmt, ext)
@@ -104,6 +104,10 @@ impl IoCtx {
             .set_title("Message")
             .set_description(s)
             .show();
+    }
+
+    pub(crate) fn get_host() -> String {
+        "http://localhost:8080/".to_string()
     }
 
     pub(crate) fn get_username(&self, url: &str) -> Option<String> {

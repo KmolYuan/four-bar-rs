@@ -52,12 +52,8 @@ pub(crate) struct Remote {
 
 impl Default for Remote {
     fn default() -> Self {
-        #[cfg(target_arch = "wasm32")]
-        let address = IoCtx::get_host();
-        #[cfg(not(target_arch = "wasm32"))]
-        let address = "http://localhost:8080/".to_string();
         Self {
-            address,
+            address: IoCtx::get_host(),
             info: LoginInfo::default(),
             is_connected: false,
             is_login: Default::default(),

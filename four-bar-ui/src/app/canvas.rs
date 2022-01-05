@@ -1,4 +1,4 @@
-use crate::as_values::as_values;
+use crate::{app::io_ctx::IoCtx, as_values::as_values, dump_csv};
 use eframe::egui::{
     plot::{Line, PlotUi, Points, Polygon},
     Color32, Ui,
@@ -67,17 +67,16 @@ impl Canvas {
         }
     }
 
-    pub(crate) fn curve_io(&mut self, ui: &mut Ui, save: impl Fn(&[[f64; 2]])) {
-        ui.horizontal(|ui| self.curve_io_inner(ui, save));
-    }
-
-    fn curve_io_inner(&mut self, ui: &mut Ui, save: impl Fn(&[[f64; 2]])) {
+    pub(crate) fn curve_io(&mut self, ui: &mut Ui) {
         if ui.button("💾 Save Curve").clicked() {
-            save(match self.pivot {
+            let p = match self.pivot {
                 Pivot::Driver => &self.path[0],
                 Pivot::Follower => &self.path[1],
                 Pivot::Coupler => &self.path[2],
-            });
+            };
+            let name = "curve.csv";
+            let s = dump_csv(p).unwrap();
+            IoCtx::save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
         }
         ui.selectable_value(&mut self.pivot, Pivot::Coupler, "Coupler");
         ui.selectable_value(&mut self.pivot, Pivot::Driver, "Driver");
