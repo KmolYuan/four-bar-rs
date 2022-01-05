@@ -39,7 +39,7 @@ pub(crate) struct Synthesis {
     remote: Remote,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 #[serde(default)]
 struct SynConfig {
     gen: u64,
@@ -177,9 +177,7 @@ impl Synthesis {
     fn native_syn(&mut self, four_bar: Arc<RwLock<FourBar>>) {
         self.started.store(true, Ordering::Relaxed);
         self.timer.store(0, Ordering::Relaxed);
-        let gen = self.config.gen;
-        let pop = self.config.pop;
-        let open = self.config.open;
+        let config = self.config.clone();
         let started = self.started.clone();
         let progress = self.progress.clone();
         let timer = self.timer.clone();
@@ -193,8 +191,8 @@ impl Synthesis {
             };
             let start_time = std::time::Instant::now();
             *four_bar.write().unwrap() = Solver::build(De::default())
-                .pop_num(pop)
-                .task(|ctx| ctx.gen == gen || !started.load(Ordering::Relaxed))
+                .pop_num(config.pop)
+                .task(|ctx| ctx.gen == config.gen || !started.load(Ordering::Relaxed))
                 .callback(|ctx| {
                     conv.write().unwrap().push([ctx.gen as f64, ctx.best_f]);
                     progress.store(ctx.gen, Ordering::Relaxed);
@@ -203,7 +201,7 @@ impl Synthesis {
                         Ordering::Relaxed,
                     );
                 })
-                .solve(Planar::new(&curve, 720, 360, open))
+                .solve(Planar::new(&curve, 720, 360, config.open))
                 .result();
             started.store(false, Ordering::Relaxed);
         });

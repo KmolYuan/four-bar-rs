@@ -32,14 +32,14 @@ fn angle(ui: &mut Ui, label: &'static str, attr: &mut f64, suffix: &'static str)
         let mut deg = attr.to_degrees();
         let dv = DragValue::new(&mut deg)
             .prefix(label)
-            .suffix(String::from(" deg") + suffix)
+            .suffix(" deg".to_string() + suffix)
             .min_decimals(2)
             .speed(1.);
         if ui.add(dv).changed() {
             *attr = deg.to_radians();
         }
         let dv = DragValue::new(attr)
-            .suffix(String::from(" rad") + suffix)
+            .suffix(" rad".to_string() + suffix)
             .min_decimals(4)
             .speed(0.01);
         ui.add(dv);
