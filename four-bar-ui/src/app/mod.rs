@@ -1,5 +1,5 @@
 pub use self::remote::{sha512, LoginInfo};
-use self::{io_ctx::IoCtx, linkage::Linkage};
+use self::{io_ctx::IoCtx, linkage::Linkage, widgets::switch};
 use eframe::{
     egui::{
         CentralPanel, CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui,
@@ -14,16 +14,7 @@ mod io_ctx;
 mod linkage;
 mod remote;
 mod synthesis;
-
-fn switch(ui: &mut Ui, attr: &mut bool, d_icon: &str, d_tip: &str, e_icon: &str, e_tip: &str) {
-    if *attr {
-        if ui.small_button(d_icon).on_hover_text(d_tip).clicked() {
-            *attr = false;
-        }
-    } else if ui.small_button(e_icon).on_hover_text(e_tip).clicked() {
-        *attr = true;
-    }
-}
+mod widgets;
 
 /// Main app state.
 #[derive(Deserialize, Serialize)]
@@ -67,14 +58,7 @@ impl App {
             ctx.set_visuals(Visuals::dark());
         }
         switch(ui, &mut self.side_panel, "⬅", "Fold", "➡", "Expand");
-        switch(
-            ui,
-            &mut self.menu_up,
-            "⬇",
-            "menu go down",
-            "⬆",
-            "menu go up",
-        );
+        switch(ui, &mut self.menu_up, "⬇", "menu down", "⬆", "menu up");
         ui.with_layout(Layout::right_to_left(), |ui| {
             if ui.small_button("").on_hover_text("Repository").clicked() {
                 ctx.output().open_url(env!("CARGO_PKG_REPOSITORY"));

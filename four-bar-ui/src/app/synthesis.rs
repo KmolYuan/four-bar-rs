@@ -1,12 +1,11 @@
-use super::{remote::Remote, IoCtx};
+use super::{remote::Remote, widgets::unit, IoCtx};
 use crate::{
     as_values::as_values,
     csv_io::{dump_csv, parse_csv},
 };
 use eframe::egui::{
-    emath::Numeric,
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
-    reset_button, Button, Color32, DragValue, ProgressBar, Ui, Window,
+    reset_button, Button, Color32, ProgressBar, Ui, Window,
 };
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
@@ -14,10 +13,6 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
     Arc, RwLock,
 };
-
-fn parameter<'a>(label: &'static str, attr: &'a mut impl Numeric) -> DragValue<'a> {
-    DragValue::new(attr).prefix(label).speed(1)
-}
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -89,8 +84,8 @@ impl Synthesis {
                         }
                     });
             });
-        ui.add(parameter("Generation: ", &mut self.config.gen));
-        ui.add(parameter("Population: ", &mut self.config.pop));
+        ui.add(unit("Generation: ", &mut self.config.gen, 1));
+        ui.add(unit("Population: ", &mut self.config.pop, 1));
         ui.checkbox(&mut self.config.open, "Is open curve");
         if ui.button("Open CSV").clicked() {
             let curve_csv = self.config.curve_csv.clone();

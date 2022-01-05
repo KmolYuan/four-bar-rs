@@ -1,57 +1,18 @@
-use super::{canvas::Canvas, synthesis::Synthesis, IoCtx};
+use super::{
+    canvas::Canvas,
+    synthesis::Synthesis,
+    widgets::{angle, link, unit},
+    IoCtx,
+};
 use crate::csv_io::dump_csv;
 use eframe::egui::{
-    emath::Numeric,
     plot::{Legend, Plot},
-    reset_button, Button, DragValue, Ui,
+    reset_button, Button, Ui,
 };
 use four_bar::FourBar;
 use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
-use std::{
-    f64::consts::TAU,
-    sync::{Arc, RwLock},
-};
-
-fn unit<'a>(label: &'static str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
-    DragValue::new(attr).prefix(label).speed(inter)
-}
-
-fn link<'a>(label: &'static str, attr: &'a mut f64, inter: f64) -> DragValue<'a> {
-    DragValue::new(attr)
-        .prefix(label)
-        .clamp_range(0.0001..=f64::MAX)
-        .speed(inter)
-}
-
-fn angle(ui: &mut Ui, label: &'static str, attr: &mut f64, suffix: &'static str) {
-    ui.horizontal(|ui| {
-        if suffix.is_empty() {
-            *attr = attr.rem_euclid(TAU);
-        }
-        let mut deg = attr.to_degrees();
-        let dv = DragValue::new(&mut deg)
-            .prefix(label)
-            .suffix(" deg".to_string() + suffix)
-            .min_decimals(2)
-            .speed(1.);
-        if ui.add(dv).changed() {
-            *attr = deg.to_radians();
-        }
-        let dv = DragValue::new(attr)
-            .suffix(" rad".to_string() + suffix)
-            .min_decimals(4)
-            .speed(0.01);
-        ui.add(dv);
-    });
-}
-
-fn num<'a>(label: &'a str, attr: &'a mut impl Numeric, inter: f64, min: f64) -> DragValue<'a> {
-    DragValue::new(attr)
-        .prefix(label)
-        .clamp_range(min..=f64::MAX)
-        .speed(inter)
-}
+use std::sync::{Arc, RwLock};
 
 #[derive(Deserialize, Serialize, PartialEq)]
 enum Pivot {
@@ -140,12 +101,7 @@ impl Linkage {
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
                 ui.add(link("UI value interval: ", &mut self.config.interval, 0.01));
-                ui.add(num(
-                    "Number of curve points: ",
-                    &mut self.config.curve_n,
-                    1.,
-                    10.,
-                ));
+                ui.add(unit("Curve resolution: ", &mut self.config.curve_n, 1));
             });
         });
         ui.group(|ui| {
@@ -204,7 +160,7 @@ impl Linkage {
     }
 
     fn parameter(&mut self, ui: &mut Ui) {
-        let interval = self.config.interval;
+        let n = self.config.interval;
         if ui.button("Normalize").clicked() {
             self.four_bar.write().unwrap().normalize();
         }
@@ -217,21 +173,21 @@ impl Linkage {
             {
                 four_bar.align();
             }
-            ui.add(unit("X Offset: ", &mut four_bar.p0.0, interval));
-            ui.add(unit("Y Offset: ", &mut four_bar.p0.1, interval));
+            ui.add(unit("X Offset: ", &mut four_bar.p0.0, n));
+            ui.add(unit("Y Offset: ", &mut four_bar.p0.1, n));
             angle(ui, "Rotation: ", &mut four_bar.a, "");
         });
         ui.group(|ui| {
             ui.heading("Parameters");
-            ui.add(link("Ground: ", &mut four_bar.l0, interval));
-            ui.add(link("Driver: ", &mut four_bar.l1, interval));
-            ui.add(link("Coupler: ", &mut four_bar.l2, interval));
-            ui.add(link("Follower: ", &mut four_bar.l3, interval));
+            ui.add(link("Ground: ", &mut four_bar.l0, n));
+            ui.add(link("Driver: ", &mut four_bar.l1, n));
+            ui.add(link("Coupler: ", &mut four_bar.l2, n));
+            ui.add(link("Follower: ", &mut four_bar.l3, n));
             ui.checkbox(&mut four_bar.inv, "Invert follower and coupler");
         });
         ui.group(|ui| {
             ui.heading("Coupler");
-            ui.add(link("Extended: ", &mut four_bar.l4, interval));
+            ui.add(link("Extended: ", &mut four_bar.l4, n));
             angle(ui, "Angle: ", &mut four_bar.g, "");
         });
     }
