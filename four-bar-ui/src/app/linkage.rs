@@ -14,19 +14,6 @@ use ron::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
-#[derive(Deserialize, Serialize, PartialEq)]
-enum Pivot {
-    Driver,
-    Follower,
-    Coupler,
-}
-
-impl Default for Pivot {
-    fn default() -> Self {
-        Self::Coupler
-    }
-}
-
 /// Linkage data.
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -36,7 +23,6 @@ pub(crate) struct Linkage {
     four_bar: Arc<RwLock<FourBar>>,
     #[serde(skip)]
     canvas: Canvas,
-    pivot: Pivot,
     synthesis: Synthesis,
 }
 
@@ -97,7 +83,11 @@ impl Linkage {
         ui.group(|ui| {
             ui.heading("File");
             ui.horizontal(|ui| self.file_io(ui, ctx));
-            ui.horizontal(|ui| self.curve_io(ui, ctx));
+            self.canvas.curve_io(ui, |p| {
+                let name = "curve.csv";
+                let s = dump_csv(p).unwrap();
+                ctx.save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
+            });
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
                 ui.add(link("UI value interval: ", &mut self.config.interval, 0.01));
@@ -141,22 +131,6 @@ impl Linkage {
                 }
             }
         }
-    }
-
-    fn curve_io(&mut self, ui: &mut Ui, ctx: &IoCtx) {
-        if ui.button("💾 Save Curve").clicked() {
-            let path = match self.pivot {
-                Pivot::Driver => &self.canvas.path[0],
-                Pivot::Follower => &self.canvas.path[1],
-                Pivot::Coupler => &self.canvas.path[2],
-            };
-            let name = "curve.csv";
-            let s = dump_csv(path).unwrap();
-            ctx.save(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
-        }
-        ui.selectable_value(&mut self.pivot, Pivot::Coupler, "Coupler");
-        ui.selectable_value(&mut self.pivot, Pivot::Driver, "Driver");
-        ui.selectable_value(&mut self.pivot, Pivot::Follower, "Follower");
     }
 
     fn parameter(&mut self, ui: &mut Ui) {

@@ -1,7 +1,7 @@
 use crate::as_values::as_values;
 use eframe::egui::{
     plot::{Line, PlotUi, Points, Polygon},
-    Color32,
+    Color32, Ui,
 };
 use four_bar::{FourBar, Mechanism};
 use std::sync::{Arc, RwLock};
@@ -26,10 +26,24 @@ fn draw_joints(ui: &mut PlotUi, points: &[[f64; 2]]) {
     ui.points(Points::new(as_values(points)).radius(5.).color(JOINT_COLOR));
 }
 
+#[derive(PartialEq)]
+enum Pivot {
+    Driver,
+    Follower,
+    Coupler,
+}
+
+impl Default for Pivot {
+    fn default() -> Self {
+        Self::Coupler
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Canvas {
-    pub(crate) path: [Vec<[f64; 2]>; 3],
+    path: [Vec<[f64; 2]>; 3],
     joints: [[f64; 2]; 5],
+    pivot: Pivot,
 }
 
 impl Canvas {
@@ -51,5 +65,22 @@ impl Canvas {
         for (path, name) in self.path.iter().zip(path_names) {
             ui.line(Line::new(as_values(path)).name(name).width(3.));
         }
+    }
+
+    pub(crate) fn curve_io(&mut self, ui: &mut Ui, save: impl Fn(&[[f64; 2]])) {
+        ui.horizontal(|ui| self.curve_io_inner(ui, save));
+    }
+
+    fn curve_io_inner(&mut self, ui: &mut Ui, save: impl Fn(&[[f64; 2]])) {
+        if ui.button("💾 Save Curve").clicked() {
+            save(match self.pivot {
+                Pivot::Driver => &self.path[0],
+                Pivot::Follower => &self.path[1],
+                Pivot::Coupler => &self.path[2],
+            });
+        }
+        ui.selectable_value(&mut self.pivot, Pivot::Coupler, "Coupler");
+        ui.selectable_value(&mut self.pivot, Pivot::Driver, "Driver");
+        ui.selectable_value(&mut self.pivot, Pivot::Follower, "Follower");
     }
 }

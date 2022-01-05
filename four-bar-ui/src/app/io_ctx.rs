@@ -19,7 +19,7 @@ pub(crate) struct IoCtx {
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(serialize_with = "self::serde_agent::serialize")]
     #[serde(deserialize_with = "self::serde_agent::deserialize")]
-    pub(crate) agent: ureq::Agent,
+    agent: ureq::Agent,
 }
 
 impl Default for IoCtx {
