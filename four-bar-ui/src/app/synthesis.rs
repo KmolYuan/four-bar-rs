@@ -49,7 +49,7 @@ impl Default for SynConfig {
             gen: 40,
             pop: 200,
             open: false,
-            curve_csv: Arc::new(RwLock::new(dump_csv(CRUNODE).unwrap())),
+            curve_csv: Default::default(),
         }
     }
 }
@@ -93,6 +93,7 @@ impl Synthesis {
             IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
         }
         ui.collapsing("Curve Input (CSV)", |ui| {
+            ui.horizontal(|ui| self.example_curve(ui));
             ui.text_edit_multiline(&mut *self.config.curve_csv.write().unwrap())
         });
         let mut error = "";
@@ -200,5 +201,13 @@ impl Synthesis {
                 .result();
             started.store(false, Ordering::Relaxed);
         });
+    }
+
+    fn example_curve(&self, ui: &mut Ui) {
+        for (name, path) in [("crunode", CRUNODE)] {
+            if ui.button(name).clicked() {
+                *self.config.curve_csv.write().unwrap() = dump_csv(path).unwrap();
+            }
+        }
     }
 }
