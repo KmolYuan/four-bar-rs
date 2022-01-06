@@ -21,7 +21,6 @@ mod widgets;
 #[serde(default)]
 pub struct App {
     welcome: bool,
-    menu_up: bool,
     side_panel: bool,
     started: bool,
     ctx: IoCtx,
@@ -32,7 +31,6 @@ impl Default for App {
     fn default() -> Self {
         Self {
             welcome: true,
-            menu_up: true,
             side_panel: true,
             started: false,
             ctx: IoCtx::default(),
@@ -58,7 +56,6 @@ impl App {
             ctx.set_visuals(Visuals::dark());
         }
         switch(ui, &mut self.side_panel, "⬅", "Fold", "➡", "Expand");
-        switch(ui, &mut self.menu_up, "⬇", "menu down", "⬆", "menu up");
         ui.with_layout(Layout::right_to_left(), |ui| {
             if ui.small_button("").on_hover_text("Repository").clicked() {
                 ctx.output().open_url(env!("CARGO_PKG_REPOSITORY"));
@@ -93,12 +90,7 @@ impl App {
 
 impl eframe::epi::App for App {
     fn update(&mut self, ctx: &CtxRef, _frame: &Frame) {
-        if self.menu_up {
-            TopBottomPanel::top("menu")
-        } else {
-            TopBottomPanel::bottom("menu")
-        }
-        .show(ctx, |ui| ui.horizontal(|ui| self.menu(ctx, ui)));
+        TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ctx, ui)));
         if self.side_panel {
             SidePanel::left("side panel")
                 .resizable(false)
