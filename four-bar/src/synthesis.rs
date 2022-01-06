@@ -35,24 +35,30 @@ fn guide(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
 }
 
 /// Anti-symmetric extension function.
-pub fn anti_sym_ext(polygon: &[[f64; 2]]) -> Vec<[f64; 2]> {
-    let mut curve = Vec::from(polygon);
+pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let n = curve.len() - 1;
     let [x0, y0] = [curve[0][0], curve[0][1]];
     let [xn, yn] = [curve[n][0], curve[n][1]];
-    for (i, c) in curve.iter_mut().enumerate() {
-        c[0] -= x0 + (xn - x0) * i as f64 / n as f64;
-        c[1] -= y0 + (yn - y0) * i as f64 / n as f64;
-    }
-    let rev = curve
+    let xd = xn - x0;
+    let yd = yn - y0;
+    let n = n as f64;
+    let mut v1 = curve
         .iter()
+        .enumerate()
+        .map(|(i, &[x, y])| {
+            let i_n = i as f64 / n;
+            [x - x0 - xd * i_n, y - y0 - yd * i_n]
+        })
+        .collect::<Vec<_>>();
+    let v2 = v1
+        .clone()
+        .into_iter()
         .take(curve.len() - 1)
         .skip(1)
-        .rev()
-        .map(|&[x, y]| [-x, -y])
-        .collect::<Vec<_>>();
-    curve.extend(rev);
-    curve
+        .map(|[x, y]| [-x, -y])
+        .rev();
+    v1.extend(v2);
+    v1
 }
 
 fn path_is_nan(path: &[[f64; 2]]) -> bool {
