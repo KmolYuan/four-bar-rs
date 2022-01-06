@@ -82,11 +82,10 @@ impl IoCtx {
     where
         C: FnOnce(String) + 'static,
     {
-        let s = match rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            Some(path) => std::fs::read_to_string(path).unwrap_or_default(),
-            None => String::new(),
+        if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
+            let s = std::fs::read_to_string(path).unwrap_or_default();
+            done(s);
         };
-        done(s);
     }
 
     pub(crate) fn save(s: &str, name: &str, fmt: &str, ext: &[&str]) {

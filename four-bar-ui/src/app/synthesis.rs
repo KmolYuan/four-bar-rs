@@ -15,8 +15,10 @@ use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
-    Arc, Mutex, RwLock,
+    Arc, RwLock,
 };
+
+const EXAMPLE_LIST: &[(&str, &[[f64; 2]])] = &[("crunode", CRUNODE)];
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -31,10 +33,10 @@ pub(crate) struct Synthesis {
     )]
     timer: Arc<AtomicU64>,
     config: SynConfig,
-    csv_open: Mutex<bool>,
+    csv_open: bool,
     #[serde(skip)]
     curve: Arc<Vec<[f64; 2]>>,
-    conv_open: Mutex<bool>,
+    conv_open: bool,
     conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
 }
@@ -77,11 +79,6 @@ impl Synthesis {
         ui.add(unit("Generation: ", &mut self.config.gen, 1));
         ui.add(unit("Population: ", &mut self.config.pop, 1));
         ui.checkbox(&mut self.config.open, "Is open curve");
-        if ui.button("Open CSV").clicked() {
-            let curve_csv = self.config.curve_csv.clone();
-            let done = move |s| *curve_csv.write().unwrap() = s;
-            IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
-        }
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
             if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
@@ -119,18 +116,8 @@ impl Synthesis {
             ui.add(ProgressBar::new(pb).show_percentage().animate(started));
         });
         ui.horizontal(|ui| {
-            switch_same(
-                ui,
-                "✏",
-                "Edit target curve",
-                &mut *self.csv_open.lock().unwrap(),
-            );
-            switch_same(
-                ui,
-                "ℹ",
-                "Convergence window",
-                &mut *self.conv_open.lock().unwrap(),
-            );
+            switch_same(ui, "✏", "Edit target curve", &mut self.csv_open);
+            switch_same(ui, "ℹ", "Convergence window", &mut self.conv_open);
             if ui
                 .small_button("🗑")
                 .on_hover_text("Clear the past convergence report")
@@ -147,7 +134,7 @@ impl Synthesis {
 
     pub(crate) fn convergence_plot(&mut self, ui: &mut Ui) {
         Window::new("Convergence Plot")
-            .open(&mut *self.conv_open.lock().unwrap())
+            .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
                 Plot::new("conv_canvas")
                     .legend(Legend::default())
@@ -166,9 +153,20 @@ impl Synthesis {
 
     pub(crate) fn target_curve_editor(&mut self, ui: &mut Ui) {
         Window::new("Target Curve Editor")
-            .open(&mut *self.csv_open.lock().unwrap())
+            .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
-                ui.horizontal(|ui| self.example_curve(ui));
+                ui.horizontal(|ui| {
+                    if ui.button("🖴 Open CSV").clicked() {
+                        let curve_csv = self.config.curve_csv.clone();
+                        let done = move |s| *curve_csv.write().unwrap() = s;
+                        IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
+                    }
+                    for &(name, path) in EXAMPLE_LIST {
+                        if ui.button(name).clicked() {
+                            *self.config.curve_csv.write().unwrap() = dump_csv(path).unwrap();
+                        }
+                    }
+                });
                 ScrollArea::vertical().max_height(450.).show(ui, |ui| {
                     ui.code_editor(&mut *self.config.curve_csv.write().unwrap());
                 });
@@ -222,13 +220,5 @@ impl Synthesis {
                 .result();
             started.store(false, Ordering::Relaxed);
         });
-    }
-
-    fn example_curve(&self, ui: &mut Ui) {
-        for (name, path) in [("crunode", CRUNODE)] {
-            if ui.button(name).clicked() {
-                *self.config.curve_csv.write().unwrap() = dump_csv(path).unwrap();
-            }
-        }
     }
 }
