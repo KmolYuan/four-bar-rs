@@ -1,4 +1,8 @@
-use super::{remote::Remote, widgets::unit, IoCtx};
+use super::{
+    remote::Remote,
+    widgets::{switch_same, unit},
+    IoCtx,
+};
 use crate::{
     as_values::as_values,
     csv_io::{dump_csv, parse_csv},
@@ -133,13 +137,7 @@ impl Synthesis {
             ui.add(ProgressBar::new(pb).show_percentage().animate(started));
         });
         ui.horizontal(|ui| {
-            if ui
-                .small_button("ℹ")
-                .on_hover_text("Convergence window")
-                .clicked()
-            {
-                self.conv_open = !self.conv_open;
-            }
+            switch_same(ui, "ℹ", "Convergence window", &mut self.conv_open);
             if ui
                 .small_button("🗑")
                 .on_hover_text("Clear the past convergence report")

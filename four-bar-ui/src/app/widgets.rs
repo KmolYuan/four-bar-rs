@@ -3,11 +3,11 @@ use std::f64::consts::TAU;
 
 pub(crate) fn switch(
     ui: &mut Ui,
-    val: &mut bool,
     icon1: &'static str,
     tip1: &'static str,
     icon2: &'static str,
     tip2: &'static str,
+    val: &mut bool,
 ) {
     if *val {
         if ui.small_button(icon1).on_hover_text(tip1).clicked() {
@@ -15,6 +15,18 @@ pub(crate) fn switch(
         }
     } else if ui.small_button(icon2).on_hover_text(tip2).clicked() {
         *val = true;
+    }
+}
+
+pub(crate) fn switch_same(ui: &mut Ui, icon: &'static str, tip: &'static str, val: &mut bool) {
+    if ui.small_button(icon).on_hover_text(tip).clicked() {
+        *val = !*val;
+    }
+}
+
+pub(crate) fn url_button(ui: &mut Ui, icon: &'static str, tip: &'static str, url: &'static str) {
+    if ui.small_button(icon).on_hover_text(tip).clicked() {
+        ui.ctx().output().open_url(url);
     }
 }
 

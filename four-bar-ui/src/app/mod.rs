@@ -1,9 +1,9 @@
 pub use self::remote::{sha512, LoginInfo};
 use self::{io_ctx::IoCtx, linkage::Linkage, widgets::switch};
+use crate::app::widgets::{switch_same, url_button};
 use eframe::{
     egui::{
-        CentralPanel, CtxRef, Hyperlink, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui,
-        Visuals, Window,
+        CentralPanel, CtxRef, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window,
     },
     epi::{Frame, Storage, APP_KEY},
 };
@@ -15,6 +15,8 @@ mod linkage;
 mod remote;
 mod synthesis;
 mod widgets;
+
+const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
 
 /// Main app state.
 #[derive(Deserialize, Serialize)]
@@ -55,18 +57,11 @@ impl App {
         } else if ui.small_button("🌙").on_hover_text("Dark").clicked() {
             ctx.set_visuals(Visuals::dark());
         }
-        switch(ui, &mut self.side_panel, "⬅", "Fold", "➡", "Expand");
+        switch(ui, "⬅", "Fold", "➡", "Expand", &mut self.side_panel);
         ui.with_layout(Layout::right_to_left(), |ui| {
-            if ui.small_button("").on_hover_text("Repository").clicked() {
-                ctx.output().open_url(env!("CARGO_PKG_REPOSITORY"));
-            }
-            if ui.small_button("⮋").on_hover_text("Release").clicked() {
-                ctx.output()
-                    .open_url(concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"]);
-            }
-            if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
-                self.welcome = !self.welcome;
-            }
+            url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
+            url_button(ui, "⮋", "Release", RELEASE_URL);
+            switch_same(ui, "ℹ", "Welcome", &mut self.welcome);
             if ui
                 .small_button("↻")
                 .on_hover_text("Reset UI setting")
@@ -80,10 +75,7 @@ impl App {
                     ctx.set_visuals(Visuals::light());
                 }
             }
-            ui.add(Hyperlink::from_label_and_url(
-                "Powered by egui",
-                "https://github.com/emilk/egui/",
-            ));
+            ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui/");
         });
     }
 }
