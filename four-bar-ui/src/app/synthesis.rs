@@ -9,13 +9,13 @@ use crate::{
 };
 use eframe::egui::{
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
-    reset_button, Button, Color32, ProgressBar, Ui, Window,
+    reset_button, Button, Color32, ProgressBar, ScrollArea, Ui, Window,
 };
 use four_bar::{tests::CRUNODE, FourBar};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
-    Arc, RwLock,
+    Arc, Mutex, RwLock,
 };
 
 #[derive(Deserialize, Serialize, Default)]
@@ -31,9 +31,10 @@ pub(crate) struct Synthesis {
     )]
     timer: Arc<AtomicU64>,
     config: SynConfig,
+    csv_open: Mutex<bool>,
     #[serde(skip)]
     curve: Arc<Vec<[f64; 2]>>,
-    conv_open: bool,
+    conv_open: Mutex<bool>,
     conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
 }
@@ -71,23 +72,8 @@ impl Synthesis {
     pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<RwLock<FourBar>>) {
         ui.heading("Synthesis");
         reset_button(ui, &mut self.config);
-        let iter = self.conv.iter().enumerate();
-        Window::new("Convergence Plot")
-            .open(&mut self.conv_open)
-            .show(ui.ctx(), |ui| {
-                Plot::new("conv_canvas")
-                    .legend(Legend::default())
-                    .allow_drag(false)
-                    .allow_zoom(false)
-                    .show(ui, |ui| {
-                        for (i, values) in iter {
-                            let values = values.read().unwrap();
-                            let name = format!("Best Fitness {}", i + 1);
-                            ui.line(Line::new(as_values(&values)).fill(-1.5).name(&name));
-                            ui.points(Points::new(as_values(&values)).name(&name).stems(0.));
-                        }
-                    });
-            });
+        self.convergence_plot(ui);
+        self.target_curve_editor(ui);
         ui.add(unit("Generation: ", &mut self.config.gen, 1));
         ui.add(unit("Population: ", &mut self.config.pop, 1));
         ui.checkbox(&mut self.config.open, "Is open curve");
@@ -96,10 +82,6 @@ impl Synthesis {
             let done = move |s| *curve_csv.write().unwrap() = s;
             IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
         }
-        ui.collapsing("Curve Input (CSV)", |ui| {
-            ui.horizontal(|ui| self.example_curve(ui));
-            ui.text_edit_multiline(&mut *self.config.curve_csv.write().unwrap())
-        });
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
             if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
@@ -137,7 +119,18 @@ impl Synthesis {
             ui.add(ProgressBar::new(pb).show_percentage().animate(started));
         });
         ui.horizontal(|ui| {
-            switch_same(ui, "ℹ", "Convergence window", &mut self.conv_open);
+            switch_same(
+                ui,
+                "✏",
+                "Edit target curve",
+                &mut *self.csv_open.lock().unwrap(),
+            );
+            switch_same(
+                ui,
+                "ℹ",
+                "Convergence window",
+                &mut *self.conv_open.lock().unwrap(),
+            );
             if ui
                 .small_button("🗑")
                 .on_hover_text("Clear the past convergence report")
@@ -150,6 +143,36 @@ impl Synthesis {
             ui.label(format!("Time passed: {}s", time));
         });
         ui.group(|ui| self.remote.ui(ui, ctx));
+    }
+
+    pub(crate) fn convergence_plot(&mut self, ui: &mut Ui) {
+        Window::new("Convergence Plot")
+            .open(&mut *self.conv_open.lock().unwrap())
+            .show(ui.ctx(), |ui| {
+                Plot::new("conv_canvas")
+                    .legend(Legend::default())
+                    .allow_drag(false)
+                    .allow_zoom(false)
+                    .show(ui, |ui| {
+                        for (i, values) in self.conv.iter().enumerate() {
+                            let values = values.read().unwrap();
+                            let name = format!("Best Fitness {}", i + 1);
+                            ui.line(Line::new(as_values(&values)).fill(-1.5).name(&name));
+                            ui.points(Points::new(as_values(&values)).name(&name).stems(0.));
+                        }
+                    });
+            });
+    }
+
+    pub(crate) fn target_curve_editor(&mut self, ui: &mut Ui) {
+        Window::new("Target Curve Editor")
+            .open(&mut *self.csv_open.lock().unwrap())
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| self.example_curve(ui));
+                ScrollArea::vertical().max_height(450.).show(ui, |ui| {
+                    ui.code_editor(&mut *self.config.curve_csv.write().unwrap());
+                });
+            });
     }
 
     pub(crate) fn plot(&self, ui: &mut PlotUi) {
