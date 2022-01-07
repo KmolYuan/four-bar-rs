@@ -13,7 +13,7 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(Planar::new(&curve, 720, 360, false));
+//!     .solve(Planar::new(&curve, 720, 90, false));
 //! let result = s.result();
 //! ```
 use self::mh::{utility::prelude::ParallelIterator, ObjFunc};

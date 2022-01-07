@@ -54,7 +54,7 @@ impl Default for SynConfig {
     fn default() -> Self {
         Self {
             gen: 40,
-            pop: 200,
+            pop: 300,
             open: false,
             curve_csv: Default::default(),
         }
@@ -216,7 +216,7 @@ impl Synthesis {
                         Ordering::Relaxed,
                     );
                 })
-                .solve(Planar::new(&curve, 720, 360, config.open))
+                .solve(Planar::new(&curve, 720, 90, config.open))
                 .result();
             started.store(false, Ordering::Relaxed);
         });
