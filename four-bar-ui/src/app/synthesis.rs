@@ -161,12 +161,19 @@ impl Synthesis {
                         let done = move |s| *curve_csv.write().unwrap() = s;
                         IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
                     }
+                    if ui.button("🗑 Clear").clicked() {
+                        *self.config.curve_csv.write().unwrap() = String::new();
+                    }
+                });
+                ui.label("Example targets:");
+                ui.horizontal(|ui| {
                     for &(name, path) in EXAMPLE_LIST {
                         if ui.button(name).clicked() {
                             *self.config.curve_csv.write().unwrap() = dump_csv(path).unwrap();
                         }
                     }
                 });
+                ui.label("Past CSV data here:");
                 ScrollArea::vertical().max_height(450.).show(ui, |ui| {
                     ui.code_editor(&mut *self.config.curve_csv.write().unwrap());
                 });
