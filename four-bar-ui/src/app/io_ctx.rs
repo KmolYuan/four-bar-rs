@@ -35,7 +35,7 @@ impl Default for IoCtx {
 impl IoCtx {
     pub(crate) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(String) + 'static,
+        C: FnOnce(String, String) + 'static,
     {
         let format = ext
             .iter()
@@ -45,7 +45,11 @@ impl IoCtx {
         open_file(&format, Closure::once_into_js(done));
     }
 
-    pub(crate) fn save(s: &str, file_name: &str, _fmt: &str, _ext: &[&str]) {
+    pub(crate) fn save_ask(s: &str, file_name: &str, _fmt: &str, _ext: &[&str]) {
+        Self::save(s, file_name);
+    }
+
+    pub(crate) fn save(s: &str, file_name: &str) {
         save_file(s, file_name);
     }
 
@@ -80,15 +84,15 @@ impl IoCtx {
 impl IoCtx {
     pub(crate) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(String) + 'static,
+        C: FnOnce(String, String) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            let s = std::fs::read_to_string(path).unwrap_or_default();
-            done(s);
+            let s = std::fs::read_to_string(&path).unwrap_or_default();
+            done(path.to_str().unwrap().to_string(), s);
         };
     }
 
-    pub(crate) fn save(s: &str, name: &str, fmt: &str, ext: &[&str]) {
+    pub(crate) fn save_ask(s: &str, name: &str, fmt: &str, ext: &[&str]) {
         if let Some(file_name) = rfd::FileDialog::new()
             .set_file_name(name)
             .add_filter(fmt, ext)
@@ -96,6 +100,10 @@ impl IoCtx {
         {
             std::fs::write(file_name, s).unwrap_or_default();
         }
+    }
+
+    pub(crate) fn save(s: &str, file_name: &str) {
+        std::fs::write(file_name, s).unwrap_or_default();
     }
 
     pub(crate) fn alert(s: &str) {

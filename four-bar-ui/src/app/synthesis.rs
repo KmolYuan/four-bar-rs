@@ -1,17 +1,15 @@
 use super::{
+    project::Projects,
     remote::Remote,
     widgets::{switch_same, unit},
     IoCtx,
 };
-use crate::{
-    as_values::as_values,
-    csv_io::{dump_csv, parse_csv},
-};
+use crate::{as_values::as_values, dump_csv, parse_csv};
 use eframe::egui::{
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
     reset_button, Button, Color32, ProgressBar, ScrollArea, Ui, Window,
 };
-use four_bar::{tests::CRUNODE, FourBar};
+use four_bar::tests::CRUNODE;
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -71,7 +69,7 @@ impl PartialEq for SynConfig {
 }
 
 impl Synthesis {
-    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<RwLock<FourBar>>) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, projects: &mut Projects) {
         ui.heading("Synthesis");
         reset_button(ui, &mut self.config);
         self.convergence_plot(ui);
@@ -106,10 +104,10 @@ impl Synthesis {
             {
                 if self.remote.is_login() {
                     // TODO: Connect to server
-                    let _ = four_bar;
+                    let _ = projects;
                     IoCtx::alert("Not yet prepared!");
                 } else {
-                    self.native_syn(four_bar);
+                    self.native_syn(projects);
                 }
             }
             let pb = self.progress.load(Ordering::Relaxed) as f32 / self.config.gen as f32;
@@ -158,7 +156,7 @@ impl Synthesis {
                 ui.horizontal(|ui| {
                     if ui.button("🖴 Open CSV").clicked() {
                         let curve_csv = self.config.curve_csv.clone();
-                        let done = move |s| *curve_csv.write().unwrap() = s;
+                        let done = move |_, s| *curve_csv.write().unwrap() = s;
                         IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
                     }
                     if ui.button("🗑 Clear").clicked() {
@@ -191,12 +189,13 @@ impl Synthesis {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn native_syn(&mut self, _four_bar: Arc<RwLock<FourBar>>) {
+    fn native_syn(&mut self, _projects: &mut Projects) {
         IoCtx::alert("Please login first!");
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn native_syn(&mut self, four_bar: Arc<RwLock<FourBar>>) {
+    fn native_syn(&mut self, projects: &mut Projects) {
+        let proj = projects.push_lazy();
         self.started.store(true, Ordering::Relaxed);
         self.timer.store(0, Ordering::Relaxed);
         let config = self.config.clone();
@@ -212,7 +211,7 @@ impl Synthesis {
                 Planar,
             };
             let start_time = std::time::Instant::now();
-            *four_bar.write().unwrap() = Solver::build(De::default())
+            let four_bar = Solver::build(De::default())
                 .pop_num(config.pop)
                 .task(|ctx| ctx.gen == config.gen || !started.load(Ordering::Relaxed))
                 .callback(|ctx| {
@@ -225,6 +224,7 @@ impl Synthesis {
                 })
                 .solve(Planar::new(&curve, 720, 90, config.open))
                 .result();
+            proj.set_four_bar(four_bar);
             started.store(false, Ordering::Relaxed);
         });
     }

@@ -7,9 +7,9 @@ use eframe::{
 };
 use serde::{Deserialize, Serialize};
 
-mod canvas;
 mod io_ctx;
 mod linkage;
+mod project;
 mod remote;
 mod synthesis;
 mod widgets;
