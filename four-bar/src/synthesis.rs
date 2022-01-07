@@ -20,7 +20,7 @@ use self::mh::ObjFunc;
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
 use rayon::prelude::*;
-use std::f64::consts::{FRAC_2_PI, TAU};
+use std::f64::consts::TAU;
 
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
@@ -50,14 +50,14 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
             [x - x0 - xd * i_n, y - y0 - yd * i_n]
         })
         .collect::<Vec<_>>();
-    let v2 = v1
-        .clone()
-        .into_iter()
+    let mut v2 = v1
+        .iter()
         .take(curve.len() - 1)
         .skip(1)
-        .map(|[x, y]| [-x, -y])
-        .rev();
-    v1.extend(v2);
+        .map(|&[x, y]| [-x, -y])
+        .rev()
+        .collect();
+    v1.append(&mut v2);
     v1
 }
 
@@ -96,7 +96,12 @@ fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
 }
 
 fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
-    assert!(curve.len() >= target.len());
+    assert!(
+        curve.len() >= target.len(),
+        "curve length {} must greater than target {}",
+        curve.len(),
+        target.len()
+    );
     let mut geo_err = f64::INFINITY;
     let mut index = 0;
     // Find the head
@@ -183,24 +188,15 @@ impl Planar {
     }
 
     fn four_bar_coeff(&self, v: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
-        let mut a = geo.semi_major_axis_angle - self.geo.semi_major_axis_angle;
-        if a.sin() < 0. {
-            a += FRAC_2_PI.copysign(a.cos());
-        }
-        let scale = self.geo.scale / geo.scale;
-        let center = geo.center.1.atan2(geo.center.0) + a;
-        let d = geo.center.1.hypot(geo.center.0) * scale;
+        let geo = geo.to(&self.geo);
         FourBar {
-            p0: (
-                self.geo.center.0 - d * center.cos(),
-                self.geo.center.1 - d * center.sin(),
-            ),
-            a,
-            l0: v[0] * scale,
-            l1: scale,
-            l2: v[1] * scale,
-            l3: v[2] * scale,
-            l4: v[3] * scale,
+            p0: geo.center,
+            a: geo.semi_major_axis_angle,
+            l0: v[0] * geo.scale,
+            l1: geo.scale,
+            l2: v[1] * geo.scale,
+            l3: v[2] * geo.scale,
+            l4: v[3] * geo.scale,
             g: v[4],
             inv,
         }

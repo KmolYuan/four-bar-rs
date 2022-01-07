@@ -10,15 +10,16 @@ const FONT: &str = if cfg!(windows) {
 };
 
 /// Plot the synthesis history. (SVG)
-pub fn plot_history<P>(history: &[f64], path: P)
+pub fn plot_history<P>(history: &[f64], seed: u128, fitness: f64, path: P)
 where
     P: AsRef<Path>,
 {
     let root = SVGBackend::new(&path, (1600, 900)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let (max_best, _) = find_extreme(history.iter().cloned());
+    let caption = format!("History (Best Fitness: {:.04}, Seed: {})", fitness, seed);
     let mut chart = ChartBuilder::on(&root)
-        .caption("History", (FONT, 50))
+        .caption(caption, (FONT, 50))
         .x_label_area_size(45)
         .y_label_area_size(50)
         .right_y_label_area_size(50)

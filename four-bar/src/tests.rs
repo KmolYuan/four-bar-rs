@@ -1,11 +1,10 @@
 #![doc(hidden)]
+#[cfg(test)]
+use crate::*;
 
-#[cfg(feature = "plotters")]
 #[test]
 fn anti_symmetry_extension() {
-    use crate::synthesis::anti_sym_ext;
-    let curve = OPEN_CURVE1;
-    let ans = anti_sym_ext(curve);
+    let ans = synthesis::anti_sym_ext(OPEN_CURVE1);
     assert_eq!(ans, OPEN_CURVE1_ANS);
 }
 
@@ -13,14 +12,7 @@ fn anti_symmetry_extension() {
 #[allow(unused_imports)]
 #[test]
 fn planar() {
-    use crate::{
-        plot::{plot_curve, plot_history},
-        synthesis::{
-            mh::{De, Solver},
-            Planar,
-        },
-        Mechanism,
-    };
+    use crate::synthesis::*;
     use indicatif::ProgressBar;
     use ron::{from_str, to_string};
     use std::{
@@ -67,18 +59,18 @@ fn planar() {
     // let target = LINE;
     let gen = 40;
     let pb = ProgressBar::new(gen);
-    let s = Solver::build(De::default())
+    let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
         .callback(|ctx| pb.set_position(ctx.gen))
-        .pop_num(200)
+        .pop_num(300)
         .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, 360, false));
+        .solve(Planar::new(target, 720, 90, false));
     pb.finish();
-    plot_history(s.report(), "history.svg");
+    plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
     let ans = s.result();
     write("result.ron", to_string(&ans).unwrap()).unwrap();
     let path = Mechanism::four_bar(&ans).four_bar_loop(0., 360);
-    plot_curve(
+    plot::plot_curve(
         "Synthesis Test",
         &[("Target", &target), ("Optimized", &path)],
         "result.svg",
