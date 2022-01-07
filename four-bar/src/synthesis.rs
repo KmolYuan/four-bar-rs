@@ -16,7 +16,7 @@
 //!     .solve(Planar::new(&curve, 720, 360, false));
 //! let result = s.result();
 //! ```
-use self::mh::ObjFunc;
+use self::mh::{utility::prelude::ParallelIterator, ObjFunc};
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
 use rayon::prelude::*;
@@ -151,8 +151,8 @@ pub struct Planar {
     // How many points need to be generated / compared
     n: usize,
     harmonic: usize,
-    ub: [f64; 5],
-    lb: [f64; 5],
+    ub: Vec<f64>,
+    lb: Vec<f64>,
     // TODO: Open curve synthesis
     open: bool,
 }
@@ -161,11 +161,17 @@ impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
         // linkages
-        let mut ub = [10.; 5];
-        let mut lb = [1e-6; 5];
+        let mut ub = vec![10.; 5];
+        let mut lb = vec![1e-6; 5];
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
+        if open {
+            for _ in 0..2 {
+                ub.push(TAU);
+                lb.push(0.);
+            }
+        }
         // Close loop
         let curve = guide(curve);
         let mut efd = Efd::from_curve(&curve, Some(harmonic));
@@ -202,7 +208,10 @@ impl Planar {
         }
     }
 
-    fn available_curve(&self, v: &[f64; 5]) -> Vec<(bool, Vec<[f64; 2]>)> {
+    fn available_curve<'a>(
+        &'a self,
+        v: &'a [f64; 5],
+    ) -> impl ParallelIterator<Item = (bool, Vec<[f64; 2]>)> + 'a {
         [false, true]
             .into_par_iter()
             .map(|inv| {
@@ -212,7 +221,6 @@ impl Planar {
                 (inv, c)
             })
             .filter(|(_, curve)| !path_is_nan(curve))
-            .collect()
     }
 
     fn efd_cal(&self, v: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
@@ -233,7 +241,6 @@ impl ObjFunc for Planar {
     fn fitness(&self, v: &[f64], _: f64) -> Self::Fitness {
         let v = grashof_transform(v);
         self.available_curve(&v)
-            .into_par_iter()
             .map(|(inv, curve)| self.efd_cal(&v, inv, &curve).0)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or(1e10)
@@ -242,7 +249,6 @@ impl ObjFunc for Planar {
     fn result(&self, v: &[f64]) -> Self::Result {
         let v = grashof_transform(v);
         self.available_curve(&v)
-            .into_par_iter()
             .map(|(inv, curve)| self.efd_cal(&v, inv, &curve))
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
             .unwrap_or_else(|| {
