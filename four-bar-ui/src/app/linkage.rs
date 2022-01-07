@@ -73,7 +73,7 @@ impl Linkage {
         }
     }
 
-    pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         self.canvas.update(
             self.four_bar.clone(),
             self.driver.angle,
@@ -100,7 +100,11 @@ impl Linkage {
             angle(ui, "Speed: ", &mut self.driver.speed, "/s");
             angle(ui, "Angle: ", &mut self.driver.angle, "");
         });
-        ui.group(|ui| self.synthesis.ui(ui, ctx, self.four_bar.clone()));
+        if self.driver.speed != 0. {
+            self.driver.angle += self.driver.speed / 60.;
+            ui.ctx().request_repaint();
+        }
+        ui.group(|ui| self.synthesis.show(ui, ctx, self.four_bar.clone()));
     }
 
     fn file_io(&mut self, ui: &mut Ui) {
@@ -161,7 +165,7 @@ impl Linkage {
         });
     }
 
-    pub(crate) fn plot(&mut self, ui: &mut Ui) {
+    pub(crate) fn plot(&self, ui: &mut Ui) {
         Plot::new("canvas")
             .data_aspect(1.)
             .legend(Legend::default())
@@ -169,9 +173,5 @@ impl Linkage {
                 self.canvas.plot(ui);
                 self.synthesis.plot(ui);
             });
-        if self.driver.speed != 0. {
-            self.driver.angle += self.driver.speed / 60.;
-            ui.ctx().request_repaint();
-        }
     }
 }

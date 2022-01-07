@@ -71,7 +71,7 @@ impl PartialEq for SynConfig {
 }
 
 impl Synthesis {
-    pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<RwLock<FourBar>>) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, four_bar: Arc<RwLock<FourBar>>) {
         ui.heading("Synthesis");
         reset_button(ui, &mut self.config);
         self.convergence_plot(ui);
@@ -129,7 +129,7 @@ impl Synthesis {
             let time = self.timer.load(Ordering::Relaxed);
             ui.label(format!("Time passed: {}s", time));
         });
-        ui.group(|ui| self.remote.ui(ui, ctx));
+        ui.group(|ui| self.remote.show(ui, ctx));
     }
 
     pub(crate) fn convergence_plot(&mut self, ui: &mut Ui) {

@@ -66,7 +66,7 @@ impl Remote {
         self.is_login.load(Relaxed)
     }
 
-    pub(crate) fn ui(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
         if self.is_connected {
             if self.is_login.load(Relaxed) {

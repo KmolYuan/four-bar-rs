@@ -74,7 +74,7 @@ impl eframe::epi::App for App {
             SidePanel::left("side panel")
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ScrollArea::vertical().show(ui, |ui| self.linkage.ui(ui, &self.ctx));
+                    ScrollArea::vertical().show(ui, |ui| self.linkage.show(ui, &self.ctx));
                 });
         }
         CentralPanel::default().show(ctx, |ui| self.linkage.plot(ui));
