@@ -2,9 +2,7 @@ pub use self::remote::{sha512, LoginInfo};
 use self::{io_ctx::IoCtx, linkage::Linkage, widgets::switch};
 use crate::app::widgets::{switch_same, url_button};
 use eframe::{
-    egui::{
-        CentralPanel, CtxRef, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Visuals, Window,
-    },
+    egui::{CentralPanel, CtxRef, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Window},
     epi::{Frame, Storage, APP_KEY},
 };
 use serde::{Deserialize, Serialize};
@@ -49,32 +47,21 @@ impl App {
         }
     }
 
-    fn menu(&mut self, ctx: &CtxRef, ui: &mut Ui) {
-        if ctx.style().visuals.dark_mode {
-            if ui.small_button("🔆").on_hover_text("Light").clicked() {
-                ctx.set_visuals(Visuals::light());
-            }
-        } else if ui.small_button("🌙").on_hover_text("Dark").clicked() {
-            ctx.set_visuals(Visuals::dark());
-        }
+    fn menu(&mut self, ui: &mut Ui) {
         switch(ui, "⬅", "Fold", "➡", "Expand", &mut self.side_panel);
         ui.with_layout(Layout::right_to_left(), |ui| {
-            url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
-            url_button(ui, "⮋", "Release", RELEASE_URL);
-            switch_same(ui, "ℹ", "Welcome", &mut self.welcome);
-            if ui
-                .small_button("↻")
-                .on_hover_text("Reset UI setting")
-                .clicked()
-            {
-                let dark = ctx.style().visuals.dark_mode;
-                *ctx.memory() = Default::default();
-                if dark {
-                    ctx.set_visuals(Visuals::dark());
-                } else {
-                    ctx.set_visuals(Visuals::light());
-                }
+            let style = ui.style().clone();
+            if let Some(v) = style.visuals.light_dark_small_toggle_button(ui) {
+                ui.ctx().set_visuals(v);
             }
+            if ui.small_button("↻").on_hover_text("Reset UI").clicked() {
+                let v = style.visuals.clone();
+                *ui.ctx().memory() = Default::default();
+                ui.ctx().set_visuals(v);
+            }
+            url_button(ui, "⮋", "Release", RELEASE_URL);
+            url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
+            switch_same(ui, "ℹ", "Welcome", &mut self.welcome);
             ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui/");
         });
     }
@@ -82,7 +69,7 @@ impl App {
 
 impl eframe::epi::App for App {
     fn update(&mut self, ctx: &CtxRef, _frame: &Frame) {
-        TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ctx, ui)));
+        TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         if self.side_panel {
             SidePanel::left("side panel")
                 .resizable(false)

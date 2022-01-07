@@ -56,7 +56,7 @@ impl Canvas {
         self.path[2] = path3;
     }
 
-    pub(crate) fn ui(&self, ui: &mut PlotUi) {
+    pub(crate) fn plot(&self, ui: &mut PlotUi) {
         draw_link(ui, &[self.joints[0], self.joints[2]]);
         draw_link(ui, &[self.joints[1], self.joints[3]]);
         draw_link(ui, &[self.joints[2], self.joints[3], self.joints[4]]);

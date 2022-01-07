@@ -166,7 +166,7 @@ impl Linkage {
             .data_aspect(1.)
             .legend(Legend::default())
             .show(ui, |ui| {
-                self.canvas.ui(ui);
+                self.canvas.plot(ui);
                 self.synthesis.plot(ui);
             });
         if self.driver.speed != 0. {
