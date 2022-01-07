@@ -17,7 +17,7 @@ window.save_file = (s, file_name) => {
     a.click();
 };
 window.open_file = (format, done) => {
-    reader.onload = () => done(reader.result);
+    reader.onload = () => done(input.files[0], reader.result);
     input.accept = format;
     input.click();
 };
