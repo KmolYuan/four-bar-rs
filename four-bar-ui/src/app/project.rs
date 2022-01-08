@@ -85,7 +85,7 @@ impl Project {
         self.0.lock().unwrap().dead
     }
 
-    pub(crate) fn set_proj(&self, path: Option<String>, four_bar: FourBar) {
+    fn set_proj(&self, path: Option<String>, four_bar: FourBar) {
         let mut proj = self.0.lock().unwrap();
         proj.lazy = false;
         proj.path = path;
@@ -99,7 +99,7 @@ impl Project {
         proj.four_bar = four_bar;
     }
 
-    pub(crate) fn name(&self) -> String {
+    fn name(&self) -> String {
         let proj = self.0.lock().unwrap();
         if proj.lazy {
             "💤 lazy...".to_string()
@@ -132,7 +132,7 @@ impl Project {
         }
     }
 
-    pub(crate) fn four_bar_ui(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+    fn four_bar_ui(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
         let mut proj = self.0.lock().unwrap();
         if proj.lazy {
             ui.colored_label(Color32::RED, LAZY_WARN);
@@ -297,21 +297,17 @@ impl Projects {
         ui.horizontal_wrapped(|ui| {
             let mut i = 0;
             self.list.retain(|proj| {
-                if !proj.is_dead() {
+                let keep = !proj.is_dead();
+                if keep {
                     ui.selectable_value(&mut self.current, i, proj.name());
                     i += 1;
-                    true
-                } else {
-                    if self.current == i {
-                        self.current -= 1;
-                    }
-                    false
+                } else if self.current == i {
+                    self.current -= 1;
                 }
+                keep
             });
         });
-        ui.group(|ui| {
-            self.list[self.current].four_bar_ui(ui, &mut self.pivot, interval, n);
-        });
+        ui.group(|ui| self.list[self.current].four_bar_ui(ui, &mut self.pivot, interval, n));
     }
 
     pub(crate) fn plot(&self, ui: &mut PlotUi, angle: f64, n: usize) {
