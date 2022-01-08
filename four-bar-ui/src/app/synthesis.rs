@@ -140,7 +140,7 @@ impl Synthesis {
         ui.group(|ui| self.remote.show(ui, ctx));
     }
 
-    pub(crate) fn convergence_plot(&mut self, ui: &mut Ui) {
+    fn convergence_plot(&mut self, ui: &mut Ui) {
         Window::new("Convergence Plot")
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
@@ -159,7 +159,7 @@ impl Synthesis {
             });
     }
 
-    pub(crate) fn target_curve_editor(&mut self, ui: &mut Ui) {
+    fn target_curve_editor(&mut self, ui: &mut Ui) {
         Window::new("Target Curve Editor")
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
