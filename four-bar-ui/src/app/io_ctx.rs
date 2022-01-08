@@ -7,7 +7,7 @@ use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 extern "C" {
     fn alert(s: &str);
     fn save_file(s: &str, file_name: &str);
-    fn open_file(format: &str, done: JsValue);
+    fn open_file(format: &str, done: JsValue, cancel: JsValue);
     fn get_host() -> String;
     fn get_username() -> String;
     fn login(account: &str, body: &str, done: JsValue);
@@ -33,16 +33,19 @@ impl Default for IoCtx {
 
 #[cfg(target_arch = "wasm32")]
 impl IoCtx {
-    pub(crate) fn open<C>(_fmt: &str, ext: &[&str], done: C)
+    pub(crate) fn open<C1, C2>(_fmt: &str, ext: &[&str], done: C1, cancel: C2)
     where
-        C: FnOnce(String, String) + 'static,
+        C1: FnOnce(String, String) + 'static,
+        C2: FnOnce() + 'static,
     {
         let format = ext
             .iter()
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
-        open_file(&format, Closure::once_into_js(done));
+        let done = Closure::once_into_js(done);
+        let cancel = Closure::once_into_js(cancel);
+        open_file(&format, done, cancel);
     }
 
     pub(crate) fn save_ask(s: &str, file_name: &str, _fmt: &str, _ext: &[&str]) {
@@ -82,13 +85,16 @@ impl IoCtx {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl IoCtx {
-    pub(crate) fn open<C>(fmt: &str, ext: &[&str], done: C)
+    pub(crate) fn open<C1, C2>(fmt: &str, ext: &[&str], done: C1, cancel: C2)
     where
-        C: FnOnce(String, String) + 'static,
+        C1: FnOnce(String, String) + 'static,
+        C2: FnOnce() + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
             let s = std::fs::read_to_string(&path).unwrap_or_default();
             done(path.to_str().unwrap().to_string(), s);
+        } else {
+            cancel();
         };
     }
 

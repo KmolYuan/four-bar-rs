@@ -50,6 +50,7 @@ impl Default for Pivot {
 #[derive(Default, Deserialize, Serialize)]
 struct ProjectInner {
     lazy: bool,
+    dead: bool,
     path: Option<String>,
     four_bar: FourBar,
 }
@@ -74,6 +75,14 @@ impl Project {
             ..Default::default()
         };
         Self(Arc::new(Mutex::new(inner)))
+    }
+
+    fn kill(&self) {
+        self.0.lock().unwrap().dead = true;
+    }
+
+    fn is_dead(&self) -> bool {
+        self.0.lock().unwrap().dead
     }
 
     pub(crate) fn set_proj(&self, path: Option<String>, four_bar: FourBar) {
@@ -248,12 +257,18 @@ impl Projects {
         }
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
-                let lazy = self.push_lazy();
-                IoCtx::open("Rusty Object Notation", &["ron"], move |path, s| {
-                    if let Ok(fb) = ron::from_str(&s) {
-                        lazy.set_proj(Some(path), fb);
-                    }
-                });
+                let lazy1 = self.push_lazy();
+                let lazy2 = lazy1.clone();
+                IoCtx::open(
+                    "Rusty Object Notation",
+                    &["ron"],
+                    move |path, s| {
+                        if let Ok(fb) = ron::from_str(&s) {
+                            lazy1.set_proj(Some(path), fb);
+                        }
+                    },
+                    move || lazy2.kill(),
+                );
                 self.current = self.len() - 1;
             }
             if ui.button("➕ New").clicked() {
@@ -280,9 +295,19 @@ impl Projects {
             return;
         }
         ui.horizontal_wrapped(|ui| {
-            for (i, proj) in self.list.iter().enumerate() {
-                ui.selectable_value(&mut self.current, i, proj.name());
-            }
+            let mut i = 0;
+            self.list.retain(|proj| {
+                if !proj.is_dead() {
+                    ui.selectable_value(&mut self.current, i, proj.name());
+                    i += 1;
+                    true
+                } else {
+                    if self.current == i {
+                        self.current -= 1;
+                    }
+                    false
+                }
+            });
         });
         ui.group(|ui| {
             self.list[self.current].four_bar_ui(ui, &mut self.pivot, interval, n);
