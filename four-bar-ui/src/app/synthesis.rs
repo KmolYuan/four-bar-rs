@@ -21,51 +21,63 @@ const EXAMPLE_LIST: &[(&str, &[[f64; 2]])] = &[("crunode", CRUNODE)];
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Synthesis {
+    config: UiConfig,
     #[serde(skip)]
-    started: Arc<AtomicBool>,
-    #[serde(skip)]
-    progress: Arc<AtomicU64>,
-    #[serde(
-        serialize_with = "crate::atomic::serialize_u64",
-        deserialize_with = "crate::atomic::deserialize_u64"
-    )]
-    timer: Arc<AtomicU64>,
-    config: SynConfig,
+    curve: Vec<[f64; 2]>,
+    tasks: Vec<Task>,
     csv_open: bool,
-    #[serde(skip)]
-    curve: Arc<Vec<[f64; 2]>>,
     conv_open: bool,
-    conv: Vec<Arc<RwLock<Vec<[f64; 2]>>>>,
     remote: Remote,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Default, Deserialize, Serialize, Clone)]
+#[serde(default)]
+struct UiConfig {
+    syn: SynConfig,
+    curve_csv: Arc<RwLock<String>>,
+}
+
+impl PartialEq for UiConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.syn == other.syn && *self.curve_csv.read().unwrap() == *other.curve_csv.read().unwrap()
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 struct SynConfig {
     gen: u64,
     pop: usize,
     open: bool,
-    curve_csv: Arc<RwLock<String>>,
 }
 
 impl Default for SynConfig {
     fn default() -> Self {
         Self {
-            gen: 40,
+            gen: 50,
             pop: 300,
             open: false,
-            curve_csv: Default::default(),
         }
     }
 }
 
-impl PartialEq for SynConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.gen == other.gen
-            && self.pop == other.pop
-            && self.open == other.open
-            && *self.curve_csv.read().unwrap() == *other.curve_csv.read().unwrap()
-    }
+#[derive(Default, Deserialize, Serialize, Clone)]
+#[serde(default)]
+struct Task {
+    #[serde(skip)]
+    start: Arc<AtomicBool>,
+    #[serde(
+        serialize_with = "crate::atomic::serialize_u64",
+        deserialize_with = "crate::atomic::deserialize_u64"
+    )]
+    gen: Arc<AtomicU64>,
+    total_gen: u64,
+    #[serde(
+        serialize_with = "crate::atomic::serialize_u64",
+        deserialize_with = "crate::atomic::deserialize_u64"
+    )]
+    time: Arc<AtomicU64>,
+    conv: Arc<RwLock<Vec<[f64; 2]>>>,
 }
 
 impl Synthesis {
@@ -74,58 +86,56 @@ impl Synthesis {
         reset_button(ui, &mut self.config);
         self.convergence_plot(ui);
         self.target_curve_editor(ui);
-        ui.add(unit("Generation: ", &mut self.config.gen, 1));
-        ui.add(unit("Population: ", &mut self.config.pop, 1));
-        ui.checkbox(&mut self.config.open, "Is open curve");
+        ui.add(unit("Generation: ", &mut self.config.syn.gen, 1));
+        ui.add(unit("Population: ", &mut self.config.syn.pop, 1));
+        ui.checkbox(&mut self.config.syn.open, "Is open curve");
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
             if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
-                self.curve = Arc::new(curve);
+                self.curve = curve;
             } else {
                 error = "The provided curve is invalid.";
             }
         } else {
             error = "The target curve is empty.";
         }
-        if !error.is_empty() {
-            ui.colored_label(Color32::RED, error);
-            self.curve = Default::default();
-        }
-        ui.horizontal(|ui| {
-            let started = self.started.load(Ordering::Relaxed);
-            if started {
-                if ui.small_button("⏹").on_hover_text("Stop").clicked() {
-                    self.started.store(false, Ordering::Relaxed);
-                }
-            } else if ui
-                .add_enabled(error.is_empty(), Button::new("▶").small())
-                .on_hover_text("Start")
-                .clicked()
-            {
-                if self.remote.is_login() {
-                    // TODO: Connect to server
-                    let _ = projects;
-                    IoCtx::alert("Not yet prepared!");
-                } else {
-                    self.native_syn(projects);
-                }
-            }
-            let pb = self.progress.load(Ordering::Relaxed) as f32 / self.config.gen as f32;
-            ui.add(ProgressBar::new(pb).show_percentage().animate(started));
-        });
         ui.horizontal(|ui| {
             switch_same(ui, "✏", "Edit target curve", &mut self.csv_open);
-            switch_same(ui, "ℹ", "Convergence window", &mut self.conv_open);
-            if ui
-                .small_button("🗑")
-                .on_hover_text("Clear the past convergence report")
-                .clicked()
-                && !self.conv.is_empty()
-            {
-                self.conv.drain(..self.conv.len() - 1);
+            if !error.is_empty() {
+                ui.colored_label(Color32::RED, error);
+                self.curve = Default::default();
             }
-            let time = self.timer.load(Ordering::Relaxed);
-            ui.label(format!("Time passed: {}s", time));
+        });
+        ui.group(|ui| {
+            ui.heading("Local Computation");
+            switch_same(ui, "ℹ", "Convergence window", &mut self.conv_open);
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(error.is_empty(), Button::new("▶ Start"))
+                    .clicked()
+                {
+                    self.native_syn(projects);
+                }
+                ui.add(ProgressBar::new(0.).show_percentage());
+            });
+            self.tasks.retain(|task| {
+                ui.horizontal(|ui| {
+                    let mut keep = true;
+                    let start = task.start.load(Ordering::Relaxed);
+                    if start {
+                        if ui.small_button("⏹").clicked() {
+                            task.start.store(false, Ordering::Relaxed);
+                        }
+                    } else if ui.small_button("🗑").clicked() {
+                        keep = false;
+                    }
+                    ui.label(format!("{}s", task.time.load(Ordering::Relaxed)));
+                    let pb = task.gen.load(Ordering::Relaxed) as f32 / task.total_gen as f32;
+                    ui.add(ProgressBar::new(pb).show_percentage().animate(start));
+                    keep
+                })
+                .inner
+            });
         });
         ui.group(|ui| self.remote.show(ui, ctx));
     }
@@ -139,11 +149,11 @@ impl Synthesis {
                     .allow_drag(false)
                     .allow_zoom(false)
                     .show(ui, |ui| {
-                        for (i, values) in self.conv.iter().enumerate() {
-                            let values = values.read().unwrap();
+                        for (i, task) in self.tasks.iter().enumerate() {
+                            let conv = task.conv.read().unwrap();
                             let name = format!("Best Fitness {}", i + 1);
-                            ui.line(Line::new(as_values(&values)).fill(-1.5).name(&name));
-                            ui.points(Points::new(as_values(&values)).name(&name).stems(0.));
+                            ui.line(Line::new(as_values(&*conv)).fill(-1.5).name(&name));
+                            ui.points(Points::new(as_values(&*conv)).name(&name).stems(0.));
                         }
                     });
             });
@@ -190,21 +200,21 @@ impl Synthesis {
 
     #[cfg(target_arch = "wasm32")]
     fn native_syn(&mut self, _projects: &mut Projects) {
-        IoCtx::alert("Please login first!");
+        IoCtx::alert("Local computation is not supported!");
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, projects: &mut Projects) {
         let proj = projects.push_lazy();
-        self.started.store(true, Ordering::Relaxed);
-        self.timer.store(0, Ordering::Relaxed);
-        let config = self.config.clone();
-        let started = self.started.clone();
-        let progress = self.progress.clone();
-        let timer = self.timer.clone();
         let curve = self.curve.clone();
-        let conv = Arc::new(RwLock::new(Vec::new()));
-        self.conv.push(conv.clone());
+        let SynConfig { pop, gen, open } = self.config.syn;
+        let task = Task {
+            total_gen: gen,
+            start: Arc::new(AtomicBool::new(true)),
+            ..Task::default()
+        };
+        let lazy = task.clone();
+        self.tasks.push(task);
         std::thread::spawn(move || {
             use four_bar::synthesis::{
                 mh::{De, Solver},
@@ -212,20 +222,21 @@ impl Synthesis {
             };
             let start_time = std::time::Instant::now();
             let four_bar = Solver::build(De::default())
-                .pop_num(config.pop)
-                .task(|ctx| ctx.gen == config.gen || !started.load(Ordering::Relaxed))
+                .pop_num(pop)
+                .task(|ctx| ctx.gen == gen || !lazy.start.load(Ordering::Relaxed))
                 .callback(|ctx| {
-                    conv.write().unwrap().push([ctx.gen as f64, ctx.best_f]);
-                    progress.store(ctx.gen, Ordering::Relaxed);
-                    timer.store(
-                        (std::time::Instant::now() - start_time).as_secs(),
-                        Ordering::Relaxed,
-                    );
+                    lazy.conv
+                        .write()
+                        .unwrap()
+                        .push([ctx.gen as f64, ctx.best_f]);
+                    lazy.gen.store(ctx.gen, Ordering::Relaxed);
+                    let time = (std::time::Instant::now() - start_time).as_secs();
+                    lazy.time.store(time, Ordering::Relaxed);
                 })
-                .solve(Planar::new(&curve, 720, 90, config.open))
+                .solve(Planar::new(&curve, 720, 90, open))
                 .result();
             proj.set_four_bar(four_bar);
-            started.store(false, Ordering::Relaxed);
+            lazy.start.store(false, Ordering::Relaxed);
         });
     }
 }

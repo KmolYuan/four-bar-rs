@@ -62,10 +62,6 @@ impl Default for Remote {
 }
 
 impl Remote {
-    pub(crate) fn is_login(&self) -> bool {
-        self.is_login.load(Relaxed)
-    }
-
     pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
         if self.is_connected {

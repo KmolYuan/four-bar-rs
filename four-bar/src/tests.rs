@@ -57,7 +57,7 @@ fn planar() {
     // let target = TRIANGLE2;
     let target = CRUNODE;
     // let target = LINE;
-    let gen = 40;
+    let gen = 50;
     let pb = ProgressBar::new(gen);
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
