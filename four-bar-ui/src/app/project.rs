@@ -4,6 +4,7 @@ use crate::{
     as_values::as_values,
     dump_csv,
 };
+use eframe::egui::plot::MarkerShape;
 use eframe::egui::{
     plot::{Line, PlotUi, Points, Polygon},
     Button, Color32, Ui,
@@ -31,10 +32,6 @@ fn draw_link(ui: &mut PlotUi, points: &[[f64; 2]], is_main: bool) {
             .color(LINK_COLOR);
         ui.polygon(polygon);
     }
-}
-
-fn draw_joints(ui: &mut PlotUi, points: &[[f64; 2]]) {
-    ui.points(Points::new(as_values(points)).radius(5.).color(JOINT_COLOR));
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -169,7 +166,15 @@ impl Project {
         draw_link(ui, &[joints[0], joints[2]], is_main);
         draw_link(ui, &[joints[1], joints[3]], is_main);
         draw_link(ui, &joints[2..], is_main);
-        draw_joints(ui, &joints);
+        let float_j = Points::new(as_values(&joints[2..]))
+            .radius(5.)
+            .color(JOINT_COLOR);
+        let fixed_j = Points::new(as_values(&joints[..2]))
+            .radius(10.)
+            .shape(MarkerShape::Up)
+            .color(JOINT_COLOR);
+        ui.points(float_j);
+        ui.points(fixed_j);
         let curve = m.four_bar_loop_all(0., n);
         let path_names = ["Crank pivot", "Follower pivot", "Coupler pivot"];
         for (path, name) in curve.iter().zip(path_names) {
