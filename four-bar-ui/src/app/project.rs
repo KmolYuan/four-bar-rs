@@ -17,6 +17,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+const LAZY_WARN: &str = "This project is waiting for load.\nDO NOT close it.";
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 
@@ -58,6 +59,7 @@ struct ProjectInner {
 pub(crate) struct Project(Arc<Mutex<ProjectInner>>);
 
 impl Project {
+    #[cfg(not(target_arch = "wasm32"))]
     fn new(path: Option<String>, four_bar: FourBar) -> Self {
         let inner = ProjectInner {
             path,
@@ -82,6 +84,7 @@ impl Project {
         proj.four_bar = four_bar;
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn set_four_bar(&self, four_bar: FourBar) {
         let mut proj = self.0.lock().unwrap();
         proj.lazy = false;
@@ -89,13 +92,18 @@ impl Project {
     }
 
     pub(crate) fn name(&self) -> String {
-        match &self.0.lock().unwrap().path {
-            Some(path) => Path::new(path)
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string(),
-            None => "untitled".to_string(),
+        let proj = self.0.lock().unwrap();
+        if proj.lazy {
+            "💤 lazy...".to_string()
+        } else {
+            match &proj.path {
+                Some(path) => Path::new(path)
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string(),
+                None => "untitled".to_string(),
+            }
         }
     }
 
@@ -108,8 +116,13 @@ impl Project {
         }
     }
 
-    pub(crate) fn four_bar_ui(&self, ui: &mut Ui, interval: f64) {
-        let fb = &mut self.0.lock().unwrap().four_bar;
+    pub(crate) fn four_bar_ui(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+        let mut proj = self.0.lock().unwrap();
+        if proj.lazy {
+            ui.colored_label(Color32::RED, LAZY_WARN);
+            return;
+        }
+        let fb = &mut proj.four_bar;
         ui.group(|ui| {
             ui.heading("Offset");
             if ui
@@ -138,30 +151,35 @@ impl Project {
             ui.add(link("Extended: ", &mut fb.l4, interval));
             angle(ui, "Angle: ", &mut fb.g, "");
         });
-    }
-
-    pub(crate) fn curve_io(&self, ui: &mut Ui, pivot: &mut Pivot, n: usize) {
-        if ui.button("💾 Save Curve").clicked() {
-            let m = Mechanism::four_bar(&self.0.lock().unwrap().four_bar);
-            let curve = m.four_bar_loop_all(0., n);
-            let p = match pivot {
-                Pivot::Driver => &curve[0],
-                Pivot::Follower => &curve[1],
-                Pivot::Coupler => &curve[2],
-            };
-            let name = "curve.csv";
-            let s = dump_csv(p).unwrap();
-            IoCtx::save_ask(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
-        }
-        ui.selectable_value(pivot, Pivot::Coupler, "Coupler");
-        ui.selectable_value(pivot, Pivot::Driver, "Driver");
-        ui.selectable_value(pivot, Pivot::Follower, "Follower");
+        ui.horizontal(|ui| {
+            if ui.button("💾 Save Curve").clicked() {
+                let m = Mechanism::four_bar(&self.0.lock().unwrap().four_bar);
+                let curve = m.four_bar_loop_all(0., n);
+                let p = match pivot {
+                    Pivot::Driver => &curve[0],
+                    Pivot::Follower => &curve[1],
+                    Pivot::Coupler => &curve[2],
+                };
+                let name = "curve.csv";
+                let s = dump_csv(p).unwrap();
+                IoCtx::save_ask(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
+            }
+            ui.selectable_value(pivot, Pivot::Coupler, "Coupler");
+            ui.selectable_value(pivot, Pivot::Driver, "Driver");
+            ui.selectable_value(pivot, Pivot::Follower, "Follower");
+        });
     }
 
     fn plot(&self, ui: &mut PlotUi, i: usize, id: usize, angle: f64, n: usize) {
+        let m = {
+            let proj = self.0.lock().unwrap();
+            if proj.lazy {
+                return;
+            }
+            Mechanism::four_bar(&proj.four_bar)
+        };
         let is_main = i == id;
         let mut joints = [[0.; 2]; 5];
-        let m = Mechanism::four_bar(&self.0.lock().unwrap().four_bar);
         m.apply(angle, [0, 1, 2, 3, 4], &mut joints);
         draw_link(ui, &[joints[0], joints[2]], is_main);
         draw_link(ui, &[joints[1], joints[3]], is_main);
@@ -194,6 +212,7 @@ pub(crate) struct Projects {
 }
 
 impl Projects {
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn push(&mut self, path: Option<String>, four_bar: FourBar) {
         self.list.push(Project::new(path, four_bar));
     }
@@ -254,9 +273,7 @@ impl Projects {
             }
         });
         ui.group(|ui| {
-            let proj = &mut self.list[self.current];
-            proj.four_bar_ui(ui, interval);
-            ui.horizontal(|ui| proj.curve_io(ui, &mut self.pivot, n));
+            self.list[self.current].four_bar_ui(ui, &mut self.pivot, interval, n);
         });
     }
 
