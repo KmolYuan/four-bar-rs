@@ -4,9 +4,8 @@ use crate::{
     as_values::as_values,
     dump_csv,
 };
-use eframe::egui::plot::MarkerShape;
 use eframe::egui::{
-    plot::{Line, PlotUi, Points, Polygon},
+    plot::{Line, MarkerShape, PlotUi, Points, Polygon},
     Button, Color32, Ui,
 };
 use four_bar::{FourBar, Mechanism};
@@ -107,11 +106,19 @@ impl Project {
         }
     }
 
-    pub(crate) fn save(&self) {
-        let proj = self.0.lock().unwrap();
-        let s = ron::to_string(&proj.four_bar).unwrap();
-        match &proj.path {
-            Some(path) => IoCtx::save(&s, path),
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_ask(&self) {
+        let s = ron::to_string(&self.0.lock().unwrap().four_bar).unwrap();
+        IoCtx::save_ask(&s, &self.name(), "Rusty Object Notation", &["ron"]);
+    }
+
+    fn save(&self) {
+        let (s, path) = {
+            let proj = self.0.lock().unwrap();
+            (ron::to_string(&proj.four_bar).unwrap(), proj.path.clone())
+        };
+        match path {
+            Some(path) => IoCtx::save(&s, &path),
             None => IoCtx::save_ask(&s, "four_bar.ron", "Rusty Object Notation", &["ron"]),
         }
     }
@@ -222,10 +229,10 @@ impl Projects {
     }
 
     pub(crate) fn push_lazy(&mut self) -> Project {
-        let lazy = Project::lazy();
-        let lazy_new = lazy.clone();
-        self.list.push(lazy);
-        lazy_new
+        let proj = Project::lazy();
+        let lazy = proj.clone();
+        self.list.push(proj);
+        lazy
     }
 
     pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
@@ -247,6 +254,7 @@ impl Projects {
                         lazy.set_proj(Some(path), fb);
                     }
                 });
+                self.current = self.len() - 1;
             }
             if ui.button("➕ New").clicked() {
                 self.push_default();
@@ -255,6 +263,10 @@ impl Projects {
             if !self.is_empty() {
                 if ui.button("💾 Save").clicked() {
                     self[self.current].save();
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                if ui.button("💾 Save as").clicked() {
+                    self[self.current].save_ask();
                 }
                 if ui.button("✖ Close").clicked() {
                     self.list.remove(self.current);
