@@ -25,15 +25,6 @@ use std::f64::consts::TAU;
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
-fn guide(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
-    let end = curve.len() - 1;
-    let mut curve = Vec::from(curve);
-    if (curve[0][0] - curve[end][0]).abs() > 1e-20 || (curve[0][1] - curve[end][1]).abs() > 1e-20 {
-        curve.push(curve[0]);
-    }
-    curve
-}
-
 /// Anti-symmetric extension function.
 pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let n = curve.len() - 1;
@@ -153,13 +144,14 @@ pub struct Planar {
     harmonic: usize,
     ub: Vec<f64>,
     lb: Vec<f64>,
-    // TODO: Open curve synthesis
     open: bool,
 }
 
 impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
+        assert!(curve.len() > 1, "target curve is not long enough");
+        let mut curve = Vec::from(curve);
         // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
@@ -168,12 +160,12 @@ impl Planar {
         lb[4] = 0.;
         if open {
             for _ in 0..2 {
-                ub.push(TAU);
+                ub.push(1.);
                 lb.push(0.);
             }
+            curve = anti_sym_ext(&curve);
         }
-        // Close loop
-        let curve = guide(curve);
+        curve.push(curve[curve.len() - 1]);
         let mut efd = Efd::from_curve(&curve, Some(harmonic));
         let geo = efd.normalize();
         Self {
@@ -193,29 +185,28 @@ impl Planar {
         self.open
     }
 
-    fn four_bar_coeff(&self, v: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
-        let geo = geo.to(&self.geo);
+    fn four_bar_coeff(&self, d: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
         FourBar {
             p0: geo.center,
             a: geo.semi_major_axis_angle,
-            l0: v[0] * geo.scale,
+            l0: d[0] * geo.scale,
             l1: geo.scale,
-            l2: v[1] * geo.scale,
-            l3: v[2] * geo.scale,
-            l4: v[3] * geo.scale,
-            g: v[4],
+            l2: d[1] * geo.scale,
+            l3: d[2] * geo.scale,
+            l4: d[3] * geo.scale,
+            g: d[4],
             inv,
         }
     }
 
     fn available_curve<'a>(
         &'a self,
-        v: &'a [f64; 5],
+        d: &'a [f64; 5],
     ) -> impl ParallelIterator<Item = (bool, Vec<[f64; 2]>)> + 'a {
         [false, true]
             .into_par_iter()
             .map(|inv| {
-                let fourbar = Mechanism::four_bar(&four_bar_v(v, inv));
+                let fourbar = Mechanism::four_bar(&four_bar_v(d, inv));
                 let mut c = fourbar.par_four_bar_loop(0., self.n);
                 c.push(c[0]);
                 (inv, c)
@@ -223,10 +214,9 @@ impl Planar {
             .filter(|(_, curve)| !path_is_nan(curve))
     }
 
-    fn efd_cal(&self, v: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
+    fn efd_cal(&self, d: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
         let mut efd = Efd::from_curve(curve, Some(self.harmonic));
-        let geo = efd.normalize();
-        let four_bar = self.four_bar_coeff(v, inv, geo);
+        let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
         let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
         let geo_err = geo_err(&self.curve, &curve);
         let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
@@ -239,21 +229,21 @@ impl ObjFunc for Planar {
     type Fitness = f64;
 
     fn fitness(&self, v: &[f64], _: f64) -> Self::Fitness {
-        let v = grashof_transform(v);
-        self.available_curve(&v)
-            .map(|(inv, curve)| self.efd_cal(&v, inv, &curve).0)
+        let d = grashof_transform(v);
+        self.available_curve(&d)
+            .map(|(inv, curve)| self.efd_cal(&d, inv, &curve).0)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or(1e10)
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
-        let v = grashof_transform(v);
-        self.available_curve(&v)
-            .map(|(inv, curve)| self.efd_cal(&v, inv, &curve))
+        let d = grashof_transform(v);
+        self.available_curve(&d)
+            .map(|(inv, curve)| self.efd_cal(&d, inv, &curve))
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
             .unwrap_or_else(|| {
                 eprintln!("WARNING: synthesis failed");
-                (0., four_bar_v(&v, false))
+                (0., four_bar_v(&d, false))
             })
             .1
     }
