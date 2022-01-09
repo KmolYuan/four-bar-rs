@@ -36,12 +36,11 @@ pub fn open_curve(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
         Some(t1) => match iter.position(is_nan) {
             None => curve[t1..].to_vec(),
             Some(t2) => {
-                let end = curve.len() - 1;
                 let s1 = curve[t1..t1 + t2].to_vec();
                 let mut iter = curve.iter().rev();
                 match iter.position(is_not_nan) {
                     Some(t1) if t1 == 0 => {
-                        let t1 = end - t1;
+                        let t1 = curve.len() - 1 - t1;
                         let t2 = t1 - iter.position(is_nan).unwrap();
                         [&curve[t2..t1], &s1].concat()
                     }
