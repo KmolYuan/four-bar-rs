@@ -1,9 +1,8 @@
-use super::io_ctx::IoCtx;
-use crate::{
-    app::widgets::{angle, link, unit},
-    as_values::as_values,
-    dump_csv,
+use super::{
+    io_ctx::IoCtx,
+    widgets::{angle, link, unit},
 };
+use crate::{as_values::as_values, dump_csv};
 use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
     Button, Color32, Ui,
@@ -19,6 +18,26 @@ use std::{
 const LAZY_WARN: &str = "This project is waiting for load.\nDO NOT close it.";
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
+const FMT: &str = "Rusty Object Notation";
+const CSV_FMT: &str = "Delimiter-Separated Values";
+const EXT: &[&str] = &["ron"];
+const CSV_EXT: &[&str] = &["csv", "txt"];
+
+fn with_ext(name: &str) -> String {
+    if name.ends_with(".ron") {
+        name.to_string()
+    } else {
+        name.to_string() + ".ron"
+    }
+}
+
+fn filename(path: &str) -> String {
+    Path::new(path)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string()
+}
 
 fn draw_link(ui: &mut PlotUi, points: &[[f64; 2]], is_main: bool) {
     let values = as_values(points);
@@ -47,22 +66,58 @@ impl Default for Pivot {
     }
 }
 
+#[derive(Deserialize, Serialize, PartialEq)]
+enum ProjState {
+    Normal,
+    Lazy,
+    Dead,
+}
+
+impl Default for ProjState {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+enum ProjName {
+    Path(String),
+    Named(String),
+    Untitled,
+}
+
+impl Default for ProjName {
+    fn default() -> Self {
+        Self::Untitled
+    }
+}
+
+impl From<Option<String>> for ProjName {
+    fn from(path: Option<String>) -> Self {
+        match path {
+            Some(path) => Self::Path(path),
+            None => Self::Untitled,
+        }
+    }
+}
+
 #[derive(Default, Deserialize, Serialize)]
-struct ProjectInner {
-    lazy: bool,
-    dead: bool,
-    path: Option<String>,
+#[serde(default)]
+struct ProjInner {
+    hide: bool,
+    state: ProjState,
+    path: ProjName,
     four_bar: FourBar,
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub(crate) struct Project(Arc<Mutex<ProjectInner>>);
+pub(crate) struct Project(Arc<Mutex<ProjInner>>);
 
 impl Project {
     #[cfg(not(target_arch = "wasm32"))]
     fn new(path: Option<String>, four_bar: FourBar) -> Self {
-        let inner = ProjectInner {
-            path,
+        let inner = ProjInner {
+            path: ProjName::from(path),
             four_bar,
             ..Default::default()
         };
@@ -70,126 +125,155 @@ impl Project {
     }
 
     fn lazy() -> Self {
-        let inner = ProjectInner {
-            lazy: true,
+        let inner = ProjInner {
+            state: ProjState::Lazy,
             ..Default::default()
         };
         Self(Arc::new(Mutex::new(inner)))
     }
 
     fn kill(&self) {
-        self.0.lock().unwrap().dead = true;
+        self.0.lock().unwrap().state = ProjState::Dead;
     }
 
     fn is_dead(&self) -> bool {
-        self.0.lock().unwrap().dead
+        self.0.lock().unwrap().state == ProjState::Dead
+    }
+
+    fn is_lazy(&self) -> bool {
+        self.0.lock().unwrap().state == ProjState::Lazy
     }
 
     fn set_proj(&self, path: Option<String>, four_bar: FourBar) {
         let mut proj = self.0.lock().unwrap();
-        proj.lazy = false;
-        proj.path = path;
+        proj.state = ProjState::Normal;
+        proj.path = ProjName::from(path);
         proj.four_bar = four_bar;
+    }
+
+    fn set_path(&self, path: String) {
+        let mut proj = self.0.lock().unwrap();
+        proj.state = ProjState::Normal;
+        proj.path = ProjName::Path(path);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn set_four_bar(&self, four_bar: FourBar) {
         let mut proj = self.0.lock().unwrap();
-        proj.lazy = false;
+        proj.state = ProjState::Normal;
         proj.four_bar = four_bar;
     }
 
     fn name(&self) -> String {
         let proj = self.0.lock().unwrap();
-        if proj.lazy {
-            "💤 lazy...".to_string()
-        } else {
-            match &proj.path {
-                Some(path) => Path::new(path)
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string(),
-                None => "untitled".to_string(),
-            }
+        match &proj.path {
+            ProjName::Path(path) => filename(path),
+            ProjName::Named(name) => with_ext(name),
+            ProjName::Untitled => "untitled".to_string(),
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     fn save_ask(&self) {
         let s = ron::to_string(&self.0.lock().unwrap().four_bar).unwrap();
-        IoCtx::save_ask(&s, &self.name(), "Rusty Object Notation", &["ron"]);
+        let proj = self.clone();
+        IoCtx::save_ask(&s, &self.name(), FMT, EXT, move |path| proj.set_path(path));
     }
 
     fn save(&self) {
-        let (s, path) = {
-            let proj = self.0.lock().unwrap();
-            (ron::to_string(&proj.four_bar).unwrap(), proj.path.clone())
-        };
-        match path {
-            Some(path) => IoCtx::save(&s, &path),
-            None => IoCtx::save_ask(&s, "four_bar.ron", "Rusty Object Notation", &["ron"]),
+        let s = ron::to_string(&self.0.lock().unwrap().four_bar).unwrap();
+        if let ProjName::Path(path) = &self.0.lock().unwrap().path {
+            IoCtx::save(&s, path);
+        } else {
+            let proj = self.clone();
+            IoCtx::save_ask(&s, &self.name(), FMT, EXT, move |path| proj.set_path(path));
         }
     }
 
     fn four_bar_ui(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
         let mut proj = self.0.lock().unwrap();
-        if proj.lazy {
+        if proj.state == ProjState::Lazy {
             ui.colored_label(Color32::RED, LAZY_WARN);
             return;
         }
-        let fb = &mut proj.four_bar;
-        ui.group(|ui| {
-            ui.heading("Offset");
-            if ui
-                .add_enabled(!fb.is_aligned(), Button::new("Reset"))
-                .clicked()
-            {
-                fb.align();
-            }
-            if ui.button("Normalize").clicked() {
-                fb.normalize();
-            }
-            ui.add(unit("X Offset: ", &mut fb.p0.0, interval));
-            ui.add(unit("Y Offset: ", &mut fb.p0.1, interval));
-            angle(ui, "Rotation: ", &mut fb.a, "");
-        });
-        ui.group(|ui| {
-            ui.heading("Parameters");
-            ui.add(link("Ground: ", &mut fb.l0, interval));
-            ui.add(link("Driver: ", &mut fb.l1, interval));
-            ui.add(link("Coupler: ", &mut fb.l2, interval));
-            ui.add(link("Follower: ", &mut fb.l3, interval));
-            ui.checkbox(&mut fb.inv, "Invert follower and coupler");
-        });
-        ui.group(|ui| {
-            ui.heading("Coupler");
-            ui.add(link("Extended: ", &mut fb.l4, interval));
-            angle(ui, "Angle: ", &mut fb.g, "");
-        });
         ui.horizontal(|ui| {
-            if ui.button("💾 Save Curve").clicked() {
-                let m = Mechanism::four_bar(&self.0.lock().unwrap().four_bar);
-                let curve = m.four_bar_loop_all(0., n);
-                let p = match pivot {
-                    Pivot::Driver => &curve[0],
-                    Pivot::Follower => &curve[1],
-                    Pivot::Coupler => &curve[2],
-                };
-                let name = "curve.csv";
-                let s = dump_csv(p).unwrap();
-                IoCtx::save_ask(&s, name, "Delimiter-Separated Values", &["csv", "txt"]);
+            ui.label("Project");
+            match &mut proj.path {
+                ProjName::Path(path) => {
+                    let filename = filename(path);
+                    if ui.small_button("✏").on_hover_text("Rename path").clicked() {
+                        proj.path = ProjName::Named(filename);
+                    } else {
+                        ui.label(&filename);
+                    }
+                }
+                ProjName::Named(name) => {
+                    ui.colored_label(Color32::RED, "Unsaved path");
+                    ui.text_edit_singleline(name);
+                }
+                ProjName::Untitled => {
+                    ui.colored_label(Color32::RED, "Unsaved path");
+                    let mut name = "untitled".to_string();
+                    if ui.text_edit_singleline(&mut name).changed() {
+                        proj.path = ProjName::Named(name);
+                    }
+                }
             }
-            ui.selectable_value(pivot, Pivot::Coupler, "Coupler");
-            ui.selectable_value(pivot, Pivot::Driver, "Driver");
-            ui.selectable_value(pivot, Pivot::Follower, "Follower");
+        });
+        ui.checkbox(&mut proj.hide, "Hide 👁");
+        ui.add_enabled_ui(!proj.hide, |ui| {
+            let fb = &mut proj.four_bar;
+            ui.horizontal(|ui| {
+                if ui.button("💾 Save Curve").clicked() {
+                    let m = Mechanism::four_bar(fb);
+                    let curve = m.four_bar_loop_all(0., n);
+                    let p = match pivot {
+                        Pivot::Driver => &curve[0],
+                        Pivot::Follower => &curve[1],
+                        Pivot::Coupler => &curve[2],
+                    };
+                    let s = dump_csv(p).unwrap();
+                    IoCtx::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
+                }
+                ui.selectable_value(pivot, Pivot::Coupler, "Coupler");
+                ui.selectable_value(pivot, Pivot::Driver, "Driver");
+                ui.selectable_value(pivot, Pivot::Follower, "Follower");
+            });
+            ui.group(|ui| {
+                ui.heading("Offset");
+                if ui
+                    .add_enabled(!fb.is_aligned(), Button::new("Reset"))
+                    .clicked()
+                {
+                    fb.align();
+                }
+                if ui.button("Normalize").clicked() {
+                    fb.normalize();
+                }
+                ui.add(unit("X Offset: ", &mut fb.p0.0, interval));
+                ui.add(unit("Y Offset: ", &mut fb.p0.1, interval));
+                angle(ui, "Rotation: ", &mut fb.a, "");
+            });
+            ui.group(|ui| {
+                ui.heading("Parameters");
+                ui.add(link("Ground: ", &mut fb.l0, interval));
+                ui.add(link("Driver: ", &mut fb.l1, interval));
+                ui.add(link("Coupler: ", &mut fb.l2, interval));
+                ui.add(link("Follower: ", &mut fb.l3, interval));
+                ui.checkbox(&mut fb.inv, "Invert follower and coupler");
+            });
+            ui.group(|ui| {
+                ui.heading("Coupler");
+                ui.add(link("Extended: ", &mut fb.l4, interval));
+                angle(ui, "Angle: ", &mut fb.g, "");
+            });
         });
     }
 
     fn plot(&self, ui: &mut PlotUi, i: usize, id: usize, angle: f64, n: usize) {
         let m = {
             let proj = self.0.lock().unwrap();
-            if proj.lazy {
+            if proj.state == ProjState::Lazy || proj.hide {
                 return;
             }
             Mechanism::four_bar(&proj.four_bar)
@@ -221,6 +305,7 @@ impl Project {
 }
 
 #[derive(Default, Deserialize, Serialize)]
+#[serde(default)]
 pub(crate) struct Projects {
     list: Vec<Project>,
     pivot: Pivot,
@@ -246,7 +331,7 @@ impl Projects {
 
     pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
         #[cfg(not(target_arch = "wasm32"))]
-        if let [file] = &ui.ctx().input().raw.dropped_files[..] {
+        for file in ui.ctx().input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
                 let s = std::fs::read_to_string(path).unwrap_or_default();
                 if let Ok(fb) = ron::from_str(&s) {
@@ -276,19 +361,21 @@ impl Projects {
                 self.current = self.len() - 1;
             }
             if !self.is_empty() {
-                if ui.button("💾 Save").clicked() {
-                    self[self.current].save();
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                if ui.button("💾 Save as").clicked() {
-                    self[self.current].save_ask();
-                }
-                if ui.button("✖ Close").clicked() {
-                    self.list.remove(self.current);
-                    if self.current > 0 {
-                        self.current -= 1;
+                ui.add_enabled_ui(!self[self.current].is_lazy(), |ui| {
+                    if ui.button("💾 Save").clicked() {
+                        self[self.current].save();
                     }
-                }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if ui.button("💾 Save as").clicked() {
+                        self[self.current].save_ask();
+                    }
+                    if ui.button("✖ Close").clicked() {
+                        self.list.remove(self.current);
+                        if self.current > 0 {
+                            self.current -= 1;
+                        }
+                    }
+                });
             }
         });
         if self.is_empty() {
@@ -299,7 +386,12 @@ impl Projects {
             self.list.retain(|proj| {
                 let keep = !proj.is_dead();
                 if keep {
-                    ui.selectable_value(&mut self.current, i, proj.name());
+                    let name = if proj.is_lazy() {
+                        "💤 lazy...".to_string()
+                    } else {
+                        proj.name()
+                    };
+                    ui.selectable_value(&mut self.current, i, name);
                     i += 1;
                 } else if self.current == i {
                     self.current -= 1;

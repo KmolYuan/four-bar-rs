@@ -88,7 +88,6 @@ impl Synthesis {
         self.target_curve_editor(ui);
         ui.add(unit("Generation: ", &mut self.config.syn.gen, 1));
         ui.add(unit("Population: ", &mut self.config.syn.pop, 1));
-        ui.checkbox(&mut self.config.syn.open, "Is open curve");
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
             if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
@@ -172,6 +171,7 @@ impl Synthesis {
                     if ui.button("🗑 Clear").clicked() {
                         *self.config.curve_csv.write().unwrap() = String::new();
                     }
+                    ui.checkbox(&mut self.config.syn.open, "Is open curve");
                 });
                 ui.label("Example targets:");
                 ui.horizontal(|ui| {
