@@ -16,10 +16,9 @@
 //!     .solve(Planar::new(&curve, 720, 90, false));
 //! let result = s.result();
 //! ```
-use self::mh::{utility::prelude::ParallelIterator, ObjFunc};
+use self::mh::{utility::prelude::*, ObjFunc};
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-use rayon::prelude::*;
 use std::{cmp::Ordering, f64::consts::TAU};
 
 #[doc(no_inline)]

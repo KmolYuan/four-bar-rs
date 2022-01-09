@@ -9,14 +9,14 @@ use eframe::egui::{
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
     reset_button, Button, Color32, ProgressBar, ScrollArea, Ui, Window,
 };
-use four_bar::tests::CRUNODE;
+use four_bar::tests::{CRUNODE, OPEN_CURVE2};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
     Arc, RwLock,
 };
 
-const EXAMPLE_LIST: &[(&str, &[[f64; 2]])] = &[("crunode", CRUNODE)];
+const EXAMPLE_LIST: &[(&str, &[[f64; 2]])] = &[("crunode", CRUNODE), ("open curve 2", OPEN_CURVE2)];
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
