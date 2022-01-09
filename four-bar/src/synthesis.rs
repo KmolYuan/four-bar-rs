@@ -25,6 +25,34 @@ use std::{cmp::Ordering, f64::consts::TAU};
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
+/// Input a curve, split out none-NaN parts to a continuous curve.
+///
+/// The part is close to the first-found none-NaN item.
+pub fn open_curve(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let is_nan = |c: &[f64; 2]| c[0].is_nan() || c[1].is_nan();
+    let is_not_nan = |c: &[f64; 2]| !c[0].is_nan() && !c[1].is_nan();
+    let mut iter = curve.iter();
+    match iter.position(is_not_nan) {
+        Some(t1) => match iter.position(is_nan) {
+            None => curve[t1..].to_vec(),
+            Some(t2) => {
+                let end = curve.len() - 1;
+                let s1 = curve[t1..t1 + t2].to_vec();
+                let mut iter = curve.iter().rev();
+                match iter.position(is_not_nan) {
+                    Some(t1) if t1 == 0 => {
+                        let t1 = end - t1;
+                        let t2 = t1 - iter.position(is_nan).unwrap();
+                        [&curve[t2..t1], &s1].concat()
+                    }
+                    _ => s1,
+                }
+            }
+        },
+        None => Vec::new(),
+    }
+}
+
 /// Anti-symmetric extension function.
 pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let n = curve.len() - 1;
