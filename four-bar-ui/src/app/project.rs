@@ -7,7 +7,7 @@ use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
     Button, Color32, Ui,
 };
-use four_bar::{FourBar, Mechanism};
+use four_bar::{synthesis::open_curve, FourBar, Mechanism};
 use serde::{Deserialize, Serialize};
 use std::{
     ops::{Deref, DerefMut},
@@ -173,13 +173,6 @@ impl Project {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn save_ask(&self) {
-        let s = ron::to_string(&self.0.lock().unwrap().four_bar).unwrap();
-        let proj = self.clone();
-        IoCtx::save_ask(&s, &self.name(), FMT, EXT, move |path| proj.set_path(path));
-    }
-
     fn save(&self) {
         let s = ron::to_string(&self.0.lock().unwrap().four_bar).unwrap();
         if let ProjName::Path(path) = &self.0.lock().unwrap().path {
@@ -224,20 +217,22 @@ impl Project {
         ui.add_enabled_ui(!proj.hide, |ui| {
             let fb = &mut proj.four_bar;
             ui.horizontal(|ui| {
-                if ui.button("💾 Save Curve").clicked() {
-                    let m = Mechanism::four_bar(fb);
-                    let curve = m.four_bar_loop_all(0., n);
-                    let p = match pivot {
-                        Pivot::Driver => &curve[0],
-                        Pivot::Follower => &curve[1],
-                        Pivot::Coupler => &curve[2],
-                    };
-                    let s = dump_csv(p).unwrap();
-                    IoCtx::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
-                }
-                ui.selectable_value(pivot, Pivot::Coupler, "Coupler");
-                ui.selectable_value(pivot, Pivot::Driver, "Driver");
-                ui.selectable_value(pivot, Pivot::Follower, "Follower");
+                ui.group(|ui| {
+                    if ui.button("💾 Save Curve").clicked() {
+                        let m = Mechanism::four_bar(fb);
+                        let curve = m.four_bar_loop_all(0., n);
+                        let p = match pivot {
+                            Pivot::Driver => &curve[0],
+                            Pivot::Follower => &curve[1],
+                            Pivot::Coupler => &curve[2],
+                        };
+                        let s = dump_csv(&open_curve(p)).unwrap();
+                        IoCtx::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
+                    }
+                    ui.selectable_value(pivot, Pivot::Coupler, "Coupler");
+                    ui.selectable_value(pivot, Pivot::Driver, "Driver");
+                    ui.selectable_value(pivot, Pivot::Follower, "Follower");
+                });
             });
             ui.group(|ui| {
                 ui.heading("Offset");
@@ -364,10 +359,6 @@ impl Projects {
                 ui.add_enabled_ui(!self[self.current].is_lazy(), |ui| {
                     if ui.button("💾 Save").clicked() {
                         self[self.current].save();
-                    }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if ui.button("💾 Save as").clicked() {
-                        self[self.current].save_ask();
                     }
                     if ui.button("✖ Close").clicked() {
                         self.list.remove(self.current);

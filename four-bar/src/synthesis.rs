@@ -33,6 +33,7 @@ pub fn open_curve(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let is_not_nan = |c: &[f64; 2]| !c[0].is_nan() && !c[1].is_nan();
     let mut iter = curve.iter();
     match iter.position(is_not_nan) {
+        None => Vec::new(),
         Some(t1) => match iter.position(is_nan) {
             None => curve[t1..].to_vec(),
             Some(t2) => {
@@ -49,7 +50,6 @@ pub fn open_curve(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
                 }
             }
         },
-        None => Vec::new(),
     }
 }
 
