@@ -20,7 +20,7 @@ use self::mh::{utility::prelude::ParallelIterator, ObjFunc};
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
 use rayon::prelude::*;
-use std::f64::consts::TAU;
+use std::{cmp::Ordering, f64::consts::TAU};
 
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
@@ -165,7 +165,7 @@ impl Planar {
             }
             curve = anti_sym_ext(&curve);
         }
-        curve.push(curve[curve.len() - 1]);
+        curve.push(curve[0]);
         let mut efd = Efd::from_curve(&curve, Some(harmonic));
         let geo = efd.normalize();
         Self {
@@ -207,20 +207,39 @@ impl Planar {
             .into_par_iter()
             .map(|inv| {
                 let fourbar = Mechanism::four_bar(&four_bar_v(d, inv));
-                let mut c = fourbar.par_four_bar_loop(0., self.n);
-                c.push(c[0]);
+                let c = fourbar.par_four_bar_loop(0., self.n);
                 (inv, c)
             })
             .filter(|(_, curve)| !path_is_nan(curve))
     }
 
-    fn efd_cal(&self, d: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
-        let mut efd = Efd::from_curve(curve, Some(self.harmonic));
-        let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
-        let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
-        let geo_err = geo_err(&self.curve, &curve);
-        let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
-        (fitness, four_bar)
+    fn efd_cal(&self, v: &[f64], d: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
+        if self.open {
+            let t = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
+            vec![[t[0], t[1]], [t[1], t[0]]]
+        } else {
+            vec![[0, self.n]]
+        }
+        .into_par_iter()
+        .map(|[t0, t1]| {
+            let mut curve = match t0.cmp(&t1) {
+                Ordering::Less => Vec::from(&curve[t0..t1]),
+                Ordering::Greater => [&curve[t0..], &curve[..t1]].concat(),
+                Ordering::Equal => return (f64::INFINITY, FourBar::default()),
+            };
+            if self.open {
+                curve = anti_sym_ext(&curve);
+            }
+            curve.push(curve[0]);
+            let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
+            let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
+            let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
+            let geo_err = geo_err(&self.curve, &curve);
+            let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
+            (fitness, four_bar)
+        })
+        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+        .unwrap()
     }
 }
 
@@ -231,7 +250,7 @@ impl ObjFunc for Planar {
     fn fitness(&self, v: &[f64], _: f64) -> Self::Fitness {
         let d = grashof_transform(v);
         self.available_curve(&d)
-            .map(|(inv, curve)| self.efd_cal(&d, inv, &curve).0)
+            .map(|(inv, curve)| self.efd_cal(v, &d, inv, &curve).0)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or(1e10)
     }
@@ -239,7 +258,7 @@ impl ObjFunc for Planar {
     fn result(&self, v: &[f64]) -> Self::Result {
         let d = grashof_transform(v);
         self.available_curve(&d)
-            .map(|(inv, curve)| self.efd_cal(&d, inv, &curve))
+            .map(|(inv, curve)| self.efd_cal(v, &d, inv, &curve))
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
             .unwrap_or_else(|| {
                 eprintln!("WARNING: synthesis failed");
