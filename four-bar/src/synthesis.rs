@@ -79,12 +79,9 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
 }
 
 fn path_is_nan(path: &[[f64; 2]]) -> bool {
-    for c in path {
-        if c[0].is_nan() || c[0].is_nan() {
-            return true;
-        }
-    }
-    false
+    path.iter()
+        .find(|c| c[0].is_nan() || c[0].is_nan())
+        .is_some()
 }
 
 fn grashof_transform(v: &[f64]) -> [f64; 5] {
@@ -242,25 +239,31 @@ impl Planar {
     fn efd_cal(&self, v: &[f64], d: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
         if self.open {
             let t = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
-            vec![[t[0], t[1]], [t[1], t[0]]]
+            if t[0] == t[1] {
+                vec![[t[0], t[1]]]
+            } else {
+                vec![[t[0], t[1]], [t[1], t[0]]]
+            }
         } else {
             vec![[0, self.n]]
         }
         .into_par_iter()
         .map(|[t0, t1]| {
             let mut curve = match t0.cmp(&t1) {
-                Ordering::Less => Vec::from(&curve[t0..t1]),
-                Ordering::Greater => [&curve[t0..], &curve[..t1]].concat(),
-                Ordering::Equal => return (f64::INFINITY, FourBar::default()),
+                Ordering::Less => curve[t0..t1].to_vec(),
+                Ordering::Greater | Ordering::Equal => [&curve[t0..], &curve[..t1]].concat(),
             };
             if self.open {
+                if curve.len() < 4 {
+                    return (f64::INFINITY, FourBar::default());
+                }
                 curve = anti_sym_ext(&curve);
             }
             curve.push(curve[0]);
             let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
             let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
-            let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
-            let geo_err = geo_err(&self.curve, &curve);
+            let curve_re = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
+            let geo_err = geo_err(&self.curve, &curve_re);
             let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
             (fitness, four_bar)
         })
