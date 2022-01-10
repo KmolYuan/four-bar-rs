@@ -18,7 +18,7 @@ mod icon {
 )]
 struct Entry {
     /// File path
-    file: Option<String>,
+    files: Vec<String>,
     #[clap(subcommand)]
     subcommand: Option<Subcommand>,
 }
@@ -36,7 +36,7 @@ enum Subcommand {
     /// Run native UI program (default)
     Ui {
         /// File path
-        file: Option<String>,
+        files: Vec<String>,
     },
 }
 
@@ -45,13 +45,13 @@ fn main() -> Result<()> {
     match args.subcommand {
         Some(Subcommand::Update) => update::update(),
         Some(Subcommand::Serve { port }) => serve::serve(port),
-        Some(Subcommand::Ui { file }) => run_native(file),
-        None => run_native(args.file),
+        Some(Subcommand::Ui { files }) => run_native(files),
+        None => run_native(args.files),
     }
 }
 
-fn run_native(file: Option<String>) -> ! {
-    let app = Box::new(App::open(file));
+fn run_native(files: Vec<String>) -> ! {
+    let app = Box::new(App::open(files));
     let opt = NativeOptions {
         icon_data: Some(IconData {
             rgba: icon::ICON.to_vec(),

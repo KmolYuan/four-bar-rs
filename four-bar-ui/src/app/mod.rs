@@ -20,6 +20,8 @@ const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/lates
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub struct App {
+    #[serde(skip)]
+    init_project: Vec<String>,
     welcome: bool,
     side_panel: bool,
     started: bool,
@@ -30,6 +32,7 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         Self {
+            init_project: Vec::new(),
             welcome: true,
             side_panel: true,
             started: false,
@@ -40,9 +43,9 @@ impl Default for App {
 }
 
 impl App {
-    pub fn open(file: Option<String>) -> Self {
+    pub fn open(files: Vec<String>) -> Self {
         Self {
-            linkage: Linkage::open(file),
+            init_project: files,
             ..Self::default()
         }
     }
@@ -94,10 +97,14 @@ impl eframe::epi::App for App {
     }
 
     fn setup(&mut self, _ctx: &CtxRef, _frame: &Frame, storage: Option<&dyn Storage>) {
+        let init_project = self.init_project.clone();
         if let Some(storage) = storage {
             if let Some(app) = eframe::epi::get_value(storage, APP_KEY) {
                 *self = app;
             }
+        }
+        for file in init_project {
+            self.linkage.open_project(file);
         }
     }
 

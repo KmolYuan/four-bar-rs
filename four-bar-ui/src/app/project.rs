@@ -114,7 +114,6 @@ struct ProjInner {
 pub(crate) struct Project(Arc<Mutex<ProjInner>>);
 
 impl Project {
-    #[cfg(not(target_arch = "wasm32"))]
     fn new(path: Option<String>, four_bar: FourBar) -> Self {
         let inner = ProjInner {
             path: ProjName::from(path),
@@ -308,7 +307,6 @@ pub(crate) struct Projects {
 }
 
 impl Projects {
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn push(&mut self, path: Option<String>, four_bar: FourBar) {
         self.list.push(Project::new(path, four_bar));
     }

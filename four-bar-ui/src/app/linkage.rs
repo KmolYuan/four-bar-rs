@@ -45,25 +45,6 @@ struct Driver {
 }
 
 impl Linkage {
-    pub(crate) fn open(file: Option<String>) -> Self {
-        let mut projects = Projects::default();
-        match file {
-            #[cfg(not(target_arch = "wasm32"))]
-            Some(file) => {
-                let s = std::fs::read_to_string(&file).expect("Read file error");
-                let four_bar = ron::from_str(&s).expect("Deserialize error");
-                projects.push(Some(file), four_bar);
-            }
-            None => projects.push_default(),
-            #[cfg(target_arch = "wasm32")]
-            _ => unreachable!(),
-        };
-        Self {
-            projects,
-            ..Self::default()
-        }
-    }
-
     pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.group(|ui| {
             ui.heading("File");
@@ -96,5 +77,11 @@ impl Linkage {
                 self.projects.plot(ui, self.driver.angle, self.config.res);
                 self.synthesis.plot(ui);
             });
+    }
+
+    pub(crate) fn open_project(&mut self, file: String) {
+        let s = std::fs::read_to_string(&file).expect("Read file error");
+        let four_bar = ron::from_str(&s).expect("Deserialize error");
+        self.projects.push(Some(file), four_bar);
     }
 }
