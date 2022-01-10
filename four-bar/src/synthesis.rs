@@ -19,7 +19,7 @@
 use self::mh::{utility::prelude::*, ObjFunc};
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-use std::{cmp::Ordering, f64::consts::TAU};
+use std::f64::consts::TAU;
 
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
@@ -234,29 +234,17 @@ impl Planar {
             .filter(|(_, curve)| !path_is_nan(curve))
     }
 
-    fn efd_cal(&self, v: &[f64], d: &[f64; 5], inv: bool, curve: &[[f64; 2]]) -> (f64, FourBar) {
+    fn efd_cal(
+        &self,
+        v: &[f64],
+        d: &[f64; 5],
+        inv: bool,
+        mut curve: Vec<[f64; 2]>,
+    ) -> (f64, FourBar) {
         if self.open {
-            let t = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
-            if t[0] == t[1] {
-                vec![[t[0], t[1]]]
-            } else {
-                vec![[t[0], t[1]], [t[1], t[0]]]
-            }
+            let [_t1, _t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
+            todo!()
         } else {
-            vec![[0, self.n]]
-        }
-        .into_par_iter()
-        .map(|[t0, t1]| {
-            let mut curve = match t0.cmp(&t1) {
-                Ordering::Less => curve[t0..t1].to_vec(),
-                Ordering::Greater | Ordering::Equal => [&curve[t0..], &curve[..t1]].concat(),
-            };
-            if self.open {
-                if curve.len() < 4 {
-                    return (f64::INFINITY, FourBar::default());
-                }
-                curve = anti_sym_ext(&curve);
-            }
             curve.push(curve[0]);
             let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
             let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
@@ -264,9 +252,7 @@ impl Planar {
             let geo_err = geo_err(&self.curve, &curve_re);
             let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
             (fitness, four_bar)
-        })
-        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-        .unwrap()
+        }
     }
 }
 
@@ -277,7 +263,7 @@ impl ObjFunc for Planar {
     fn fitness(&self, v: &[f64], _: f64) -> Self::Fitness {
         let d = grashof_transform(v);
         self.available_curve(&d)
-            .map(|(inv, curve)| self.efd_cal(v, &d, inv, &curve).0)
+            .map(|(inv, curve)| self.efd_cal(v, &d, inv, curve).0)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or(1e10)
     }
@@ -285,7 +271,7 @@ impl ObjFunc for Planar {
     fn result(&self, v: &[f64]) -> Self::Result {
         let d = grashof_transform(v);
         self.available_curve(&d)
-            .map(|(inv, curve)| self.efd_cal(v, &d, inv, &curve))
+            .map(|(inv, curve)| self.efd_cal(v, &d, inv, curve))
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
             .unwrap_or_else(|| {
                 eprintln!("WARNING: synthesis failed");
