@@ -79,9 +79,7 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
 }
 
 fn path_is_nan(path: &[[f64; 2]]) -> bool {
-    path.iter()
-        .find(|c| c[0].is_nan() || c[0].is_nan())
-        .is_some()
+    path.iter().any(|c| c[0].is_nan() || c[0].is_nan())
 }
 
 fn grashof_transform(v: &[f64]) -> [f64; 5] {
