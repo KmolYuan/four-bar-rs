@@ -4,10 +4,7 @@ use super::{
     widgets::{angle, link, unit},
     IoCtx,
 };
-use eframe::egui::{
-    plot::{Legend, Plot},
-    reset_button, Ui,
-};
+use eframe::egui::{plot::PlotUi, reset_button, Ui};
 use serde::{Deserialize, Serialize};
 
 /// Linkage data.
@@ -62,21 +59,16 @@ impl Linkage {
             angle(ui, "Speed: ", &mut self.driver.speed, "/s");
             angle(ui, "Angle: ", &mut self.driver.angle, "");
         });
+        ui.group(|ui| self.synthesis.show(ui, ctx, &mut self.projects));
+    }
+
+    pub(crate) fn plot(&mut self, ui: &mut PlotUi) {
+        self.projects.plot(ui, self.driver.angle, self.config.res);
+        self.synthesis.plot(ui);
         if self.driver.speed != 0. {
             self.driver.angle += self.driver.speed / 60.;
             ui.ctx().request_repaint();
         }
-        ui.group(|ui| self.synthesis.show(ui, ctx, &mut self.projects));
-    }
-
-    pub(crate) fn plot(&self, ui: &mut Ui) {
-        Plot::new("canvas")
-            .data_aspect(1.)
-            .legend(Legend::default())
-            .show(ui, |ui| {
-                self.projects.plot(ui, self.driver.angle, self.config.res);
-                self.synthesis.plot(ui);
-            });
     }
 
     pub(crate) fn open_project(&mut self, file: String) {

@@ -1,23 +1,6 @@
 use eframe::egui::{emath::Numeric, DragValue, Ui};
 use std::f64::consts::TAU;
 
-pub(crate) fn switch(
-    ui: &mut Ui,
-    icon1: &'static str,
-    tip1: &'static str,
-    icon2: &'static str,
-    tip2: &'static str,
-    val: &mut bool,
-) {
-    if *val {
-        if ui.small_button(icon1).on_hover_text(tip1).clicked() {
-            *val = false;
-        }
-    } else if ui.small_button(icon2).on_hover_text(tip2).clicked() {
-        *val = true;
-    }
-}
-
 pub(crate) fn switch_same(ui: &mut Ui, icon: &'static str, tip: &'static str, val: &mut bool) {
     if ui.small_button(icon).on_hover_text(tip).clicked() {
         *val = !*val;
