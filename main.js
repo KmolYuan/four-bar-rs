@@ -12,13 +12,11 @@ window.save_file = (s, file_name) => {
     a.href = window.URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
     a.click();
 };
-window.open_file = (format, done, cancel) => {
+window.open_file = (format, done) => {
     input.onclick = () => {
         document.body.onfocus = () => {
             if (input.files.length > 0)
                 reader.readAsText(input.files[0]);
-            else
-                cancel();
             document.body.onfocus = null;
         };
     };
