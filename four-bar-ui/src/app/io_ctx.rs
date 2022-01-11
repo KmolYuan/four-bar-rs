@@ -35,7 +35,7 @@ impl Default for IoCtx {
 impl IoCtx {
     pub(crate) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnMut(String, String) + 'static,
+        C: Fn(String, String) + 'static,
     {
         let format = ext
             .iter()
@@ -43,7 +43,7 @@ impl IoCtx {
             .collect::<Vec<_>>()
             .join(",");
         // Wrap and leak the closure into Js
-        let done = Closure::wrap(Box::new(done) as Box<dyn FnMut(String, String)>);
+        let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done));
         open_file(&format, done.as_ref().unchecked_ref::<JsValue>().clone());
         done.forget();
     }
@@ -88,9 +88,9 @@ impl IoCtx {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl IoCtx {
-    pub(crate) fn open<C>(fmt: &str, ext: &[&str], mut done: C)
+    pub(crate) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: FnMut(String, String) + 'static,
+        C: Fn(String, String) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             for path in paths {
