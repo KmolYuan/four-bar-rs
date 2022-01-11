@@ -12,10 +12,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     ops::{Deref, DerefMut},
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
-const LAZY_WARN: &str = "This project is waiting for load.\nDO NOT close it.";
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 const FMT: &str = "Rusty Object Notation";
@@ -66,19 +65,6 @@ impl Default for Pivot {
     }
 }
 
-#[derive(Deserialize, Serialize, PartialEq)]
-enum ProjState {
-    Normal,
-    Lazy,
-    Dead,
-}
-
-impl Default for ProjState {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
-
 #[derive(Deserialize, Serialize, Clone)]
 enum ProjName {
     Path(String),
@@ -105,13 +91,12 @@ impl From<Option<String>> for ProjName {
 #[serde(default)]
 struct ProjInner {
     hide: bool,
-    state: ProjState,
     path: ProjName,
     four_bar: FourBar,
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub(crate) struct Project(Arc<Mutex<ProjInner>>);
+pub(crate) struct Project(Arc<RwLock<ProjInner>>);
 
 impl Project {
     fn new(path: Option<String>, four_bar: FourBar) -> Self {
@@ -120,51 +105,15 @@ impl Project {
             four_bar,
             ..Default::default()
         };
-        Self(Arc::new(Mutex::new(inner)))
-    }
-
-    fn lazy() -> Self {
-        let inner = ProjInner {
-            state: ProjState::Lazy,
-            ..Default::default()
-        };
-        Self(Arc::new(Mutex::new(inner)))
-    }
-
-    fn kill(&self) {
-        self.0.lock().unwrap().state = ProjState::Dead;
-    }
-
-    fn is_dead(&self) -> bool {
-        self.0.lock().unwrap().state == ProjState::Dead
-    }
-
-    fn is_lazy(&self) -> bool {
-        self.0.lock().unwrap().state == ProjState::Lazy
-    }
-
-    fn set_proj(&self, path: Option<String>, four_bar: FourBar) {
-        let mut proj = self.0.lock().unwrap();
-        proj.state = ProjState::Normal;
-        proj.path = ProjName::from(path);
-        proj.four_bar = four_bar;
+        Self(Arc::new(RwLock::new(inner)))
     }
 
     fn set_path(&self, path: String) {
-        let mut proj = self.0.lock().unwrap();
-        proj.state = ProjState::Normal;
-        proj.path = ProjName::Path(path);
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn set_four_bar(&self, four_bar: FourBar) {
-        let mut proj = self.0.lock().unwrap();
-        proj.state = ProjState::Normal;
-        proj.four_bar = four_bar;
+        self.0.write().unwrap().path = ProjName::Path(path);
     }
 
     fn name(&self) -> String {
-        let proj = self.0.lock().unwrap();
+        let proj = self.0.read().unwrap();
         match &proj.path {
             ProjName::Path(path) => filename(path),
             ProjName::Named(name) => with_ext(name),
@@ -173,8 +122,8 @@ impl Project {
     }
 
     fn save(&self) {
-        let s = ron::to_string(&self.0.lock().unwrap().four_bar).unwrap();
-        if let ProjName::Path(path) = &self.0.lock().unwrap().path {
+        let s = ron::to_string(&self.0.read().unwrap().four_bar).unwrap();
+        if let ProjName::Path(path) = &self.0.read().unwrap().path {
             IoCtx::save(&s, path);
         } else {
             let proj = self.clone();
@@ -183,11 +132,7 @@ impl Project {
     }
 
     fn four_bar_ui(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
-        let mut proj = self.0.lock().unwrap();
-        if proj.state == ProjState::Lazy {
-            ui.colored_label(Color32::RED, LAZY_WARN);
-            return;
-        }
+        let mut proj = self.0.write().unwrap();
         ui.horizontal(|ui| {
             ui.label("Project");
             match &mut proj.path {
@@ -265,13 +210,7 @@ impl Project {
     }
 
     fn plot(&self, ui: &mut PlotUi, i: usize, id: usize, angle: f64, n: usize) {
-        let m = {
-            let proj = self.0.lock().unwrap();
-            if proj.state == ProjState::Lazy || proj.hide {
-                return;
-            }
-            Mechanism::four_bar(&proj.four_bar)
-        };
+        let m = Mechanism::four_bar(&self.0.read().unwrap().four_bar);
         let is_main = i == id;
         let mut joints = [[0.; 2]; 5];
         m.apply(angle, [0, 1, 2, 3, 4], &mut joints);
@@ -298,10 +237,20 @@ impl Project {
     }
 }
 
+#[derive(Default, Deserialize, Serialize, Clone)]
+pub(crate) struct Queue(Arc<RwLock<Vec<Project>>>);
+
+impl Queue {
+    pub(crate) fn push(&self, path: Option<String>, four_bar: FourBar) {
+        self.0.write().unwrap().push(Project::new(path, four_bar));
+    }
+}
+
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct Projects {
     list: Vec<Project>,
+    queue: Queue,
     pivot: Pivot,
     current: usize,
 }
@@ -315,11 +264,8 @@ impl Projects {
         self.list.push(Project::default());
     }
 
-    pub(crate) fn push_lazy(&mut self) -> Project {
-        let proj = Project::lazy();
-        let lazy = proj.clone();
-        self.list.push(proj);
-        lazy
+    pub(crate) fn queue(&self) -> Queue {
+        self.queue.clone()
     }
 
     pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
@@ -335,58 +281,40 @@ impl Projects {
         }
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
-                let lazy1 = self.push_lazy();
-                let lazy2 = lazy1.clone();
-                IoCtx::open(
-                    "Rusty Object Notation",
-                    &["ron"],
-                    move |path, s| {
-                        if let Ok(fb) = ron::from_str(&s) {
-                            lazy1.set_proj(Some(path), fb);
-                        }
-                    },
-                    move || lazy2.kill(),
-                );
-                self.current = self.len() - 1;
+                let lazy = self.queue();
+                IoCtx::open("Rusty Object Notation", &["ron"], move |path, s| {
+                    if let Ok(fb) = ron::from_str(&s) {
+                        lazy.push(Some(path), fb);
+                    }
+                });
             }
             if ui.button("➕ New").clicked() {
                 self.push_default();
                 self.current = self.len() - 1;
             }
             if !self.is_empty() {
-                ui.add_enabled_ui(!self[self.current].is_lazy(), |ui| {
-                    if ui.button("💾 Save").clicked() {
-                        self[self.current].save();
+                if ui.button("💾 Save").clicked() {
+                    self[self.current].save();
+                }
+                if ui.button("✖ Close").clicked() {
+                    self.list.remove(self.current);
+                    if self.current > 0 {
+                        self.current -= 1;
                     }
-                    if ui.button("✖ Close").clicked() {
-                        self.list.remove(self.current);
-                        if self.current > 0 {
-                            self.current -= 1;
-                        }
-                    }
-                });
+                }
             }
         });
+        if !self.queue.0.read().unwrap().is_empty() {
+            self.list.append(&mut *self.queue.0.write().unwrap());
+            self.current = self.len() - 1;
+        }
         if self.is_empty() {
             return;
         }
         ui.horizontal_wrapped(|ui| {
-            let mut i = 0;
-            self.list.retain(|proj| {
-                let keep = !proj.is_dead();
-                if keep {
-                    let name = if proj.is_lazy() {
-                        "💤 lazy...".to_string()
-                    } else {
-                        proj.name()
-                    };
-                    ui.selectable_value(&mut self.current, i, name);
-                    i += 1;
-                } else if self.current == i {
-                    self.current -= 1;
-                }
-                keep
-            });
+            for (i, proj) in self.list.iter().enumerate() {
+                ui.selectable_value(&mut self.current, i, proj.name());
+            }
         });
         ui.group(|ui| self.list[self.current].four_bar_ui(ui, &mut self.pivot, interval, n));
     }

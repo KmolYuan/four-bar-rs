@@ -166,7 +166,7 @@ impl Synthesis {
                     if ui.button("🖴 Open CSV").clicked() {
                         let curve_csv = self.config.curve_csv.clone();
                         let done = move |_, s| *curve_csv.write().unwrap() = s;
-                        IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done, || ());
+                        IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
                     }
                     if ui.button("🗑 Clear").clicked() {
                         *self.config.curve_csv.write().unwrap() = String::new();
@@ -209,7 +209,7 @@ impl Synthesis {
             mh::{utility::thread::spawn, De, Solver},
             Planar,
         };
-        let proj = projects.push_lazy();
+        let proj = projects.queue();
         let curve = self.curve.clone();
         let SynConfig { pop, gen, open } = self.config.syn;
         let task = Task {
@@ -235,7 +235,7 @@ impl Synthesis {
                 })
                 .solve(Planar::new(&curve, 720, 90, open))
                 .result();
-            proj.set_four_bar(four_bar);
+            proj.push(None, four_bar);
             lazy.start.store(false, Ordering::Relaxed);
         });
     }
