@@ -15,18 +15,24 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+macro_rules! ext {
+    () => {
+        "ron"
+    };
+}
+
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 const FMT: &str = "Rusty Object Notation";
 const CSV_FMT: &str = "Delimiter-Separated Values";
-const EXT: &[&str] = &["ron"];
+const EXT: &[&str] = &[ext!()];
 const CSV_EXT: &[&str] = &["csv", "txt"];
 
 fn with_ext(name: &str) -> String {
-    if name.ends_with(".ron") {
+    if name.ends_with(concat![".", ext!()]) {
         name.to_string()
     } else {
-        name.to_string() + ".ron"
+        name.to_string() + concat![".", ext!()]
     }
 }
 
@@ -117,7 +123,7 @@ impl Project {
         match &proj.path {
             ProjName::Path(path) => filename(path),
             ProjName::Named(name) => with_ext(name),
-            ProjName::Untitled => "untitled".to_string(),
+            ProjName::Untitled => concat!["untitled.", ext!()].to_string(),
         }
     }
 
@@ -282,7 +288,7 @@ impl Projects {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
-                IoCtx::open("Rusty Object Notation", &["ron"], move |path, s| {
+                IoCtx::open(FMT, EXT, move |path, s| {
                     if let Ok(fb) = ron::from_str(&s) {
                         queue.push(Some(path), fb);
                     }

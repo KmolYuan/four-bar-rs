@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
+use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsCast, JsValue};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -35,14 +35,17 @@ impl Default for IoCtx {
 impl IoCtx {
     pub(crate) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(String, String) + 'static,
+        C: FnMut(String, String) + 'static,
     {
         let format = ext
             .iter()
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
-        open_file(&format, Closure::once_into_js(done));
+        // Wrap and leak the closure into Js
+        let done = Closure::wrap(Box::new(done) as Box<dyn FnMut(String, String)>);
+        open_file(&format, done.as_ref().unchecked_ref::<JsValue>().clone());
+        done.forget();
     }
 
     pub(crate) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], _done: C)
@@ -85,13 +88,15 @@ impl IoCtx {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl IoCtx {
-    pub(crate) fn open<C>(fmt: &str, ext: &[&str], done: C)
+    pub(crate) fn open<C>(fmt: &str, ext: &[&str], mut done: C)
     where
-        C: FnOnce(String, String) + 'static,
+        C: FnMut(String, String) + 'static,
     {
-        if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            let s = std::fs::read_to_string(&path).unwrap_or_default();
-            done(path.to_str().unwrap().to_string(), s);
+        if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
+            for path in paths {
+                let s = std::fs::read_to_string(&path).unwrap_or_default();
+                done(path.to_str().unwrap().to_string(), s);
+            }
         }
     }
 

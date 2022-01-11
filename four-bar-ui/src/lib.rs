@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+// #![forbid(unsafe_code)]
 pub use crate::{
     app::{sha512, App, LoginInfo},
     csv_io::{dump_csv, parse_csv},
