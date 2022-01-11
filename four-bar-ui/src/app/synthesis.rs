@@ -1,5 +1,5 @@
 use super::{
-    project::Projects,
+    project::Queue,
     remote::Remote,
     widgets::{switch_same, unit},
     IoCtx,
@@ -81,7 +81,7 @@ struct Task {
 }
 
 impl Synthesis {
-    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, projects: &mut Projects) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, queue: Queue) {
         ui.heading("Synthesis");
         reset_button(ui, &mut self.config);
         self.convergence_plot(ui);
@@ -113,7 +113,7 @@ impl Synthesis {
                     .add_enabled(error.is_empty(), Button::new("▶ Start"))
                     .clicked()
                 {
-                    self.native_syn(projects);
+                    self.native_syn(queue);
                 }
                 ui.add(ProgressBar::new(0.).show_percentage());
             });
@@ -199,17 +199,16 @@ impl Synthesis {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn native_syn(&mut self, _projects: &mut Projects) {
+    fn native_syn(&mut self, _queue: Queue) {
         IoCtx::alert("Local computation is not supported!");
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn native_syn(&mut self, projects: &mut Projects) {
+    fn native_syn(&mut self, queue: Queue) {
         use four_bar::synthesis::{
             mh::{utility::thread::spawn, De, Solver},
             Planar,
         };
-        let proj = projects.queue();
         let curve = self.curve.clone();
         let SynConfig { pop, gen, open } = self.config.syn;
         let task = Task {
@@ -235,7 +234,7 @@ impl Synthesis {
                 })
                 .solve(Planar::new(&curve, 720, 90, open))
                 .result();
-            proj.push(None, four_bar);
+            queue.push(None, four_bar);
             lazy.start.store(false, Ordering::Relaxed);
         });
     }

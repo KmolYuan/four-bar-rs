@@ -59,7 +59,7 @@ impl Linkage {
             angle(ui, "Speed: ", &mut self.driver.speed, "/s");
             angle(ui, "Angle: ", &mut self.driver.angle, "");
         });
-        ui.group(|ui| self.synthesis.show(ui, ctx, &mut self.projects));
+        ui.group(|ui| self.synthesis.show(ui, ctx, self.projects.queue()));
     }
 
     pub(crate) fn plot(&mut self, ui: &mut PlotUi) {
