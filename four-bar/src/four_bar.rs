@@ -5,7 +5,7 @@ use std::{
 
 /// Data type of the four-bar mechanism.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct FourBar {
     /// Origin.
     pub p0: (f64, f64),
@@ -27,9 +27,9 @@ pub struct FourBar {
     pub inv: bool,
 }
 
-impl Default for FourBar {
+impl FourBar {
     /// An example crank rocker.
-    fn default() -> Self {
+    pub const fn example() -> Self {
         Self {
             p0: (0., 0.),
             a: 0.,
@@ -39,23 +39,6 @@ impl Default for FourBar {
             l3: 70.,
             l4: 45.,
             g: FRAC_PI_6,
-            inv: false,
-        }
-    }
-}
-
-impl FourBar {
-    /// Create empty fields.
-    pub const fn empty() -> Self {
-        Self {
-            p0: (0.0, 0.0),
-            a: 0.0,
-            l0: 0.0,
-            l1: 0.0,
-            l2: 0.0,
-            l3: 0.0,
-            l4: 0.0,
-            g: 0.0,
             inv: false,
         }
     }

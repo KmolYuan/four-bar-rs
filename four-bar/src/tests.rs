@@ -58,12 +58,12 @@ fn planar() {
     // let target = TRIANGLE2;
     let target = CRUNODE;
     // let target = LINE;
-    let gen = 50;
+    let gen = 40;
     let pb = ProgressBar::new(gen);
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
         .callback(|ctx| pb.set_position(ctx.gen))
-        .pop_num(300)
+        .pop_num(400)
         .record(|ctx| ctx.best_f)
         .solve(Planar::new(target, 720, 90, false));
     pb.finish();

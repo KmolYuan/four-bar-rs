@@ -230,39 +230,32 @@ impl Planar {
         }
     }
 
-    fn available_curve<'a>(
-        &'a self,
-        d: &'a [f64; 5],
-    ) -> impl ParallelIterator<Item = (bool, Vec<[f64; 2]>)> + 'a {
+    fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
+        let d = grashof_transform(v);
         [false, true]
             .into_par_iter()
             .map(|inv| {
-                let fourbar = Mechanism::four_bar(&four_bar_v(d, inv));
+                let fourbar = Mechanism::four_bar(&four_bar_v(&d, inv));
                 let c = fourbar.par_four_bar_loop(0., self.n);
                 (inv, c)
             })
             .filter(|(_, curve)| !path_is_nan(curve))
-    }
-
-    fn efd_cal(
-        &self,
-        v: &[f64],
-        d: &[f64; 5],
-        inv: bool,
-        mut curve: Vec<[f64; 2]>,
-    ) -> (f64, FourBar) {
-        if self.open {
-            let [_t1, _t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
-            todo!()
-        } else {
-            curve.push(curve[0]);
-            let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
-            let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
-            let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
-            let geo_err = geo_err_closed(&self.curve, &curve);
-            let fitness = efd.discrepancy(&self.efd) + geo_err * 1e-5;
-            (fitness, four_bar)
-        }
+            .map(|(inv, mut curve)| {
+                if self.open {
+                    let [_t1, _t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
+                    todo!()
+                } else {
+                    curve.push(curve[0]);
+                    let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
+                    let four_bar = self.four_bar_coeff(&d, inv, efd.normalize().to(&self.geo));
+                    let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
+                    let geo_err = geo_err_closed(&self.curve, &curve);
+                    let fitness = efd.discrepancy(&self.efd) + geo_err * 1e-5;
+                    (fitness, four_bar)
+                }
+            })
+            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+            .unwrap_or_else(|| (1e10, FourBar::default()))
     }
 }
 
@@ -271,23 +264,11 @@ impl ObjFunc for Planar {
     type Fitness = f64;
 
     fn fitness(&self, v: &[f64], _: f64) -> Self::Fitness {
-        let d = grashof_transform(v);
-        self.available_curve(&d)
-            .map(|(inv, curve)| self.efd_cal(v, &d, inv, curve).0)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap_or(1e10)
+        self.domain_search(v).0
     }
 
     fn result(&self, v: &[f64]) -> Self::Result {
-        let d = grashof_transform(v);
-        self.available_curve(&d)
-            .map(|(inv, curve)| self.efd_cal(v, &d, inv, curve))
-            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-            .unwrap_or_else(|| {
-                eprintln!("WARNING: synthesis failed");
-                (0., four_bar_v(&d, false))
-            })
-            .1
+        self.domain_search(v).1
     }
 
     fn ub(&self) -> &[f64] {

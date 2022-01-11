@@ -93,12 +93,22 @@ impl From<Option<String>> for ProjName {
     }
 }
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
 struct ProjInner {
     hide: bool,
     path: ProjName,
     four_bar: FourBar,
+}
+
+impl Default for ProjInner {
+    fn default() -> Self {
+        Self {
+            hide: false,
+            path: ProjName::default(),
+            four_bar: FourBar::example(),
+        }
+    }
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
