@@ -29,7 +29,7 @@ enum Subcommand {
     Update,
     /// Start web server to host WebAssembly UI program
     Serve {
-        /// Set port
+        /// Port number
         #[clap(long, default_value = "8080")]
         port: u16,
     },
