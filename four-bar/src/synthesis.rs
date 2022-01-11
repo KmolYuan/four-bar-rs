@@ -78,36 +78,13 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
-fn path_is_nan(path: &[[f64; 2]]) -> bool {
+/// Return true if path contains any NaN coordinate.
+pub fn path_is_nan(path: &[[f64; 2]]) -> bool {
     path.iter().any(|c| c[0].is_nan() || c[0].is_nan())
 }
 
-fn grashof_transform(v: &[f64]) -> [f64; 5] {
-    let mut four = [v[0], 1., v[1], v[2]];
-    four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    if four[0] + four[3] - four[1] - four[2] < 0. && (four[0] == 1. || four[0] == v[0]) {
-        [v[0], v[1], v[2], v[3], v[4]]
-    } else {
-        let l1 = four[0];
-        [four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
-    }
-}
-
-fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
-    FourBar {
-        p0: (0., 0.),
-        a: 0.,
-        l0: v[0],
-        l1: 1.,
-        l2: v[1],
-        l3: v[2],
-        l4: v[3],
-        g: v[4],
-        inv,
-    }
-}
-
-fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
+/// Geometry error between two closed curves.
+pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     assert!(
         curve.len() >= target.len(),
         "curve length {} must greater than target {}",
@@ -150,6 +127,31 @@ fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         })
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap()
+}
+
+fn grashof_transform(v: &[f64]) -> [f64; 5] {
+    let mut four = [v[0], 1., v[1], v[2]];
+    four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    if four[0] + four[3] - four[1] - four[2] < 0. && (four[0] == 1. || four[0] == v[0]) {
+        [v[0], v[1], v[2], v[3], v[4]]
+    } else {
+        let l1 = four[0];
+        [four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
+    }
+}
+
+fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
+    FourBar {
+        p0: (0., 0.),
+        a: 0.,
+        l0: v[0],
+        l1: 1.,
+        l2: v[1],
+        l3: v[2],
+        l4: v[3],
+        g: v[4],
+        inv,
+    }
 }
 
 /// Synthesis task of planar four-bar linkage.
@@ -248,8 +250,8 @@ impl Planar {
             curve.push(curve[0]);
             let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
             let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
-            let curve_re = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
-            let geo_err = geo_err(&self.curve, &curve_re);
+            let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
+            let geo_err = geo_err_closed(&self.curve, &curve);
             let fitness = efd.discrepancy(&self.efd) + geo_err * 1e-5;
             (fitness, four_bar)
         }
