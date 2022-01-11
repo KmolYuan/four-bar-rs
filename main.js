@@ -1,26 +1,21 @@
 import * as wasm from "./pkg/four_bar_ui.js";
 
-// Module level references
-const reader = new FileReader();
-const a = document.createElement("a");
-const input = document.createElement("input");
-input.type = "file";
-
 // Utility functions
 window.save_file = (s, file_name) => {
+    const a = document.createElement("a");
     a.download = file_name;
-    a.href = window.URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
+    a.href = URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
     a.click();
 };
 window.open_file = (format, done) => {
-    input.onclick = () => {
-        document.body.onfocus = () => {
-            if (input.files.length > 0)
-                reader.readAsText(input.files[0]);
-            document.body.onfocus = null;
-        };
-    };
-    reader.onload = () => done(input.files[0].name, reader.result);
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.onchange = () => Array.from(input.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => done(file.name, reader.result);
+        reader.readAsText(file);
+    });
     input.accept = format;
     input.click();
 };
