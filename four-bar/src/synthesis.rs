@@ -250,7 +250,7 @@ impl Planar {
             let four_bar = self.four_bar_coeff(d, inv, efd.normalize().to(&self.geo));
             let curve_re = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n * 2);
             let geo_err = geo_err(&self.curve, &curve_re);
-            let fitness = (efd.c - &self.efd.c).mapv(f64::abs).sum() + geo_err * 1e-5;
+            let fitness = efd.discrepancy(&self.efd) + geo_err * 1e-5;
             (fitness, four_bar)
         }
     }

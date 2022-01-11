@@ -205,6 +205,10 @@ impl Synthesis {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, projects: &mut Projects) {
+        use four_bar::synthesis::{
+            mh::{utility::thread::spawn, De, Solver},
+            Planar,
+        };
         let proj = projects.push_lazy();
         let curve = self.curve.clone();
         let SynConfig { pop, gen, open } = self.config.syn;
@@ -215,11 +219,7 @@ impl Synthesis {
         };
         let lazy = task.clone();
         self.tasks.push(task);
-        std::thread::spawn(move || {
-            use four_bar::synthesis::{
-                mh::{De, Solver},
-                Planar,
-            };
+        spawn(move || {
             let start_time = std::time::Instant::now();
             let four_bar = Solver::build(De::default())
                 .pop_num(pop)
