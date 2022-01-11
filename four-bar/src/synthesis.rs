@@ -91,24 +91,32 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         curve.len(),
         target.len()
     );
-    let mut geo_err = f64::INFINITY;
-    let mut index = 0;
-    // Find the head
-    for (i, c) in curve.iter().enumerate() {
-        let d = (target[0][0] - c[0]).powi(2) + (target[0][1] - c[1]).powi(2);
-        if d < geo_err {
-            geo_err = d;
-            index = i;
-        }
-    }
-    let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
+    // Find the head (greedy)
+    let (index, basic_err) = curve
+        .par_iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let dx = target[0][0] - c[0];
+            let dy = target[0][1] - c[1];
+            (i, dx * dx + dy * dy)
+        })
+        .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+        .unwrap();
+    let iter = curve[index..].iter().chain(curve[0..index].iter().rev());
+    basic_err + geo_err(target, iter)
+}
+
+fn geo_err<'a, I>(target: &[[f64; 2]], mut iter: I) -> f64
+where
+    I: DoubleEndedIterator<Item = &'a [f64; 2]> + Clone + Send + Sync,
+{
     let start = iter.next().unwrap();
     let rev_iter = iter.clone().rev();
     let iter: [Box<dyn Iterator<Item = &[f64; 2]> + Send + Sync>; 2] =
         [Box::new(iter), Box::new(rev_iter)];
     iter.into_par_iter()
         .map(|mut iter| {
-            let mut geo_err = geo_err;
+            let mut geo_err = 0.;
             let mut left = start;
             for tc in target {
                 let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
