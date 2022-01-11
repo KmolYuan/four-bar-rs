@@ -281,10 +281,10 @@ impl Projects {
         }
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
-                let lazy = self.queue();
+                let queue = self.queue();
                 IoCtx::open("Rusty Object Notation", &["ron"], move |path, s| {
                     if let Ok(fb) = ron::from_str(&s) {
-                        lazy.push(Some(path), fb);
+                        queue.push(Some(path), fb);
                     }
                 });
             }

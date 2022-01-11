@@ -216,26 +216,25 @@ impl Synthesis {
             start: Arc::new(AtomicBool::new(true)),
             ..Task::default()
         };
-        let lazy = task.clone();
-        self.tasks.push(task);
+        self.tasks.push(task.clone());
         spawn(move || {
             let start_time = std::time::Instant::now();
             let four_bar = Solver::build(De::default())
                 .pop_num(pop)
-                .task(|ctx| ctx.gen == gen || !lazy.start.load(Ordering::Relaxed))
+                .task(|ctx| ctx.gen == gen || !task.start.load(Ordering::Relaxed))
                 .callback(|ctx| {
-                    lazy.conv
+                    task.conv
                         .write()
                         .unwrap()
                         .push([ctx.gen as f64, ctx.best_f]);
-                    lazy.gen.store(ctx.gen, Ordering::Relaxed);
+                    task.gen.store(ctx.gen, Ordering::Relaxed);
                     let time = (std::time::Instant::now() - start_time).as_secs();
-                    lazy.time.store(time, Ordering::Relaxed);
+                    task.time.store(time, Ordering::Relaxed);
                 })
                 .solve(Planar::new(&curve, 720, 90, open))
                 .result();
             queue.push(None, four_bar);
-            lazy.start.store(false, Ordering::Relaxed);
+            task.start.store(false, Ordering::Relaxed);
         });
     }
 }
