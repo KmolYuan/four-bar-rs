@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsCast, JsValue};
+use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -42,10 +42,8 @@ impl IoCtx {
             .map(|s| format!(".{}", s))
             .collect::<Vec<_>>()
             .join(",");
-        // Wrap and leak the closure into Js
-        let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done));
-        open_file(&format, done.as_ref().unchecked_ref::<JsValue>().clone());
-        done.forget();
+        let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done)).into_js_value();
+        open_file(&format, done);
     }
 
     pub(crate) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], _done: C)
