@@ -254,26 +254,38 @@ impl Planar {
             })
             .filter(|(_, curve)| !path_is_nan(curve))
             .map(|(inv, mut curve)| {
-                if self.open {
+                let (efd, geo_err, four_bar) = if self.open {
                     let [t1, t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
-                    let curve = match t1.cmp(&t2) {
-                        Ordering::Less => curve[t1..t2].to_vec(),
-                        Ordering::Greater | Ordering::Equal => {
-                            [&curve[t1..], &curve[..t2]].concat()
-                        }
-                    };
-                    let (fitness, geo) = geo_err_opened(&self.curve, &curve);
-                    let four_bar = self.four_bar_coeff(&d, inv, geo);
-                    (fitness, four_bar)
+                    let (geo_err, geo) = if t1 == t2 {
+                        vec![[t1, t2]]
+                    } else {
+                        vec![[t1, t2], [t2, t1]]
+                    }
+                    .into_par_iter()
+                    .map(|[t1, t2]| {
+                        let curve = match t1.cmp(&t2) {
+                            Ordering::Less => curve[t1..t2].to_vec(),
+                            Ordering::Greater | Ordering::Equal => {
+                                [&curve[t1..], &curve[..t2]].concat()
+                            }
+                        };
+                        geo_err_opened(&self.curve, &curve)
+                    })
+                    .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                    .unwrap();
+                    let mut curve = anti_sym_ext(&curve);
+                    curve.push(curve[0]);
+                    let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
+                    efd.normalize();
+                    (efd, geo_err, self.four_bar_coeff(&d, inv, geo))
                 } else {
                     curve.push(curve[0]);
                     let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
                     let four_bar = self.four_bar_coeff(&d, inv, efd.normalize().to(&self.geo));
                     let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
-                    let geo_err = geo_err_closed(&self.curve, &curve);
-                    let fitness = efd.discrepancy(&self.efd) + geo_err * 1e-5;
-                    (fitness, four_bar)
-                }
+                    (efd, geo_err_closed(&self.curve, &curve), four_bar)
+                };
+                (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
             })
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
             .unwrap_or_else(|| (1e10, FourBar::default()))
