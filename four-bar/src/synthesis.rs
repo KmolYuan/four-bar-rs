@@ -19,7 +19,7 @@
 use self::mh::{utility::prelude::*, ObjFunc};
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-use std::f64::consts::TAU;
+use std::{cmp::Ordering, f64::consts::TAU};
 
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
@@ -104,6 +104,19 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         .unwrap();
     let iter = curve[index..].iter().chain(curve[0..index].iter().rev());
     basic_err + geo_err(target, iter)
+}
+
+fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
+    let _ = target;
+    let _ = curve;
+    let fitness = 0.;
+    let geo = GeoInfo {
+        semi_major_axis_angle: 0.,
+        scale: 0.,
+        center: (0., 0.),
+        ..Default::default()
+    };
+    (fitness, geo)
 }
 
 fn geo_err<'a, I>(target: &[[f64; 2]], mut iter: I) -> f64
@@ -242,8 +255,16 @@ impl Planar {
             .filter(|(_, curve)| !path_is_nan(curve))
             .map(|(inv, mut curve)| {
                 if self.open {
-                    let [_t1, _t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
-                    todo!()
+                    let [t1, t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
+                    let curve = match t1.cmp(&t2) {
+                        Ordering::Less => curve[t1..t2].to_vec(),
+                        Ordering::Greater | Ordering::Equal => {
+                            [&curve[t1..], &curve[..t2]].concat()
+                        }
+                    };
+                    let (fitness, geo) = geo_err_opened(&self.curve, &curve);
+                    let four_bar = self.four_bar_coeff(&d, inv, geo);
+                    (fitness, four_bar)
                 } else {
                     curve.push(curve[0]);
                     let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
