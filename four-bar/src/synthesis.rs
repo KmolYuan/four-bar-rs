@@ -111,10 +111,9 @@ fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
     let _ = curve;
     let fitness = 0.;
     let geo = GeoInfo {
-        semi_major_axis_angle: 0.,
+        rot: 0.,
         scale: 0.,
         center: (0., 0.),
-        ..Default::default()
     };
     (fitness, geo)
 }
@@ -181,8 +180,6 @@ pub struct Planar {
     pub curve: Vec<[f64; 2]>,
     /// Target coefficient
     pub efd: Efd,
-    // Geometric information
-    geo: GeoInfo,
     // How many points need to be generated / compared
     n: usize,
     harmonic: usize,
@@ -211,12 +208,10 @@ impl Planar {
             curve.to_vec()
         };
         curve.push(curve[0]);
-        let mut efd = Efd::from_curve(&curve, Some(harmonic));
-        let geo = efd.normalize();
+        let efd = Efd::from_curve(&curve, Some(harmonic));
         Self {
             curve,
             efd,
-            geo,
             n,
             harmonic,
             ub,
@@ -233,7 +228,7 @@ impl Planar {
     fn four_bar_coeff(&self, d: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
         FourBar {
             p0: geo.center,
-            a: geo.semi_major_axis_angle,
+            a: geo.rot,
             l0: d[0] * geo.scale,
             l1: geo.scale,
             l2: d[1] * geo.scale,
@@ -276,13 +271,12 @@ impl Planar {
                     .unwrap();
                     let mut curve = anti_sym_ext(&curve);
                     curve.push(curve[0]);
-                    let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
-                    efd.normalize();
+                    let efd = Efd::from_curve(&curve, Some(self.harmonic));
                     (efd, geo_err, self.four_bar_coeff(&d, inv, geo))
                 } else {
                     curve.push(curve[0]);
-                    let mut efd = Efd::from_curve(&curve, Some(self.harmonic));
-                    let four_bar = self.four_bar_coeff(&d, inv, efd.normalize().to(&self.geo));
+                    let efd = Efd::from_curve(&curve, Some(self.harmonic));
+                    let four_bar = self.four_bar_coeff(&d, inv, efd.to(&self.efd));
                     let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
                     (efd, geo_err_closed(&self.curve, &curve), four_bar)
                 };
