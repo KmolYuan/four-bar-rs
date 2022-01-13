@@ -195,20 +195,21 @@ impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
         assert!(curve.len() > 1, "target curve is not long enough");
-        let mut curve = Vec::from(curve);
         // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        if open {
+        let mut curve = if open {
             for _ in 0..2 {
                 ub.push(1.);
                 lb.push(0.);
             }
-            curve = anti_sym_ext(&curve);
-        }
+            anti_sym_ext(curve)
+        } else {
+            curve.to_vec()
+        };
         curve.push(curve[0]);
         let mut efd = Efd::from_curve(&curve, Some(harmonic));
         let geo = efd.normalize();
