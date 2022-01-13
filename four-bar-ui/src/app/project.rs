@@ -149,27 +149,24 @@ impl Project {
 
     fn four_bar_ui(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
         let mut proj = self.0.write().unwrap();
-        ui.horizontal(|ui| {
-            ui.label("Project");
-            match &mut proj.path {
-                ProjName::Path(path) => {
-                    let filename = filename(path);
-                    if ui.small_button("✏").on_hover_text("Rename path").clicked() {
-                        proj.path = ProjName::Named(filename);
-                    } else {
-                        ui.label(&filename);
-                    }
+        ui.horizontal(|ui| match &mut proj.path {
+            ProjName::Path(path) => {
+                let filename = filename(path);
+                if ui.small_button("✏").on_hover_text("Rename path").clicked() {
+                    proj.path = ProjName::Named(filename);
+                } else {
+                    ui.label(&filename);
                 }
-                ProjName::Named(name) => {
-                    ui.colored_label(Color32::RED, "Unsaved path");
-                    ui.text_edit_singleline(name);
-                }
-                ProjName::Untitled => {
-                    ui.colored_label(Color32::RED, "Unsaved path");
-                    let mut name = "untitled".to_string();
-                    if ui.text_edit_singleline(&mut name).changed() {
-                        proj.path = ProjName::Named(name);
-                    }
+            }
+            ProjName::Named(name) => {
+                ui.colored_label(Color32::RED, "Unsaved path");
+                ui.text_edit_singleline(name);
+            }
+            ProjName::Untitled => {
+                ui.colored_label(Color32::RED, "Unsaved path");
+                let mut name = "untitled".to_string();
+                if ui.text_edit_singleline(&mut name).changed() {
+                    proj.path = ProjName::Named(name);
                 }
             }
         });

@@ -44,7 +44,7 @@ struct Driver {
 impl Linkage {
     pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.group(|ui| {
-            ui.heading("File");
+            ui.heading("Linkage");
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
                 ui.add(link("UI value interval: ", &mut self.config.interval, 0.01));

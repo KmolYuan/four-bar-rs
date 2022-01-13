@@ -99,7 +99,9 @@ impl Synthesis {
             error = "The target curve is empty.";
         }
         ui.horizontal(|ui| {
-            switch_same(ui, "✏", "Edit target curve", &mut self.csv_open);
+            if ui.button("✏ Edit target curve").clicked() {
+                self.csv_open = !self.csv_open;
+            }
             if !error.is_empty() {
                 ui.colored_label(Color32::RED, error);
                 self.curve = Default::default();
