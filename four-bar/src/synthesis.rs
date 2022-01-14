@@ -239,6 +239,14 @@ impl Planar {
         self.open
     }
 
+    fn open_curve_slice(&self, curve: &[[f64; 2]], d: &[f64; 5], inv: bool) -> (f64, Efd, FourBar) {
+        let (geo_err, geo) = geo_err_opened(&self.curve, curve);
+        let mut curve = anti_sym_ext(curve);
+        curve.push(curve[0]);
+        let efd = Efd::from_curve(&curve, Some(self.harmonic));
+        (geo_err, efd, four_bar_coeff(d, inv, geo))
+    }
+
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
         let d = grashof_transform(v);
         [false, true]
@@ -250,28 +258,25 @@ impl Planar {
             })
             .filter(|(_, curve)| !path_is_nan(curve))
             .map(|(inv, mut curve)| {
-                let (efd, geo_err, four_bar) = if self.open {
+                let (geo_err, efd, four_bar) = if self.open {
                     let [t1, t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
-                    let (geo_err, geo) = if t1 == t2 {
-                        geo_err_opened(&self.curve, &[&curve[t1..], &curve[..t1]].concat())
+                    let rev_loop = [&curve[t2..], &curve[..t1]].concat();
+                    if t1 == t2 {
+                        self.open_curve_slice(&rev_loop, &d, inv)
                     } else {
                         let [t1, t2] = if t2 < t1 { [t2, t1] } else { [t1, t2] };
-                        [&curve[t1..t2], &[&curve[t2..], &curve[..t1]].concat()]
+                        [&curve[t1..t2], &rev_loop]
                             .into_par_iter()
-                            .map(|curve| geo_err_opened(&self.curve, curve))
-                            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                            .map(|curve| self.open_curve_slice(curve, &d, inv))
+                            .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
                             .unwrap()
-                    };
-                    let mut curve = anti_sym_ext(&curve);
-                    curve.push(curve[0]);
-                    let efd = Efd::from_curve(&curve, Some(self.harmonic));
-                    (efd, geo_err, four_bar_coeff(&d, inv, geo))
+                    }
                 } else {
                     curve.push(curve[0]);
                     let efd = Efd::from_curve(&curve, Some(self.harmonic));
                     let four_bar = four_bar_coeff(&d, inv, efd.to(&self.efd));
                     let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
-                    (efd, geo_err_closed(&self.curve, &curve), four_bar)
+                    (geo_err_closed(&self.curve, &curve), efd, four_bar)
                 };
                 (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
             })
