@@ -19,7 +19,7 @@
 use self::mh::{utility::prelude::*, ObjFunc};
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-use std::{cmp::Ordering, f64::consts::TAU};
+use std::f64::consts::TAU;
 
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
@@ -174,6 +174,20 @@ fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
     }
 }
 
+fn four_bar_coeff(d: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
+    FourBar {
+        p0: geo.center,
+        a: geo.rot,
+        l0: d[0] * geo.scale,
+        l1: geo.scale,
+        l2: d[1] * geo.scale,
+        l3: d[2] * geo.scale,
+        l4: d[3] * geo.scale,
+        g: d[4],
+        inv,
+    }
+}
+
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
     /// Target curve
@@ -225,20 +239,6 @@ impl Planar {
         self.open
     }
 
-    fn four_bar_coeff(&self, d: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
-        FourBar {
-            p0: geo.center,
-            a: geo.rot,
-            l0: d[0] * geo.scale,
-            l1: geo.scale,
-            l2: d[1] * geo.scale,
-            l3: d[2] * geo.scale,
-            l4: d[3] * geo.scale,
-            g: d[4],
-            inv,
-        }
-    }
-
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
         let d = grashof_transform(v);
         [false, true]
@@ -253,30 +253,23 @@ impl Planar {
                 let (efd, geo_err, four_bar) = if self.open {
                     let [t1, t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
                     let (geo_err, geo) = if t1 == t2 {
-                        vec![[t1, t2]]
+                        geo_err_opened(&self.curve, &[&curve[t1..], &curve[..t1]].concat())
                     } else {
-                        vec![[t1, t2], [t2, t1]]
-                    }
-                    .into_par_iter()
-                    .map(|[t1, t2]| {
-                        let curve = match t1.cmp(&t2) {
-                            Ordering::Less => curve[t1..t2].to_vec(),
-                            Ordering::Greater | Ordering::Equal => {
-                                [&curve[t1..], &curve[..t2]].concat()
-                            }
-                        };
-                        geo_err_opened(&self.curve, &curve)
-                    })
-                    .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                    .unwrap();
+                        let [t1, t2] = if t2 < t1 { [t2, t1] } else { [t1, t2] };
+                        [&curve[t1..t2], &[&curve[t2..], &curve[..t1]].concat()]
+                            .into_par_iter()
+                            .map(|curve| geo_err_opened(&self.curve, curve))
+                            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                            .unwrap()
+                    };
                     let mut curve = anti_sym_ext(&curve);
                     curve.push(curve[0]);
                     let efd = Efd::from_curve(&curve, Some(self.harmonic));
-                    (efd, geo_err, self.four_bar_coeff(&d, inv, geo))
+                    (efd, geo_err, four_bar_coeff(&d, inv, geo))
                 } else {
                     curve.push(curve[0]);
                     let efd = Efd::from_curve(&curve, Some(self.harmonic));
-                    let four_bar = self.four_bar_coeff(&d, inv, efd.to(&self.efd));
+                    let four_bar = four_bar_coeff(&d, inv, efd.to(&self.efd));
                     let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
                     (efd, geo_err_closed(&self.curve, &curve), four_bar)
                 };
