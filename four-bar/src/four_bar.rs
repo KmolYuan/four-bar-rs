@@ -8,7 +8,7 @@ use std::{
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct FourBar {
     /// Origin.
-    pub p0: (f64, f64),
+    pub p0: [f64; 2],
     /// Offset angle.
     pub a: f64,
     /// Length of the ground link.
@@ -31,7 +31,7 @@ impl FourBar {
     /// An example crank rocker.
     pub const fn example() -> Self {
         Self {
-            p0: (0., 0.),
+            p0: [0., 0.],
             a: 0.,
             l0: 90.,
             l1: 35.,
@@ -45,12 +45,12 @@ impl FourBar {
 
     /// Return true if the linkage has no offset and offset angle.
     pub fn is_aligned(&self) -> bool {
-        self.p0.0 == 0. && self.p0.1 == 0. && self.a == 0.
+        self.p0[0] == 0. && self.p0[1] == 0. && self.a == 0.
     }
 
     /// Remove the origin offset and the offset angle.
     pub fn align(&mut self) {
-        self.p0 = (0., 0.);
+        self.p0 = [0., 0.];
         self.a = 0.;
     }
 

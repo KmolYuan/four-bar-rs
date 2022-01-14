@@ -216,8 +216,8 @@ impl Project {
                 if ui.button("Normalize").clicked() {
                     fb.normalize();
                 }
-                ui.add(unit("X Offset: ", &mut fb.p0.0, interval));
-                ui.add(unit("Y Offset: ", &mut fb.p0.1, interval));
+                ui.add(unit("X Offset: ", &mut fb.p0[0], interval));
+                ui.add(unit("Y Offset: ", &mut fb.p0[1], interval));
                 angle(ui, "Rotation: ", &mut fb.a, "");
             });
             ui.group(|ui| {

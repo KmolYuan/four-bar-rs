@@ -113,7 +113,7 @@ fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
     let geo = GeoInfo {
         rot: 0.,
         scale: 0.,
-        center: (0., 0.),
+        center: [0., 0.],
     };
     (fitness, geo)
 }
@@ -162,7 +162,7 @@ fn grashof_transform(v: &[f64]) -> [f64; 5] {
 
 fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
     FourBar {
-        p0: (0., 0.),
+        p0: [0., 0.],
         a: 0.,
         l0: v[0],
         l1: 1.,
