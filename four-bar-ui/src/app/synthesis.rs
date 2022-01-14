@@ -98,15 +98,13 @@ impl Synthesis {
         } else {
             error = "The target curve is empty.";
         }
-        ui.horizontal(|ui| {
-            if ui.button("✏ Edit target curve").clicked() {
-                self.csv_open = !self.csv_open;
-            }
-            if !error.is_empty() {
-                ui.colored_label(Color32::RED, error);
-                self.curve = Default::default();
-            }
-        });
+        if ui.button("✏ Edit target curve").clicked() {
+            self.csv_open = !self.csv_open;
+        }
+        if !error.is_empty() {
+            ui.colored_label(Color32::RED, error);
+            self.curve = Default::default();
+        }
         ui.group(|ui| {
             ui.heading("Local Computation");
             switch_same(ui, "ℹ", "Convergence window", &mut self.conv_open);

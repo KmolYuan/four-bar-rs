@@ -5,7 +5,7 @@ use super::{
 use crate::{as_values::as_values, dump_csv};
 use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
-    Button, Color32, Ui,
+    Button, Color32, ComboBox, Ui,
 };
 use four_bar::{synthesis::open_curve, FourBar, Mechanism};
 use serde::{Deserialize, Serialize};
@@ -68,6 +68,16 @@ pub(crate) enum Pivot {
 impl Default for Pivot {
     fn default() -> Self {
         Self::Coupler
+    }
+}
+
+impl Pivot {
+    const fn name(&self) -> &str {
+        match self {
+            Pivot::Driver => "Driver",
+            Pivot::Follower => "Follower",
+            Pivot::Coupler => "Coupler",
+        }
     }
 }
 
@@ -186,9 +196,13 @@ impl Project {
                         let s = dump_csv(&open_curve(p)).unwrap();
                         IoCtx::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
                     }
-                    ui.selectable_value(pivot, Pivot::Coupler, "Coupler");
-                    ui.selectable_value(pivot, Pivot::Driver, "Driver");
-                    ui.selectable_value(pivot, Pivot::Follower, "Follower");
+                    ComboBox::from_label("")
+                        .selected_text(pivot.name())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(pivot, Pivot::Coupler, Pivot::Coupler.name());
+                            ui.selectable_value(pivot, Pivot::Driver, Pivot::Driver.name());
+                            ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
+                        });
                 });
             });
             ui.group(|ui| {
