@@ -78,9 +78,9 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
-/// Return true if path contains any NaN coordinate.
-pub fn path_is_nan(path: &[[f64; 2]]) -> bool {
-    path.iter().any(|c| c[0].is_nan() || c[0].is_nan())
+/// Return true if curve contains any NaN coordinate.
+pub fn curve_is_nan(curve: &[[f64; 2]]) -> bool {
+    curve.iter().any(|c| c[0].is_nan() || c[0].is_nan())
 }
 
 /// Geometry error between two closed curves.
@@ -264,9 +264,9 @@ impl Planar {
             .map(|inv| {
                 let fourbar = Mechanism::four_bar(&four_bar_v(&d, inv));
                 let c = fourbar.par_four_bar_loop(0., self.n);
-                (inv, c)
+                (c, inv)
             })
-            .filter(|(_, curve)| !path_is_nan(curve))
+            .filter(|(curve, _)| !curve_is_nan(curve))
             .map(|(inv, mut curve)| {
                 let (geo_err, four_bar, efd) = if self.open {
                     let [t1, t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
