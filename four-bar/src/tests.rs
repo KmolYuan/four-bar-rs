@@ -54,18 +54,18 @@ fn planar() {
     // let target = YU1;
     // let target = HAND;
     // let target = OPEN_CURVE1;
-    // let target = OPEN_CURVE2;
+    let target = OPEN_CURVE2;
     // let target = TRIANGLE2;
-    let target = CRUNODE;
+    // let target = CRUNODE;
     // let target = LINE;
-    let gen = 40;
+    let gen = 50;
     let pb = ProgressBar::new(gen);
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(400)
         .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, 90, false));
+        .solve(Planar::new(target, 720, 90, true));
     pb.finish();
     plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
     let ans = s.result();
