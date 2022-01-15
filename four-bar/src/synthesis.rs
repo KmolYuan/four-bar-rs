@@ -102,51 +102,60 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         })
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
         .unwrap();
-    let iter = curve[index..].iter().chain(curve[0..index].iter().rev());
-    basic_err + geo_err(target, iter)
+    let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
+    let start = iter.next().unwrap();
+    let rev_iter = iter.clone().rev();
+    let iters: [Box<dyn Iterator<Item = &[f64; 2]> + Send + Sync>; 2] =
+        [Box::new(iter), Box::new(rev_iter)];
+    let err = iters
+        .into_par_iter()
+        .map(|iter| geo_err(target, start, iter))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+    basic_err + err
 }
 
 fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
-    let _ = target;
-    let _ = curve;
-    let fitness = 0.;
-    let geo = GeoInfo {
-        rot: 0.,
-        scale: 0.,
-        center: [0., 0.],
-    };
-    (fitness, geo)
+    let [t_start, t_end] = [target[0], target[target.len() - 1]];
+    let [c_start, c_end] = [curve[0], curve[curve.len() - 1]];
+    let t_angle = (t_start[1] - t_end[1]).atan2(t_start[0] - t_end[0]);
+    let scale = (t_start[0] - t_end[0]).hypot(t_start[1] - t_end[1])
+        / (c_start[0] - c_end[0]).hypot(c_start[1] - c_end[1]);
+    [[c_start, c_end], [c_end, c_start]]
+        .into_par_iter()
+        .map(|[start, end]| {
+            let geo = GeoInfo {
+                rot: t_angle - (start[1] - end[1]).atan2(start[0] - end[0]),
+                scale,
+                center: [t_start[0] - start[0], t_start[1] - start[1]],
+            };
+            (geo_err(target, &start, geo.transform(curve).iter()), geo)
+        })
+        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+        .unwrap()
 }
 
-fn geo_err<'a, I>(target: &[[f64; 2]], mut iter: I) -> f64
+fn geo_err<'a, I>(target: &[[f64; 2]], start: &[f64; 2], iter: I) -> f64
 where
-    I: DoubleEndedIterator<Item = &'a [f64; 2]> + Clone + Send + Sync,
+    I: IntoIterator<Item = &'a [f64; 2]>,
 {
-    let start = iter.next().unwrap();
-    let rev_iter = iter.clone().rev();
-    let iter: [Box<dyn Iterator<Item = &[f64; 2]> + Send + Sync>; 2] =
-        [Box::new(iter), Box::new(rev_iter)];
-    iter.into_par_iter()
-        .map(|mut iter| {
-            let mut geo_err = 0.;
-            let mut left = start;
-            for tc in target {
-                let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
-                for c in &mut *iter {
-                    let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
-                    if d < last_d {
-                        last_d = d;
-                    } else {
-                        left = c;
-                        break;
-                    }
-                }
-                geo_err += last_d;
+    let mut iter = iter.into_iter();
+    let mut geo_err = 0.;
+    let mut left = start;
+    for tc in target {
+        let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
+        for c in &mut iter {
+            let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
+            if d < last_d {
+                last_d = d;
+            } else {
+                left = c;
+                break;
             }
-            geo_err
-        })
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap()
+        }
+        geo_err += last_d;
+    }
+    geo_err
 }
 
 fn grashof_transform(v: &[f64]) -> [f64; 5] {
