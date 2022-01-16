@@ -257,7 +257,7 @@ impl Planar {
             .into_par_iter()
             .map(|inv| {
                 let fourbar = Mechanism::four_bar(&four_bar_v(&d, inv));
-                let c = fourbar.par_four_bar_loop(0., self.n);
+                let c = fourbar.par_four_bar_loop(0., TAU, self.n);
                 (c, inv)
             })
             .filter(|(curve, _)| !curve_is_nan(curve))
@@ -270,7 +270,7 @@ impl Planar {
                         let [t1, t2] = if t2 < t1 { [t2, t1] } else { [t1, t2] };
                         [&curve[t1..t2], &[&curve[t2..], &curve[..t1]].concat()]
                             .into_par_iter()
-                            .filter(|curve| curve.len() >= self.curve.len())
+                            .filter(|curve| dbg!(curve.len()) >= dbg!(self.curve.len()))
                             .map(|curve| self.open_curve_slice(curve, &d, inv))
                             .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
                             .unwrap()
@@ -279,7 +279,7 @@ impl Planar {
                     curve.push(curve[0]);
                     let efd = Efd::from_curve(&curve, Some(self.harmonic));
                     let four_bar = four_bar_coeff(&d, inv, efd.to(&self.efd));
-                    let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., self.n);
+                    let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., TAU, self.n);
                     (geo_err_closed(&self.curve, &curve), four_bar, efd)
                 };
                 (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)

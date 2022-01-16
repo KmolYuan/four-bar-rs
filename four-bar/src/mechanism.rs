@@ -59,8 +59,8 @@ impl Mechanism {
     }
 
     /// A loop trajectory for only coupler point.
-    pub fn four_bar_loop(&self, start: f64, n: usize) -> Vec<[f64; 2]> {
-        let interval = TAU / n as f64;
+    pub fn four_bar_loop(&self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
+        let interval = (end - start).rem_euclid(TAU) / n as f64;
         let mut path = vec![[0.; 2]; n];
         for (i, c) in path.iter_mut().enumerate() {
             let a = start + i as f64 * interval;
@@ -72,8 +72,8 @@ impl Mechanism {
     }
 
     /// Get the trajectory by parallel computing.
-    pub fn par_four_bar_loop(&self, start: f64, n: usize) -> Vec<[f64; 2]> {
-        let interval = TAU / n as f64;
+    pub fn par_four_bar_loop(&self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
+        let interval = (end - start).rem_euclid(TAU) / n as f64;
         (0..n)
             .into_par_iter()
             .map(|i| {
