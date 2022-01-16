@@ -85,12 +85,6 @@ pub fn curve_is_nan(curve: &[[f64; 2]]) -> bool {
 
 /// Geometry error between two closed curves.
 pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
-    assert!(
-        curve.len() >= target.len(),
-        "curve length {} must greater than target {}",
-        curve.len(),
-        target.len()
-    );
     // Find the head (greedy)
     let (index, basic_err) = curve
         .par_iter()
@@ -216,6 +210,7 @@ impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
         assert!(curve.len() > 1, "target curve is not long enough");
+        assert!(n > curve.len(), "n must longer than target curve");
         // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
@@ -267,7 +262,7 @@ impl Planar {
                 (c, inv)
             })
             .filter(|(curve, _)| !curve_is_nan(curve))
-            .map(|(inv, mut curve)| {
+            .map(|(mut curve, inv)| {
                 let (geo_err, four_bar, efd) = if self.open {
                     let [t1, t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
                     if t1 == t2 {
@@ -276,6 +271,7 @@ impl Planar {
                         let [t1, t2] = if t2 < t1 { [t2, t1] } else { [t1, t2] };
                         [&curve[t1..t2], &[&curve[t2..], &curve[..t1]].concat()]
                             .into_par_iter()
+                            .filter(|curve| curve.len() >= self.curve.len())
                             .map(|curve| self.open_curve_slice(curve, &d, inv))
                             .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
                             .unwrap()
