@@ -103,7 +103,7 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         [Box::new(iter), Box::new(rev_iter)];
     let err = iters
         .into_par_iter()
-        .map(|iter| geo_err(target, start, iter))
+        .map(|iter| geo_err(&target[1..], start, iter))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     basic_err + err
@@ -130,11 +130,10 @@ fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
         .unwrap()
 }
 
-fn geo_err<'a, I>(target: &[[f64; 2]], start: &[f64; 2], iter: I) -> f64
+fn geo_err<'a, I>(target: &[[f64; 2]], start: &[f64; 2], mut iter: I) -> f64
 where
-    I: IntoIterator<Item = &'a [f64; 2]>,
+    I: Iterator<Item = &'a [f64; 2]>,
 {
-    let mut iter = iter.into_iter();
     let mut geo_err = 0.;
     let mut left = start;
     for tc in target {
