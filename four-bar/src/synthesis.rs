@@ -243,49 +243,58 @@ impl Planar {
         self.open
     }
 
-    fn open_curve_slice(&self, curve: &[[f64; 2]], d: &[f64; 5], inv: bool) -> (f64, FourBar, Efd) {
-        let (geo_err, geo) = geo_err_opened(&self.curve, curve);
-        let mut curve = anti_sym_ext(curve);
-        curve.push(curve[0]);
-        let efd = Efd::from_curve(&curve, Some(self.harmonic));
-        (geo_err, four_bar_coeff(d, inv, geo), efd)
+    fn open_search(&self, d: &[f64; 5], t1: f64, t2: f64) -> Option<(f64, FourBar)> {
+        [
+            (t1, t2, false),
+            (t2, t1, false),
+            (t1, t2, true),
+            (t2, t1, true),
+        ]
+        .into_par_iter()
+        .map(|(t1, t2, inv)| {
+            let fourbar = Mechanism::four_bar(&four_bar_v(d, inv));
+            (fourbar.par_four_bar_loop(t1, t2, self.n), inv)
+        })
+        .filter(|(curve, _)| !curve_is_nan(curve))
+        .map(|(curve, inv)| {
+            let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
+            let mut curve = anti_sym_ext(&curve);
+            curve.push(curve[0]);
+            let efd = Efd::from_curve(&curve, Some(self.harmonic));
+            let four_bar = four_bar_coeff(d, inv, geo);
+            (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
+        })
+        .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
+    }
+
+    fn close_search(&self, d: &[f64; 5]) -> Option<(f64, FourBar)> {
+        [false, true]
+            .into_par_iter()
+            .map(|inv| {
+                let fourbar = Mechanism::four_bar(&four_bar_v(d, inv));
+                let mut curve = fourbar.par_four_bar_loop(0., TAU, self.n);
+                curve.push(curve[0]);
+                (curve, inv)
+            })
+            .filter(|(curve, _)| !curve_is_nan(curve))
+            .map(|(curve, inv)| {
+                let efd = Efd::from_curve(&curve, Some(self.harmonic));
+                let four_bar = four_bar_coeff(d, inv, efd.to(&self.efd));
+                let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., TAU, self.n);
+                let geo_err = geo_err_closed(&self.curve, &curve);
+                (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
+            })
+            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     }
 
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
         let d = grashof_transform(v);
-        [false, true]
-            .into_par_iter()
-            .map(|inv| {
-                let fourbar = Mechanism::four_bar(&four_bar_v(&d, inv));
-                let c = fourbar.par_four_bar_loop(0., TAU, self.n);
-                (c, inv)
-            })
-            .filter(|(curve, _)| !curve_is_nan(curve))
-            .map(|(mut curve, inv)| {
-                let (geo_err, four_bar, efd) = if self.open {
-                    let [t1, t2] = [v[5], v[6]].map(|v| (v * self.n as f64) as usize);
-                    if t1 == t2 {
-                        self.open_curve_slice(&[&curve[t1..], &curve[..t1]].concat(), &d, inv)
-                    } else {
-                        let [t1, t2] = if t2 < t1 { [t2, t1] } else { [t1, t2] };
-                        [&curve[t1..t2], &[&curve[t2..], &curve[..t1]].concat()]
-                            .into_par_iter()
-                            .filter(|curve| dbg!(curve.len()) >= dbg!(self.curve.len()))
-                            .map(|curve| self.open_curve_slice(curve, &d, inv))
-                            .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
-                            .unwrap()
-                    }
-                } else {
-                    curve.push(curve[0]);
-                    let efd = Efd::from_curve(&curve, Some(self.harmonic));
-                    let four_bar = four_bar_coeff(&d, inv, efd.to(&self.efd));
-                    let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., TAU, self.n);
-                    (geo_err_closed(&self.curve, &curve), four_bar, efd)
-                };
-                (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
-            })
-            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-            .unwrap_or_else(|| (1e10, FourBar::default()))
+        if self.open {
+            self.open_search(&d, v[5], v[6])
+        } else {
+            self.close_search(&d)
+        }
+        .unwrap_or_else(|| (1e10, FourBar::default()))
     }
 }
 
