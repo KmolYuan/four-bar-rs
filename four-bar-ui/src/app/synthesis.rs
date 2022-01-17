@@ -166,7 +166,7 @@ impl Synthesis {
                     if ui.button("🖴 Open CSV").clicked() {
                         let curve_csv = self.config.curve_csv.clone();
                         let done = move |_, s| *curve_csv.write().unwrap() = s;
-                        IoCtx::open("Delimiter-Separated Values", &["csv", "txt"], done);
+                        IoCtx::open_single("Delimiter-Separated Values", &["csv", "txt"], done);
                     }
                     if ui.button("🗑 Clear").clicked() {
                         *self.config.curve_csv.write().unwrap() = String::new();

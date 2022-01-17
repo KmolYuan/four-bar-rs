@@ -6,12 +6,20 @@ use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
+    fn open_file(ext: &str, done: JsValue, multiple: bool);
     fn save_file(s: &str, file_name: &str);
-    fn open_file(format: &str, done: JsValue);
     fn get_host() -> String;
     fn get_username() -> String;
     fn login(account: &str, body: &str, done: JsValue);
     fn logout(done: JsValue);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn js_ext(ext: &[&str]) -> String {
+    ext.iter()
+        .map(|s| format!(".{}", s))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -33,32 +41,35 @@ impl Default for IoCtx {
 
 #[cfg(target_arch = "wasm32")]
 impl IoCtx {
+    pub(crate) fn alert(s: &str) {
+        alert(s);
+    }
+
     pub(crate) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
         C: Fn(String, String) + 'static,
     {
-        let format = ext
-            .iter()
-            .map(|s| format!(".{}", s))
-            .collect::<Vec<_>>()
-            .join(",");
         let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done)).into_js_value();
-        open_file(&format, done);
+        open_file(&js_ext(ext), done, true);
     }
 
-    pub(crate) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], _done: C)
+    pub(crate) fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
+    where
+        C: FnOnce(String, String) + 'static,
+    {
+        open_file(&js_ext(ext), Closure::once_into_js(done), false);
+    }
+
+    pub(crate) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], done: C)
     where
         C: FnOnce(String) + 'static,
     {
         Self::save(s, file_name);
+        done(file_name.to_string());
     }
 
     pub(crate) fn save(s: &str, file_name: &str) {
         save_file(s, file_name);
-    }
-
-    pub(crate) fn alert(s: &str) {
-        alert(s);
     }
 
     pub(crate) fn get_host() -> String {
@@ -86,6 +97,13 @@ impl IoCtx {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl IoCtx {
+    pub(crate) fn alert(s: &str) {
+        rfd::MessageDialog::new()
+            .set_title("Message")
+            .set_description(s)
+            .show();
+    }
+
     pub(crate) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
         C: Fn(String, String) + 'static,
@@ -95,6 +113,16 @@ impl IoCtx {
                 let s = std::fs::read_to_string(&path).unwrap_or_default();
                 done(path.to_str().unwrap().to_string(), s);
             }
+        }
+    }
+
+    pub(crate) fn open_single<C>(fmt: &str, ext: &[&str], done: C)
+    where
+        C: Fn(String, String) + 'static,
+    {
+        if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
+            let s = std::fs::read_to_string(&path).unwrap_or_default();
+            done(path.to_str().unwrap().to_string(), s);
         }
     }
 
@@ -114,13 +142,6 @@ impl IoCtx {
 
     pub(crate) fn save(s: &str, file_name: &str) {
         std::fs::write(file_name, s).unwrap_or_default();
-    }
-
-    pub(crate) fn alert(s: &str) {
-        rfd::MessageDialog::new()
-            .set_title("Message")
-            .set_description(s)
-            .show();
     }
 
     pub(crate) fn get_host() -> String {
