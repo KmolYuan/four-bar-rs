@@ -109,20 +109,30 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     basic_err + err
 }
 
-fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
+/// Geometry error between two open curves.
+///
+/// This function also returns transformation information.
+pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
     let [t_start, t_end] = [target[0], target[target.len() - 1]];
     let [c_start, c_end] = [curve[0], curve[curve.len() - 1]];
-    let t_angle = (t_start[1] - t_end[1]).atan2(t_start[0] - t_end[0]);
-    let scale = (t_start[0] - t_end[0]).hypot(t_start[1] - t_end[1])
-        / (c_start[0] - c_end[0]).hypot(c_start[1] - c_end[1]);
+    let t_dx = t_start[0] - t_end[0];
+    let t_dy = t_start[1] - t_end[1];
+    let geo = GeoInfo {
+        rot: t_dy.atan2(t_dx),
+        scale: t_dx.hypot(t_dy),
+        center: t_start,
+    };
     [[c_start, c_end], [c_end, c_start]]
         .into_par_iter()
         .map(|[start, end]| {
+            let dx = start[0] - end[0];
+            let dy = start[1] - end[1];
             let geo = GeoInfo {
-                rot: t_angle - (start[1] - end[1]).atan2(start[0] - end[0]),
-                scale,
-                center: [t_start[0] - start[0], t_start[1] - start[1]],
-            };
+                rot: dy.atan2(dx),
+                scale: dx.hypot(dy),
+                center: start,
+            }
+            .to(&geo);
             let fitness = geo_err(target, &start, geo.transform(curve).iter().skip(1));
             (fitness, geo)
         })
