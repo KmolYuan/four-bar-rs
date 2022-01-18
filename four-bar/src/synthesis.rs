@@ -19,7 +19,7 @@
 use self::mh::{utility::prelude::*, ObjFunc};
 use crate::{FourBar, Mechanism};
 use efd::{Efd, GeoInfo};
-use std::f64::consts::TAU;
+use std::f64::consts::{FRAC_PI_4, TAU};
 
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
@@ -78,6 +78,13 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
+/// The EFD of open curve.
+pub fn anti_sym_efd(curve: &[[f64; 2]], harmonic: Option<usize>) -> Efd {
+    let mut curve = anti_sym_ext(curve);
+    curve.push(curve[0]);
+    Efd::from_curve(&curve, harmonic)
+}
+
 /// Return true if curve contains any NaN coordinate.
 pub fn curve_is_nan(curve: &[[f64; 2]]) -> bool {
     curve.iter().any(|c| c[0].is_nan() || c[0].is_nan())
@@ -113,27 +120,13 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
 ///
 /// This function also returns transformation information.
 pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
-    let [t_start, t_end] = [target[0], target[target.len() - 1]];
-    let [c_start, c_end] = [curve[0], curve[curve.len() - 1]];
-    let t_dx = t_start[0] - t_end[0];
-    let t_dy = t_start[1] - t_end[1];
-    let geo = GeoInfo {
-        rot: t_dy.atan2(t_dx),
-        scale: t_dx.hypot(t_dy),
-        center: t_start,
-    };
-    [[c_start, c_end], [c_end, c_start]]
+    let geo = GeoInfo::from_vector(target[0], target[target.len() - 1]);
+    let [start, end] = [curve[0], curve[curve.len() - 1]];
+    [[start, end], [end, start]]
         .into_par_iter()
         .map(|[start, end]| {
-            let dx = start[0] - end[0];
-            let dy = start[1] - end[1];
-            let geo = GeoInfo {
-                rot: dy.atan2(dx),
-                scale: dx.hypot(dy),
-                center: start,
-            }
-            .to(&geo);
-            let fitness = geo_err(target, &start, geo.transform(curve).iter().skip(1));
+            let geo = GeoInfo::from_vector(start, end).to(&geo);
+            let fitness = geo_err(target, &start, geo.transform(curve).iter());
             (fitness, geo)
         })
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
@@ -226,17 +219,16 @@ impl Planar {
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        let mut curve = if open {
-            for _ in 0..2 {
-                ub.push(1.);
-                lb.push(0.);
-            }
-            anti_sym_ext(curve)
+        let (curve, efd) = if open {
+            ub.extend_from_slice(&[TAU; 2]);
+            lb.extend_from_slice(&[0.; 2]);
+            (curve.to_vec(), anti_sym_efd(curve, Some(harmonic)))
         } else {
-            curve.to_vec()
+            let mut curve = curve.to_vec();
+            curve.push(curve[0]);
+            let efd = Efd::from_curve(&curve, Some(harmonic));
+            (curve, efd)
         };
-        curve.push(curve[0]);
-        let efd = Efd::from_curve(&curve, Some(harmonic));
         Self {
             curve,
             efd,
@@ -261,28 +253,29 @@ impl Planar {
             (t2, t1, true),
         ]
         .into_par_iter()
+        .map(|(t1, t2, inv)| (t1, if t2 <= t1 { t2 + TAU } else { t2 }, inv))
+        .filter(|(t1, t2, _)| t2 - t1 > FRAC_PI_4)
         .map(|(t1, t2, inv)| {
-            let fourbar = Mechanism::four_bar(&four_bar_v(d, inv));
-            (fourbar.par_four_bar_loop(t1, t2, self.n), inv)
+            let m = Mechanism::four_bar(&four_bar_v(d, inv));
+            (m.par_four_bar_loop(t1, t2, self.n), inv)
         })
         .filter(|(curve, _)| !curve_is_nan(curve))
         .map(|(curve, inv)| {
             let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
-            let mut curve = anti_sym_ext(&curve);
-            curve.push(curve[0]);
-            let efd = Efd::from_curve(&curve, Some(self.harmonic));
+            let efd = anti_sym_efd(&curve, Some(self.harmonic));
             let four_bar = four_bar_coeff(d, inv, geo);
+            // FIXME: EFD causes mirror shape
             (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
         })
-        .min_by(|(a, ..), (b, ..)| a.partial_cmp(b).unwrap())
+        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     }
 
     fn close_search(&self, d: &[f64; 5]) -> Option<(f64, FourBar)> {
         [false, true]
             .into_par_iter()
             .map(|inv| {
-                let fourbar = Mechanism::four_bar(&four_bar_v(d, inv));
-                let mut curve = fourbar.par_four_bar_loop(0., TAU, self.n);
+                let m = Mechanism::four_bar(&four_bar_v(d, inv));
+                let mut curve = m.par_four_bar_loop(0., TAU, self.n);
                 curve.push(curve[0]);
                 (curve, inv)
             })
