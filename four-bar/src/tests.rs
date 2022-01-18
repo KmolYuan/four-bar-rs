@@ -8,18 +8,45 @@ fn anti_symmetry_extension() {
     assert_eq!(ans, OPEN_CURVE1_ANS);
 }
 
-#[cfg(feature = "plotters")]
-#[allow(unused_imports)]
-#[test]
-fn planar() {
+#[cfg(test)]
+fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
     use crate::synthesis::*;
     use indicatif::ProgressBar;
-    use ron::{from_str, to_string};
-    use std::{
-        f64::consts::TAU,
-        fs::{read_to_string, write},
-    };
+    use std::{f64::consts::TAU, fs::write};
 
+    let pb = ProgressBar::new(gen);
+    let s = mh::Solver::build(mh::De::default())
+        .task(|ctx| ctx.gen == gen)
+        .callback(|ctx| pb.set_position(ctx.gen))
+        .pop_num(pop_num)
+        .record(|ctx| ctx.best_f)
+        .solve(Planar::new(target, 720, 90, open));
+    pb.finish();
+    plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
+    let ans = s.result();
+    write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
+    let curve = if open {
+        let v = s.best_parameters();
+        println!("{:?}", [v[5], v[6]]);
+        let [t1, t2] = if v[6] < v[5] {
+            [v[5], v[6] + TAU]
+        } else {
+            [v[5], v[6]]
+        };
+        Mechanism::four_bar(&ans).four_bar_loop(t1, t2, 360)
+    } else {
+        Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360)
+    };
+    plot::plot_curve(
+        "Synthesis Test",
+        &[("Target", &target), ("Optimized", &curve)],
+        "result.svg",
+    );
+}
+
+#[cfg(feature = "plotters")]
+#[test]
+fn planar() {
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),
     //     a: 0.,
@@ -58,24 +85,7 @@ fn planar() {
     // let target = TRIANGLE2;
     // let target = CRUNODE;
     // let target = LINE;
-    let gen = 50;
-    let pb = ProgressBar::new(gen);
-    let s = mh::Solver::build(mh::De::default())
-        .task(|ctx| ctx.gen == gen)
-        .callback(|ctx| pb.set_position(ctx.gen))
-        .pop_num(400)
-        .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, 90, true));
-    pb.finish();
-    plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
-    let ans = s.result();
-    write("result.ron", to_string(&ans).unwrap()).unwrap();
-    let path = Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360);
-    plot::plot_curve(
-        "Synthesis Test",
-        &[("Target", &target), ("Optimized", &path)],
-        "result.svg",
-    );
+    planar_synthesis(target, 40, 400, true);
 }
 
 pub const HAND: &[[f64; 2]] = &[
