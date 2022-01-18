@@ -3,8 +3,8 @@
 //! <https://en.wikipedia.org/wiki/Four-bar_linkage>
 //!
 //! ```
-//! use std::f64::consts::TAU;
 //! use four_bar::{FourBar, Mechanism};
+//! use std::f64::consts::TAU;
 //!
 //! // A four-bar mechanism example
 //! let m = Mechanism::four_bar(&FourBar::example());

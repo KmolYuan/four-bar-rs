@@ -180,6 +180,7 @@ impl Project {
                 }
             }
         });
+        ui.label(format!("Linkage type: {}", proj.four_bar.class()));
         ui.checkbox(&mut proj.hide, "Hide 👁");
         ui.add_enabled_ui(!proj.hide, |ui| {
             let fb = &mut proj.four_bar;
@@ -237,6 +238,9 @@ impl Project {
     }
 
     fn plot(&self, ui: &mut PlotUi, i: usize, id: usize, angle: f64, n: usize) {
+        if self.0.read().unwrap().hide {
+            return;
+        }
         let m = Mechanism::four_bar(&self.0.read().unwrap().four_bar);
         let is_main = i == id;
         let mut joints = [[0.; 2]; 5];

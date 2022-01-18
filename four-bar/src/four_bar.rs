@@ -3,6 +3,52 @@ use std::{
     ops::{Div, DivAssign},
 };
 
+/// The classification of the four-bar linkage.
+#[allow(missing_docs)]
+#[derive(Debug)]
+pub enum Class {
+    GCCC,
+    GCRR,
+    GRCR,
+    GRRC,
+    RRR1,
+    RRR2,
+    RRR3,
+    RRR4,
+}
+
+impl std::fmt::Display for Class {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s = match self {
+            Self::GCCC => "GCCC",
+            Self::GCRR => "GCRR",
+            Self::GRCR => "GRCR",
+            Self::GRRC => "GRRC",
+            Self::RRR1 => "RRR1",
+            Self::RRR2 => "RRR2",
+            Self::RRR3 => "RRR3",
+            Self::RRR4 => "RRR4",
+        };
+        f.write_str(s)
+    }
+}
+
+impl Class {
+    /// Return true if the type is Grashof linkage.
+    pub fn is_grashof(&self) -> bool {
+        match self {
+            Self::GCCC => true,
+            Self::GCRR => true,
+            Self::GRCR => true,
+            Self::GRRC => true,
+            Self::RRR1 => false,
+            Self::RRR2 => false,
+            Self::RRR3 => false,
+            Self::RRR4 => false,
+        }
+    }
+}
+
 /// Data type of the four-bar mechanism.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -40,6 +86,29 @@ impl FourBar {
             l4: 45.,
             g: FRAC_PI_6,
             inv: false,
+        }
+    }
+
+    /// Return the the type according to this linkage lengths.
+    pub fn class(&self) -> Class {
+        let mut d = [self.l0, self.l1, self.l2, self.l3];
+        d.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        if d[0] + d[3] < d[1] + d[2] {
+            match d[0] {
+                _ if d[0] == self.l0 => Class::GCCC,
+                _ if d[0] == self.l1 => Class::GCRR,
+                _ if d[0] == self.l2 => Class::GRCR,
+                _ if d[0] == self.l3 => Class::GRRC,
+                _ => unreachable!(),
+            }
+        } else {
+            match d[3] {
+                _ if d[3] == self.l0 => Class::RRR1,
+                _ if d[3] == self.l1 => Class::RRR2,
+                _ if d[3] == self.l2 => Class::RRR3,
+                _ if d[3] == self.l3 => Class::RRR4,
+                _ => unreachable!(),
+            }
         }
     }
 
