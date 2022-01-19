@@ -25,18 +25,7 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
     plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
     let ans = s.result();
     write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
-    let curve = if open {
-        let v = s.best_parameters();
-        println!("{:?}", [v[5], v[6]]);
-        let [t1, t2] = if v[6] < v[5] {
-            [v[5], v[6] + TAU]
-        } else {
-            [v[5], v[6]]
-        };
-        Mechanism::four_bar(&ans).four_bar_loop(t1, t2, 360)
-    } else {
-        Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360)
-    };
+    let curve = Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360);
     plot::plot_curve(
         "Synthesis Test",
         &[("Target", &target), ("Optimized", &curve)],

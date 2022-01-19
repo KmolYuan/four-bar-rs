@@ -78,13 +78,6 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
-/// The EFD of open curve.
-pub fn anti_sym_efd(curve: &[[f64; 2]], harmonic: Option<usize>) -> Efd {
-    let mut curve = anti_sym_ext(curve);
-    curve.push(curve[0]);
-    Efd::from_curve(&curve, harmonic)
-}
-
 /// Return true if curve contains any NaN coordinate.
 pub fn curve_is_nan(curve: &[[f64; 2]]) -> bool {
     curve.iter().any(|c| c[0].is_nan() || c[0].is_nan())
@@ -219,18 +212,15 @@ impl Planar {
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        let (curve, efd) = if open {
+        let efd = if open {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
-            (curve.to_vec(), anti_sym_efd(curve, Some(harmonic)))
+            Efd::from_curve(&anti_sym_ext(curve), Some(harmonic))
         } else {
-            let mut curve = curve.to_vec();
-            curve.push(curve[0]);
-            let efd = Efd::from_curve(&curve, Some(harmonic));
-            (curve, efd)
+            Efd::from_curve(curve, Some(harmonic))
         };
         Self {
-            curve,
+            curve: curve.to_vec(),
             efd,
             n,
             harmonic,
@@ -262,7 +252,7 @@ impl Planar {
         .filter(|(curve, _)| !curve_is_nan(curve))
         .map(|(curve, inv)| {
             let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
-            let efd = anti_sym_efd(&curve, Some(self.harmonic));
+            let efd = Efd::from_curve(&anti_sym_ext(&curve), Some(self.harmonic));
             let four_bar = four_bar_coeff(d, inv, geo);
             // FIXME: EFD causes mirror shape
             (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
@@ -275,9 +265,7 @@ impl Planar {
             .into_par_iter()
             .map(|inv| {
                 let m = Mechanism::four_bar(&four_bar_v(d, inv));
-                let mut curve = m.par_four_bar_loop(0., TAU, self.n);
-                curve.push(curve[0]);
-                (curve, inv)
+                (m.par_four_bar_loop(0., TAU, self.n), inv)
             })
             .filter(|(curve, _)| !curve_is_nan(curve))
             .map(|(curve, inv)| {
