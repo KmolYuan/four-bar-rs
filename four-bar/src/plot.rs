@@ -59,8 +59,8 @@ pub fn plot_curve<P>(title: &str, curves: &[(&str, &[[f64; 2]])], path: P)
 where
     P: AsRef<Path>,
 {
-    let xs = curves.iter().flat_map(|(_, c)| c.iter().map(|c| c[0]));
-    let ys = curves.iter().flat_map(|(_, c)| c.iter().map(|c| c[1]));
+    let xs = curves.iter().flat_map(|(_, c)| c.iter().map(|&[x, _]| x));
+    let ys = curves.iter().flat_map(|(_, c)| c.iter().map(|&[_, y]| y));
     let (x_max, x_min) = find_extreme(xs);
     let (y_max, y_min) = find_extreme(ys);
     let root = SVGBackend::new(&path, (1000, 1000)).into_drawing_area();

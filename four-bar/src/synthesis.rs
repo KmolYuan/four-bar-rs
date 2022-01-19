@@ -54,8 +54,8 @@ pub fn open_curve(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
 /// Anti-symmetric extension function.
 pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     let n = curve.len() - 1;
-    let [x0, y0] = [curve[0][0], curve[0][1]];
-    let [xn, yn] = [curve[n][0], curve[n][1]];
+    let [x0, y0] = curve[0];
+    let [xn, yn] = curve[n];
     let xd = xn - x0;
     let yd = yn - y0;
     let n = n as f64;
@@ -71,7 +71,7 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
         .iter()
         .take(curve.len() - 1)
         .skip(1)
-        .map(|&[x, y]| [-x, -y])
+        .map(|[x, y]| [-x, -y])
         .rev()
         .collect();
     v1.append(&mut v2);
@@ -96,9 +96,9 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let (index, basic_err) = curve
         .par_iter()
         .enumerate()
-        .map(|(i, c)| {
-            let dx = target[0][0] - c[0];
-            let dy = target[0][1] - c[1];
+        .map(|(i, [x, y])| {
+            let dx = target[0][0] - x;
+            let dy = target[0][1] - y;
             (i, dx * dx + dy * dy)
         })
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
