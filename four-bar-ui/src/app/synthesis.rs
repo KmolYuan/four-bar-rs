@@ -54,8 +54,8 @@ struct SynConfig {
 impl Default for SynConfig {
     fn default() -> Self {
         Self {
-            gen: 50,
-            pop: 300,
+            gen: 40,
+            pop: 400,
             open: false,
         }
     }
