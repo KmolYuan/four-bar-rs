@@ -78,6 +78,13 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
+/// Close the open curve directly.
+pub fn close_loop(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let mut curve = curve.to_vec();
+    curve.push(curve[0]);
+    curve
+}
+
 /// Return true if curve contains any NaN coordinate.
 pub fn curve_is_nan(curve: &[[f64; 2]]) -> bool {
     curve.iter().any(|c| c[0].is_nan() || c[0].is_nan())
@@ -215,7 +222,7 @@ impl Planar {
         let efd = if open {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
-            Efd::from_curve(&anti_sym_ext(curve), Some(harmonic))
+            Efd::from_curve(&close_loop(curve), Some(harmonic))
         } else {
             Efd::from_curve(curve, Some(harmonic))
         };
@@ -252,9 +259,8 @@ impl Planar {
         .filter(|(curve, _)| !curve_is_nan(curve))
         .map(|(curve, inv)| {
             let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
-            let efd = Efd::from_curve(&anti_sym_ext(&curve), Some(self.harmonic));
+            let efd = Efd::from_curve(&close_loop(&curve), Some(self.harmonic));
             let four_bar = four_bar_coeff(d, inv, geo);
-            // FIXME: EFD causes mirror shape
             (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
         })
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
