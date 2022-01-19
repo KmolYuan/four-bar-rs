@@ -24,24 +24,25 @@ use std::f64::consts::{FRAC_PI_4, TAU};
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
-/// Input a curve, split out none-NaN parts to a continuous curve.
+/// Input a curve, split out finite parts to a continuous curve. (greedy method)
 ///
-/// The part is close to the first-found none-NaN item.
-pub fn open_curve(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
-    let is_nan = |c: &[f64; 2]| c[0].is_nan() || c[1].is_nan();
-    let is_not_nan = |c: &[f64; 2]| !c[0].is_nan() && !c[1].is_nan();
+/// The result is close to the first-found finite item,
+/// and the part of infinity and NaN will be dropped.
+pub fn get_valid_part(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let is_invalid = |[x, y]: &[f64; 2]| !x.is_finite() || !y.is_finite();
+    let is_valid = |[x, y]: &[f64; 2]| x.is_finite() && y.is_finite();
     let mut iter = curve.iter();
-    match iter.position(is_not_nan) {
+    match iter.position(is_valid) {
         None => Vec::new(),
-        Some(t1) => match iter.position(is_nan) {
+        Some(t1) => match iter.position(is_invalid) {
             None => curve[t1..].to_vec(),
             Some(t2) => {
                 let s1 = curve[t1..t1 + t2].to_vec();
                 let mut iter = curve.iter().rev();
-                match iter.position(is_not_nan) {
+                match iter.position(is_valid) {
                     Some(t1) if t1 == 0 => {
                         let t1 = curve.len() - 1 - t1;
-                        let t2 = t1 - iter.position(is_nan).unwrap();
+                        let t2 = t1 - iter.position(is_invalid).unwrap();
                         [&curve[t2..t1], &s1].concat()
                     }
                     _ => s1,
@@ -78,20 +79,32 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
-/// Close the open curve directly.
-pub fn close_loop(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
-    let mut curve = curve.to_vec();
-    curve.push(curve[0]);
-    curve
+/// Return true if curve contains any NaN coordinate.
+pub fn valid_curve(curve: &[[f64; 2]]) -> bool {
+    curve.iter().any(|[x, y]| !x.is_finite() || !y.is_finite())
 }
 
-/// Return true if curve contains any NaN coordinate.
-pub fn curve_is_nan(curve: &[[f64; 2]]) -> bool {
-    curve.iter().any(|c| c[0].is_nan() || c[0].is_nan())
+/// Geometry error between two open curves.
+///
+/// This function also returns transformation information.
+pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
+    debug_assert!(target.len() < curve.len());
+    let geo = GeoInfo::from_vector(target[0], target[target.len() - 1]);
+    let [start, end] = [curve[0], curve[curve.len() - 1]];
+    [[start, end], [end, start]]
+        .into_par_iter()
+        .map(|[start, end]| {
+            let geo = GeoInfo::from_vector(start, end).to(&geo);
+            let fitness = geo_err(target, &start, geo.transform(curve).iter());
+            (fitness, geo)
+        })
+        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+        .unwrap()
 }
 
 /// Geometry error between two closed curves.
 pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
+    debug_assert!(target.len() < curve.len());
     // Find the head (greedy)
     let (index, basic_err) = curve
         .par_iter()
@@ -114,23 +127,6 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     basic_err + err
-}
-
-/// Geometry error between two open curves.
-///
-/// This function also returns transformation information.
-pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
-    let geo = GeoInfo::from_vector(target[0], target[target.len() - 1]);
-    let [start, end] = [curve[0], curve[curve.len() - 1]];
-    [[start, end], [end, start]]
-        .into_par_iter()
-        .map(|[start, end]| {
-            let geo = GeoInfo::from_vector(start, end).to(&geo);
-            let fitness = geo_err(target, &start, geo.transform(curve).iter());
-            (fitness, geo)
-        })
-        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-        .unwrap()
 }
 
 fn geo_err<'a, I>(target: &[[f64; 2]], start: &[f64; 2], mut iter: I) -> f64
@@ -211,6 +207,7 @@ pub struct Planar {
 impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
+        let curve = get_valid_part(curve);
         assert!(curve.len() > 1, "target curve is not long enough");
         assert!(n > curve.len(), "n must longer than target curve");
         // linkages
@@ -222,12 +219,12 @@ impl Planar {
         let efd = if open {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
-            Efd::from_curve(&close_loop(curve), Some(harmonic))
+            Efd::from_curve(&curve, Some(harmonic))
         } else {
-            Efd::from_curve(curve, Some(harmonic))
+            Efd::from_curve(&curve, Some(harmonic))
         };
         Self {
-            curve: curve.to_vec(),
+            curve,
             efd,
             n,
             harmonic,
@@ -242,7 +239,7 @@ impl Planar {
         self.open
     }
 
-    fn open_search(&self, d: &[f64; 5], t1: f64, t2: f64) -> Option<(f64, FourBar)> {
+    fn search_opened(&self, d: &[f64; 5], t1: f64, t2: f64) -> Option<(f64, FourBar)> {
         [
             (t1, t2, false),
             (t2, t1, false),
@@ -256,24 +253,24 @@ impl Planar {
             let m = Mechanism::four_bar(&four_bar_v(d, inv));
             (m.par_four_bar_loop(t1, t2, self.n), inv)
         })
-        .filter(|(curve, _)| !curve_is_nan(curve))
+        .filter(|(curve, _)| !valid_curve(curve))
         .map(|(curve, inv)| {
             let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
-            let efd = Efd::from_curve(&close_loop(&curve), Some(self.harmonic));
+            let efd = Efd::from_curve(&curve, Some(self.harmonic));
             let four_bar = four_bar_coeff(d, inv, geo);
             (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
         })
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     }
 
-    fn close_search(&self, d: &[f64; 5]) -> Option<(f64, FourBar)> {
+    fn search_closed(&self, d: &[f64; 5]) -> Option<(f64, FourBar)> {
         [false, true]
             .into_par_iter()
             .map(|inv| {
                 let m = Mechanism::four_bar(&four_bar_v(d, inv));
                 (m.par_four_bar_loop(0., TAU, self.n), inv)
             })
-            .filter(|(curve, _)| !curve_is_nan(curve))
+            .filter(|(curve, _)| !valid_curve(curve))
             .map(|(curve, inv)| {
                 let efd = Efd::from_curve(&curve, Some(self.harmonic));
                 let four_bar = four_bar_coeff(d, inv, efd.to(&self.efd));
@@ -287,9 +284,9 @@ impl Planar {
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
         let d = grashof_transform(v);
         if self.open {
-            self.open_search(&d, v[5], v[6])
+            self.search_opened(&d, v[5], v[6])
         } else {
-            self.close_search(&d)
+            self.search_closed(&d)
         }
         .unwrap_or_else(|| (1e10, FourBar::default()))
     }

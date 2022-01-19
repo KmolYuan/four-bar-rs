@@ -7,7 +7,7 @@ use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
     Button, Color32, ComboBox, Ui,
 };
-use four_bar::{synthesis::open_curve, FourBar, Mechanism};
+use four_bar::{synthesis::get_valid_part, FourBar, Mechanism};
 use serde::{Deserialize, Serialize};
 use std::{
     ops::{Deref, DerefMut},
@@ -194,7 +194,7 @@ impl Project {
                             Pivot::Follower => &curve[1],
                             Pivot::Coupler => &curve[2],
                         };
-                        let s = dump_csv(&open_curve(p)).unwrap();
+                        let s = dump_csv(&get_valid_part(p)).unwrap();
                         IoCtx::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
                     }
                     ComboBox::from_label("")
