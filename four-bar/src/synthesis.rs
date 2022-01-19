@@ -202,6 +202,7 @@ pub struct Planar {
     ub: Vec<f64>,
     lb: Vec<f64>,
     open: bool,
+    geo_factor: f64,
 }
 
 impl Planar {
@@ -231,6 +232,7 @@ impl Planar {
             ub,
             lb,
             open,
+            geo_factor: 1e-5,
         }
     }
 
@@ -258,7 +260,10 @@ impl Planar {
             let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
             let efd = Efd::from_curve(&curve, Some(self.harmonic));
             let four_bar = four_bar_coeff(d, inv, geo);
-            (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
+            (
+                efd.discrepancy(&self.efd) + geo_err * self.geo_factor,
+                four_bar,
+            )
         })
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     }
@@ -276,7 +281,10 @@ impl Planar {
                 let four_bar = four_bar_coeff(d, inv, efd.to(&self.efd));
                 let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., TAU, self.n);
                 let geo_err = geo_err_closed(&self.curve, &curve);
-                (efd.discrepancy(&self.efd) + geo_err * 1e-5, four_bar)
+                (
+                    efd.discrepancy(&self.efd) + geo_err * self.geo_factor,
+                    four_bar,
+                )
             })
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     }
