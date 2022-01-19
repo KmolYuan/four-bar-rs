@@ -4,30 +4,37 @@ use std::{
 };
 
 /// The classification of the four-bar linkage.
-#[allow(missing_docs)]
 #[derive(Debug)]
 pub enum Class {
+    /// Grashof double crank
     GCCC,
+    /// Grashof crank rocker
     GCRR,
+    /// Grashof double rocker
     GRCR,
+    /// Grashof rocker crank
     GRRC,
+    /// Non-Grashof Double rocker (type 1)
     RRR1,
+    /// Non-Grashof Double rocker (type 2)
     RRR2,
+    /// Non-Grashof Double rocker (type 3)
     RRR3,
+    /// Non-Grashof Double rocker (type 4)
     RRR4,
 }
 
 impl std::fmt::Display for Class {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let s = match self {
-            Self::GCCC => "GCCC",
-            Self::GCRR => "GCRR",
-            Self::GRCR => "GRCR",
-            Self::GRRC => "GRRC",
-            Self::RRR1 => "RRR1",
-            Self::RRR2 => "RRR2",
-            Self::RRR3 => "RRR3",
-            Self::RRR4 => "RRR4",
+            Self::GCCC => "Grashof double crank (GCCC)",
+            Self::GCRR => "Grashof crank rocker (GCRR)",
+            Self::GRCR => "Grashof double rocker (GRCR)",
+            Self::GRRC => "Grashof rocker crank (GRRC)",
+            Self::RRR1 => "Non-Grashof Double rocker (RRR1)",
+            Self::RRR2 => "Non-Grashof Double rocker (RRR2)",
+            Self::RRR3 => "Non-Grashof Double rocker (RRR3)",
+            Self::RRR4 => "Non-Grashof Double rocker (RRR4)",
         };
         f.write_str(s)
     }
@@ -36,16 +43,7 @@ impl std::fmt::Display for Class {
 impl Class {
     /// Return true if the type is Grashof linkage.
     pub fn is_grashof(&self) -> bool {
-        match self {
-            Self::GCCC => true,
-            Self::GCRR => true,
-            Self::GRCR => true,
-            Self::GRRC => true,
-            Self::RRR1 => false,
-            Self::RRR2 => false,
-            Self::RRR3 => false,
-            Self::RRR4 => false,
-        }
+        matches!(self, Self::GCCC | Self::GCRR | Self::GRCR | Self::GRRC)
     }
 }
 
