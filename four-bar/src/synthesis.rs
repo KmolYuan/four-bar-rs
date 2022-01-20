@@ -93,21 +93,17 @@ pub fn valid_curve(curve: &[[f64; 2]]) -> bool {
 }
 
 /// Geometry error between two open curves.
-///
-/// This function also returns transformation information.
-pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo) {
+pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     debug_assert!(target.len() < curve.len());
-    let geo = GeoInfo::from_vector(target[0], target[target.len() - 1]);
-    let [start, end] = [curve[0], curve[curve.len() - 1]];
-    let geo = GeoInfo::from_vector(start, end).to(&geo);
-    let curve = geo.transform(curve);
-    let iters: [CurveIter; 2] = [Box::new(curve.iter()), Box::new(curve.iter().rev())];
-    let fitness = iters
+    let iters: [(_, CurveIter); 2] = [
+        (curve[0], Box::new(curve.iter())),
+        (curve[curve.len() - 1], Box::new(curve.iter().rev())),
+    ];
+    iters
         .into_par_iter()
-        .map(|iter| geo_err(target, &start, iter))
+        .map(|(start, iter)| geo_err(target, &start, iter))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    (fitness, geo)
+        .unwrap()
 }
 
 /// Geometry error between two closed curves.
@@ -224,13 +220,11 @@ impl Planar {
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        let efd = if open {
+        if open {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
-            Efd::from_curve(&close_loop(curve.clone()), Some(harmonic))
-        } else {
-            Efd::from_curve(&curve, Some(harmonic))
-        };
+        }
+        let efd = Efd::from_curve(&close_loop(curve.clone()), Some(harmonic));
         Self {
             curve,
             efd,
@@ -264,13 +258,12 @@ impl Planar {
         })
         .filter(|(curve, _)| !valid_curve(curve))
         .map(|(curve, inv)| {
-            let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
-            let efd = Efd::from_curve(&close_loop(curve), Some(self.harmonic));
+            let efd = Efd::from_curve(&close_loop(curve.clone()), Some(self.harmonic));
+            let geo = efd.to(&self.efd);
+            let geo_err = geo_err_opened(&self.curve, &geo.transform(&curve));
             let four_bar = four_bar_coeff(d, inv, geo);
-            (
-                efd.discrepancy(&self.efd) + geo_err * self.geo_factor,
-                four_bar,
-            )
+            let fitness = efd.discrepancy(&self.efd) + geo_err * self.geo_factor;
+            (fitness, four_bar)
         })
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     }
@@ -284,14 +277,12 @@ impl Planar {
             })
             .filter(|(curve, _)| !valid_curve(curve))
             .map(|(curve, inv)| {
-                let efd = Efd::from_curve(&curve, Some(self.harmonic));
-                let four_bar = four_bar_coeff(d, inv, efd.to(&self.efd));
-                let curve = Mechanism::four_bar(&four_bar).par_four_bar_loop(0., TAU, self.n);
-                let geo_err = geo_err_closed(&self.curve, &curve);
-                (
-                    efd.discrepancy(&self.efd) + geo_err * self.geo_factor,
-                    four_bar,
-                )
+                let efd = Efd::from_curve(&close_loop(curve.clone()), Some(self.harmonic));
+                let geo = efd.to(&self.efd);
+                let geo_err = geo_err_closed(&self.curve, &geo.transform(&curve));
+                let four_bar = four_bar_coeff(d, inv, geo);
+                let fitness = efd.discrepancy(&self.efd) + geo_err * self.geo_factor;
+                (fitness, four_bar)
             })
             .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     }
