@@ -24,6 +24,8 @@ use std::f64::consts::{FRAC_PI_4, TAU};
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
+type CurveIter<'a> = Box<dyn Iterator<Item = &'a [f64; 2]> + Send + Sync + 'a>;
+
 /// Input a curve, split out finite parts to a continuous curve. (greedy method)
 ///
 /// The result is close to the first-found finite item,
@@ -79,6 +81,12 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
+/// Close the open curve directly.
+pub fn close_loop(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    curve.push(curve[0]);
+    curve
+}
+
 /// Return true if curve contains any NaN coordinate.
 pub fn valid_curve(curve: &[[f64; 2]]) -> bool {
     curve.iter().any(|[x, y]| !x.is_finite() || !y.is_finite())
@@ -91,22 +99,15 @@ pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo)
     debug_assert!(target.len() < curve.len());
     let geo = GeoInfo::from_vector(target[0], target[target.len() - 1]);
     let [start, end] = [curve[0], curve[curve.len() - 1]];
-    [[start, end], [end, start]]
+    let geo = GeoInfo::from_vector(start, end).to(&geo);
+    let curve = geo.transform(curve);
+    let iters: [CurveIter; 2] = [Box::new(curve.iter()), Box::new(curve.iter().rev())];
+    let fitness = iters
         .into_par_iter()
-        .map(|[start, end]| {
-            let geo = GeoInfo::from_vector(start, end).to(&geo);
-            let curve = geo.transform(curve);
-            let iters: [Box<dyn Iterator<Item = &[f64; 2]> + Send + Sync>; 2] =
-                [Box::new(curve.iter()), Box::new(curve.iter().rev())];
-            let fitness = iters
-                .into_par_iter()
-                .map(|iter| geo_err(target, &start, iter))
-                .min_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
-            (fitness, geo)
-        })
-        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-        .unwrap()
+        .map(|iter| geo_err(target, &start, iter))
+        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+    (fitness, geo)
 }
 
 /// Geometry error between two closed curves.
@@ -126,8 +127,7 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
     let start = iter.next().unwrap();
     let rev_iter = iter.clone().rev();
-    let iters: [Box<dyn Iterator<Item = &[f64; 2]> + Send + Sync>; 2] =
-        [Box::new(iter), Box::new(rev_iter)];
+    let iters: [CurveIter; 2] = [Box::new(iter), Box::new(rev_iter)];
     let err = iters
         .into_par_iter()
         .map(|iter| geo_err(&target[1..], start, iter))
@@ -227,7 +227,7 @@ impl Planar {
         let efd = if open {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
-            Efd::from_curve(&curve, Some(harmonic))
+            Efd::from_curve(&close_loop(curve.clone()), Some(harmonic))
         } else {
             Efd::from_curve(&curve, Some(harmonic))
         };
@@ -265,7 +265,7 @@ impl Planar {
         .filter(|(curve, _)| !valid_curve(curve))
         .map(|(curve, inv)| {
             let (geo_err, geo) = geo_err_opened(&self.curve, &curve);
-            let efd = Efd::from_curve(&curve, Some(self.harmonic));
+            let efd = Efd::from_curve(&close_loop(curve), Some(self.harmonic));
             let four_bar = four_bar_coeff(d, inv, geo);
             (
                 efd.discrepancy(&self.efd) + geo_err * self.geo_factor,
