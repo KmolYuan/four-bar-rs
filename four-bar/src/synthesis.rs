@@ -88,7 +88,7 @@ pub fn close_loop(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 }
 
 /// Return true if curve contains any NaN coordinate.
-pub fn valid_curve(curve: &[[f64; 2]]) -> bool {
+pub fn is_valid_curve(curve: &[[f64; 2]]) -> bool {
     curve.iter().any(|[x, y]| !x.is_finite() || !y.is_finite())
 }
 
@@ -211,9 +211,9 @@ pub struct Planar {
 impl Planar {
     /// Create a new task.
     pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
-        let curve = get_valid_part(curve);
-        assert!(curve.len() > 1, "target curve is not long enough");
-        assert!(n > curve.len(), "n must longer than target curve");
+        let curve = close_loop(get_valid_part(curve));
+        assert!(curve.len() > 2, "target curve is not long enough");
+        assert!(n > curve.len() - 1, "n must longer than target curve");
         // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
@@ -224,7 +224,7 @@ impl Planar {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
         }
-        let efd = Efd::from_curve(&close_loop(curve.clone()), Some(harmonic));
+        let efd = Efd::from_curve(&curve, Some(harmonic));
         Self {
             curve,
             efd,
@@ -254,11 +254,11 @@ impl Planar {
         .filter(|(t1, t2, _)| t2 - t1 > FRAC_PI_4)
         .map(|(t1, t2, inv)| {
             let m = Mechanism::four_bar(&four_bar_v(d, inv));
-            (m.par_four_bar_loop(t1, t2, self.n), inv)
+            (close_loop(m.par_four_bar_loop(t1, t2, self.n)), inv)
         })
-        .filter(|(curve, _)| !valid_curve(curve))
+        .filter(|(curve, _)| !is_valid_curve(curve))
         .map(|(curve, inv)| {
-            let efd = Efd::from_curve(&close_loop(curve.clone()), Some(self.harmonic));
+            let efd = Efd::from_curve(&curve, Some(self.harmonic));
             let geo = efd.to(&self.efd);
             let geo_err = geo_err_opened(&self.curve, &geo.transform(&curve));
             let four_bar = four_bar_coeff(d, inv, geo);
@@ -273,11 +273,11 @@ impl Planar {
             .into_par_iter()
             .map(|inv| {
                 let m = Mechanism::four_bar(&four_bar_v(d, inv));
-                (m.par_four_bar_loop(0., TAU, self.n), inv)
+                (close_loop(m.par_four_bar_loop(0., TAU, self.n)), inv)
             })
-            .filter(|(curve, _)| !valid_curve(curve))
+            .filter(|(curve, _)| !is_valid_curve(curve))
             .map(|(curve, inv)| {
-                let efd = Efd::from_curve(&close_loop(curve.clone()), Some(self.harmonic));
+                let efd = Efd::from_curve(&curve, Some(self.harmonic));
                 let geo = efd.to(&self.efd);
                 let geo_err = geo_err_closed(&self.curve, &geo.transform(&curve));
                 let four_bar = four_bar_coeff(d, inv, geo);
