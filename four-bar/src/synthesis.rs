@@ -95,7 +95,14 @@ pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> (f64, GeoInfo)
         .into_par_iter()
         .map(|[start, end]| {
             let geo = GeoInfo::from_vector(start, end).to(&geo);
-            let fitness = geo_err(target, &start, geo.transform(curve).iter());
+            let curve = geo.transform(curve);
+            let iters: [Box<dyn Iterator<Item = &[f64; 2]> + Send + Sync>; 2] =
+                [Box::new(curve.iter()), Box::new(curve.iter().rev())];
+            let fitness = iters
+                .into_par_iter()
+                .map(|iter| geo_err(target, &start, iter))
+                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap();
             (fitness, geo)
         })
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
