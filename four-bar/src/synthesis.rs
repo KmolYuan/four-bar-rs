@@ -242,57 +242,39 @@ impl Planar {
         self.open
     }
 
-    fn search_opened(&self, d: &[f64; 5], t1: f64, t2: f64) -> Option<(f64, FourBar)> {
-        [
-            (t1, t2, false),
-            (t2, t1, false),
-            (t1, t2, true),
-            (t2, t1, true),
-        ]
-        .into_par_iter()
-        .map(|(t1, t2, inv)| (t1, if t2 <= t1 { t2 + TAU } else { t2 }, inv))
-        .filter(|(t1, t2, _)| t2 - t1 > FRAC_PI_4)
-        .map(|(t1, t2, inv)| {
-            let m = Mechanism::four_bar(&four_bar_v(d, inv));
-            (close_loop(m.par_four_bar_loop(t1, t2, self.n)), inv)
-        })
-        .filter(|(curve, _)| !is_valid_curve(curve))
-        .map(|(curve, inv)| {
-            let efd = Efd::from_curve(&curve, Some(self.harmonic));
-            let geo = efd.to(&self.efd);
-            let geo_err = geo_err_opened(&self.curve, &geo.transform(&curve));
-            let four_bar = four_bar_coeff(d, inv, geo);
-            let fitness = efd.discrepancy(&self.efd) + geo_err * self.geo_factor;
-            (fitness, four_bar)
-        })
-        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-    }
-
-    fn search_closed(&self, d: &[f64; 5]) -> Option<(f64, FourBar)> {
-        [false, true]
-            .into_par_iter()
-            .map(|inv| {
-                let m = Mechanism::four_bar(&four_bar_v(d, inv));
-                (close_loop(m.par_four_bar_loop(0., TAU, self.n)), inv)
-            })
-            .filter(|(curve, _)| !is_valid_curve(curve))
-            .map(|(curve, inv)| {
-                let efd = Efd::from_curve(&curve, Some(self.harmonic));
-                let geo = efd.to(&self.efd);
-                let geo_err = geo_err_closed(&self.curve, &geo.transform(&curve));
-                let four_bar = four_bar_coeff(d, inv, geo);
-                let fitness = efd.discrepancy(&self.efd) + geo_err * self.geo_factor;
-                (fitness, four_bar)
-            })
-            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-    }
-
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
         let d = grashof_transform(v);
-        if self.open {
-            self.search_opened(&d, v[5], v[6])
+        let geo_err = if self.open {
+            geo_err_opened
         } else {
-            self.search_closed(&d)
+            geo_err_closed
+        };
+        let f = |[t1, t2]: [f64; 2]| {
+            [false, true]
+                .into_par_iter()
+                .map(move |inv| {
+                    let m = Mechanism::four_bar(&four_bar_v(&d, inv));
+                    (close_loop(m.par_four_bar_loop(t1, t2, self.n)), inv)
+                })
+                .filter(|(curve, _)| !is_valid_curve(curve))
+                .map(|(curve, inv)| {
+                    let efd = Efd::from_curve(&curve, Some(self.harmonic));
+                    let geo = efd.to(&self.efd);
+                    let geo_err = geo_err(&self.curve, &geo.transform(&curve));
+                    let four_bar = four_bar_coeff(&d, inv, geo);
+                    let fitness = efd.discrepancy(&self.efd) + geo_err * self.geo_factor;
+                    (fitness, four_bar)
+                })
+        };
+        if self.open {
+            [[v[5], v[6]], [v[6], v[5]]]
+                .into_par_iter()
+                .map(|[t1, t2]| [t1, if t2 <= t1 { t2 + TAU } else { t2 }])
+                .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
+                .flat_map(f)
+                .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+        } else {
+            f([0., TAU]).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
         }
         .unwrap_or_else(|| (1e10, FourBar::default()))
     }
