@@ -24,7 +24,15 @@ use std::f64::consts::{FRAC_PI_4, TAU};
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
-type CurveIter<'a> = Box<dyn Iterator<Item = &'a [f64; 2]> + Send + Sync + 'a>;
+type BoxIter<'a> = Box<dyn Iterator<Item = &'a [f64; 2]> + Send + Sync + 'a>;
+
+#[inline(always)]
+fn boxed_iter<'a, I>(iter: I) -> BoxIter<'a>
+where
+    I: Iterator<Item = &'a [f64; 2]> + Send + Sync + 'a,
+{
+    Box::new(iter) as BoxIter
+}
 
 /// Input a curve, split out finite parts to a continuous curve. (greedy method)
 ///
@@ -94,14 +102,13 @@ pub fn is_valid_curve(curve: &[[f64; 2]]) -> bool {
 
 /// Geometry error between two open curves.
 pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
-    debug_assert!(target.len() < curve.len());
-    let iters: [(_, CurveIter); 2] = [
-        (curve[0], Box::new(curve.iter())),
-        (curve[curve.len() - 1], Box::new(curve.iter().rev())),
-    ];
-    iters
+    let end = curve.len();
+    debug_assert!(target.len() < end);
+    let iter = boxed_iter(curve.iter());
+    let rev = boxed_iter(curve.iter().rev());
+    [(&curve[0], iter), (&curve[end - 1], rev)]
         .into_par_iter()
-        .map(|(start, iter)| geo_err(target, &start, iter))
+        .map(|(start, iter)| geo_err(target, start, iter))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap()
 }
@@ -110,18 +117,17 @@ pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
 pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let end = curve.len();
     debug_assert!(target.len() < end);
-    // Find the head (correlation)
+    // Find the starting point (correlation)
     let (index, basic_err) = curve
         .par_iter()
         .enumerate()
         .map(|(i, [x, y])| (i, (target[0][0] - x).hypot(target[0][1] - y)))
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
         .unwrap();
-    let iter = curve.iter().cycle().skip(index).take(end);
     let start = &curve[index];
-    let rev = curve.iter().rev().cycle().skip(end - index).take(end);
-    let iters: [CurveIter; 2] = [Box::new(iter), Box::new(rev)];
-    let err = iters
+    let iter = boxed_iter(curve.iter().cycle().skip(index).take(end));
+    let rev = boxed_iter(curve.iter().rev().cycle().skip(end - index).take(end));
+    let err = [iter, rev]
         .into_par_iter()
         .map(|iter| geo_err(&target[1..], start, iter))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
@@ -129,10 +135,7 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     basic_err + err
 }
 
-fn geo_err<'a, I>(target: &[[f64; 2]], start: &[f64; 2], mut iter: I) -> f64
-where
-    I: Iterator<Item = &'a [f64; 2]>,
-{
+fn geo_err<'a>(target: &[[f64; 2]], start: &[f64; 2], mut iter: BoxIter<'a>) -> f64 {
     let mut geo_err = 0.;
     let mut left = start;
     for tc in target {
