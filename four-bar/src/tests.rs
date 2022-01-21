@@ -70,11 +70,11 @@ fn planar() {
     // let target = YU1;
     // let target = HAND;
     // let target = OPEN_CURVE1;
-    // let target = OPEN_CURVE2;
+    let target = OPEN_CURVE2;
     // let target = TRIANGLE2;
-    let target = CRUNODE;
+    // let target = CRUNODE;
     // let target = LINE;
-    planar_synthesis(target, 40, 400, false);
+    planar_synthesis(target, 40, 400, true);
 }
 
 pub const HAND: &[[f64; 2]] = &[

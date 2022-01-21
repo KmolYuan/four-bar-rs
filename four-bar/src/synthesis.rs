@@ -108,8 +108,9 @@ pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
 
 /// Geometry error between two closed curves.
 pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
-    debug_assert!(target.len() < curve.len());
-    // Find the head (greedy)
+    let end = curve.len();
+    debug_assert!(target.len() < end);
+    // Find the head (correlation)
     let (index, basic_err) = curve
         .par_iter()
         .enumerate()
@@ -120,10 +121,10 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         })
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
         .unwrap();
-    let mut iter = curve[index..].iter().chain(curve[0..index].iter().rev());
-    let start = iter.next().unwrap();
-    let rev_iter = iter.clone().rev();
-    let iters: [CurveIter; 2] = [Box::new(iter), Box::new(rev_iter)];
+    let iter = curve.iter().cycle().skip(index).take(end);
+    let start = &curve[index];
+    let rev = curve.iter().rev().cycle().skip(end - index).take(end);
+    let iters: [CurveIter; 2] = [Box::new(iter), Box::new(rev)];
     let err = iters
         .into_par_iter()
         .map(|iter| geo_err(&target[1..], start, iter))
@@ -205,7 +206,6 @@ pub struct Planar {
     ub: Vec<f64>,
     lb: Vec<f64>,
     open: bool,
-    geo_factor: f64,
 }
 
 impl Planar {
@@ -233,7 +233,6 @@ impl Planar {
             ub,
             lb,
             open,
-            geo_factor: 1e-5,
         }
     }
 
@@ -244,11 +243,6 @@ impl Planar {
 
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
         let d = grashof_transform(v);
-        let geo_err = if self.open {
-            geo_err_opened
-        } else {
-            geo_err_closed
-        };
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
                 .into_par_iter()
@@ -259,17 +253,15 @@ impl Planar {
                 .filter(|(curve, _)| !is_valid_curve(curve))
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.harmonic));
-                    let geo = efd.to(&self.efd);
-                    let geo_err = geo_err(&self.curve, &geo.transform(&curve));
-                    let four_bar = four_bar_coeff(&d, inv, geo);
-                    let fitness = efd.discrepancy(&self.efd) + geo_err * self.geo_factor;
+                    let four_bar = four_bar_coeff(&d, inv, efd.to(&self.efd));
+                    let fitness = efd.discrepancy(&self.efd);
                     (fitness, four_bar)
                 })
         };
         if self.open {
             [[v[5], v[6]], [v[6], v[5]]]
                 .into_par_iter()
-                .map(|[t1, t2]| [t1, if t2 <= t1 { t2 + TAU } else { t2 }])
+                .map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
                 .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
                 .flat_map(f)
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
