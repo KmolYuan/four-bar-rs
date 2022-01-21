@@ -191,18 +191,20 @@ impl Project {
         ui.checkbox(&mut proj.hide, "Hide 👁");
         ui.add_enabled_ui(!proj.hide, |ui| {
             let fb = &mut proj.four_bar;
-            ui.horizontal(|ui| {
-                ui.group(|ui| {
+            let csv = |pivot: &Pivot| {
+                let m = Mechanism::four_bar(fb);
+                let curve = m.four_bar_loop_all(0., n);
+                let p = match pivot {
+                    Pivot::Driver => &curve[0],
+                    Pivot::Follower => &curve[1],
+                    Pivot::Coupler => &curve[2],
+                };
+                dump_csv(&get_valid_part(p)).unwrap()
+            };
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
                     if ui.button("💾 Save Curve").clicked() {
-                        let m = Mechanism::four_bar(fb);
-                        let curve = m.four_bar_loop_all(0., n);
-                        let p = match pivot {
-                            Pivot::Driver => &curve[0],
-                            Pivot::Follower => &curve[1],
-                            Pivot::Coupler => &curve[2],
-                        };
-                        let s = dump_csv(&get_valid_part(p)).unwrap();
-                        IoCtx::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
+                        IoCtx::save_ask(&csv(pivot), "curve.csv", CSV_FMT, CSV_EXT, |_| ());
                     }
                     ComboBox::from_label("")
                         .selected_text(pivot.name())
@@ -212,6 +214,9 @@ impl Project {
                             ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
                         });
                 });
+                if ui.button("🗐 Copy Curve to CSV").clicked() {
+                    ui.output().copied_text = csv(pivot);
+                }
             });
             ui.group(|ui| {
                 ui.heading("Offset");
@@ -295,7 +300,16 @@ pub(crate) struct Projects {
 
 impl Projects {
     pub(crate) fn push(&mut self, path: Option<String>, four_bar: FourBar) {
-        self.list.push(Project::new(path, four_bar));
+        // Prevent opening duplicate project
+        if match &path {
+            None => true,
+            Some(path) => !self.list.iter().any(|p| match p.path() {
+                Some(path_old) => path_old == *path,
+                None => false,
+            }),
+        } {
+            self.list.push(Project::new(path, four_bar));
+        }
     }
 
     pub(crate) fn push_default(&mut self) {
@@ -314,6 +328,7 @@ impl Projects {
                 if let Ok(fb) = ron::from_str(&s) {
                     let path = path.to_str().unwrap().to_string();
                     self.push(Some(path), fb);
+                    self.current = self.len() - 1;
                 }
             }
         }
