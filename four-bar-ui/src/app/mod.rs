@@ -119,16 +119,13 @@ impl eframe::epi::App for App {
     }
 
     fn setup(&mut self, _ctx: &CtxRef, _frame: &Frame, storage: Option<&dyn Storage>) {
-        let mut init_proj = self.init_project.clone();
+        let init_proj = self.init_project.clone();
         if let Some(storage) = storage {
             if let Some(app) = eframe::epi::get_value(storage, APP_KEY) {
                 *self = app;
-                init_proj.append(&mut self.linkage.reload_projects());
             }
         }
-        for file in init_proj {
-            self.linkage.open_project(file);
-        }
+        self.linkage.open_project(init_proj);
     }
 
     fn save(&mut self, storage: &mut dyn Storage) {

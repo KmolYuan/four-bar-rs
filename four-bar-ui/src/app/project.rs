@@ -32,6 +32,20 @@ const CSV_FMT: &str = "Delimiter-Separated Values";
 const EXT: &[&str] = &[ext!()];
 const CSV_EXT: &[&str] = &["csv", "txt"];
 
+#[cfg(not(target_arch = "wasm32"))]
+fn open(file: impl AsRef<Path>) -> Option<FourBar> {
+    if let Ok(s) = std::fs::read_to_string(file) {
+        ron::from_str(&s).ok()
+    } else {
+        None
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn open(_file: impl AsRef<Path>) -> Option<FourBar> {
+    None
+}
+
 fn with_ext(name: &str) -> String {
     if name.ends_with(concat![".", ext!()]) {
         name.to_string()
@@ -110,17 +124,17 @@ impl From<Option<String>> for ProjName {
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 struct ProjInner {
-    hide: bool,
     path: ProjName,
     four_bar: FourBar,
+    hide: bool,
 }
 
 impl Default for ProjInner {
     fn default() -> Self {
         Self {
-            hide: false,
             path: ProjName::default(),
             four_bar: FourBar::example(),
+            hide: false,
         }
     }
 }
@@ -146,6 +160,17 @@ impl Project {
         match &self.0.read().unwrap().path {
             ProjName::Path(path) => Some(path.clone()),
             _ => None,
+        }
+    }
+
+    fn reload(&self) {
+        let mut proj = self.0.write().unwrap();
+        if let ProjName::Path(path) = &proj.path {
+            if let Some(four_bar) = open(path) {
+                proj.four_bar = four_bar;
+            } else {
+                proj.path = ProjName::Named(path.clone());
+            }
         }
     }
 
@@ -321,11 +346,21 @@ impl Projects {
             }),
         } {
             self.list.push(Project::new(path, four_bar));
+            self.current = self.len() - 1;
         }
     }
 
     pub(crate) fn push_default(&mut self) {
         self.list.push(Project::default());
+        self.current = self.len() - 1;
+    }
+
+    pub(crate) fn open(&mut self, file: impl AsRef<Path>) {
+        let path = file.as_ref().to_str().unwrap().to_string();
+        if let Some(four_bar) = open(file) {
+            self.push(Some(path), four_bar);
+            self.current = self.len() - 1;
+        }
     }
 
     pub(crate) fn queue(&self) -> Queue {
@@ -336,12 +371,7 @@ impl Projects {
         #[cfg(not(target_arch = "wasm32"))]
         for file in ui.ctx().input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
-                let s = std::fs::read_to_string(path).unwrap_or_default();
-                if let Ok(fb) = ron::from_str(&s) {
-                    let path = path.to_str().unwrap().to_string();
-                    self.push(Some(path), fb);
-                    self.current = self.len() - 1;
-                }
+                self.open(path);
             }
         }
         ui.horizontal(|ui| {
@@ -355,7 +385,6 @@ impl Projects {
             }
             if ui.button("➕ New").clicked() {
                 self.push_default();
-                self.current = self.len() - 1;
             }
             if !self.is_empty() {
                 if ui.button("💾 Save").clicked() {
@@ -387,6 +416,12 @@ impl Projects {
     pub(crate) fn plot(&self, ui: &mut PlotUi, angle: f64, n: usize) {
         for (i, proj) in self.list.iter().enumerate() {
             proj.plot(ui, i, self.current, angle, n);
+        }
+    }
+
+    pub(crate) fn reload(&self) {
+        for p in self.list.iter() {
+            p.reload();
         }
     }
 }

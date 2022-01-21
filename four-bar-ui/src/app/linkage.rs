@@ -75,15 +75,10 @@ impl Linkage {
         }
     }
 
-    pub(crate) fn open_project(&mut self, file: String) {
-        let s = std::fs::read_to_string(&file).expect("Read file error");
-        let four_bar = ron::from_str(&s).expect("Deserialize error");
-        self.projects.push(Some(file), four_bar);
-    }
-
-    pub(crate) fn reload_projects(&mut self) -> Vec<String> {
-        let projects = self.projects.iter().filter_map(|p| p.path()).collect();
-        self.projects.retain(|p| p.path().is_none());
-        projects
+    pub(crate) fn open_project(&mut self, files: Vec<String>) {
+        self.projects.reload();
+        for file in files {
+            self.projects.open(file);
+        }
     }
 }
