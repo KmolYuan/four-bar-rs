@@ -138,6 +138,13 @@ impl Project {
         self.0.write().unwrap().path = ProjName::Path(path);
     }
 
+    pub(crate) fn path(&self) -> Option<String> {
+        match &self.0.read().unwrap().path {
+            ProjName::Path(path) => Some(path.clone()),
+            _ => None,
+        }
+    }
+
     fn name(&self) -> String {
         let proj = self.0.read().unwrap();
         match &proj.path {
