@@ -1,5 +1,6 @@
 use super::{
     io_ctx::IoCtx,
+    synthesis::SynConfig,
     widgets::{angle, link, unit},
 };
 use crate::{as_values::as_values, dump_csv};
@@ -7,7 +8,10 @@ use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
     Button, Color32, ComboBox, Ui,
 };
-use four_bar::{synthesis::get_valid_part, FourBar, Mechanism};
+use four_bar::{
+    synthesis::{geo_err_closed, geo_err_opened, get_valid_part},
+    FourBar, Mechanism,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     ops::{Deref, DerefMut},
@@ -164,7 +168,7 @@ impl Project {
         }
     }
 
-    fn four_bar_ui(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize, config: &SynConfig) {
         let mut proj = self.0.write().unwrap();
         ui.horizontal(|ui| match &mut proj.path {
             ProjName::Path(path) => {
@@ -191,16 +195,16 @@ impl Project {
         ui.checkbox(&mut proj.hide, "Hide 👁");
         ui.add_enabled_ui(!proj.hide, |ui| {
             let fb = &mut proj.four_bar;
-            let csv = |pivot: &Pivot| {
+            let get_curve = |pivot: &Pivot| {
                 let m = Mechanism::four_bar(fb);
-                let curve = m.four_bar_loop_all(0., n);
-                let p = match pivot {
-                    Pivot::Driver => &curve[0],
-                    Pivot::Follower => &curve[1],
-                    Pivot::Coupler => &curve[2],
-                };
-                dump_csv(&get_valid_part(p)).unwrap()
+                let [curve1, curve2, curve3] = m.four_bar_loop_all(0., n);
+                match pivot {
+                    Pivot::Driver => curve1,
+                    Pivot::Follower => curve2,
+                    Pivot::Coupler => curve3,
+                }
             };
+            let csv = |pivot: &Pivot| dump_csv(&get_valid_part(&get_curve(pivot))).unwrap();
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     if ui.button("💾 Save Curve").clicked() {
@@ -216,6 +220,14 @@ impl Project {
                 });
                 if ui.button("🗐 Copy Curve to CSV").clicked() {
                     ui.output().copied_text = csv(pivot);
+                }
+                if !config.target.is_empty() {
+                    let geo_err = if config.open {
+                        geo_err_opened(&config.target, &get_curve(pivot))
+                    } else {
+                        geo_err_closed(&config.target, &get_curve(pivot))
+                    };
+                    ui.label(format!("Mean error: {:.06}", geo_err));
                 }
             });
             ui.group(|ui| {
@@ -320,7 +332,7 @@ impl Projects {
         self.queue.clone()
     }
 
-    pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize, config: &SynConfig) {
         #[cfg(not(target_arch = "wasm32"))]
         for file in ui.ctx().input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
@@ -369,7 +381,7 @@ impl Projects {
                 ui.selectable_value(&mut self.current, i, proj.name());
             }
         });
-        ui.group(|ui| self.list[self.current].four_bar_ui(ui, &mut self.pivot, interval, n));
+        ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n, config));
     }
 
     pub(crate) fn plot(&self, ui: &mut PlotUi, angle: f64, n: usize) {

@@ -22,8 +22,6 @@ const EXAMPLE_LIST: &[(&str, &[[f64; 2]])] = &[("crunode", CRUNODE), ("open curv
 #[serde(default)]
 pub(crate) struct Synthesis {
     config: UiConfig,
-    #[serde(skip)]
-    curve: Vec<[f64; 2]>,
     tasks: Vec<Task>,
     csv_open: bool,
     conv_open: bool,
@@ -45,10 +43,12 @@ impl PartialEq for UiConfig {
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
-struct SynConfig {
+pub(crate) struct SynConfig {
     gen: u64,
     pop: usize,
-    open: bool,
+    pub open: bool,
+    #[serde(skip)]
+    pub target: Vec<[f64; 2]>,
 }
 
 impl Default for SynConfig {
@@ -57,6 +57,7 @@ impl Default for SynConfig {
             gen: 40,
             pop: 400,
             open: false,
+            target: Vec::new(),
         }
     }
 }
@@ -91,7 +92,7 @@ impl Synthesis {
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
             if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
-                self.curve = curve;
+                self.config.syn.target = curve;
             } else {
                 error = "The provided curve is invalid.";
             }
@@ -103,7 +104,7 @@ impl Synthesis {
         }
         if !error.is_empty() {
             ui.colored_label(Color32::RED, error);
-            self.curve = Default::default();
+            self.config.syn.target = Default::default();
         }
         ui.group(|ui| {
             ui.heading("Local Computation");
@@ -189,8 +190,8 @@ impl Synthesis {
     }
 
     pub(crate) fn plot(&self, ui: &mut PlotUi) {
-        if !self.curve.is_empty() {
-            let line = Line::new(as_values(&self.curve))
+        if !self.config.syn.target.is_empty() {
+            let line = Line::new(as_values(&self.config.syn.target))
                 .name("Synthesis target")
                 .style(LineStyle::dashed_loose())
                 .width(3.);
@@ -209,8 +210,12 @@ impl Synthesis {
             mh::{utility::thread::spawn, De, Solver},
             Planar,
         };
-        let curve = self.curve.clone();
-        let SynConfig { pop, gen, open } = self.config.syn;
+        let SynConfig {
+            pop,
+            gen,
+            open,
+            target,
+        } = self.config.syn.clone();
         let task = Task {
             total_gen: gen,
             start: Arc::new(AtomicBool::new(true)),
@@ -231,10 +236,14 @@ impl Synthesis {
                     let time = (std::time::Instant::now() - start_time).as_secs();
                     task.time.store(time, Ordering::Relaxed);
                 })
-                .solve(Planar::new(&curve, 720, 90, open))
+                .solve(Planar::new(&target, 720, 90, open))
                 .result();
             queue.push(None, four_bar);
             task.start.store(false, Ordering::Relaxed);
         });
+    }
+
+    pub(crate) fn config(&self) -> &SynConfig {
+        &self.config.syn
     }
 }

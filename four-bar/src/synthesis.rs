@@ -114,11 +114,7 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let (index, basic_err) = curve
         .par_iter()
         .enumerate()
-        .map(|(i, [x, y])| {
-            let dx = target[0][0] - x;
-            let dy = target[0][1] - y;
-            (i, dx * dx + dy * dy)
-        })
+        .map(|(i, [x, y])| (i, (target[0][0] - x).hypot(target[0][1] - y)))
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
         .unwrap();
     let iter = curve.iter().cycle().skip(index).take(end);
@@ -140,9 +136,9 @@ where
     let mut geo_err = 0.;
     let mut left = start;
     for tc in target {
-        let mut last_d = (tc[0] - left[0]).powi(2) + (tc[1] - left[1]).powi(2);
+        let mut last_d = (tc[0] - left[0]).hypot(tc[1] - left[1]);
         for c in &mut iter {
-            let d = (tc[0] - c[0]).powi(2) + (tc[1] - c[1]).powi(2);
+            let d = (tc[0] - c[0]).hypot(tc[1] - c[1]);
             if d < last_d {
                 last_d = d;
             } else {
@@ -152,7 +148,7 @@ where
         }
         geo_err += last_d;
     }
-    geo_err
+    geo_err / target.len() as f64
 }
 
 fn grashof_transform(v: &[f64]) -> [f64; 5] {
