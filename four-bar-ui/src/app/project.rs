@@ -223,13 +223,13 @@ impl Project {
             let get_curve = |pivot: &Pivot| {
                 let m = Mechanism::four_bar(fb);
                 let [curve1, curve2, curve3] = m.four_bar_loop_all(0., n);
-                match pivot {
+                get_valid_part(&match pivot {
                     Pivot::Driver => curve1,
                     Pivot::Follower => curve2,
                     Pivot::Coupler => curve3,
-                }
+                })
             };
-            let csv = |pivot: &Pivot| dump_csv(&get_valid_part(&get_curve(pivot))).unwrap();
+            let csv = |pivot: &Pivot| dump_csv(&get_curve(pivot)).unwrap();
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     if ui.button("💾 Save Curve").clicked() {

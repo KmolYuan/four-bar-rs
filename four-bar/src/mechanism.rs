@@ -111,8 +111,12 @@ impl Mechanism {
         for f in formulas {
             f.apply(&mut joints);
         }
-        for (ans, joint) in ans.iter_mut().zip(joint) {
-            *ans = joints[joint];
+        if joints.iter().any(|[x, y]| x.is_nan() || y.is_nan()) {
+            ans.clone_from(&[[f64::NAN; 2]; N]);
+        } else {
+            for (ans, joint) in ans.iter_mut().zip(joint) {
+                ans.clone_from(&joints[joint]);
+            }
         }
     }
 
