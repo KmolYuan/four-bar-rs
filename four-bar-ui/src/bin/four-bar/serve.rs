@@ -57,8 +57,9 @@ async fn login(
 async fn logout(id: Identity, req: HttpRequest) -> impl Responder {
     id.forget();
     let mut builder = HttpResponse::Ok();
-    if let Some(ref cookie) = req.cookie("username") {
-        builder.del_cookie(cookie);
+    if let Some(mut cookie) = req.cookie("username") {
+        cookie.make_removal();
+        builder.cookie(cookie);
     }
     builder.finish()
 }
@@ -71,24 +72,21 @@ pub(crate) fn serve(port: u16) -> Result<()> {
     println!("Serve at: http://localhost:{}/", port);
     println!("Unpacked archive at: {:?}", &path);
     println!("Press Ctrl+C to close the server...");
-    actix_web::rt::System::new().block_on(async {
-        HttpServer::new(move || {
-            App::new()
-                .wrap(IdentityService::new(
-                    CookieIdentityPolicy::new(&[0; 32])
-                        .name("auth-cookie")
-                        .max_age(COOKIE_LIFE)
-                        .secure(true),
-                ))
-                .app_data(users.clone())
-                .service(login)
-                .service(logout)
-                .service(Files::new("/", &path).index_file("index.html"))
-        })
-        .bind(("localhost", port))?
-        .run()
-        .await
+    let server = HttpServer::new(move || {
+        let cookie_policy = CookieIdentityPolicy::new(&[0; 32])
+            .name("auth-cookie")
+            .max_age(COOKIE_LIFE)
+            .secure(true);
+        App::new()
+            .wrap(IdentityService::new(cookie_policy))
+            .app_data(users.clone())
+            .service(login)
+            .service(logout)
+            .service(Files::new("/", &path).index_file("index.html"))
     })
+    .bind(("localhost", port))?
+    .run();
+    actix_web::rt::System::new().block_on(server)
 }
 
 fn users() -> Result<Users> {
