@@ -1,3 +1,4 @@
+use crate::Linkage;
 use std::{
     f64::consts::FRAC_PI_6,
     ops::{Div, DivAssign},
@@ -126,6 +127,10 @@ impl FourBar {
         self.align();
         *self /= self.l1;
     }
+}
+
+impl Linkage for FourBar {
+    type Joint = [[f64; 2]; 5];
 }
 
 impl Div<f64> for FourBar {
