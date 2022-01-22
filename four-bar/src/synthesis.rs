@@ -24,14 +24,14 @@ use std::f64::consts::{FRAC_PI_4, TAU};
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
-type BoxIter<'a> = Box<dyn Iterator<Item = &'a [f64; 2]> + Send + Sync + 'a>;
+type BoxedIter<'a> = Box<dyn Iterator<Item = &'a [f64; 2]> + 'a>;
 
 #[inline(always)]
-fn boxed_iter<'a, I>(iter: I) -> BoxIter<'a>
+fn boxed_iter<'a, I>(iter: I) -> BoxedIter<'a>
 where
-    I: Iterator<Item = &'a [f64; 2]> + Send + Sync + 'a,
+    I: Iterator<Item = &'a [f64; 2]> + 'a,
 {
-    Box::new(iter) as BoxIter
+    Box::new(iter) as BoxedIter
 }
 
 /// Input a curve, split out finite parts to a continuous curve. (greedy method)
@@ -107,8 +107,8 @@ pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let iter = boxed_iter(curve.iter());
     let rev = boxed_iter(curve.iter().rev());
     [(&curve[0], iter), (&curve[end - 1], rev)]
-        .into_par_iter()
-        .map(|(start, iter)| geo_err(target, start, iter))
+        .into_iter()
+        .map(|(start, iter)| geo_err(target, start, iter) / target.len() as f64)
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap()
 }
@@ -119,23 +119,22 @@ pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     debug_assert!(target.len() < end);
     // Find the starting point (correlation)
     let (index, basic_err) = curve
-        .par_iter()
+        .iter()
         .enumerate()
         .map(|(i, [x, y])| (i, (target[0][0] - x).hypot(target[0][1] - y)))
         .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
         .unwrap();
-    let start = &curve[index];
     let iter = boxed_iter(curve.iter().cycle().skip(index).take(end));
     let rev = boxed_iter(curve.iter().rev().cycle().skip(end - index).take(end));
     let err = [iter, rev]
-        .into_par_iter()
-        .map(|iter| geo_err(&target[1..], start, iter))
+        .into_iter()
+        .map(|iter| geo_err(&target[1..], &curve[index], iter))
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
-    basic_err + err
+    (basic_err + err) / target.len() as f64
 }
 
-fn geo_err<'a>(target: &[[f64; 2]], start: &[f64; 2], mut iter: BoxIter<'a>) -> f64 {
+fn geo_err(target: &[[f64; 2]], start: &[f64; 2], mut iter: BoxedIter) -> f64 {
     let mut geo_err = 0.;
     let mut left = start;
     for tc in target {
@@ -151,7 +150,7 @@ fn geo_err<'a>(target: &[[f64; 2]], start: &[f64; 2], mut iter: BoxIter<'a>) -> 
         }
         geo_err += last_d;
     }
-    geo_err / target.len() as f64
+    geo_err
 }
 
 fn grashof_transform(v: &[f64]) -> [f64; 5] {
