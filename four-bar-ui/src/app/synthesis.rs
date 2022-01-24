@@ -236,7 +236,7 @@ impl Synthesis {
                     let time = (std::time::Instant::now() - start_time).as_secs();
                     task.time.store(time, Ordering::Relaxed);
                 })
-                .solve(Planar::new(&target, 720, 90, open))
+                .solve(Planar::new(&target, 720, open))
                 .result();
             queue.push(None, four_bar);
             task.start.store(false, Ordering::Relaxed);

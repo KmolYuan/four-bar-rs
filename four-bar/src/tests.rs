@@ -20,12 +20,13 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(pop_num)
         .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, 90, open));
+        .solve(Planar::new(target, 720, open));
     pb.finish();
     plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
     let ans = s.result();
     write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
     let curve = Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360);
+    println!("harmonic: {}", s.func().harmonic());
     plot::plot_curve(
         "Synthesis Test",
         &[("Target", &target), ("Optimized", &curve)],
@@ -70,11 +71,11 @@ fn planar() {
     // let target = YU1;
     // let target = HAND;
     // let target = OPEN_CURVE1;
-    let target = OPEN_CURVE2;
+    // let target = OPEN_CURVE2;
     // let target = TRIANGLE2;
-    // let target = CRUNODE;
+    let target = CRUNODE;
     // let target = LINE;
-    planar_synthesis(target, 40, 400, true);
+    planar_synthesis(target, 40, 400, false);
 }
 
 pub const HAND: &[[f64; 2]] = &[

@@ -13,7 +13,7 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(Planar::new(&curve, 720, 90, false));
+//!     .solve(Planar::new(&curve, 720, false));
 //! let result = s.result();
 //! ```
 use self::mh::{utility::prelude::*, ObjFunc};
@@ -198,7 +198,6 @@ pub struct Planar {
     pub efd: Efd,
     // How many points need to be generated / compared
     n: usize,
-    harmonic: usize,
     ub: Vec<f64>,
     lb: Vec<f64>,
     open: bool,
@@ -206,7 +205,7 @@ pub struct Planar {
 
 impl Planar {
     /// Create a new task.
-    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: usize, open: bool) -> Self {
+    pub fn new(curve: &[[f64; 2]], n: usize, open: bool) -> Self {
         let curve = close_loop(get_valid_part(curve));
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
@@ -220,12 +219,11 @@ impl Planar {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
         }
-        let efd = Efd::from_curve(&curve, Some(harmonic));
+        let efd = Efd::from_curve(&curve, None);
         Self {
             curve,
             efd,
             n,
-            harmonic,
             ub,
             lb,
             open,
@@ -235,6 +233,11 @@ impl Planar {
     /// Check if the target is defined as  open curve.
     pub fn is_open(&self) -> bool {
         self.open
+    }
+
+    /// The harmonic used of target EFD.
+    pub fn harmonic(&self) -> usize {
+        self.efd.harmonic()
     }
 
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
@@ -248,7 +251,7 @@ impl Planar {
                 })
                 .filter(|(curve, _)| !is_valid_curve(curve))
                 .map(|(curve, inv)| {
-                    let efd = Efd::from_curve(&curve, Some(self.harmonic));
+                    let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
                     let four_bar = four_bar_coeff(&d, inv, efd.to(&self.efd));
                     let fitness = efd.discrepancy(&self.efd);
                     (fitness, four_bar)
