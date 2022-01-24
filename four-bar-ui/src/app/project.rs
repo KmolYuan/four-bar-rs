@@ -187,10 +187,10 @@ impl Project {
         let s = ron::to_string(&self.0.read().unwrap().four_bar).unwrap();
         if let ProjName::Path(path) = &self.0.read().unwrap().path {
             IoCtx::save(&s, path);
-        } else {
-            let proj = self.clone();
-            IoCtx::save_ask(&s, &self.name(), FMT, EXT, move |path| proj.set_path(path));
+            return;
         }
+        let proj = self.clone();
+        IoCtx::save_ask(&s, &self.name(), FMT, EXT, move |path| proj.set_path(path));
     }
 
     fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize, config: &SynConfig) {
@@ -389,7 +389,7 @@ impl Projects {
             }
             if !self.is_empty() {
                 if ui.button("💾 Save").clicked() {
-                    self[self.current].save();
+                    self.list[self.current].save();
                 }
                 if ui.button("✖ Close").clicked() {
                     self.list.remove(self.current);
