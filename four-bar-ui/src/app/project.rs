@@ -246,11 +246,12 @@ impl Project {
                 if ui.button("🗐 Copy Curve to CSV").clicked() {
                     ui.output().copied_text = csv(pivot);
                 }
-                if !config.target.is_empty() {
+                let curve = get_curve(pivot);
+                if !config.target.is_empty() && !curve.is_empty() {
                     let geo_err = if config.open {
-                        geo_err_opened(&config.target, &get_curve(pivot))
+                        geo_err_opened(&config.target, &curve)
                     } else {
-                        geo_err_closed(&config.target, &get_curve(pivot))
+                        geo_err_closed(&config.target, &curve)
                     };
                     ui.label(format!("Mean error: {:.06}", geo_err));
                 }
