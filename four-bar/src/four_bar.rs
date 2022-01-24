@@ -1,3 +1,4 @@
+use crate::Linkage;
 use std::{
     f64::consts::FRAC_PI_6,
     ops::{Div, DivAssign},
@@ -128,6 +129,10 @@ impl FourBar {
     }
 }
 
+impl Linkage for FourBar {
+    type Joint = [[f64; 2]; 5];
+}
+
 impl Div<f64> for FourBar {
     type Output = Self;
 
@@ -145,6 +150,13 @@ impl Div<f64> for FourBar {
 
 impl DivAssign<f64> for FourBar {
     fn div_assign(&mut self, rhs: f64) {
-        *self = self.clone().div(rhs);
+        *self = Self {
+            l0: self.l0 / rhs,
+            l1: self.l1 / rhs,
+            l2: self.l2 / rhs,
+            l3: self.l3 / rhs,
+            l4: self.l4 / rhs,
+            ..*self
+        };
     }
 }

@@ -1,6 +1,6 @@
 use crate::{FourBar, Point};
 use rayon::prelude::*;
-use std::f64::consts::TAU;
+use std::{f64::consts::TAU, marker::PhantomData};
 
 #[derive(Clone)]
 enum Formula {
@@ -29,17 +29,24 @@ impl Formula {
     }
 }
 
-/// Geometry constraint solver of the linkage mechanisms.
-pub struct Mechanism {
-    /// The joint positions.
-    pub joints: Vec<[f64; 2]>,
-    fs: Vec<Formula>,
+/// A linkage type.
+pub trait Linkage {
+    /// Memory layout of the joints
+    type Joint;
 }
 
-impl Mechanism {
+/// Geometry constraint solver of the linkage mechanisms.
+pub struct Mechanism<L: Linkage> {
+    /// The joint positions.
+    pub joints: L::Joint,
+    fs: Vec<Formula>,
+    _marker: PhantomData<L>,
+}
+
+impl Mechanism<FourBar> {
     /// Create four bar linkages.
     pub fn four_bar(m: &FourBar) -> Self {
-        let joints = vec![
+        let joints = [
             [m.p0.x(), m.p0.y()],
             [m.p0.x() + m.l0 * m.a.cos(), m.p0.y() + m.l0 * m.a.sin()],
             [0., 0.],
@@ -55,7 +62,11 @@ impl Mechanism {
             fs.push(Formula::Pllp(2, m.l2, m.l3, 1, m.inv, 3));
         }
         fs.push(Formula::Plap(2, m.l4, m.g, 3, 4));
-        Self { joints, fs }
+        Self {
+            joints,
+            fs,
+            _marker: PhantomData,
+        }
     }
 
     /// A loop trajectory for only coupler point.
@@ -102,22 +113,21 @@ impl Mechanism {
 
     /// Calculate the formula, and write the answer into provided array.
     pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
-        let mut joints = self.joints.clone();
+        let mut joints = self.joints;
         let mut formulas = self.fs.clone();
-        match formulas[0] {
-            Formula::Pla(_, _, ref mut a, _) => *a = angle,
+        match formulas.first_mut() {
+            Some(Formula::Pla(_, _, ref mut a, _)) => *a = angle,
             _ => panic!("invalid four bar"),
         }
         for f in formulas {
             f.apply(&mut joints);
         }
-        for (ans, joint) in ans.iter_mut().zip(joint) {
-            *ans = joints[joint];
+        if joints[4][0].is_nan() || joints[4][1].is_nan() {
+            ans.clone_from(&[[f64::NAN; 2]; N]);
+        } else {
+            for (ans, joint) in ans.iter_mut().zip(joint) {
+                ans.clone_from(&joints[joint]);
+            }
         }
-    }
-
-    /// Get the length of the joints.
-    pub fn joint_len(&self) -> usize {
-        self.joints.len()
     }
 }
