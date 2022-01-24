@@ -103,7 +103,7 @@ pub fn is_valid_curve(curve: &[[f64; 2]]) -> bool {
 /// Geometry error between two open curves.
 pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let end = curve.len();
-    debug_assert!(target.len() > 0);
+    debug_assert!(!target.is_empty());
     debug_assert!(target.len() < end);
     let iter = boxed_iter(curve.iter());
     let rev = boxed_iter(curve.iter().rev());
@@ -117,7 +117,7 @@ pub fn geo_err_opened(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
 /// Geometry error between two closed curves.
 pub fn geo_err_closed(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let end = curve.len();
-    debug_assert!(target.len() > 0);
+    debug_assert!(!target.is_empty());
     debug_assert!(target.len() < end);
     // Find the starting point (correlation)
     let (index, basic_err) = curve
