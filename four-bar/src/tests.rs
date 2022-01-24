@@ -20,7 +20,7 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(pop_num)
         .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, open));
+        .solve(Planar::new(target, 720, None, open));
     pb.finish();
     plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
     let ans = s.result();

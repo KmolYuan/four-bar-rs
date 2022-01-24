@@ -13,7 +13,7 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(Planar::new(&curve, 720, false));
+//!     .solve(Planar::new(&curve, 720, None, false));
 //! let result = s.result();
 //! ```
 use self::mh::{utility::prelude::*, ObjFunc};
@@ -207,7 +207,7 @@ pub struct Planar {
 
 impl Planar {
     /// Create a new task.
-    pub fn new(curve: &[[f64; 2]], n: usize, open: bool) -> Self {
+    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: Option<usize>, open: bool) -> Self {
         let curve = close_loop(get_valid_part(curve));
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
@@ -221,7 +221,7 @@ impl Planar {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
         }
-        let efd = Efd::from_curve(&curve, None);
+        let efd = Efd::from_curve(&curve, harmonic);
         Self {
             curve,
             efd,
