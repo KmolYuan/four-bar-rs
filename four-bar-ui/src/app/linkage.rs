@@ -54,7 +54,7 @@ impl Linkage {
                 ui,
                 self.config.interval,
                 self.config.res,
-                self.synthesis.config(),
+                self.synthesis.target(),
             );
         });
         ui.group(|ui| {

@@ -38,12 +38,12 @@ impl PartialEq for UiConfig {
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
-pub(crate) struct SynConfig {
+struct SynConfig {
     gen: u64,
     pop: usize,
-    pub open: bool,
+    open: bool,
     #[serde(skip)]
-    pub target: Vec<[f64; 2]>,
+    target: Vec<[f64; 2]>,
 }
 
 impl Default for SynConfig {
@@ -240,7 +240,7 @@ impl Synthesis {
         });
     }
 
-    pub(crate) fn config(&self) -> &SynConfig {
-        &self.config.syn
+    pub(crate) fn target(&self) -> &[[f64; 2]] {
+        &self.config.syn.target
     }
 }

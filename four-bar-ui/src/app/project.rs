@@ -1,6 +1,5 @@
 use super::{
     io_ctx::IoCtx,
-    synthesis::SynConfig,
     widgets::{angle, link, unit},
 };
 use crate::{as_values::as_values, dump_csv};
@@ -9,7 +8,7 @@ use eframe::egui::{
     Button, Color32, ComboBox, Ui,
 };
 use four_bar::{
-    synthesis::{geo_err_closed, geo_err_opened, get_valid_part},
+    synthesis::{geo_err, get_valid_part},
     FourBar, Mechanism,
 };
 use serde::{Deserialize, Serialize};
@@ -31,6 +30,8 @@ const FMT: &str = "Rusty Object Notation";
 const CSV_FMT: &str = "Delimiter-Separated Values";
 const EXT: &[&str] = &[ext!()];
 const CSV_EXT: &[&str] = &["csv", "txt"];
+const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
+    Increase resolution for more accurate calculations.";
 
 #[cfg(not(target_arch = "wasm32"))]
 fn open(file: impl AsRef<Path>) -> Option<FourBar> {
@@ -193,7 +194,7 @@ impl Project {
         IoCtx::save_ask(&s, &self.name(), FMT, EXT, move |path| proj.set_path(path));
     }
 
-    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize, config: &SynConfig) {
+    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize, target: &[[f64; 2]]) {
         let mut proj = self.0.write().unwrap();
         ui.horizontal(|ui| match &mut proj.path {
             ProjName::Path(path) => {
@@ -247,14 +248,10 @@ impl Project {
                     ui.output().copied_text = csv(pivot);
                 }
                 let curve = get_curve(pivot);
-                if !config.target.is_empty() && !curve.is_empty() {
-                    let geo_err = if config.open {
-                        geo_err_opened(&config.target, &curve)
-                    } else {
-                        geo_err_closed(&config.target, &curve)
-                    };
+                if !target.is_empty() && !curve.is_empty() {
+                    let geo_err = geo_err(target, &curve);
                     ui.label(format!("Target mean error: {:.06}", geo_err))
-                        .on_hover_text("This error is calculated with point by point strategy.");
+                        .on_hover_text(ERR_DES);
                 }
             });
             ui.group(|ui| {
@@ -369,7 +366,7 @@ impl Projects {
         self.queue.clone()
     }
 
-    pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize, config: &SynConfig) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize, target: &[[f64; 2]]) {
         #[cfg(not(target_arch = "wasm32"))]
         for file in ui.ctx().input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
@@ -412,7 +409,7 @@ impl Projects {
                 ui.selectable_value(&mut self.current, i, proj.name());
             }
         });
-        ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n, config));
+        ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n, target));
     }
 
     pub(crate) fn plot(&self, ui: &mut PlotUi, angle: f64, n: usize) {
