@@ -1,9 +1,4 @@
-use super::{
-    project::Queue,
-    remote::Remote,
-    widgets::{switch_same, unit},
-    IoCtx,
-};
+use super::{project::Queue, remote::Remote, widgets::unit, IoCtx};
 use crate::{as_values::as_values, dump_csv, parse_csv};
 use eframe::egui::{
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
@@ -99,7 +94,7 @@ impl Synthesis {
         } else {
             error = "The target curve is empty.";
         }
-        if ui.button("✏ Edit target curve").clicked() {
+        if ui.button("✏ Target Curve Editor").clicked() {
             self.csv_open = !self.csv_open;
         }
         if !error.is_empty() {
@@ -108,7 +103,9 @@ impl Synthesis {
         }
         ui.group(|ui| {
             ui.heading("Local Computation");
-            switch_same(ui, "ℹ", "Convergence window", &mut self.conv_open);
+            if ui.button("🗠 Convergence Plot").clicked() {
+                self.conv_open = !self.conv_open;
+            }
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(error.is_empty(), Button::new("▶ Start"))

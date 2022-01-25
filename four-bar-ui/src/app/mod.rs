@@ -1,6 +1,6 @@
 pub use self::remote::{sha512, LoginInfo};
 use self::{io_ctx::IoCtx, linkage::Linkage};
-use crate::app::widgets::{switch_same, url_button};
+use crate::app::widgets::url_button;
 use eframe::{
     egui::{
         plot::{Legend, Plot},
@@ -86,7 +86,9 @@ impl App {
             }
             url_button(ui, "⮋", "Release", RELEASE_URL);
             url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
-            switch_same(ui, "ℹ", "Welcome", &mut self.welcome_off);
+            if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
+                self.welcome_off = !self.welcome_off;
+            }
             ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui/");
         });
     }
