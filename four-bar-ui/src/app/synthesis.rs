@@ -49,7 +49,7 @@ pub(crate) struct SynConfig {
 impl Default for SynConfig {
     fn default() -> Self {
         Self {
-            gen: 40,
+            gen: 50,
             pop: 400,
             open: false,
             target: Vec::new(),
@@ -106,15 +106,6 @@ impl Synthesis {
             if ui.button("🗠 Convergence Plot").clicked() {
                 self.conv_open = !self.conv_open;
             }
-            ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(error.is_empty(), Button::new("▶ Start"))
-                    .clicked()
-                {
-                    self.native_syn(queue);
-                }
-                ui.add(ProgressBar::new(0.).show_percentage());
-            });
             self.tasks.retain(|task| {
                 ui.horizontal(|ui| {
                     let mut keep = true;
@@ -132,6 +123,15 @@ impl Synthesis {
                     keep
                 })
                 .inner
+            });
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(error.is_empty(), Button::new("▶ Start"))
+                    .clicked()
+                {
+                    self.native_syn(queue);
+                }
+                ui.add(ProgressBar::new(0.).show_percentage());
             });
         });
         ui.group(|ui| self.remote.show(ui, ctx));
