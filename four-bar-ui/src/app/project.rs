@@ -253,7 +253,8 @@ impl Project {
                     } else {
                         geo_err_closed(&config.target, &curve)
                     };
-                    ui.label(format!("Mean error: {:.06}", geo_err));
+                    ui.label(format!("Target mean error: {:.06}", geo_err))
+                        .on_hover_text("This error is calculated with point by point strategy.");
                 }
             });
             ui.group(|ui| {
