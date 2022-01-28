@@ -90,24 +90,23 @@ impl FourBar {
 
     /// Return the the type according to this linkage lengths.
     pub fn class(&self) -> Class {
+        macro_rules! arms {
+            ($d:expr => $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
+                match $d {
+                    d if d == self.l0 => $c1,
+                    d if d == self.l1 => $c2,
+                    d if d == self.l2 => $c3,
+                    d if d == self.l3 => $c4,
+                    _ => unreachable!(),
+                }
+            };
+        }
         let mut d = [self.l0, self.l1, self.l2, self.l3];
         d.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         if d[0] + d[3] < d[1] + d[2] {
-            match d[0] {
-                _ if d[0] == self.l0 => Class::GCCC,
-                _ if d[0] == self.l1 => Class::GCRR,
-                _ if d[0] == self.l2 => Class::GRCR,
-                _ if d[0] == self.l3 => Class::GRRC,
-                _ => unreachable!(),
-            }
+            arms! { d[0] => Class::GCCC, Class::GCRR, Class::GRCR, Class::GRRC }
         } else {
-            match d[3] {
-                _ if d[3] == self.l0 => Class::RRR1,
-                _ if d[3] == self.l1 => Class::RRR2,
-                _ if d[3] == self.l2 => Class::RRR3,
-                _ if d[3] == self.l3 => Class::RRR4,
-                _ => unreachable!(),
-            }
+            arms! { d[3] => Class::RRR1, Class::RRR2, Class::RRR3, Class::RRR4 }
         }
     }
 

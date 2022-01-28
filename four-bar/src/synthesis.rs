@@ -118,29 +118,29 @@ pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     let rev = boxed_iter(curve.iter().rev().cycle().skip(end - index).take(end));
     let err = [iter, rev]
         .into_iter()
-        .map(|iter| geo_err_inner(&target[1..], &curve[index], iter))
+        .map(|mut iter| {
+            let target = &target[1..];
+            let mut geo_err = 0.;
+            let mut left = &curve[index];
+            for [tx, ty] in target {
+                let [x, y] = left;
+                let mut last_d = (tx - x).hypot(ty - y);
+                for c @ [x, y] in &mut iter {
+                    let d = (tx - x).hypot(ty - y);
+                    if d < last_d {
+                        last_d = d;
+                    } else {
+                        left = c;
+                        break;
+                    }
+                }
+                geo_err += last_d;
+            }
+            geo_err
+        })
         .min_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     (basic_err + err) / target.len() as f64
-}
-
-fn geo_err_inner(target: &[[f64; 2]], start: &[f64; 2], mut iter: BoxedIter) -> f64 {
-    let mut geo_err = 0.;
-    let mut left = start;
-    for tc in target {
-        let mut last_d = (tc[0] - left[0]).hypot(tc[1] - left[1]);
-        for c in &mut iter {
-            let d = (tc[0] - c[0]).hypot(tc[1] - c[1]);
-            if d < last_d {
-                last_d = d;
-            } else {
-                left = c;
-                break;
-            }
-        }
-        geo_err += last_d;
-    }
-    geo_err
 }
 
 fn grashof_transform(v: &[f64]) -> [f64; 5] {
