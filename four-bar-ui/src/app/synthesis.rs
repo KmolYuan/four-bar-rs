@@ -204,7 +204,7 @@ impl Synthesis {
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, queue: Queue) {
         use four_bar::synthesis::{
-            mh::{utility::thread::spawn, De, Solver},
+            mh::{rayon::spawn, De, Solver},
             Planar,
         };
         let SynConfig {

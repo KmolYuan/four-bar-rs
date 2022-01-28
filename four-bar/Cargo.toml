@@ -13,7 +13,7 @@ categories = ["algorithms"]
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 plotters = { version = "0.3", optional = true }
-metaheuristics-nature = { version = "0.22", features = ["parallel"] }
+metaheuristics-nature = { version = "0.23", features = ["parallel"] }
 efd = "0.11"
 rayon = "1.5"
 
