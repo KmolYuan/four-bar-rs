@@ -86,8 +86,11 @@ impl Synthesis {
         ui.add(unit("Population: ", &mut self.config.syn.pop, 1));
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
-            if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
+            let curve_csv = self.config.curve_csv.read().unwrap();
+            if let Ok(curve) = parse_csv(&curve_csv) {
                 self.config.syn.target = curve;
+            } else if let Ok(curve) = ron::from_str::<Vec<Vec<f64>>>(&curve_csv) {
+                self.config.syn.target = curve.into_iter().map(|c| [c[0], c[1]]).collect();
             } else {
                 error = "The provided curve is invalid.";
             }
