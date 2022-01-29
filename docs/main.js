@@ -13,9 +13,9 @@ window.open_file = (ext, done, multiple) => {
     input.accept = ext;
     input.click();
 };
-window.save_file = (s, file_name) => {
+window.save_file = (s, path) => {
     const a = document.createElement("a");
-    a.download = file_name;
+    a.download = path;
     a.href = URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
     a.click();
 };

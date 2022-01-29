@@ -1,13 +1,28 @@
+use crate::dump_csv;
+use four_bar::FourBar;
 use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
+
+macro_rules! ext {
+    () => {
+        "ron"
+    };
+}
+
+pub(crate) use ext;
+
+const FMT: &str = "Rusty Object Notation";
+const CSV_FMT: &str = "Delimiter-Separated Values";
+const EXT: &[&str] = &[ext!()];
+const CSV_EXT: &[&str] = &["csv", "txt"];
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
     fn open_file(ext: &str, done: JsValue, multiple: bool);
-    fn save_file(s: &str, file_name: &str);
+    fn save_file(s: &str, path: &str);
     fn get_host() -> String;
     fn get_username() -> String;
     fn login(account: &str, body: &str, done: JsValue);
@@ -45,7 +60,7 @@ impl IoCtx {
         alert(s);
     }
 
-    pub(crate) fn open<C>(_fmt: &str, ext: &[&str], done: C)
+    fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
         C: Fn(String, String) + 'static,
     {
@@ -53,14 +68,14 @@ impl IoCtx {
         open_file(&js_ext(ext), done, true);
     }
 
-    pub(crate) fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
+    fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
     where
         C: FnOnce(String, String) + 'static,
     {
         open_file(&js_ext(ext), Closure::once_into_js(done), false);
     }
 
-    pub(crate) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], done: C)
+    fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], done: C)
     where
         C: FnOnce(String) + 'static,
     {
@@ -68,8 +83,8 @@ impl IoCtx {
         done(file_name.to_string());
     }
 
-    pub(crate) fn save(s: &str, file_name: &str) {
-        save_file(s, file_name);
+    fn save(s: &str, path: &str) {
+        save_file(s, path);
     }
 
     pub(crate) fn get_host() -> String {
@@ -104,7 +119,7 @@ impl IoCtx {
             .show();
     }
 
-    pub(crate) fn open<C>(fmt: &str, ext: &[&str], done: C)
+    fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
         C: Fn(String, String) + 'static,
     {
@@ -116,7 +131,7 @@ impl IoCtx {
         }
     }
 
-    pub(crate) fn open_single<C>(fmt: &str, ext: &[&str], done: C)
+    fn open_single<C>(fmt: &str, ext: &[&str], done: C)
     where
         C: Fn(String, String) + 'static,
     {
@@ -126,7 +141,7 @@ impl IoCtx {
         }
     }
 
-    pub(crate) fn save_ask<C>(s: &str, name: &str, fmt: &str, ext: &[&str], done: C)
+    fn save_ask<C>(s: &str, name: &str, fmt: &str, ext: &[&str], done: C)
     where
         C: FnOnce(String) + 'static,
     {
@@ -140,8 +155,8 @@ impl IoCtx {
         }
     }
 
-    pub(crate) fn save(s: &str, file_name: &str) {
-        std::fs::write(file_name, s).unwrap_or_default();
+    fn save(s: &str, path: &str) {
+        std::fs::write(path, s).unwrap_or_default();
     }
 
     pub(crate) fn get_host() -> String {
@@ -188,6 +203,43 @@ impl IoCtx {
             .call()
             .is_ok();
         done(b);
+    }
+}
+
+impl IoCtx {
+    pub(crate) fn open_ron<C>(done: C)
+    where
+        C: Fn(String, String) + 'static,
+    {
+        Self::open(FMT, EXT, done)
+    }
+
+    pub(crate) fn open_csv_single<C>(done: C)
+    where
+        C: Fn(String, String) + 'static,
+    {
+        Self::open_single(CSV_FMT, CSV_EXT, done)
+    }
+
+    pub(crate) fn save_csv_ask<S>(curve: &[S])
+    where
+        S: Serialize + Clone,
+    {
+        let s = dump_csv(curve).unwrap();
+        Self::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ())
+    }
+
+    pub(crate) fn save_ron_ask<C>(four_bar: &FourBar, name: &str, done: C)
+    where
+        C: FnOnce(String) + 'static,
+    {
+        let s = ron::to_string(four_bar).unwrap();
+        Self::save_ask(&s, name, FMT, EXT, done)
+    }
+
+    pub(crate) fn save_ron(four_bar: &FourBar, path: &str) {
+        let s = ron::to_string(four_bar).unwrap();
+        Self::save(&s, path)
     }
 }
 

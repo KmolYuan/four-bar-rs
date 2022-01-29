@@ -1,5 +1,5 @@
 use super::{
-    io_ctx::IoCtx,
+    io_ctx::{ext, IoCtx},
     widgets::{angle, link, unit},
 };
 use crate::{as_values::as_values, dump_csv};
@@ -18,18 +18,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-macro_rules! ext {
-    () => {
-        "ron"
-    };
-}
-
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
-const FMT: &str = "Rusty Object Notation";
-const CSV_FMT: &str = "Delimiter-Separated Values";
-const EXT: &[&str] = &[ext!()];
-const CSV_EXT: &[&str] = &["csv", "txt"];
 const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
     Increase resolution for more accurate calculations.";
 
@@ -113,6 +103,16 @@ impl Default for ProjName {
     }
 }
 
+impl ProjName {
+    fn name(&self) -> String {
+        match self {
+            Self::Path(path) => filename(path),
+            Self::Named(name) => with_ext(name),
+            Self::Untitled => concat!["untitled.", ext!()].to_string(),
+        }
+    }
+}
+
 impl From<Option<String>> for ProjName {
     fn from(path: Option<String>) -> Self {
         match path {
@@ -176,22 +176,20 @@ impl Project {
     }
 
     fn name(&self) -> String {
-        let proj = self.0.read().unwrap();
-        match &proj.path {
-            ProjName::Path(path) => filename(path),
-            ProjName::Named(name) => with_ext(name),
-            ProjName::Untitled => concat!["untitled.", ext!()].to_string(),
-        }
+        self.0.read().unwrap().path.name()
     }
 
     fn save(&self) {
-        let s = ron::to_string(&self.0.read().unwrap().four_bar).unwrap();
-        if let ProjName::Path(path) = &self.0.read().unwrap().path {
-            IoCtx::save(&s, path);
-            return;
+        let proj = self.0.read().unwrap();
+        if let ProjName::Path(path) = &proj.path {
+            IoCtx::save_ron(&proj.four_bar, path);
+        } else {
+            let name = proj.path.name();
+            let four_bar = proj.four_bar.clone();
+            std::mem::drop(proj);
+            let proj_cloned = self.clone();
+            IoCtx::save_ron_ask(&four_bar, &name, move |path| proj_cloned.set_path(path));
         }
-        let proj = self.clone();
-        IoCtx::save_ask(&s, &self.name(), FMT, EXT, move |path| proj.set_path(path));
     }
 
     fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize, target: &[[f64; 2]]) {
@@ -230,11 +228,10 @@ impl Project {
                     Pivot::Coupler => curve3,
                 })
             };
-            let csv = |pivot: &Pivot| dump_csv(&get_curve(pivot)).unwrap();
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     if ui.button("💾 Save Curve").clicked() {
-                        IoCtx::save_ask(&csv(pivot), "curve.csv", CSV_FMT, CSV_EXT, |_| ());
+                        IoCtx::save_csv_ask(&get_curve(pivot));
                     }
                     ComboBox::from_label("")
                         .selected_text(pivot.name())
@@ -245,7 +242,7 @@ impl Project {
                         });
                 });
                 if ui.button("🗐 Copy Curve to CSV").clicked() {
-                    ui.output().copied_text = csv(pivot);
+                    ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
                 }
                 let curve = get_curve(pivot);
                 if !target.is_empty() && !curve.is_empty() {
@@ -376,7 +373,7 @@ impl Projects {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
-                IoCtx::open(FMT, EXT, move |path, s| {
+                IoCtx::open_ron(move |path, s| {
                     if let Ok(fb) = ron::from_str(&s) {
                         queue.push(Some(path), fb);
                     }

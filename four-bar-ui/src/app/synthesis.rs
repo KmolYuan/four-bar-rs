@@ -2,16 +2,16 @@ use super::{project::Queue, remote::Remote, widgets::unit, IoCtx};
 use crate::{as_values::as_values, dump_csv, parse_csv};
 use eframe::egui::{
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
-    reset_button, Button, Color32, ProgressBar, ScrollArea, Ui, Window,
+    reset_button, Button, Color32, ProgressBar, ScrollArea, TextEdit, Ui, Window,
 };
-use four_bar::tests::{CRUNODE, OPEN_CURVE2};
 use serde::{Deserialize, Serialize};
-use std::sync::{
-    atomic::{AtomicBool, AtomicU64, Ordering},
-    Arc, RwLock,
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, RwLock,
+    },
 };
-
-const EXAMPLE_LIST: &[(&str, &[[f64; 2]])] = &[("crunode", CRUNODE), ("open curve 2", OPEN_CURVE2)];
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -21,6 +21,8 @@ pub(crate) struct Synthesis {
     csv_open: bool,
     conv_open: bool,
     remote: Remote,
+    target_name: String,
+    targets: HashMap<String, Vec<[f64; 2]>>,
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -166,25 +168,49 @@ impl Synthesis {
                 ui.horizontal(|ui| {
                     if ui.button("🖴 Open CSV").clicked() {
                         let curve_csv = self.config.curve_csv.clone();
-                        let done = move |_, s| *curve_csv.write().unwrap() = s;
-                        IoCtx::open_single("Delimiter-Separated Values", &["csv", "txt"], done);
+                        IoCtx::open_csv_single(move |_, s| {
+                            curve_csv.write().unwrap().clone_from(&s)
+                        });
                     }
                     if ui.button("🗑 Clear").clicked() {
-                        *self.config.curve_csv.write().unwrap() = String::new();
+                        self.config.curve_csv.write().unwrap().clear();
                     }
                     ui.checkbox(&mut self.config.syn.open, "Is open curve");
                 });
-                ui.label("Example targets:");
-                ui.horizontal(|ui| {
-                    for &(name, path) in EXAMPLE_LIST {
+                if !self.targets.is_empty() {
+                    ui.label("Saved targets (local):");
+                }
+                self.targets.retain(|name, curve| {
+                    ui.horizontal(|ui| {
                         if ui.button(name).clicked() {
-                            *self.config.curve_csv.write().unwrap() = dump_csv(path).unwrap();
+                            self.config
+                                .curve_csv
+                                .write()
+                                .unwrap()
+                                .clone_from(&dump_csv(curve).unwrap());
                         }
-                    }
+                        if ui.button("💾 Export CSV").clicked() {
+                            IoCtx::save_csv_ask(curve);
+                        }
+                        !ui.button("🗑").clicked()
+                    })
+                    .inner
                 });
                 ui.label("Past CSV data here:");
-                ScrollArea::vertical().max_height(450.).show(ui, |ui| {
-                    ui.code_editor(&mut *self.config.curve_csv.write().unwrap());
+                ui.horizontal(|ui| {
+                    if ui.button("💾 Update (local)").clicked() {
+                        if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
+                            self.targets.insert(self.target_name.clone(), curve);
+                        }
+                    }
+                    ui.text_edit_singleline(&mut self.target_name);
+                });
+                ScrollArea::both().auto_shrink([true; 2]).show(ui, |ui| {
+                    let mut s = self.config.curve_csv.write().unwrap();
+                    let w = TextEdit::multiline(&mut *s)
+                        .code_editor()
+                        .desired_width(f32::INFINITY);
+                    ui.add(w);
                 });
             });
     }
