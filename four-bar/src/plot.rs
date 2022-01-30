@@ -20,24 +20,22 @@ pub fn plot_history<P>(history: &[f64], fitness: f64, path: P)
 where
     P: AsRef<std::path::Path>,
 {
-    let trace = Scatter::new(0..history.len(), history.iter().cloned())
-        .x_axis("Generation")
-        .y_axis("Fitness")
-        .mode(Mode::LinesMarkers);
+    let trace = Scatter::new(0..history.len(), history.iter().cloned()).mode(Mode::LinesMarkers);
     let cap = format!("Convergence Plot (Best Fitness: {:.04})", fitness);
-    let axis = || {
+    let axis = |label| {
         Axis::new()
             .mirror(true)
             .show_tick_labels(true)
             .show_line(true)
             .ticks(TicksDirection::Outside)
             .range_mode(RangeMode::NonNegative)
+            .title(Title::new(label).font(font().size(18)))
             .tick_font(font().size(18))
     };
     let layout = Layout::new()
         .title(Title::new(&cap).font(font().size(20)))
-        .x_axis(axis())
-        .y_axis(axis());
+        .x_axis(axis("Generation"))
+        .y_axis(axis("Fitness"));
     let mut plot = Plot::new();
     plot.add_trace(trace);
     plot.set_layout(layout);
