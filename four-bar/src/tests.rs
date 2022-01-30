@@ -1,4 +1,5 @@
 #![doc(hidden)]
+
 #[cfg(test)]
 use crate::*;
 
@@ -8,10 +9,11 @@ fn anti_symmetry_extension() {
     assert_eq!(ans, OPEN_CURVE1_ANS);
 }
 
-#[cfg(all(test, feature = "plot"))]
+#[cfg(all(test, feature = "plot_export"))]
 fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
     use crate::synthesis::*;
     use indicatif::ProgressBar;
+    use plotly::ImageFormat;
     use std::{f64::consts::TAU, fs::write};
 
     let pb = ProgressBar::new(gen);
@@ -22,20 +24,19 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
         .record(|ctx| ctx.best_f)
         .solve(Planar::new(target, 720, None, open));
     pb.finish();
-    plot::plot_history(s.report(), s.best_fitness(), "history.svg");
+    let plot = plot::plot_history(s.report(), s.best_fitness());
+    plot.save("history.svg", ImageFormat::SVG, 800, 600, 1.);
     let ans = s.result();
     write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
     let curve = Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360);
     println!("harmonic: {}", s.func().harmonic());
     println!("seed: {}", s.seed());
-    plot::plot_curve(
-        "Synthesis Test",
-        &[("Target", target), ("Optimized", &curve)],
-        "result.svg",
-    );
+    let curves = [("Target", target), ("Optimized", &curve)];
+    let plot = plot::plot_curve("Synthesis Test", &curves);
+    plot.save("result.svg", ImageFormat::SVG, 800, 800, 1.);
 }
 
-#[cfg(feature = "plot")]
+#[cfg(feature = "plot_export")]
 #[test]
 fn planar() {
     // let target = Mechanism::four_bar(FourBar {

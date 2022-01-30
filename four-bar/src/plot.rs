@@ -3,7 +3,7 @@
 use plotly::{
     common::{Font, Marker, Mode, Title},
     layout::{Axis, Legend, RangeMode, TicksDirection},
-    ImageFormat, Layout, Plot, Scatter, Trace,
+    Layout, Plot, Scatter, Trace,
 };
 
 fn font() -> Font {
@@ -16,10 +16,7 @@ fn font() -> Font {
 }
 
 /// Plot the synthesis history. (SVG)
-pub fn plot_history<P>(history: &[f64], fitness: f64, path: P)
-where
-    P: AsRef<std::path::Path>,
-{
+pub fn plot_history(history: &[f64], fitness: f64) -> Plot {
     let trace = Scatter::new(0..history.len(), history.iter().cloned()).mode(Mode::LinesMarkers);
     let cap = format!("Convergence Plot (Best Fitness: {:.04})", fitness);
     let axis = |label| {
@@ -39,14 +36,11 @@ where
     let mut plot = Plot::new();
     plot.add_trace(trace);
     plot.set_layout(layout);
-    plot.save(path, ImageFormat::SVG, 800, 600, 1.);
+    plot
 }
 
 /// Plot 2D curve. (SVG)
-pub fn plot_curve<P>(title: &str, curves: &[(&str, &[[f64; 2]])], path: P)
-where
-    P: AsRef<std::path::Path>,
-{
+pub fn plot_curve(title: &str, curves: &[(&str, &[[f64; 2]])]) -> Plot {
     let traces = curves
         .iter()
         .map(|&(name, curve)| {
@@ -75,5 +69,5 @@ where
     let mut plot = Plot::new();
     plot.add_traces(traces);
     plot.set_layout(layout);
-    plot.save(path, ImageFormat::SVG, 800, 800, 1.);
+    plot
 }
