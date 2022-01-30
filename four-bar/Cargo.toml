@@ -10,9 +10,12 @@ repository = "https://github.com/KmolYuan/four-bar-rs"
 keywords = ["mechanism", "simulation", "optimization"]
 categories = ["algorithms"]
 
+[features]
+plot = ["plotly/kaleido"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
-plotters = { version = "0.3", optional = true }
+plotly  = { version = "0.7", optional = true }
 metaheuristics-nature = { version = "0.23", features = ["parallel"] }
 efd = "0.11"
 rayon = "1.5"

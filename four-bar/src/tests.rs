@@ -8,7 +8,7 @@ fn anti_symmetry_extension() {
     assert_eq!(ans, OPEN_CURVE1_ANS);
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "plot"))]
 fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
     use crate::synthesis::*;
     use indicatif::ProgressBar;
@@ -22,19 +22,20 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
         .record(|ctx| ctx.best_f)
         .solve(Planar::new(target, 720, None, open));
     pb.finish();
-    plot::plot_history(s.report(), s.seed(), s.best_fitness(), "history.svg");
+    plot::plot_history(s.report(), s.best_fitness(), "history.svg");
     let ans = s.result();
     write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
     let curve = Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360);
     println!("harmonic: {}", s.func().harmonic());
+    println!("seed: {}", s.seed());
     plot::plot_curve(
         "Synthesis Test",
-        &[("Target", &target), ("Optimized", &curve)],
+        &[("Target", target), ("Optimized", &curve)],
         "result.svg",
     );
 }
 
-#[cfg(feature = "plotters")]
+#[cfg(feature = "plot")]
 #[test]
 fn planar() {
     // let target = Mechanism::four_bar(FourBar {

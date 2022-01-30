@@ -17,7 +17,7 @@ pub use crate::{four_bar::*, mechanism::*, point::*};
 
 mod four_bar;
 mod mechanism;
-#[cfg(feature = "plotters")]
+#[cfg(feature = "plot")]
 pub mod plot;
 mod point;
 pub mod synthesis;
