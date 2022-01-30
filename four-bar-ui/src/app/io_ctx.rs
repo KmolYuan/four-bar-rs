@@ -14,8 +14,10 @@ pub(crate) use ext;
 
 const FMT: &str = "Rusty Object Notation";
 const CSV_FMT: &str = "Delimiter-Separated Values";
+const HTML_FMT: &str = "Hypertext Markup Language";
 const EXT: &[&str] = &[ext!()];
 const CSV_EXT: &[&str] = &["csv", "txt"];
+const HTML_EXT: &[&str] = &["html"];
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
@@ -227,6 +229,10 @@ impl IoCtx {
     {
         let s = dump_csv(curve).unwrap();
         Self::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ())
+    }
+
+    pub(crate) fn save_html_ask(s: &str) {
+        Self::save_ask(s, "plot.html", HTML_FMT, HTML_EXT, |_| ())
     }
 
     pub(crate) fn save_ron_ask<C>(four_bar: &FourBar, name: &str, done: C)

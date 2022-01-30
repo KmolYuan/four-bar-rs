@@ -229,6 +229,7 @@ impl Project {
                 })
             };
             ui.group(|ui| {
+                ui.heading("Export");
                 ui.horizontal(|ui| {
                     if ui.button("💾 Save Curve").clicked() {
                         IoCtx::save_csv_ask(&get_curve(pivot));
@@ -244,6 +245,19 @@ impl Project {
                 if ui.button("🗐 Copy Curve to CSV").clicked() {
                     ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
                 }
+                ui.horizontal(|ui| {
+                    if ui.button("💾 Plot").clicked() {
+                        let curve = get_curve(pivot);
+                        let mut curves = vec![("Result Curve", curve.as_slice())];
+                        if !target.is_empty() {
+                            curves.push(("Target Curve", target));
+                        }
+                        let plot = four_bar::plot::plot_curve("Four-bar Linkage Result", &curves);
+                        let mut v = Vec::new();
+                        plot.write_html(&mut v);
+                        IoCtx::save_html_ask(String::from_utf8_lossy(&v).as_ref())
+                    }
+                });
                 let curve = get_curve(pivot);
                 if !target.is_empty() && !curve.is_empty() {
                     let geo_err = geo_err(target, &curve);
