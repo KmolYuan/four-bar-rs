@@ -24,14 +24,12 @@ use std::f64::consts::{FRAC_PI_4, TAU};
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
-type BoxedIter<'a> = Box<dyn Iterator<Item = &'a [f64; 2]> + 'a>;
-
 #[inline(always)]
-fn boxed_iter<'a, I>(iter: I) -> BoxedIter<'a>
+fn boxed_iter<'a, I>(iter: I) -> Box<dyn Iterator<Item = &'a [f64; 2]> + 'a>
 where
     I: Iterator<Item = &'a [f64; 2]> + 'a,
 {
-    Box::new(iter) as BoxedIter
+    Box::new(iter) as _
 }
 
 /// Input a curve, split out finite parts to a continuous curve. (greedy method)
