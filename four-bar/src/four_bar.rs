@@ -5,7 +5,7 @@ use std::{
 };
 
 /// The classification of the four-bar linkage.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Class {
     /// Grashof double crank
     GCCC,
@@ -50,6 +50,7 @@ impl Class {
 
 /// Data type of the four-bar mechanism.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct FourBar {
     /// Origin.
