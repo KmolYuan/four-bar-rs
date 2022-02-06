@@ -15,10 +15,12 @@
 #![warn(missing_docs)]
 pub use crate::{four_bar::*, mechanism::*, point::*};
 
+pub mod curve;
 mod four_bar;
 mod mechanism;
 #[cfg(feature = "plot")]
 pub mod plot;
 mod point;
+pub mod repr;
 pub mod synthesis;
 pub mod tests;

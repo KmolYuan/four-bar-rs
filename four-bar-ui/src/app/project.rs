@@ -8,7 +8,7 @@ use eframe::egui::{
     Button, Color32, ComboBox, Ui,
 };
 use four_bar::{
-    synthesis::{geo_err, get_valid_part},
+    curve::{geo_err, get_valid_part},
     FourBar, Mechanism,
 };
 use serde::{Deserialize, Serialize};
