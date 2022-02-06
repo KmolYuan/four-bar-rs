@@ -93,9 +93,9 @@ pub fn close_loop(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
     curve
 }
 
-/// Return true if curve contains any NaN coordinate.
+/// Return false if curve contains any NaN coordinate.
 pub fn is_valid_curve(curve: &[[f64; 2]]) -> bool {
-    curve.iter().any(|[x, y]| !x.is_finite() || !y.is_finite())
+    !curve.iter().any(|[x, y]| !x.is_finite() || !y.is_finite())
 }
 
 /// Geometry error between two curves.
@@ -141,7 +141,8 @@ pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     (basic_err + err) / target.len() as f64
 }
 
-fn grashof_transform(v: &[f64]) -> [f64; 5] {
+/// Grashof transform for any non-Grashof linkages (in vector form).
+pub fn grashof_transform(v: &[f64]) -> [f64; 5] {
     let mut four = [v[0], 1., v[1], v[2]];
     four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
     if four[0] + four[3] - four[1] - four[2] < 0. && (four[0] == 1. || four[0] == v[0]) {
@@ -152,16 +153,17 @@ fn grashof_transform(v: &[f64]) -> [f64; 5] {
     }
 }
 
-fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
+/// Create a normalized four-bar linkage from a vector.
+pub const fn four_bar_v([l0, l2, l3, l4, g]: [f64; 5], inv: bool) -> FourBar {
     FourBar {
         p0: [0., 0.],
         a: 0.,
-        l0: v[0],
+        l0,
         l1: 1.,
-        l2: v[1],
-        l3: v[2],
-        l4: v[3],
-        g: v[4],
+        l2,
+        l3,
+        l4,
+        g,
         inv,
     }
 }
@@ -236,10 +238,10 @@ impl Planar {
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
-                    let m = Mechanism::four_bar(&four_bar_v(&d, inv));
+                    let m = Mechanism::four_bar(&four_bar_v(d, inv));
                     (close_loop(m.par_four_bar_loop(t1, t2, self.n)), inv)
                 })
-                .filter(|(curve, _)| !is_valid_curve(curve))
+                .filter(|(curve, _)| is_valid_curve(curve))
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
                     let four_bar = four_bar_coeff(&d, inv, efd.to(&self.efd));
