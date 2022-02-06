@@ -70,7 +70,7 @@ pub fn close_loop(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 }
 
 /// Return false if curve contains any NaN coordinate.
-pub fn is_valid_curve(curve: &[[f64; 2]]) -> bool {
+pub fn is_valid(curve: &[[f64; 2]]) -> bool {
     !curve.iter().any(|[x, y]| !x.is_finite() || !y.is_finite())
 }
 

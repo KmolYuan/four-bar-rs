@@ -97,7 +97,7 @@ impl Planar {
                     let m = Mechanism::four_bar(&repr::four_bar_v(d, inv));
                     (curve::close_loop(m.par_four_bar_loop(t1, t2, self.n)), inv)
                 })
-                .filter(|(curve, _)| curve::is_valid_curve(curve))
+                .filter(|(curve, _)| curve::is_valid(curve))
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
                     let four_bar = four_bar_transformed(&d, inv, efd.to(&self.efd));
