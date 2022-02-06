@@ -16,11 +16,15 @@
 //!     .solve(Planar::new(&curve, 720, None, false));
 //! let result = s.result();
 //! ```
-use self::mh::{utility::prelude::*, ObjFunc};
+use self::{
+    efd::{Efd, GeoInfo},
+    mh::{utility::prelude::*, ObjFunc},
+};
 use crate::{curve, repr, FourBar, Mechanism};
-use efd::{Efd, GeoInfo};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
+#[doc(no_inline)]
+pub use efd;
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
 
