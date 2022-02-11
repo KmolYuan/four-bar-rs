@@ -64,7 +64,7 @@ async fn logout(id: Identity, req: HttpRequest) -> impl Responder {
     builder.finish()
 }
 
-pub(crate) fn serve(port: u16) -> Result<()> {
+pub fn serve(port: u16, open: bool) -> Result<()> {
     let users = Data::new(users()?);
     let temp = TempDir::new()?;
     extract(temp.path())?;
@@ -72,6 +72,9 @@ pub(crate) fn serve(port: u16) -> Result<()> {
     println!("Serve at: http://localhost:{}/", port);
     println!("Unpacked archive at: {:?}", &path);
     println!("Press Ctrl+C to close the server...");
+    if open {
+        webbrowser::open(&format!("http://localhost:{}/", port))?;
+    }
     let server = HttpServer::new(move || {
         let cookie_policy = CookieIdentityPolicy::new(&[0; 32])
             .name("auth-cookie")

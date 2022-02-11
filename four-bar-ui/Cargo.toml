@@ -1,6 +1,6 @@
 [package]
 name = "four-bar-ui"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 description = "Four🍀bar GUI is a simulator, a synthesizing tool for four-bar linkage mechanism."
@@ -28,6 +28,7 @@ ureq = { version = "2", features = ["cookies"] }
 actix-web = "4.0.0-beta"
 actix-identity = "0.4.0-beta"
 actix-files = "0.6.0-beta"
+webbrowser = "0.5"
 temp-dir = "0.1"
 zip = "0.5"
 rfd = "0.7"

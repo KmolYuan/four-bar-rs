@@ -32,6 +32,9 @@ enum Subcommand {
         /// Port number
         #[clap(long, default_value = "8080")]
         port: u16,
+        /// Open the server
+        #[clap(long)]
+        open: bool,
     },
     /// Run native UI program (default)
     Ui {
@@ -44,7 +47,7 @@ fn main() -> Result<()> {
     let args = Entry::parse();
     match args.subcommand {
         Some(Subcommand::Update) => update::update(),
-        Some(Subcommand::Serve { port }) => serve::serve(port),
+        Some(Subcommand::Serve { port, open }) => serve::serve(port, open),
         Some(Subcommand::Ui { files }) => run_native(files),
         None => run_native(args.files),
     }

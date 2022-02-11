@@ -19,7 +19,7 @@ macro_rules! wasm_url {
     };
 }
 
-pub(crate) fn update() -> Result<()> {
+pub fn update() -> Result<()> {
     println!(concat!["Downloading archive from ", wasm_url!()]);
     let archive = current_exe()?.with_file_name(concat![archive!(), ".zip"]);
     match agent().get(wasm_url!()).call() {
@@ -30,7 +30,7 @@ pub(crate) fn update() -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn extract<D>(d: D) -> Result<()>
+pub fn extract<D>(d: D) -> Result<()>
 where
     D: AsRef<Path>,
 {
