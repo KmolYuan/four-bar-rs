@@ -2,8 +2,10 @@ use crate::{FourBar, Point};
 use rayon::prelude::*;
 use std::{f64::consts::TAU, marker::PhantomData};
 
+/// Mechanism position formula.
+#[allow(missing_docs)]
 #[derive(Clone)]
-enum Formula {
+pub enum Formula {
     Pla(usize, f64, f64, usize),
     Plap(usize, f64, f64, usize, usize),
     Pllp(usize, f64, f64, usize, bool, usize),
@@ -33,6 +35,9 @@ impl Formula {
 pub trait Linkage {
     /// Memory layout of the joints
     type Joint;
+
+    /// Allocate memory for [`Mechanism`] type.
+    fn allocate(&self) -> (Self::Joint, Vec<Formula>);
 }
 
 /// Geometry constraint solver of the linkage mechanisms.
@@ -43,32 +48,19 @@ pub struct Mechanism<L: Linkage> {
     _marker: PhantomData<L>,
 }
 
-impl Mechanism<FourBar> {
-    /// Create four bar linkages.
-    pub fn four_bar(m: &FourBar) -> Self {
-        let joints = [
-            [m.p0.x(), m.p0.y()],
-            [m.p0.x() + m.l0 * m.a.cos(), m.p0.y() + m.l0 * m.a.sin()],
-            [0., 0.],
-            [0., 0.],
-            [0., 0.],
-        ];
-        let mut fs = Vec::with_capacity(3);
-        fs.push(Formula::Pla(0, m.l1, 0., 2));
-        if (m.l0 - m.l2).abs() < 1e-20 && (m.l1 - m.l3).abs() < 1e-20 {
-            // Special case
-            fs.push(Formula::Ppp(0, 2, 1, 3));
-        } else {
-            fs.push(Formula::Pllp(2, m.l2, m.l3, 1, m.inv, 3));
-        }
-        fs.push(Formula::Plap(2, m.l4, m.g, 3, 4));
+impl<L: Linkage> Mechanism<L> {
+    /// Create a mechanism for the linkage.
+    pub fn new(m: &L) -> Self {
+        let (joints, fs) = m.allocate();
         Self {
             joints,
             fs,
             _marker: PhantomData,
         }
     }
+}
 
+impl Mechanism<FourBar> {
     /// A loop trajectory for only coupler point.
     pub fn four_bar_loop(&self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
         let interval = (end - start) / n as f64;

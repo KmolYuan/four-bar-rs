@@ -220,7 +220,7 @@ impl Project {
         ui.add_enabled_ui(!proj.hide, |ui| {
             let fb = &mut proj.four_bar;
             let get_curve = |pivot: &Pivot| {
-                let m = Mechanism::four_bar(fb);
+                let m = Mechanism::new(fb);
                 let [curve1, curve2, curve3] = m.four_bar_loop_all(0., n);
                 get_valid_part(&match pivot {
                     Pivot::Driver => curve1,
@@ -286,7 +286,7 @@ impl Project {
         if self.0.read().unwrap().hide {
             return;
         }
-        let m = Mechanism::four_bar(&self.0.read().unwrap().four_bar);
+        let m = Mechanism::new(&self.0.read().unwrap().four_bar);
         let is_main = i == id;
         let mut joints = [[0.; 2]; 5];
         m.apply(angle, [0, 1, 2, 3, 4], &mut joints);

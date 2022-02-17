@@ -1,4 +1,4 @@
-use crate::Linkage;
+use crate::{Formula, Linkage, Point as _};
 use std::{
     f64::consts::FRAC_PI_6,
     ops::{Div, DivAssign},
@@ -131,6 +131,37 @@ impl FourBar {
 
 impl Linkage for FourBar {
     type Joint = [[f64; 2]; 5];
+
+    fn allocate(&self) -> (Self::Joint, Vec<crate::mechanism::Formula>) {
+        let Self {
+            p0,
+            a,
+            l0,
+            l1,
+            l2,
+            l3,
+            l4,
+            g,
+            inv,
+        } = self;
+        let joints = [
+            [p0.x(), p0.y()],
+            [p0.x() + l0 * a.cos(), p0.y() + l0 * a.sin()],
+            [0., 0.],
+            [0., 0.],
+            [0., 0.],
+        ];
+        let mut fs = Vec::with_capacity(3);
+        fs.push(Formula::Pla(0, *l1, 0., 2));
+        if (l0 - l2).abs() < 1e-20 && (l1 - l3).abs() < 1e-20 {
+            // Special case
+            fs.push(Formula::Ppp(0, 2, 1, 3));
+        } else {
+            fs.push(Formula::Pllp(2, *l2, *l3, 1, *inv, 3));
+        }
+        fs.push(Formula::Plap(2, *l4, *g, 3, 4));
+        (joints, fs)
+    }
 }
 
 impl Div<f64> for FourBar {
