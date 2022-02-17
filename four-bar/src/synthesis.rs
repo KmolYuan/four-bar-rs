@@ -17,7 +17,7 @@
 //! let result = s.result();
 //! ```
 use self::{
-    efd::{Efd, GeoInfo},
+    efd::Efd,
     mh::{utility::prelude::*, ObjFunc},
 };
 use crate::{curve, repr, FourBar, Mechanism};
@@ -27,20 +27,6 @@ use std::f64::consts::{FRAC_PI_4, TAU};
 pub use efd;
 #[doc(no_inline)]
 pub use metaheuristics_nature as mh;
-
-fn four_bar_transformed(d: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
-    FourBar {
-        p0: geo.center,
-        a: geo.rot,
-        l0: d[0] * geo.scale,
-        l1: geo.scale,
-        l2: d[1] * geo.scale,
-        l3: d[2] * geo.scale,
-        l4: d[3] * geo.scale,
-        g: d[4],
-        inv,
-    }
-}
 
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
@@ -104,7 +90,7 @@ impl Planar {
                 .filter(|(curve, _)| curve::is_valid(curve))
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
-                    let four_bar = four_bar_transformed(&d, inv, efd.to(&self.efd));
+                    let four_bar = repr::four_bar_transform(&d, inv, efd.to(&self.efd));
                     let fitness = efd.discrepancy(&self.efd);
                     (fitness, four_bar)
                 })
