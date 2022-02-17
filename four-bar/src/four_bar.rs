@@ -1,4 +1,4 @@
-use crate::{Formula, Linkage, Point as _};
+use crate::{Formula, Linkage, Mechanism, Point as _};
 use std::{
     f64::consts::FRAC_PI_6,
     ops::{Div, DivAssign},
@@ -161,6 +161,30 @@ impl Linkage for FourBar {
         }
         fs.push(Formula::Plap(2, *l4, *g, 3, 4));
         (joints, fs)
+    }
+
+    fn apply<const N: usize>(
+        m: &Mechanism<Self>,
+        angle: f64,
+        joint: [usize; N],
+        ans: &mut [[f64; 2]; N],
+    ) {
+        let mut joints = m.joints;
+        let mut formulas = m.fs.clone();
+        match formulas.first_mut() {
+            Some(Formula::Pla(_, _, ref mut a, _)) => *a = angle,
+            _ => panic!("invalid four bar"),
+        }
+        for f in formulas {
+            f.apply(&mut joints);
+        }
+        if joints[4][0].is_nan() || joints[4][1].is_nan() {
+            ans.clone_from(&[[f64::NAN; 2]; N]);
+        } else {
+            for (ans, joint) in ans.iter_mut().zip(joint) {
+                ans.clone_from(&joints[joint]);
+            }
+        }
     }
 }
 

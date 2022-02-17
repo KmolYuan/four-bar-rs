@@ -9,7 +9,7 @@ use eframe::egui::{
 };
 use four_bar::{
     curve::{geo_err, get_valid_part},
-    FourBar, Mechanism,
+    FourBar, Linkage, Mechanism,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -221,7 +221,7 @@ impl Project {
             let fb = &mut proj.four_bar;
             let get_curve = |pivot: &Pivot| {
                 let m = Mechanism::new(fb);
-                let [curve1, curve2, curve3] = m.four_bar_loop_all(0., n);
+                let [curve1, curve2, curve3] = m.curve_all(0., n);
                 get_valid_part(&match pivot {
                     Pivot::Driver => curve1,
                     Pivot::Follower => curve2,
@@ -289,7 +289,7 @@ impl Project {
         let m = Mechanism::new(&self.0.read().unwrap().four_bar);
         let is_main = i == id;
         let mut joints = [[0.; 2]; 5];
-        m.apply(angle, [0, 1, 2, 3, 4], &mut joints);
+        <FourBar as Linkage>::apply(&m, angle, [0, 1, 2, 3, 4], &mut joints);
         draw_link(ui, &[joints[0], joints[2]], is_main);
         draw_link(ui, &[joints[1], joints[3]], is_main);
         draw_link(ui, &joints[2..], is_main);
@@ -302,7 +302,7 @@ impl Project {
             .color(JOINT_COLOR);
         ui.points(float_j);
         ui.points(fixed_j);
-        let curve = m.four_bar_loop_all(0., n);
+        let curve = m.curve_all(0., n);
         let path_names = ["Crank pivot", "Follower pivot", "Coupler pivot"];
         for (path, name) in curve.iter().zip(path_names) {
             let line = Line::new(as_values(path))

@@ -85,7 +85,7 @@ impl Planar {
                 .into_par_iter()
                 .map(move |inv| {
                     let m = Mechanism::new(&repr::four_bar_v(d, inv));
-                    (curve::close_loop(m.par_four_bar_loop(t1, t2, self.n)), inv)
+                    (curve::close_loop(m.par_curve(t1, t2, self.n)), inv)
                 })
                 .filter(|(curve, _)| curve::is_valid(curve))
                 .map(|(curve, inv)| {
