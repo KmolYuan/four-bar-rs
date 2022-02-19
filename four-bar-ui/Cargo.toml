@@ -31,7 +31,7 @@ actix-files = "0.6.0-beta"
 webbrowser = "0.5"
 temp-dir = "0.1"
 zip = "0.5"
-rfd = "0.7"
+rfd = "0.8"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # wasm here!
