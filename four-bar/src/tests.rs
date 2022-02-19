@@ -5,7 +5,7 @@ use crate::*;
 
 #[test]
 fn anti_symmetry_extension() {
-    let ans = synthesis::anti_sym_ext(OPEN_CURVE1);
+    let ans = curve::anti_sym_ext(OPEN_CURVE1);
     assert_eq!(ans, OPEN_CURVE1_ANS);
 }
 
@@ -28,7 +28,7 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
     plot.save("history.svg", ImageFormat::SVG, 800, 600, 1.);
     let ans = s.result();
     write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
-    let curve = Mechanism::four_bar(&ans).four_bar_loop(0., TAU, 360);
+    let curve = Mechanism::new(&ans).four_bar_loop(0., TAU, 360);
     println!("harmonic: {}", s.func().harmonic());
     println!("seed: {}", s.seed());
     let curves = [("Target", target), ("Optimized", &curve)];
