@@ -116,3 +116,103 @@ pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         .unwrap();
     (basic_err + err) / target.len() as f64
 }
+
+/// Count the crunodes of the curve.
+pub fn crunode(curve: &[[f64; 2]]) -> usize {
+    let mut order = (0..curve.len()).collect::<Vec<_>>();
+    order.sort_unstable_by(|a, b| curve[*a][0].partial_cmp(&curve[*b][0]).unwrap());
+    // Active list
+    let mut act = vec![0; curve.len()];
+    // Sweep line
+    let mut count = 0;
+    for i in 0..curve.len() {
+        for prev_next in [false, true] {
+            if order[i] == 0 && !prev_next {
+                continue;
+            }
+            let prev_next = if prev_next {
+                order[i] + 1
+            } else {
+                order[i] - 1
+            };
+            if prev_next >= curve.len() {
+                continue;
+            }
+            // Overlap checking
+            // Line 1:
+            // order[i], prev_next
+            // Line 2:
+            // j - 1, j
+            for j in 0..curve.len() {
+                // Skip inactive point (no line)
+                if j == 0 || act[j - 1] == 0 || act[j] == 0 {
+                    continue;
+                }
+                // Check overlap
+                // Ignore the connection
+                let mut set = std::collections::HashSet::new();
+                set.insert(order[i]);
+                set.insert(prev_next);
+                set.insert(j);
+                set.insert(j - 1);
+                if set.len() == 4
+                    && intersect(
+                        [curve[order[i]][0], curve[order[i]][1]],
+                        [curve[prev_next][0], curve[prev_next][1]],
+                        [curve[j][0], curve[j][1]],
+                        [curve[j - 1][0], curve[j - 1][1]],
+                    )
+                {
+                    count += 1;
+                }
+            }
+            // Decrease counter if passed
+            if curve[prev_next][0] >= curve[order[i]][0] {
+                act[prev_next] += 1;
+                act[order[i]] += 1;
+            } else {
+                act[prev_next] -= 1;
+            }
+        }
+    }
+    count
+}
+
+fn orientation(p: [f64; 2], q: [f64; 2], r: [f64; 2]) -> u8 {
+    let slp = (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1]);
+    if slp == 0. {
+        0
+    } else if slp < 0. {
+        1
+    } else {
+        2
+    }
+}
+
+/// Return true if two lines have intersection.
+///
+/// ```
+/// use four_bar::curve::intersect;
+///
+/// assert_eq!(false, intersect([1., 1.], [10., 1.], [1., 2.], [10., 2.]));
+/// assert_eq!(true, intersect([10., 0.], [0., 10.], [0., 0.], [10., 10.]));
+/// assert_eq!(false, intersect([-5., -5.], [0., 0.], [1., 1.], [10., 10.]));
+/// ```
+pub fn intersect(p1: [f64; 2], q1: [f64; 2], p2: [f64; 2], q2: [f64; 2]) -> bool {
+    fn online(p: [f64; 2], q: [f64; 2], r: [f64; 2]) -> bool {
+        q[0] <= p[0].max(r[0])
+            && q[0] >= p[0].min(r[0])
+            && q[1] <= p[1].max(r[1])
+            && q[1] >= p[1].min(r[1])
+    }
+
+    let o1 = orientation(p1, q1, p2);
+    let o2 = orientation(p1, q1, q2);
+    let o3 = orientation(p2, q2, p1);
+    let o4 = orientation(p2, q2, q1);
+    o1 != o2 && o3 != o4
+        || o1 == 0 && online(p1, p2, q1)
+        || o2 == 0 && online(p1, q2, q1)
+        || o3 == 0 && online(p2, p1, q2)
+        || o4 == 0 && online(p2, q1, q2)
+}
