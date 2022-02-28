@@ -4,7 +4,6 @@ set -eu
 cd "$(dirname "${0}")" || exit
 REPODIR=${PWD}
 
-BUILD=release
 CRATE=four-bar-ui # crate name
 CRATE_SNAKE_CASE="${CRATE//-/_}" # for those who name crates with-kebab-case
 
@@ -18,7 +17,7 @@ rm -f docs/${CRATE_SNAKE_CASE}_bg.wasm
 
 echo "Generating JS bindings for wasm..."
 TARGET_NAME="${CRATE_SNAKE_CASE}.wasm"
-wasm-pack build --${BUILD} --out-dir ../docs/pkg -t web --no-typescript "${REPODIR}/${CRATE}"
+wasm-pack build --release --out-dir ../docs/pkg -t web --no-typescript "${REPODIR}/${CRATE}"
 rm "${REPODIR}/docs/pkg/.gitignore"
 rm "${REPODIR}/docs/pkg/package.json"
 cp "${REPODIR}/four-bar-ui/src/assets/favicon.png" "${REPODIR}/docs"
