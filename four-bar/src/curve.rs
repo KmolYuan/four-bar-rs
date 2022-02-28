@@ -175,7 +175,7 @@ pub fn crunode(curve: &[[f64; 2]]) -> usize {
             }
         }
     }
-    count
+    count / 3
 }
 
 fn orientation(p: [f64; 2], q: [f64; 2], r: [f64; 2]) -> u8 {

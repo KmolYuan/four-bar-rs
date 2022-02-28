@@ -7,10 +7,7 @@ use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
     Button, Color32, ComboBox, Ui,
 };
-use four_bar::{
-    curve::{geo_err, get_valid_part},
-    FourBar, Linkage, Mechanism,
-};
+use four_bar::{curve, FourBar, Linkage, Mechanism};
 use serde::{Deserialize, Serialize};
 use std::{
     ops::{Deref, DerefMut},
@@ -22,6 +19,7 @@ const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
     Increase resolution for more accurate calculations.";
+const CN_DES: &str = "Current curve versus target curve.";
 
 #[cfg(not(target_arch = "wasm32"))]
 fn open(file: impl AsRef<Path>) -> Option<FourBar> {
@@ -222,7 +220,7 @@ impl Project {
             let get_curve = |pivot: &Pivot| {
                 let m = Mechanism::new(fb);
                 let [curve1, curve2, curve3] = m.curve_all(0., n);
-                get_valid_part(&match pivot {
+                curve::get_valid_part(&match pivot {
                     Pivot::Driver => curve1,
                     Pivot::Follower => curve2,
                     Pivot::Coupler => curve3,
@@ -246,9 +244,13 @@ impl Project {
                 }
                 let curve = get_curve(pivot);
                 if !target.is_empty() && !curve.is_empty() {
-                    let geo_err = geo_err(target, &curve);
+                    let geo_err = curve::geo_err(target, &curve);
                     ui.label(format!("Target mean error: {:.06}", geo_err))
                         .on_hover_text(ERR_DES);
+                    let cc = curve::crunode(&curve);
+                    let tc = curve::crunode(target);
+                    ui.label(format!("Crunodes: {} / {}", cc, tc))
+                        .on_hover_text(CN_DES);
                 }
             });
             ui.group(|ui| {
