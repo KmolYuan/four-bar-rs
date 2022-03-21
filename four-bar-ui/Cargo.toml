@@ -1,6 +1,6 @@
 [package]
 name = "four-bar-ui"
-version = "0.6.3"
+version = "1.0.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 description = "Four🍀bar GUI is a simulator, a synthesizing tool for four-bar linkage mechanism."
@@ -14,7 +14,7 @@ categories = ["algorithms"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-four-bar = { version = "0.6", path = "../four-bar", features = ["serde"] }
+four-bar = { version = "1", path = "../four-bar", features = ["serde"] }
 eframe = { version = "0.17", default-features = false, features = ["default_fonts", "egui_glium", "persistence"] }
 serde = { version = "1", features = ["derive"] }
 hmac-sha512 = "1"
