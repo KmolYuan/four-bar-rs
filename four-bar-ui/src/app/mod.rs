@@ -4,7 +4,7 @@ use crate::app::widgets::url_button;
 use eframe::{
     egui::{
         plot::{Legend, Plot},
-        CentralPanel, CtxRef, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
+        CentralPanel, Context, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
     },
     epi::{Frame, Storage, APP_KEY},
 };
@@ -53,7 +53,7 @@ impl App {
         }
     }
 
-    fn welcome(&mut self, ctx: &CtxRef) {
+    fn welcome(&mut self, ctx: &Context) {
         let mut welcome = !self.welcome_off;
         Window::new("Welcome to Four🍀bar!")
             .open(&mut welcome)
@@ -95,7 +95,7 @@ impl App {
 }
 
 impl eframe::epi::App for App {
-    fn update(&mut self, ctx: &CtxRef, _frame: &Frame) {
+    fn update(&mut self, ctx: &Context, _frame: &Frame) {
         self.welcome(ctx);
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         if let PanelState::On | PanelState::Monitor = self.panel {
@@ -120,7 +120,7 @@ impl eframe::epi::App for App {
         });
     }
 
-    fn setup(&mut self, _ctx: &CtxRef, _frame: &Frame, storage: Option<&dyn Storage>) {
+    fn setup(&mut self, _ctx: &Context, _frame: &Frame, storage: Option<&dyn Storage>) {
         let init_proj = self.init_project.clone();
         if let Some(storage) = storage {
             if let Some(app) = eframe::epi::get_value(storage, APP_KEY) {
