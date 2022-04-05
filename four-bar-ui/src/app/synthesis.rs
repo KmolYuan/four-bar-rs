@@ -1,9 +1,10 @@
-use super::{project::Queue, remote::Remote, widgets::unit, IoCtx};
+use super::{linkages::Linkages, project::Queue, remote::Remote, widgets::unit, IoCtx};
 use crate::{as_values::as_values, dump_csv, parse_csv};
 use eframe::egui::{
     plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
     reset_button, Button, Color32, ProgressBar, ScrollArea, TextEdit, Ui, Window,
 };
+use four_bar::curve;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -13,9 +14,12 @@ use std::{
     },
 };
 
+const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
+    Increase resolution for more accurate calculations.";
+
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
-pub(crate) struct Synthesis {
+pub struct Synthesis {
     config: UiConfig,
     tasks: Vec<Task>,
     csv_open: bool,
@@ -79,7 +83,7 @@ struct Task {
 }
 
 impl Synthesis {
-    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, queue: Queue) {
+    pub fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, linkage: &mut Linkages) {
         ui.heading("Synthesis");
         reset_button(ui, &mut self.config);
         self.convergence_plot(ui);
@@ -112,8 +116,8 @@ impl Synthesis {
                 self.conv_open = !self.conv_open;
             }
             self.tasks.retain(|task| {
+                let mut keep = true;
                 ui.horizontal(|ui| {
-                    let mut keep = true;
                     let start = task.start.load(Ordering::Relaxed);
                     if start {
                         if ui.small_button("⏹").clicked() {
@@ -125,21 +129,44 @@ impl Synthesis {
                     ui.label(format!("{}s", task.time.load(Ordering::Relaxed)));
                     let pb = task.gen.load(Ordering::Relaxed) as f32 / task.total_gen as f32;
                     ui.add(ProgressBar::new(pb).show_percentage().animate(start));
-                    keep
-                })
-                .inner
+                });
+                keep
             });
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(error.is_empty(), Button::new("▶ Start"))
                     .clicked()
                 {
-                    self.native_syn(queue);
+                    self.native_syn(linkage.queue());
                 }
                 ui.add(ProgressBar::new(0.).show_percentage());
             });
         });
         ui.group(|ui| self.remote.show(ui, ctx));
+        ui.group(|ui| {
+            ui.heading("Projects");
+            ui.label("Results from the coupler trajectories.");
+            if linkage.select_projects(ui) {
+                self.with_current_project(ui, linkage);
+            }
+        });
+    }
+
+    fn with_current_project(&self, ui: &mut Ui, linkage: &Linkages) {
+        let curve = linkage.current_curve();
+        if !curve.is_empty() {
+            let c = curve::crunode(&curve);
+            ui.label(format!("Crunodes of current curve: {}", c));
+        }
+        if !self.config.syn.target.is_empty() {
+            let c = curve::crunode(&self.config.syn.target);
+            ui.label(format!("Crunodes of target curve: {}", c));
+        }
+        if !self.config.syn.target.is_empty() && !curve.is_empty() {
+            let geo_err = curve::geo_err(&self.config.syn.target, &curve);
+            ui.label(format!("Target mean error: {:.06}", geo_err))
+                .on_hover_text(ERR_DES);
+        }
     }
 
     fn convergence_plot(&mut self, ui: &mut Ui) {
@@ -215,7 +242,7 @@ impl Synthesis {
             });
     }
 
-    pub(crate) fn plot(&self, ui: &mut PlotUi) {
+    pub fn plot(&self, ui: &mut PlotUi) {
         if !self.config.syn.target.is_empty() {
             let line = Line::new(as_values(&self.config.syn.target))
                 .name("Synthesis target")
@@ -267,9 +294,5 @@ impl Synthesis {
             queue.push(None, four_bar);
             task.start.store(false, Ordering::Relaxed);
         });
-    }
-
-    pub(crate) fn target(&self) -> &[[f64; 2]] {
-        &self.config.syn.target
     }
 }

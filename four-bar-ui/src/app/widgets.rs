@@ -1,13 +1,13 @@
 use eframe::egui::{emath::Numeric, DragValue, Ui};
 use std::f64::consts::TAU;
 
-pub(crate) fn url_button(ui: &mut Ui, icon: &'static str, tip: &'static str, url: &'static str) {
+pub fn url_button(ui: &mut Ui, icon: &'static str, tip: &'static str, url: &'static str) {
     if ui.small_button(icon).on_hover_text(tip).clicked() {
         ui.ctx().output().open_url(url);
     }
 }
 
-pub(crate) fn unit<'a, V, N>(label: &'static str, val: &'a mut V, n: N) -> DragValue<'a>
+pub fn unit<'a, V, N>(label: &'static str, val: &'a mut V, n: N) -> DragValue<'a>
 where
     V: Numeric,
     N: Into<f64>,
@@ -15,13 +15,13 @@ where
     DragValue::new(val).prefix(label).speed(n)
 }
 
-pub(crate) fn link<'a>(label: &'static str, val: &'a mut f64, n: f64) -> DragValue<'a> {
+pub fn link<'a>(label: &'static str, val: &'a mut f64, n: f64) -> DragValue<'a> {
     unit(label, val, n)
         .clamp_range(1e-4..=f64::MAX)
         .min_decimals(2)
 }
 
-pub(crate) fn angle(ui: &mut Ui, label: &'static str, val: &mut f64, suffix: &'static str) {
+pub fn angle(ui: &mut Ui, label: &'static str, val: &mut f64, suffix: &'static str) {
     ui.horizontal(|ui| {
         if suffix.is_empty() {
             *val = val.rem_euclid(TAU);

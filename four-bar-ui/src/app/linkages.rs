@@ -1,20 +1,18 @@
 use super::{
     project::Projects,
-    synthesis::Synthesis,
     widgets::{angle, link, unit},
-    IoCtx,
 };
+use crate::app::project::Queue;
 use eframe::egui::{plot::PlotUi, reset_button, Ui};
 use serde::{Deserialize, Serialize};
 
 /// Linkage data.
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
-pub(crate) struct Linkage {
+pub struct Linkages {
     config: Config,
     driver: Driver,
     projects: Projects,
-    synthesis: Synthesis,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -41,21 +39,17 @@ struct Driver {
     speed: f64,
 }
 
-impl Linkage {
-    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+impl Linkages {
+    pub fn show(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
-            ui.heading("Linkage");
+            ui.heading("Linkages");
             ui.collapsing("Options", |ui| {
                 reset_button(ui, &mut self.config);
                 ui.add(link("UI value interval: ", &mut self.config.interval, 0.01));
                 ui.add(unit("Curve resolution: ", &mut self.config.res, 1));
             });
-            self.projects.show(
-                ui,
-                self.config.interval,
-                self.config.res,
-                self.synthesis.target(),
-            );
+            self.projects
+                .show(ui, self.config.interval, self.config.res);
         });
         ui.group(|ui| {
             ui.heading("Driver");
@@ -63,22 +57,32 @@ impl Linkage {
             angle(ui, "Speed: ", &mut self.driver.speed, "/s");
             angle(ui, "Angle: ", &mut self.driver.angle, "");
         });
-        ui.group(|ui| self.synthesis.show(ui, ctx, self.projects.queue()));
     }
 
-    pub(crate) fn plot(&mut self, ui: &mut PlotUi) {
+    pub fn plot(&mut self, ui: &mut PlotUi) {
         self.projects.plot(ui, self.driver.angle, self.config.res);
-        self.synthesis.plot(ui);
         if self.driver.speed != 0. {
             self.driver.angle += self.driver.speed / 60.;
             ui.ctx().request_repaint();
         }
     }
 
-    pub(crate) fn open_project(&mut self, files: Vec<String>) {
+    pub fn open_project(&mut self, files: Vec<String>) {
         self.projects.reload();
         for file in files {
             self.projects.open(file);
         }
+    }
+
+    pub fn select_projects(&mut self, ui: &mut Ui) -> bool {
+        self.projects.select(ui)
+    }
+
+    pub fn current_curve(&self) -> Vec<[f64; 2]> {
+        self.projects.current_curve(self.config.res)
+    }
+
+    pub fn queue(&self) -> Queue {
+        self.projects.queue()
     }
 }

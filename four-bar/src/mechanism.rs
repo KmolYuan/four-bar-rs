@@ -1,5 +1,5 @@
 use crate::{synthesis::mh::rayon::prelude::*, Point};
-use std::{f64::consts::TAU, marker::PhantomData};
+use std::marker::PhantomData;
 
 /// Mechanism position formula.
 #[allow(missing_docs)]
@@ -95,8 +95,8 @@ impl<L: Linkage> Mechanism<L> {
     }
 
     /// A loop trajectory for all moving pivot.
-    pub fn curve_all(&self, start: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
-        let interval = TAU / n as f64;
+    pub fn curve_all(&self, start: f64, end: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
+        let interval = (end - start) / n as f64;
         let mut path = [vec![[0.; 2]; n], vec![[0.; 2]; n], vec![[0.; 2]; n]];
         for i in 0..n {
             let a = start + i as f64 * interval;

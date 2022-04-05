@@ -30,7 +30,7 @@ impl Default for LoginInfo {
 }
 
 impl LoginInfo {
-    pub(crate) fn to_json(&self) -> String {
+    pub fn to_json(&self) -> String {
         format!(
             "{{\"account\": \"{}\", \"password\": \"{}\"}}",
             self.account,
@@ -41,7 +41,7 @@ impl LoginInfo {
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
-pub(crate) struct Remote {
+pub struct Remote {
     address: String,
     info: LoginInfo,
     #[serde(skip)]
@@ -62,7 +62,7 @@ impl Default for Remote {
 }
 
 impl Remote {
-    pub(crate) fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    pub fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
         ui.heading("Cloud Computing Service");
         if self.is_connected {
             if self.is_login.load(Relaxed) {

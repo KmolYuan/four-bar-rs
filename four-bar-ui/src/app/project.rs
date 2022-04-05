@@ -1,8 +1,8 @@
 use super::{
-    io_ctx::{ext, IoCtx},
+    io_ctx::IoCtx,
     widgets::{angle, link, unit},
 };
-use crate::{as_values::as_values, dump_csv};
+use crate::{as_values::as_values, dump_csv, ext};
 use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
     Button, Color32, ComboBox, Ui,
@@ -10,6 +10,7 @@ use eframe::egui::{
 use four_bar::{curve, FourBar, Linkage, Mechanism};
 use serde::{Deserialize, Serialize};
 use std::{
+    f64::consts::TAU,
     ops::{Deref, DerefMut},
     path::Path,
     sync::{Arc, RwLock},
@@ -17,9 +18,6 @@ use std::{
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
-const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
-    Increase resolution for more accurate calculations.";
-const CN_DES: &str = "Current curve versus target curve.";
 
 #[cfg(not(target_arch = "wasm32"))]
 fn open(file: impl AsRef<Path>) -> Option<FourBar> {
@@ -66,7 +64,7 @@ fn draw_link(ui: &mut PlotUi, points: &[[f64; 2]], is_main: bool) {
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
-pub(crate) enum Pivot {
+pub enum Pivot {
     Driver,
     Follower,
     Coupler,
@@ -139,7 +137,7 @@ impl Default for ProjInner {
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub(crate) struct Project(Arc<RwLock<ProjInner>>);
+pub struct Project(Arc<RwLock<ProjInner>>);
 
 impl Project {
     fn new(path: Option<String>, four_bar: FourBar) -> Self {
@@ -155,7 +153,7 @@ impl Project {
         self.0.write().unwrap().path = ProjName::Path(path);
     }
 
-    pub(crate) fn path(&self) -> Option<String> {
+    pub fn path(&self) -> Option<String> {
         match &self.0.read().unwrap().path {
             ProjName::Path(path) => Some(path.clone()),
             _ => None,
@@ -173,7 +171,7 @@ impl Project {
         }
     }
 
-    fn name(&self) -> String {
+    pub fn name(&self) -> String {
         self.0.read().unwrap().path.name()
     }
 
@@ -190,7 +188,7 @@ impl Project {
         }
     }
 
-    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize, target: &[[f64; 2]]) {
+    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
         let mut proj = self.0.write().unwrap();
         ui.horizontal(|ui| match &mut proj.path {
             ProjName::Path(path) => {
@@ -219,7 +217,7 @@ impl Project {
             let fb = &mut proj.four_bar;
             let get_curve = |pivot: &Pivot| {
                 let m = Mechanism::new(fb);
-                let [curve1, curve2, curve3] = m.curve_all(0., n);
+                let [curve1, curve2, curve3] = m.curve_all(0., TAU, n);
                 curve::get_valid_part(&match pivot {
                     Pivot::Driver => curve1,
                     Pivot::Follower => curve2,
@@ -243,14 +241,8 @@ impl Project {
                     ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
                 }
                 let curve = get_curve(pivot);
-                if !target.is_empty() && !curve.is_empty() {
-                    let geo_err = curve::geo_err(target, &curve);
-                    ui.label(format!("Target mean error: {:.06}", geo_err))
-                        .on_hover_text(ERR_DES);
-                    let cc = curve::crunode(&curve);
-                    let tc = curve::crunode(target);
-                    ui.label(format!("Crunodes: {} / {}", cc, tc))
-                        .on_hover_text(CN_DES);
+                if !curve.is_empty() {
+                    ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
                 }
             });
             ui.group(|ui| {
@@ -304,7 +296,7 @@ impl Project {
             .color(JOINT_COLOR);
         ui.points(float_j);
         ui.points(fixed_j);
-        let curve = m.curve_all(0., n);
+        let curve = m.curve_all(0., TAU, n);
         let path_names = ["Crank pivot", "Follower pivot", "Coupler pivot"];
         for (path, name) in curve.iter().zip(path_names) {
             let line = Line::new(as_values(path))
@@ -316,17 +308,17 @@ impl Project {
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub(crate) struct Queue(Arc<RwLock<Vec<Project>>>);
+pub struct Queue(Arc<RwLock<Vec<Project>>>);
 
 impl Queue {
-    pub(crate) fn push(&self, path: Option<String>, four_bar: FourBar) {
+    pub fn push(&self, path: Option<String>, four_bar: FourBar) {
         self.0.write().unwrap().push(Project::new(path, four_bar));
     }
 }
 
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
-pub(crate) struct Projects {
+pub struct Projects {
     list: Vec<Project>,
     queue: Queue,
     pivot: Pivot,
@@ -334,7 +326,7 @@ pub(crate) struct Projects {
 }
 
 impl Projects {
-    pub(crate) fn push(&mut self, path: Option<String>, four_bar: FourBar) {
+    pub fn push(&mut self, path: Option<String>, four_bar: FourBar) {
         // Prevent opening duplicate project
         if match &path {
             None => true,
@@ -348,12 +340,12 @@ impl Projects {
         }
     }
 
-    pub(crate) fn push_default(&mut self) {
+    pub fn push_default(&mut self) {
         self.list.push(Project::default());
         self.current = self.len() - 1;
     }
 
-    pub(crate) fn open(&mut self, file: impl AsRef<Path>) {
+    pub fn open(&mut self, file: impl AsRef<Path>) {
         let path = file.as_ref().to_str().unwrap().to_string();
         if let Some(four_bar) = open(file) {
             self.push(Some(path), four_bar);
@@ -361,11 +353,11 @@ impl Projects {
         }
     }
 
-    pub(crate) fn queue(&self) -> Queue {
+    pub fn queue(&self) -> Queue {
         self.queue.clone()
     }
 
-    pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize, target: &[[f64; 2]]) {
+    pub fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
         #[cfg(not(target_arch = "wasm32"))]
         for file in ui.ctx().input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
@@ -400,24 +392,39 @@ impl Projects {
             self.list.append(&mut *self.queue.0.write().unwrap());
             self.current = self.len() - 1;
         }
-        if self.is_empty() {
-            return;
+        if self.select(ui) {
+            ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n));
+        } else {
+            ui.colored_label(Color32::RED, "No project is open!");
         }
-        ui.horizontal_wrapped(|ui| {
-            for (i, proj) in self.list.iter().enumerate() {
-                ui.selectable_value(&mut self.current, i, proj.name());
-            }
-        });
-        ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n, target));
     }
 
-    pub(crate) fn plot(&self, ui: &mut PlotUi, angle: f64, n: usize) {
+    pub fn select(&mut self, ui: &mut Ui) -> bool {
+        match self.is_empty() {
+            true => false,
+            false => {
+                ui.horizontal_wrapped(|ui| {
+                    for (i, proj) in self.list.iter().enumerate() {
+                        ui.selectable_value(&mut self.current, i, proj.name());
+                    }
+                    true
+                })
+                .inner
+            }
+        }
+    }
+
+    pub fn current_curve(&self, n: usize) -> Vec<[f64; 2]> {
+        Mechanism::new(&self.list[self.current].0.read().unwrap().four_bar).curve(0., TAU, n)
+    }
+
+    pub fn plot(&self, ui: &mut PlotUi, angle: f64, n: usize) {
         for (i, proj) in self.list.iter().enumerate() {
             proj.plot(ui, i, self.current, angle, n);
         }
     }
 
-    pub(crate) fn reload(&self) {
+    pub fn reload(&self) {
         for p in self.list.iter() {
             p.reload();
         }

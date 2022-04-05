@@ -1,5 +1,5 @@
 pub use self::remote::{sha512, LoginInfo};
-use self::{io_ctx::IoCtx, linkage::Linkage};
+use self::{io_ctx::IoCtx, linkages::Linkages, synthesis::Synthesis};
 use crate::app::widgets::url_button;
 use eframe::{
     egui::{
@@ -11,7 +11,7 @@ use eframe::{
 use serde::{Deserialize, Serialize};
 
 mod io_ctx;
-mod linkage;
+mod linkages;
 mod project;
 mod remote;
 mod synthesis;
@@ -20,15 +20,16 @@ mod widgets;
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
 
 #[derive(Deserialize, Serialize, PartialEq)]
-enum PanelState {
-    On,
+enum Panel {
+    Linkages,
+    Synthesis,
     Monitor,
     Off,
 }
 
-impl Default for PanelState {
+impl Default for Panel {
     fn default() -> Self {
-        Self::On
+        Self::Linkages
     }
 }
 
@@ -39,10 +40,11 @@ pub struct App {
     #[serde(skip)]
     init_project: Vec<String>,
     welcome_off: bool,
-    panel: PanelState,
+    panel: Panel,
     started: bool,
     ctx: IoCtx,
-    linkage: Linkage,
+    linkage: Linkages,
+    synthesis: Synthesis,
 }
 
 impl App {
@@ -71,9 +73,14 @@ impl App {
     }
 
     fn menu(&mut self, ui: &mut Ui) {
-        ui.selectable_value(&mut self.panel, PanelState::On, "🍀");
-        ui.selectable_value(&mut self.panel, PanelState::Monitor, "🖥");
-        ui.selectable_value(&mut self.panel, PanelState::Off, "⛶");
+        ui.selectable_value(&mut self.panel, Panel::Linkages, "🍀")
+            .on_hover_text("Linkages");
+        ui.selectable_value(&mut self.panel, Panel::Synthesis, "⛓")
+            .on_hover_text("Synthesis");
+        ui.selectable_value(&mut self.panel, Panel::Monitor, "🖥")
+            .on_hover_text("Renderer Monitor");
+        ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
+            .on_hover_text("Close Panel");
         ui.with_layout(Layout::right_to_left(), |ui| {
             let style = ui.style().clone();
             if let Some(v) = style.visuals.light_dark_small_toggle_button(ui) {
@@ -92,31 +99,38 @@ impl App {
             ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui/");
         });
     }
+
+    fn side_panel(ctx: &Context, f: impl FnOnce(&mut Ui)) {
+        SidePanel::left("side panel")
+            .resizable(false)
+            .show(ctx, |ui| ScrollArea::vertical().show(ui, f));
+    }
 }
 
 impl eframe::epi::App for App {
     fn update(&mut self, ctx: &Context, _frame: &Frame) {
         self.welcome(ctx);
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
-        if let PanelState::On | PanelState::Monitor = self.panel {
-            SidePanel::left("side panel")
-                .resizable(false)
-                .show(ctx, |ui| {
-                    ScrollArea::vertical().show(ui, |ui| match self.panel {
-                        PanelState::On => self.linkage.show(ui, &self.ctx),
-                        PanelState::Monitor => {
-                            ctx.memory_ui(ui);
-                            ctx.inspection_ui(ui);
-                        }
-                        PanelState::Off => unreachable!(),
-                    })
-                });
+        match &self.panel {
+            Panel::Linkages => Self::side_panel(ctx, |ui| self.linkage.show(ui)),
+            Panel::Synthesis => Self::side_panel(ctx, |ui| {
+                self.synthesis.show(ui, &self.ctx, &mut self.linkage)
+            }),
+            Panel::Monitor => Self::side_panel(ctx, |ui| {
+                ui.heading("Renderer Monitor");
+                ctx.memory_ui(ui);
+                ctx.inspection_ui(ui);
+            }),
+            Panel::Off => (),
         }
         CentralPanel::default().show(ctx, |ui| {
             Plot::new("canvas")
                 .data_aspect(1.)
                 .legend(Legend::default())
-                .show(ui, |ui| self.linkage.plot(ui));
+                .show(ui, |ui| {
+                    self.linkage.plot(ui);
+                    self.synthesis.plot(ui);
+                });
         });
     }
 

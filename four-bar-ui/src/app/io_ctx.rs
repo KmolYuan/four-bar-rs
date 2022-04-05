@@ -4,13 +4,12 @@ use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
+#[macro_export]
 macro_rules! ext {
     () => {
         "ron"
     };
 }
-
-pub(crate) use ext;
 
 const FMT: &str = "Rusty Object Notation";
 const CSV_FMT: &str = "Delimiter-Separated Values";
@@ -38,7 +37,7 @@ fn js_ext(ext: &[&str]) -> String {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub(crate) struct IoCtx {
+pub struct IoCtx {
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(serialize_with = "self::serde_agent::serialize")]
     #[serde(deserialize_with = "self::serde_agent::deserialize")]
@@ -56,7 +55,7 @@ impl Default for IoCtx {
 
 #[cfg(target_arch = "wasm32")]
 impl IoCtx {
-    pub(crate) fn alert(s: &str) {
+    pub fn alert(s: &str) {
         alert(s);
     }
 
@@ -87,22 +86,22 @@ impl IoCtx {
         save_file(s, path);
     }
 
-    pub(crate) fn get_host() -> String {
+    pub fn get_host() -> String {
         get_host()
     }
 
-    pub(crate) fn get_username(&self, _url: &str) -> Option<String> {
+    pub fn get_username(&self, _url: &str) -> Option<String> {
         Some(get_username())
     }
 
-    pub(crate) fn login<C>(&self, _url: &str, account: &str, body: &str, done: C)
+    pub fn login<C>(&self, _url: &str, account: &str, body: &str, done: C)
     where
         C: FnOnce(bool) + 'static,
     {
         login(account, body, Closure::once_into_js(done));
     }
 
-    pub(crate) fn logout<C>(&self, _url: &str, done: C)
+    pub fn logout<C>(&self, _url: &str, done: C)
     where
         C: FnOnce(bool) + 'static,
     {
@@ -112,7 +111,7 @@ impl IoCtx {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl IoCtx {
-    pub(crate) fn alert(s: &str) {
+    pub fn alert(s: &str) {
         rfd::MessageDialog::new()
             .set_title("Message")
             .set_description(s)
@@ -159,11 +158,11 @@ impl IoCtx {
         std::fs::write(path, s).unwrap_or_default();
     }
 
-    pub(crate) fn get_host() -> String {
+    pub fn get_host() -> String {
         "http://localhost:8080/".to_string()
     }
 
-    pub(crate) fn get_username(&self, url: &str) -> Option<String> {
+    pub fn get_username(&self, url: &str) -> Option<String> {
         if self.agent.get(url).call().is_err() {
             None
         } else if let Ok(uri) = url.parse::<actix_web::http::Uri>() {
@@ -180,7 +179,7 @@ impl IoCtx {
         }
     }
 
-    pub(crate) fn login<C>(&self, url: &str, account: &str, body: &str, done: C)
+    pub fn login<C>(&self, url: &str, account: &str, body: &str, done: C)
     where
         C: FnOnce(bool) + 'static,
     {
@@ -193,7 +192,7 @@ impl IoCtx {
         done(b);
     }
 
-    pub(crate) fn logout<C>(&self, url: &str, done: C)
+    pub fn logout<C>(&self, url: &str, done: C)
     where
         C: FnOnce(bool) + 'static,
     {
@@ -207,21 +206,21 @@ impl IoCtx {
 }
 
 impl IoCtx {
-    pub(crate) fn open_ron<C>(done: C)
+    pub fn open_ron<C>(done: C)
     where
         C: Fn(String, String) + 'static,
     {
         Self::open(FMT, EXT, done)
     }
 
-    pub(crate) fn open_csv_single<C>(done: C)
+    pub fn open_csv_single<C>(done: C)
     where
         C: Fn(String, String) + 'static,
     {
         Self::open_single(CSV_FMT, CSV_EXT, done)
     }
 
-    pub(crate) fn save_csv_ask<S>(curve: &[S])
+    pub fn save_csv_ask<S>(curve: &[S])
     where
         S: Serialize + Clone,
     {
@@ -229,7 +228,7 @@ impl IoCtx {
         Self::save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ())
     }
 
-    pub(crate) fn save_ron_ask<C>(four_bar: &FourBar, name: &str, done: C)
+    pub fn save_ron_ask<C>(four_bar: &FourBar, name: &str, done: C)
     where
         C: FnOnce(String) + 'static,
     {
@@ -237,7 +236,7 @@ impl IoCtx {
         Self::save_ask(&s, name, FMT, EXT, done)
     }
 
-    pub(crate) fn save_ron(four_bar: &FourBar, path: &str) {
+    pub fn save_ron(four_bar: &FourBar, path: &str) {
         let s = ron::to_string(four_bar).unwrap();
         Self::save(&s, path)
     }
