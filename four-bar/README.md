@@ -6,9 +6,9 @@ Four-bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 use four_bar::{FourBar, Mechanism};
 
 // A four-bar mechanism example
-let m = Mechanism::four_bar(FourBar::example());
+let m = Mechanism::new(FourBar::example());
 // Get the trajectory of the coupler point
-let path = m.four_bar_loop(0., 360);
+let path = m.curve(0., 360);
 ```
 
 The synthesis function let you synthesize a four-bar mechanism by fitting target curve.

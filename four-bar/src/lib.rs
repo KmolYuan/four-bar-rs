@@ -7,9 +7,9 @@
 //! use std::f64::consts::TAU;
 //!
 //! // A four-bar mechanism example
-//! let m = Mechanism::four_bar(&FourBar::example());
+//! let m = Mechanism::new(&FourBar::example());
 //! // Get the trajectory of the coupler point
-//! let path = m.four_bar_loop(0., TAU, 360);
+//! let path = m.curve(0., TAU, 360);
 //! ```
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![warn(missing_docs)]
