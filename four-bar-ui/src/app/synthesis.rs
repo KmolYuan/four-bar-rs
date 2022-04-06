@@ -17,6 +17,36 @@ use std::{
 const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
     Increase resolution for more accurate calculations.";
 
+#[cfg(not(target_arch = "wasm32"))]
+fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
+where
+    S: four_bar::synthesis::mh::utility::Setting,
+    S::Algorithm: four_bar::synthesis::mh::utility::Algorithm<four_bar::synthesis::Planar>,
+{
+    use four_bar::synthesis::mh::Solver;
+    use std::time::Instant;
+    let start_time = Instant::now();
+    Solver::build(setting)
+        .pop_num(config.pop)
+        .task(|ctx| ctx.gen == config.gen || !task.start.load(Ordering::Relaxed))
+        .callback(|ctx| {
+            task.conv
+                .write()
+                .unwrap()
+                .push([ctx.gen as f64, ctx.best_f]);
+            task.gen.store(ctx.gen, Ordering::Relaxed);
+            let time = (Instant::now() - start_time).as_secs();
+            task.time.store(time, Ordering::Relaxed);
+        })
+        .solve(four_bar::synthesis::Planar::new(
+            &config.target,
+            720,
+            None,
+            config.open,
+        ))
+        .result()
+}
+
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub struct Synthesis {
@@ -103,6 +133,13 @@ impl Synthesis {
     pub fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, linkage: &mut Linkages) {
         ui.heading("Synthesis");
         reset_button(ui, &mut self.config);
+        ui.horizontal_wrapped(|ui| {
+            ui.selectable_value(&mut self.config.syn.method, Method::Rga, "RGA");
+            ui.selectable_value(&mut self.config.syn.method, Method::De, "DE");
+            ui.selectable_value(&mut self.config.syn.method, Method::Pso, "PSO");
+            ui.selectable_value(&mut self.config.syn.method, Method::Fa, "FA");
+            ui.selectable_value(&mut self.config.syn.method, Method::Tlbo, "TLBO");
+        });
         ui.add(unit("Generation: ", &mut self.config.syn.gen, 1));
         ui.add(unit("Population: ", &mut self.config.syn.pop, 1));
         let mut error = "";
@@ -276,39 +313,22 @@ impl Synthesis {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, queue: Queue) {
-        use four_bar::synthesis::{
-            mh::{methods::*, rayon::spawn, Solver},
-            Planar,
-        };
-        let SynConfig {
-            method: _, // TODO
-            pop,
-            gen,
-            open,
-            target,
-        } = self.config.syn.clone();
+        use four_bar::synthesis::mh::{methods::*, rayon::spawn};
+        let config = self.config.syn.clone();
         let task = Task {
-            total_gen: gen,
+            total_gen: config.gen,
             start: Arc::new(AtomicBool::new(true)),
             ..Task::default()
         };
         self.tasks.push(task.clone());
         spawn(move || {
-            let start_time = std::time::Instant::now();
-            let four_bar = Solver::build(De::default())
-                .pop_num(pop)
-                .task(|ctx| ctx.gen == gen || !task.start.load(Ordering::Relaxed))
-                .callback(|ctx| {
-                    task.conv
-                        .write()
-                        .unwrap()
-                        .push([ctx.gen as f64, ctx.best_f]);
-                    task.gen.store(ctx.gen, Ordering::Relaxed);
-                    let time = (std::time::Instant::now() - start_time).as_secs();
-                    task.time.store(time, Ordering::Relaxed);
-                })
-                .solve(Planar::new(&target, 720, None, open))
-                .result();
+            let four_bar = match config.method {
+                Method::Rga => solve(&task, config, Rga::<f64>::default()),
+                Method::De => solve(&task, config, De::default()),
+                Method::Pso => solve(&task, config, Pso::<f64>::default()),
+                Method::Fa => solve(&task, config, Fa::default()),
+                Method::Tlbo => solve(&task, config, Tlbo::default()),
+            };
             queue.push(None, four_bar);
             task.start.store(false, Ordering::Relaxed);
         });

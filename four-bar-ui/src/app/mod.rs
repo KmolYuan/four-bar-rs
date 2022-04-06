@@ -111,7 +111,7 @@ impl eframe::epi::App for App {
     fn update(&mut self, ctx: &Context, _frame: &Frame) {
         self.welcome(ctx);
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
-        match &self.panel {
+        match self.panel {
             Panel::Linkages => Self::side_panel(ctx, |ui| self.linkage.show(ui)),
             Panel::Synthesis => Self::side_panel(ctx, |ui| {
                 self.synthesis.show(ui, &self.ctx, &mut self.linkage)
