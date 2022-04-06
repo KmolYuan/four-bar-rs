@@ -43,8 +43,24 @@ impl PartialEq for UiConfig {
 }
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
+enum Method {
+    Rga,
+    De,
+    Pso,
+    Fa,
+    Tlbo,
+}
+
+impl Default for Method {
+    fn default() -> Self {
+        Self::De
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 struct SynConfig {
+    method: Method,
     gen: u64,
     pop: usize,
     open: bool,
@@ -55,6 +71,7 @@ struct SynConfig {
 impl Default for SynConfig {
     fn default() -> Self {
         Self {
+            method: Method::default(),
             gen: 50,
             pop: 400,
             open: false,
@@ -86,8 +103,6 @@ impl Synthesis {
     pub fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, linkage: &mut Linkages) {
         ui.heading("Synthesis");
         reset_button(ui, &mut self.config);
-        self.convergence_plot(ui);
-        self.target_curve_editor(ui);
         ui.add(unit("Generation: ", &mut self.config.syn.gen, 1));
         ui.add(unit("Population: ", &mut self.config.syn.pop, 1));
         let mut error = "";
@@ -150,6 +165,8 @@ impl Synthesis {
                 self.with_current_project(ui, linkage);
             }
         });
+        self.convergence_plot(ui);
+        self.target_curve_editor(ui);
     }
 
     fn with_current_project(&self, ui: &mut Ui, linkage: &Linkages) {
@@ -260,10 +277,11 @@ impl Synthesis {
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, queue: Queue) {
         use four_bar::synthesis::{
-            mh::{rayon::spawn, De, Solver},
+            mh::{methods::*, rayon::spawn, Solver},
             Planar,
         };
         let SynConfig {
+            method: _, // TODO
             pop,
             gen,
             open,
