@@ -43,19 +43,24 @@ impl Linkages {
     pub fn show(&mut self, ui: &mut Ui) {
         ui.group(|ui| {
             ui.heading("Linkages");
-            ui.collapsing("Options", |ui| {
-                reset_button(ui, &mut self.config);
-                ui.add(link("UI value interval: ", &mut self.config.interval, 0.01));
-                ui.add(unit("Curve resolution: ", &mut self.config.res, 1));
-            });
             self.projects
                 .show(ui, self.config.interval, self.config.res);
         });
         ui.group(|ui| {
-            ui.heading("Driver");
-            reset_button(ui, &mut self.driver);
+            ui.horizontal(|ui| {
+                ui.heading("Driver");
+                reset_button(ui, &mut self.driver);
+            });
             angle(ui, "Speed: ", &mut self.driver.speed, "/s");
             angle(ui, "Angle: ", &mut self.driver.angle, "");
+        });
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Options");
+                reset_button(ui, &mut self.config);
+            });
+            ui.add(link("Drag interval: ", &mut self.config.interval, 0.01));
+            ui.add(unit("Curve resolution: ", &mut self.config.res, 1));
         });
     }
 

@@ -246,13 +246,13 @@ impl Project {
                 }
             });
             ui.group(|ui| {
-                ui.heading("Offset");
-                if ui
-                    .add_enabled(!fb.is_aligned(), Button::new("Reset"))
-                    .clicked()
-                {
-                    fb.align();
-                }
+                ui.horizontal(|ui| {
+                    ui.heading("Offset");
+                    let btn = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
+                    if btn.clicked() {
+                        fb.align();
+                    }
+                });
                 if ui.button("Normalize").clicked() {
                     fb.normalize();
                 }

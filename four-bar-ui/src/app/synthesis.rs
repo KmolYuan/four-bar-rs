@@ -74,16 +74,48 @@ impl PartialEq for UiConfig {
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 enum Method {
-    Rga,
     De,
-    Pso,
     Fa,
+    Pso,
+    Rga,
     Tlbo,
 }
 
 impl Default for Method {
     fn default() -> Self {
         Self::De
+    }
+}
+
+impl Method {
+    const fn name(&self) -> &'static str {
+        match self {
+            Method::De => "Differential Evolution",
+            Method::Fa => "Firefly Algorithm",
+            Method::Pso => "Particle Swarm Optimization",
+            Method::Rga => "Real-coded Genetic Algorithm",
+            Method::Tlbo => "Teaching Learning Based Optimization",
+        }
+    }
+
+    const fn abbreviation(&self) -> &'static str {
+        match self {
+            Method::De => "DE",
+            Method::Fa => "FA",
+            Method::Pso => "PSO",
+            Method::Rga => "RGA",
+            Method::Tlbo => "TLBO",
+        }
+    }
+
+    const fn url(&self) -> &'static str {
+        match self {
+            Method::De => "https://en.wikipedia.org/wiki/Differential_evolution",
+            Method::Fa => "https://en.wikipedia.org/wiki/Firefly_algorithm",
+            Method::Pso => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
+            Method::Rga => "https://en.wikipedia.org/wiki/Genetic_algorithm",
+            Method::Tlbo => "https://doi.org/10.1016/j.cad.2010.12.015",
+        }
     }
 }
 
@@ -131,14 +163,29 @@ struct Task {
 
 impl Synthesis {
     pub fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, linkage: &mut Linkages) {
-        ui.heading("Synthesis");
-        reset_button(ui, &mut self.config);
-        ui.horizontal_wrapped(|ui| {
-            ui.selectable_value(&mut self.config.syn.method, Method::Rga, "RGA");
-            ui.selectable_value(&mut self.config.syn.method, Method::De, "DE");
-            ui.selectable_value(&mut self.config.syn.method, Method::Pso, "PSO");
-            ui.selectable_value(&mut self.config.syn.method, Method::Fa, "FA");
-            ui.selectable_value(&mut self.config.syn.method, Method::Tlbo, "TLBO");
+        ui.horizontal(|ui| {
+            ui.heading("Synthesis");
+            reset_button(ui, &mut self.config);
+        });
+        ui.group(|ui| {
+            let method = &mut self.config.syn.method;
+            ui.horizontal_wrapped(|ui| {
+                for m in [
+                    Method::De,
+                    Method::Fa,
+                    Method::Pso,
+                    Method::Rga,
+                    Method::Tlbo,
+                ] {
+                    let abb = m.abbreviation();
+                    let name = m.name();
+                    ui.selectable_value(method, m, abb).on_hover_text(name);
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                ui.hyperlink_to(method.name(), method.url())
+                    .on_hover_text(format!("More about {}", method.name()));
+            });
         });
         ui.add(unit("Generation: ", &mut self.config.syn.gen, 1));
         ui.add(unit("Population: ", &mut self.config.syn.pop, 1));
@@ -323,10 +370,10 @@ impl Synthesis {
         self.tasks.push(task.clone());
         spawn(move || {
             let four_bar = match config.method {
-                Method::Rga => solve(&task, config, Rga::<f64>::default()),
                 Method::De => solve(&task, config, De::default()),
-                Method::Pso => solve(&task, config, Pso::<f64>::default()),
                 Method::Fa => solve(&task, config, Fa::default()),
+                Method::Pso => solve(&task, config, Pso::<f64>::default()),
+                Method::Rga => solve(&task, config, Rga::<f64>::default()),
                 Method::Tlbo => solve(&task, config, Tlbo::default()),
             };
             queue.push(None, four_bar);
