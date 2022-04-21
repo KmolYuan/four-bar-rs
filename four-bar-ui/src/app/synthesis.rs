@@ -20,13 +20,12 @@ const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
 #[cfg(not(target_arch = "wasm32"))]
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
-    S: four_bar::synthesis::mh::utility::Setting,
-    S::Algorithm: four_bar::synthesis::mh::utility::Algorithm<four_bar::synthesis::Planar>,
+    S: four_bar::mh::utility::Setting,
+    S::Algorithm: four_bar::mh::utility::Algorithm<four_bar::synthesis::Planar>,
 {
-    use four_bar::synthesis::mh::Solver;
     use std::time::Instant;
     let start_time = Instant::now();
-    Solver::build(setting)
+    four_bar::mh::Solver::build(setting)
         .pop_num(config.pop)
         .task(|ctx| ctx.gen == config.gen || !task.start.load(Ordering::Relaxed))
         .callback(|ctx| {
@@ -360,7 +359,7 @@ impl Synthesis {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn native_syn(&mut self, queue: Queue) {
-        use four_bar::synthesis::mh::{methods::*, rayon::spawn};
+        use four_bar::mh::{methods::*, rayon::spawn};
         let config = self.config.syn.clone();
         let task = Task {
             total_gen: config.gen,

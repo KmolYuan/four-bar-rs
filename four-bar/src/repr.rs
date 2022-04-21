@@ -1,5 +1,5 @@
 //! Provide vectorized conversion for normalized four-bar linkages.
-use crate::{synthesis::efd::GeoInfo, FourBar};
+use crate::{efd::GeoInfo, FourBar};
 
 /// Create a normalized four-bar linkage from a vector.
 pub const fn four_bar_v([l0, l2, l3, l4, g]: [f64; 5], inv: bool) -> FourBar {

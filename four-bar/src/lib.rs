@@ -14,6 +14,10 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![warn(missing_docs)]
 pub use crate::{four_bar::*, mechanism::*, point::*};
+#[doc(no_inline)]
+pub use efd;
+#[doc(no_inline)]
+pub use metaheuristics_nature as mh;
 
 pub mod curve;
 mod four_bar;

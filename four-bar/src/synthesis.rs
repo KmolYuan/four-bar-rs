@@ -1,9 +1,9 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 //!
 //! ```
-//! use four_bar::synthesis::{
+//! use four_bar::{
 //!     mh::{Rga, Solver},
-//!     Planar,
+//!     synthesis::Planar,
 //! };
 //!
 //! # let curve = [[0., 0.], [1., 0.]];
@@ -16,17 +16,13 @@
 //!     .solve(Planar::new(&curve, 720, None, false));
 //! let result = s.result();
 //! ```
-use self::{
+use crate::{
+    curve,
     efd::Efd,
     mh::{utility::prelude::*, ObjFunc},
+    repr, FourBar, Mechanism,
 };
-use crate::{curve, repr, FourBar, Mechanism};
 use std::f64::consts::{FRAC_PI_4, TAU};
-
-#[doc(no_inline)]
-pub use efd;
-#[doc(no_inline)]
-pub use metaheuristics_nature as mh;
 
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
