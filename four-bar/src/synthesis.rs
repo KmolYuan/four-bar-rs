@@ -16,12 +16,7 @@
 //!     .solve(Planar::new(&curve, 720, None, false));
 //! let result = s.result();
 //! ```
-use crate::{
-    curve,
-    efd::Efd,
-    mh::{utility::prelude::*, ObjFunc},
-    repr, FourBar, Mechanism,
-};
+use crate::{curve, efd::Efd, mh::ObjFunc, repr, FourBar, Mechanism};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
 /// Synthesis task of planar four-bar linkage.
@@ -75,6 +70,7 @@ impl Planar {
     }
 
     fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
+        use crate::mh::rayon::prelude::*;
         let d = repr::grashof_transform(v);
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
