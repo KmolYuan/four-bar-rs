@@ -11,13 +11,14 @@ keywords = ["mechanism", "simulation", "optimization"]
 categories = ["algorithms"]
 
 [features]
+serde = ["dep:serde"]
 plot = ["plotly"]
 plot_export = ["plot", "plotly/kaleido"]
 
 [dependencies]
+metaheuristics-nature = { version = "1", features = ["rayon"] }
 serde = { version = "1", features = ["derive"], optional = true }
 plotly = { version = "0.7", optional = true }
-metaheuristics-nature = { version = "0.23", features = ["parallel"] }
 efd = "0.11"
 
 [dev-dependencies]

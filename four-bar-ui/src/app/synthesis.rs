@@ -20,8 +20,8 @@ const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
 #[cfg(not(target_arch = "wasm32"))]
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
-    S: four_bar::mh::utility::Setting,
-    S::Algorithm: four_bar::mh::utility::Algorithm<four_bar::synthesis::Planar>,
+    S: four_bar::mh::Setting,
+    S::Algorithm: four_bar::mh::Algorithm<four_bar::synthesis::Planar>,
 {
     use std::time::Instant;
     let start_time = Instant::now();
