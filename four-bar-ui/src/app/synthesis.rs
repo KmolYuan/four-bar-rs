@@ -254,16 +254,21 @@ impl Synthesis {
 
     fn with_current_project(&self, ui: &mut Ui, linkage: &Linkages) {
         let curve = linkage.current_curve();
+        let target = &self.config.syn.target;
         if !curve.is_empty() {
+            let c = curve::cusp(&curve, self.config.syn.open);
+            ui.label(format!("Cusps of current curve: {}", c));
             let c = curve::crunode(&curve);
             ui.label(format!("Crunodes of current curve: {}", c));
         }
-        if !self.config.syn.target.is_empty() {
-            let c = curve::crunode(&self.config.syn.target);
+        if !target.is_empty() {
+            let c = curve::cusp(target, self.config.syn.open);
+            ui.label(format!("Cusps of target curve: {}", c));
+            let c = curve::crunode(target);
             ui.label(format!("Crunodes of target curve: {}", c));
         }
-        if !self.config.syn.target.is_empty() && !curve.is_empty() {
-            let geo_err = curve::geo_err(&self.config.syn.target, &curve);
+        if !target.is_empty() && !curve.is_empty() {
+            let geo_err = curve::geo_err(target, &curve);
             ui.label(format!("Target mean error: {:.06}", geo_err))
                 .on_hover_text(ERR_DES);
         }

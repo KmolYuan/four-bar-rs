@@ -5,7 +5,7 @@ use super::{
 use crate::{as_values::as_values, dump_csv, ext};
 use eframe::egui::{
     plot::{Line, MarkerShape, PlotUi, Points, Polygon},
-    Button, Color32, ComboBox, Ui,
+    Button, Color32, ComboBox, RichText, Ui,
 };
 use four_bar::{curve, FourBar, Linkage, Mechanism};
 use serde::{Deserialize, Serialize};
@@ -242,8 +242,8 @@ impl Project {
                 }
                 let curve = get_curve(pivot);
                 if !curve.is_empty() {
-                    ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
                     ui.label(format!("Cusps: {}", curve::cusp(&curve, false)));
+                    ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
                 }
             });
             ui.group(|ui| {
@@ -396,7 +396,11 @@ impl Projects {
         if self.select(ui) {
             ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n));
         } else {
-            ui.colored_label(Color32::RED, "No project is open!");
+            let head = RichText::new("No project here!")
+                .color(Color32::BLUE)
+                .heading();
+            ui.label(head);
+            ui.colored_label(Color32::BLUE, "Please open or create a project.");
         }
     }
 
