@@ -4,6 +4,13 @@
 use crate::*;
 
 #[test]
+fn cusp() {
+    assert_eq!(curve::cusp(HAND_CUSP, false), 1);
+    assert_eq!(curve::cusp(CRUNODE, false), 0);
+    assert_eq!(curve::cusp(OPEN_CURVE1, true), 0);
+}
+
+#[test]
 fn anti_symmetry_extension() {
     let ans = curve::anti_sym_ext(OPEN_CURVE1);
     assert_eq!(ans, OPEN_CURVE1_ANS);
@@ -1272,7 +1279,6 @@ pub const HAND_CUSP: &[[f64; 2]] = &[
     [4.07, 6.4],
     [4.53, 6.75],
     [5.07, 6.85],
-    [5.05, 6.84],
     [5.89, 6.83],
     [6.41, 6.8],
     [6.92, 6.58],

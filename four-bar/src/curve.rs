@@ -123,7 +123,7 @@ pub fn cusp(curve: &[[f64; 2]], open: bool) -> usize {
     let mut iter = curve
         .iter()
         .cycle()
-        .take(if open { curve.len() + 1 } else { curve.len() });
+        .take(if open { curve.len() } else { curve.len() + 1 });
     let mut pre = match iter.next() {
         Some(v) => v,
         None => return 0,
@@ -132,8 +132,9 @@ pub fn cusp(curve: &[[f64; 2]], open: bool) -> usize {
     let mut pre_angle = 0.;
     for c @ [x, y] in &mut iter {
         let [pre_x, pre_y] = pre;
-        let angle = ((y - pre_y).atan2(x - pre_x) - pre_angle).rem_euclid(TAU);
-        if angle > FRAC_PI_2 && angle < TAU - FRAC_PI_2 {
+        let angle = (y - pre_y).atan2(x - pre_x);
+        let angle_diff = (angle - pre_angle).rem_euclid(TAU);
+        if pre_angle != 0. && angle_diff > FRAC_PI_2 && angle_diff < TAU - FRAC_PI_2 {
             num += 1;
         }
         pre_angle = angle;

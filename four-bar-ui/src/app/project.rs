@@ -243,6 +243,7 @@ impl Project {
                 let curve = get_curve(pivot);
                 if !curve.is_empty() {
                     ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
+                    ui.label(format!("Cusps: {}", curve::cusp(&curve, false)));
                 }
             });
             ui.group(|ui| {
