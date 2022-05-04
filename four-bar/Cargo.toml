@@ -12,13 +12,12 @@ categories = ["algorithms"]
 
 [features]
 serde = ["dep:serde"]
-plot = ["plotly"]
-plot_export = ["plot", "plotly/kaleido"]
+plot = ["plotters"]
 
 [dependencies]
 metaheuristics-nature = { version = "1", features = ["rayon"] }
 serde = { version = "1", features = ["derive"], optional = true }
-plotly = { version = "0.7", optional = true }
+plotters = { version = "0.3", optional = true }
 efd = "0.11"
 
 [dev-dependencies]
