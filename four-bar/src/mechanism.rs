@@ -109,4 +109,9 @@ impl<L: Linkage> Mechanism<L> {
         }
         path
     }
+
+    /// Calculate the formula, and write the answer into provided array.
+    pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
+        L::apply(self, angle, joint, ans)
+    }
 }

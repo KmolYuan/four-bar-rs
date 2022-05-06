@@ -132,7 +132,7 @@ impl FourBar {
 impl Linkage for FourBar {
     type Joint = [[f64; 2]; 5];
 
-    fn allocate(&self) -> (Self::Joint, Vec<crate::mechanism::Formula>) {
+    fn allocate(&self) -> (Self::Joint, Vec<Formula>) {
         let Self {
             p0,
             a,

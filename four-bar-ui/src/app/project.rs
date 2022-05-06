@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{as_values::as_values, dump_csv, ext};
 use eframe::egui::*;
-use four_bar::{curve, FourBar, Linkage, Mechanism};
+use four_bar::{curve, FourBar, Mechanism};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,
@@ -115,24 +115,26 @@ impl From<Option<String>> for ProjName {
     }
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Default)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default)]
 #[serde(default)]
 struct Angles {
     theta2: f64,
     omega2: f64,
     alpha2: f64,
     open: bool,
-    #[serde(skip)]
+}
+
+#[allow(dead_code)] // TODO
+#[derive(Default)]
+struct Cache {
+    cached: bool,
+    joints: [[f64; 2]; 5],
+    curves: [Vec<[f64; 2]>; 3],
     theta3: Vec<plot::Value>,
-    #[serde(skip)]
     theta4: Vec<plot::Value>,
-    #[serde(skip)]
     omega3: Vec<plot::Value>,
-    #[serde(skip)]
     omega4: Vec<plot::Value>,
-    #[serde(skip)]
     alpha3: Vec<plot::Value>,
-    #[serde(skip)]
     alpha4: Vec<plot::Value>,
 }
 
@@ -143,15 +145,18 @@ struct ProjInner {
     four_bar: FourBar,
     angles: Angles,
     hide: bool,
+    #[serde(skip)]
+    cache: Cache,
 }
 
 impl Default for ProjInner {
     fn default() -> Self {
         Self {
-            path: ProjName::default(),
+            path: Default::default(),
             four_bar: FourBar::example(),
-            angles: Angles::default(),
+            angles: Default::default(),
             hide: false,
+            cache: Default::default(),
         }
     }
 }
@@ -234,6 +239,8 @@ impl Project {
         ui.label(format!("Linkage type: {}", proj.four_bar.class()));
         ui.checkbox(&mut proj.hide, "Hide 👁");
         ui.add_enabled_ui(!proj.hide, |ui| {
+            let angles_o = proj.angles.clone();
+            let fb_o = proj.four_bar.clone();
             let fb = &mut proj.four_bar;
             let get_curve = |pivot: &Pivot| {
                 let m = Mechanism::new(fb);
@@ -306,6 +313,32 @@ impl Project {
                     proj.angles.open = !proj.angles.open;
                 }
             });
+            if !proj.cache.cached || fb_o != proj.four_bar || angles_o != proj.angles {
+                // Recalculation
+                proj.cache.cached = true;
+                let m = Mechanism::new(&proj.four_bar);
+                m.apply(proj.angles.theta2, [0, 1, 2, 3, 4], &mut proj.cache.joints);
+                proj.cache.curves = m.curve_all(0., TAU, n);
+                let step = 360. / n as f64;
+                proj.cache.theta3 = proj.cache.curves[0]
+                    .iter()
+                    .zip(&proj.cache.curves[1])
+                    .enumerate()
+                    .map(|(i, ([x1, y1], [x2, y2]))| {
+                        plot::Value::new(i as f64 * step, (y1 - y2).atan2(x1 - x2).to_degrees())
+                    })
+                    .collect();
+                proj.cache.theta4 = proj.cache.curves[1]
+                    .iter()
+                    .enumerate()
+                    .map(|(i, [x, y])| {
+                        let y = (y - proj.cache.joints[1][1])
+                            .atan2(x - proj.cache.joints[1][0])
+                            .to_degrees();
+                        plot::Value::new(i as f64 * step, y)
+                    })
+                    .collect();
+            }
         });
         drop(proj);
         self.dynamics(ui);
@@ -325,8 +358,8 @@ impl Project {
             });
         }
         let mut proj = self.0.write().unwrap();
-        let theta3 = plot::Values::from_values(proj.angles.theta3.clone());
-        let theta4 = plot::Values::from_values(proj.angles.theta4.clone());
+        let theta3 = plot::Values::from_values(proj.cache.theta3.clone());
+        let theta4 = plot::Values::from_values(proj.cache.theta4.clone());
         Window::new("🌋 Dynamics")
             .open(&mut proj.angles.open)
             .show(ui.ctx(), |ui| {
@@ -339,46 +372,26 @@ impl Project {
         }
     }
 
-    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
-        let mut proj = self.0.write().unwrap();
+    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize) {
+        let proj = self.0.read().unwrap();
         if proj.hide {
             return;
         }
-        let m = Mechanism::new(&proj.four_bar);
         let is_main = i == id;
-        let mut joints = [[0.; 2]; 5];
-        <FourBar as Linkage>::apply(&m, proj.angles.theta2, [0, 1, 2, 3, 4], &mut joints);
-        draw_link(ui, &[joints[0], joints[2]], is_main);
-        draw_link(ui, &[joints[1], joints[3]], is_main);
-        draw_link(ui, &joints[2..], is_main);
-        let float_j = plot::Points::new(as_values(&joints[2..]))
+        draw_link(ui, &[proj.cache.joints[0], proj.cache.joints[2]], is_main);
+        draw_link(ui, &[proj.cache.joints[1], proj.cache.joints[3]], is_main);
+        draw_link(ui, &proj.cache.joints[2..], is_main);
+        let float_j = plot::Points::new(as_values(&proj.cache.joints[2..]))
             .radius(5.)
             .color(JOINT_COLOR);
-        let fixed_j = plot::Points::new(as_values(&joints[..2]))
+        let fixed_j = plot::Points::new(as_values(&proj.cache.joints[..2]))
             .radius(10.)
             .shape(plot::MarkerShape::Up)
             .color(JOINT_COLOR);
         ui.points(float_j);
         ui.points(fixed_j);
-        let curve = m.curve_all(0., TAU, n);
-        let step = 360. / n as f64;
-        proj.angles.theta3 = curve[0]
-            .iter()
-            .zip(&curve[1])
-            .enumerate()
-            .map(|(i, ([x1, y1], [x2, y2]))| {
-                plot::Value::new(i as f64 * step, (y1 - y2).atan2(x1 - x2).to_degrees())
-            })
-            .collect();
-        proj.angles.theta4 = curve[1]
-            .iter()
-            .map(|&[x, y]| {
-                let y = (y - joints[1][1]).atan2(x - joints[1][0]).to_degrees();
-                plot::Value::new(i as f64 * step, y)
-            })
-            .collect();
-        let path_names = ["Crank pivot", "Follower pivot", "Coupler pivot"];
-        for (path, name) in curve.iter().zip(path_names) {
+        const NAMES: &[&str] = &["Crank pivot", "Follower pivot", "Coupler pivot"];
+        for (path, name) in proj.cache.curves.iter().zip(NAMES) {
             let line = plot::Line::new(as_values(path))
                 .name(format!("{}:{}", name, i))
                 .width(3.);
@@ -502,9 +515,9 @@ impl Projects {
         Mechanism::new(&self.list[self.current].0.read().unwrap().four_bar).curve(0., TAU, n)
     }
 
-    pub fn plot(&self, ui: &mut plot::PlotUi, n: usize) {
+    pub fn plot(&self, ui: &mut plot::PlotUi) {
         for (i, proj) in self.list.iter().enumerate() {
-            proj.plot(ui, i, self.current, n);
+            proj.plot(ui, i, self.current);
         }
     }
 

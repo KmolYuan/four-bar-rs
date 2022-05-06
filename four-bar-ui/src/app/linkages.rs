@@ -47,7 +47,7 @@ impl Linkages {
     }
 
     pub fn plot(&mut self, ui: &mut plot::PlotUi) {
-        self.projects.plot(ui, self.config.res);
+        self.projects.plot(ui);
     }
 
     pub fn open_project(&mut self, files: Vec<String>) {
