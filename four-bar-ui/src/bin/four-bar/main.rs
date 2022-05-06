@@ -1,5 +1,5 @@
 use clap::Parser;
-use eframe::{epi::IconData, NativeOptions};
+use eframe::{IconData, NativeOptions};
 use four_bar_ui::App;
 use std::io::Result;
 
@@ -54,7 +54,6 @@ fn main() -> Result<()> {
 }
 
 fn run_native(files: Vec<String>) -> ! {
-    let app = Box::new(App::open(files));
     let opt = NativeOptions {
         icon_data: Some(IconData {
             rgba: icon::ICON.to_vec(),
@@ -65,5 +64,9 @@ fn run_native(files: Vec<String>) -> ! {
     };
     #[cfg(windows)]
     let _ = unsafe { winapi::um::wincon::FreeConsole() };
-    eframe::run_native(app, opt)
+    eframe::run_native(
+        "Four bar",
+        opt,
+        Box::new(|ctx| Box::new(App::new(ctx, files))),
+    )
 }

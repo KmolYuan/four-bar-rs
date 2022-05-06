@@ -1,5 +1,5 @@
 use super::IoCtx;
-use eframe::egui::{TextEdit, Ui};
+use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},

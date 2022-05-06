@@ -1,9 +1,6 @@
 use super::{linkages::Linkages, project::Queue, remote::Remote, widgets::unit, IoCtx};
 use crate::{as_values::as_values, dump_csv, parse_csv};
-use eframe::egui::{
-    plot::{Legend, Line, LineStyle, Plot, PlotUi, Points},
-    reset_button, Button, Color32, ProgressBar, ScrollArea, TextEdit, Ui, Window,
-};
+use eframe::egui::*;
 use four_bar::curve;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -275,26 +272,26 @@ impl Synthesis {
     }
 
     fn convergence_plot(&mut self, ui: &mut Ui) {
-        Window::new("Convergence Plot")
+        Window::new("🗠 Convergence Plot")
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
-                Plot::new("conv_canvas")
-                    .legend(Legend::default())
+                plot::Plot::new("plot_conv")
+                    .legend(Default::default())
                     .allow_drag(false)
                     .allow_zoom(false)
                     .show(ui, |ui| {
                         for (i, task) in self.tasks.iter().enumerate() {
                             let conv = task.conv.read().unwrap();
                             let name = format!("Best Fitness {}", i + 1);
-                            ui.line(Line::new(as_values(&*conv)).fill(-1.5).name(&name));
-                            ui.points(Points::new(as_values(&*conv)).name(&name).stems(0.));
+                            ui.line(plot::Line::new(as_values(&*conv)).fill(-1.5).name(&name));
+                            ui.points(plot::Points::new(as_values(&*conv)).name(&name).stems(0.));
                         }
                     });
             });
     }
 
     fn target_curve_editor(&mut self, ui: &mut Ui) {
-        Window::new("Target Curve Editor")
+        Window::new("✏ Target Curve Editor")
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
@@ -347,11 +344,11 @@ impl Synthesis {
             });
     }
 
-    pub fn plot(&self, ui: &mut PlotUi) {
+    pub fn plot(&self, ui: &mut plot::PlotUi) {
         if !self.config.syn.target.is_empty() {
-            let line = Line::new(as_values(&self.config.syn.target))
+            let line = plot::Line::new(as_values(&self.config.syn.target))
                 .name("Synthesis target")
-                .style(LineStyle::dashed_loose())
+                .style(plot::LineStyle::dashed_loose())
                 .width(3.);
             ui.line(line);
         }

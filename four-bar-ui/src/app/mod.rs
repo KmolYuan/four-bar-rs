@@ -1,13 +1,6 @@
 pub use self::remote::{sha512, LoginInfo};
-use self::{io_ctx::IoCtx, linkages::Linkages, synthesis::Synthesis};
-use crate::app::widgets::url_button;
-use eframe::{
-    egui::{
-        plot::{Legend, Plot},
-        CentralPanel, Context, Layout, ScrollArea, SidePanel, TopBottomPanel, Ui, Window,
-    },
-    epi::{Frame, Storage, APP_KEY},
-};
+use self::{io_ctx::*, linkages::*, synthesis::*, widgets::*};
+use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 
 mod io_ctx;
@@ -37,8 +30,6 @@ impl Default for Panel {
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct App {
-    #[serde(skip)]
-    init_project: Vec<String>,
     welcome_off: bool,
     panel: Panel,
     started: bool,
@@ -48,11 +39,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn open(files: Vec<String>) -> Self {
-        Self {
-            init_project: files,
-            ..Self::default()
-        }
+    pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Self {
+        let mut app = ctx
+            .storage
+            .map(|s| eframe::get_value::<Self>(s, eframe::APP_KEY).unwrap_or_default())
+            .unwrap_or_else(App::default);
+        app.linkage.open_project(files);
+        app
     }
 
     fn welcome(&mut self, ctx: &Context) {
@@ -107,8 +100,8 @@ impl App {
     }
 }
 
-impl eframe::epi::App for App {
-    fn update(&mut self, ctx: &Context, _frame: &Frame) {
+impl eframe::App for App {
+    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         self.welcome(ctx);
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         match self.panel {
@@ -124,9 +117,10 @@ impl eframe::epi::App for App {
             Panel::Off => (),
         }
         CentralPanel::default().show(ctx, |ui| {
-            Plot::new("canvas")
+            plot::Plot::new("canvas")
+                .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
                 .data_aspect(1.)
-                .legend(Legend::default())
+                .legend(Default::default())
                 .show(ui, |ui| {
                     self.linkage.plot(ui);
                     self.synthesis.plot(ui);
@@ -134,21 +128,7 @@ impl eframe::epi::App for App {
         });
     }
 
-    fn setup(&mut self, _ctx: &Context, _frame: &Frame, storage: Option<&dyn Storage>) {
-        let init_proj = self.init_project.clone();
-        if let Some(storage) = storage {
-            if let Some(app) = eframe::epi::get_value(storage, APP_KEY) {
-                *self = app;
-            }
-        }
-        self.linkage.open_project(init_proj);
-    }
-
-    fn save(&mut self, storage: &mut dyn Storage) {
-        eframe::epi::set_value(storage, APP_KEY, self);
-    }
-
-    fn name(&self) -> &str {
-        "Four bar"
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }

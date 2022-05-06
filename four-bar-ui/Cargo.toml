@@ -15,7 +15,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 four-bar = { version = "1", path = "../four-bar", features = ["serde"] }
-eframe = { version = "0.17", default-features = false, features = ["default_fonts", "egui_glium", "persistence"] }
+eframe = { version = "0.18", features = ["persistence"] }
 serde = { version = "1", features = ["derive"] }
 hmac-sha512 = "1"
 csv = "1"

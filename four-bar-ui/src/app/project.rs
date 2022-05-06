@@ -3,10 +3,7 @@ use super::{
     widgets::{angle, link, unit},
 };
 use crate::{as_values::as_values, dump_csv, ext};
-use eframe::egui::{
-    plot::{Line, MarkerShape, PlotUi, Points, Polygon},
-    Button, Color32, ComboBox, RichText, Ui,
-};
+use eframe::egui::*;
 use four_bar::{curve, FourBar, Linkage, Mechanism};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -49,13 +46,13 @@ fn filename(path: &str) -> String {
         .to_string()
 }
 
-fn draw_link(ui: &mut PlotUi, points: &[[f64; 2]], is_main: bool) {
+fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
     let values = as_values(points);
     let width = if is_main { 3. } else { 1. };
     if points.len() == 2 {
-        ui.line(Line::new(values).width(width).color(LINK_COLOR));
+        ui.line(plot::Line::new(values).width(width).color(LINK_COLOR));
     } else {
-        let polygon = Polygon::new(values)
+        let polygon = plot::Polygon::new(values)
             .width(width)
             .fill_alpha(if is_main { 0.8 } else { 0.2 })
             .color(LINK_COLOR);
@@ -118,11 +115,33 @@ impl From<Option<String>> for ProjName {
     }
 }
 
+#[derive(Deserialize, Serialize, PartialEq, Default)]
+#[serde(default)]
+struct Angles {
+    theta2: f64,
+    omega2: f64,
+    alpha2: f64,
+    open: bool,
+    #[serde(skip)]
+    theta3: Vec<f64>,
+    #[serde(skip)]
+    theta4: Vec<f64>,
+    #[serde(skip)]
+    omega3: Vec<f64>,
+    #[serde(skip)]
+    omega4: Vec<f64>,
+    #[serde(skip)]
+    alpha3: Vec<f64>,
+    #[serde(skip)]
+    alpha4: Vec<f64>,
+}
+
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 struct ProjInner {
     path: ProjName,
     four_bar: FourBar,
+    angles: Angles,
     hide: bool,
 }
 
@@ -131,6 +150,7 @@ impl Default for ProjInner {
         Self {
             path: ProjName::default(),
             four_bar: FourBar::example(),
+            angles: Angles::default(),
             hide: false,
         }
     }
@@ -182,7 +202,7 @@ impl Project {
         } else {
             let name = proj.path.name();
             let four_bar = proj.four_bar.clone();
-            std::mem::drop(proj);
+            drop(proj);
             let proj_cloned = self.clone();
             IoCtx::save_ron_ask(&four_bar, &name, move |path| proj_cloned.set_path(path));
         }
@@ -274,33 +294,61 @@ impl Project {
                 ui.add(link("Extended: ", &mut fb.l4, interval));
                 angle(ui, "Angle: ", &mut fb.g, "");
             });
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.heading("Angle");
+                    reset_button(ui, &mut proj.angles);
+                });
+                angle(ui, "Theta: ", &mut proj.angles.theta2, "");
+                angle(ui, "Omega: ", &mut proj.angles.omega2, "/s");
+                angle(ui, "Alpha: ", &mut proj.angles.alpha2, "/s^2");
+                if ui.button("🌋 Dynamics").clicked() {
+                    proj.angles.open = !proj.angles.open;
+                }
+            });
         });
+        drop(proj);
+        self.dynamics(ui);
     }
 
-    fn plot(&self, ui: &mut PlotUi, i: usize, id: usize, angle: f64, n: usize) {
-        if self.0.read().unwrap().hide {
+    fn dynamics(&self, ui: &mut Ui) {
+        let mut proj = self.0.write().unwrap();
+        Window::new("🌋 Dynamics")
+            .open(&mut proj.angles.open)
+            .show(ui.ctx(), |_ui| {
+                // TODO
+            });
+        if proj.angles.omega2 != 0. {
+            proj.angles.theta2 += proj.angles.omega2 / 60.;
+            ui.ctx().request_repaint();
+        }
+    }
+
+    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
+        let proj = self.0.read().unwrap();
+        if proj.hide {
             return;
         }
-        let m = Mechanism::new(&self.0.read().unwrap().four_bar);
+        let m = Mechanism::new(&proj.four_bar);
         let is_main = i == id;
         let mut joints = [[0.; 2]; 5];
-        <FourBar as Linkage>::apply(&m, angle, [0, 1, 2, 3, 4], &mut joints);
+        <FourBar as Linkage>::apply(&m, proj.angles.theta2, [0, 1, 2, 3, 4], &mut joints);
         draw_link(ui, &[joints[0], joints[2]], is_main);
         draw_link(ui, &[joints[1], joints[3]], is_main);
         draw_link(ui, &joints[2..], is_main);
-        let float_j = Points::new(as_values(&joints[2..]))
+        let float_j = plot::Points::new(as_values(&joints[2..]))
             .radius(5.)
             .color(JOINT_COLOR);
-        let fixed_j = Points::new(as_values(&joints[..2]))
+        let fixed_j = plot::Points::new(as_values(&joints[..2]))
             .radius(10.)
-            .shape(MarkerShape::Up)
+            .shape(plot::MarkerShape::Up)
             .color(JOINT_COLOR);
         ui.points(float_j);
         ui.points(fixed_j);
         let curve = m.curve_all(0., TAU, n);
         let path_names = ["Crank pivot", "Follower pivot", "Coupler pivot"];
         for (path, name) in curve.iter().zip(path_names) {
-            let line = Line::new(as_values(path))
+            let line = plot::Line::new(as_values(path))
                 .name(format!("{}:{}", name, i))
                 .width(3.);
             ui.line(line);
@@ -423,9 +471,9 @@ impl Projects {
         Mechanism::new(&self.list[self.current].0.read().unwrap().four_bar).curve(0., TAU, n)
     }
 
-    pub fn plot(&self, ui: &mut PlotUi, angle: f64, n: usize) {
+    pub fn plot(&self, ui: &mut plot::PlotUi, n: usize) {
         for (i, proj) in self.list.iter().enumerate() {
-            proj.plot(ui, i, self.current, angle, n);
+            proj.plot(ui, i, self.current, n);
         }
     }
 

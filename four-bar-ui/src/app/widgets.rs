@@ -1,4 +1,4 @@
-use eframe::egui::{emath::Numeric, DragValue, Ui};
+use eframe::egui::*;
 use std::f64::consts::TAU;
 
 pub fn url_button(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
@@ -9,7 +9,7 @@ pub fn url_button(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
 
 pub fn unit<'a, V, N>(label: &str, val: &'a mut V, n: N) -> DragValue<'a>
 where
-    V: Numeric,
+    V: emath::Numeric,
     N: Into<f64>,
 {
     DragValue::new(val).prefix(label).speed(n)
