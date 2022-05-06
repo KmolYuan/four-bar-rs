@@ -123,17 +123,17 @@ struct Angles {
     alpha2: f64,
     open: bool,
     #[serde(skip)]
-    theta3: Vec<f64>,
+    theta3: Vec<plot::Value>,
     #[serde(skip)]
-    theta4: Vec<f64>,
+    theta4: Vec<plot::Value>,
     #[serde(skip)]
-    omega3: Vec<f64>,
+    omega3: Vec<plot::Value>,
     #[serde(skip)]
-    omega4: Vec<f64>,
+    omega4: Vec<plot::Value>,
     #[serde(skip)]
-    alpha3: Vec<f64>,
+    alpha3: Vec<plot::Value>,
     #[serde(skip)]
-    alpha4: Vec<f64>,
+    alpha4: Vec<plot::Value>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -312,11 +312,26 @@ impl Project {
     }
 
     fn dynamics(&self, ui: &mut Ui) {
+        fn plot(ui: &mut Ui, id: &str, title: &str, values: plot::Values) {
+            let line = plot::Line::new(values).color(Color32::BLUE);
+            ui.vertical(|ui| {
+                ui.heading(title);
+                plot::Plot::new(id)
+                    .allow_drag(false)
+                    .allow_zoom(false)
+                    .allow_scroll(false)
+                    .height(200.)
+                    .show(ui, |ui| ui.line(line));
+            });
+        }
         let mut proj = self.0.write().unwrap();
+        let theta3 = plot::Values::from_values(proj.angles.theta3.clone());
+        let theta4 = plot::Values::from_values(proj.angles.theta4.clone());
         Window::new("🌋 Dynamics")
             .open(&mut proj.angles.open)
-            .show(ui.ctx(), |_ui| {
-                // TODO
+            .show(ui.ctx(), |ui| {
+                plot(ui, "plot_theta3", "Theta3", theta3);
+                plot(ui, "plot_theta4", "Theta4", theta4);
             });
         if proj.angles.omega2 != 0. {
             proj.angles.theta2 += proj.angles.omega2 / 60.;
@@ -325,7 +340,7 @@ impl Project {
     }
 
     fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
-        let proj = self.0.read().unwrap();
+        let mut proj = self.0.write().unwrap();
         if proj.hide {
             return;
         }
@@ -346,6 +361,22 @@ impl Project {
         ui.points(float_j);
         ui.points(fixed_j);
         let curve = m.curve_all(0., TAU, n);
+        let step = 360. / n as f64;
+        proj.angles.theta3 = curve[0]
+            .iter()
+            .zip(&curve[1])
+            .enumerate()
+            .map(|(i, ([x1, y1], [x2, y2]))| {
+                plot::Value::new(i as f64 * step, (y1 - y2).atan2(x1 - x2).to_degrees())
+            })
+            .collect();
+        proj.angles.theta4 = curve[1]
+            .iter()
+            .map(|&[x, y]| {
+                let y = (y - joints[1][1]).atan2(x - joints[1][0]).to_degrees();
+                plot::Value::new(i as f64 * step, y)
+            })
+            .collect();
         let path_names = ["Crank pivot", "Follower pivot", "Coupler pivot"];
         for (path, name) in curve.iter().zip(path_names) {
             let line = plot::Line::new(as_values(path))

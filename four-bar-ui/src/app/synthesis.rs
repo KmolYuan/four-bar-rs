@@ -279,6 +279,7 @@ impl Synthesis {
                     .legend(Default::default())
                     .allow_drag(false)
                     .allow_zoom(false)
+                    .allow_scroll(false)
                     .show(ui, |ui| {
                         for (i, task) in self.tasks.iter().enumerate() {
                             let conv = task.conv.read().unwrap();

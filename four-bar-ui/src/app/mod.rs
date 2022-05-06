@@ -118,9 +118,9 @@ impl eframe::App for App {
         }
         CentralPanel::default().show(ctx, |ui| {
             plot::Plot::new("canvas")
-                .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
-                .data_aspect(1.)
                 .legend(Default::default())
+                .data_aspect(1.)
+                .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
                 .show(ui, |ui| {
                     self.linkage.plot(ui);
                     self.synthesis.plot(ui);
