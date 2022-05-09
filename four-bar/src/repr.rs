@@ -2,7 +2,8 @@
 use crate::{efd::GeoInfo, FourBar};
 
 /// Create a normalized four-bar linkage from a vector.
-pub const fn four_bar_v([l0, l2, l3, l4, g]: [f64; 5], inv: bool) -> FourBar {
+pub const fn four_bar_v(v: [f64; 5], inv: bool) -> FourBar {
+    let [l0, l2, l3, l4, g] = v;
     FourBar {
         p0: [0., 0.],
         a: 0.,
