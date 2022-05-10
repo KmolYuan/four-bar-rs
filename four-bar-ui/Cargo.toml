@@ -18,8 +18,8 @@ four-bar = { version = "1", path = "../four-bar", features = ["serde"] }
 eframe = { version = "0.18", features = ["persistence"] }
 serde = { version = "1", features = ["derive"] }
 hmac-sha512 = "1"
-csv = "1"
 ron = "0.7"
+csv = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
@@ -28,7 +28,7 @@ ureq = { version = "2", features = ["cookies"] }
 actix-web = "4"
 actix-identity = "0.4"
 actix-files = "0.6"
-webbrowser = "0.6"
+webbrowser = "0.7"
 temp-dir = "0.1"
 zip = "0.6"
 rfd = "0.8"
