@@ -2,16 +2,16 @@
 
 use self::prelude::*;
 pub use plotters::*;
-use std::error::Error;
 
-fn font() -> TextStyle<'static> {
+pub fn font() -> TextStyle<'static> {
     ("Times New Roman", 24).into_font().color(&BLACK)
 }
 
 /// Plot the synthesis history.
-pub fn plot_history<B>(backend: B, history: &[f64], fitness: f64) -> Result<(), Box<dyn Error>>
+pub fn plot_history<B>(backend: B, history: &[f64], fitness: f64) -> anyhow::Result<()>
 where
-    B: DrawingBackend + 'static,
+    B: DrawingBackend,
+    B::ErrorType: 'static,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
@@ -41,13 +41,10 @@ where
 }
 
 /// Plot 2D curve.
-pub fn plot_curve<B>(
-    backend: B,
-    title: &str,
-    curves: &[(&str, &[[f64; 2]])],
-) -> Result<(), Box<dyn Error>>
+pub fn plot_curve<B>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])]) -> anyhow::Result<()>
 where
-    B: DrawingBackend + 'static,
+    B: DrawingBackend,
+    B::ErrorType: 'static,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
