@@ -51,7 +51,7 @@ where
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let [x_min, x_max, y_min, y_max] = curves_rect(curves);
+    let [x_min, x_max, y_min, y_max] = bounding_box(curves);
     let mut chart = ChartBuilder::on(&root)
         .caption(title, font())
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
@@ -79,34 +79,33 @@ where
     Ok(())
 }
 
-fn curves_rect(curves: &[(&str, &[[f64; 2]])]) -> [f64; 4] {
-    let mut v = [f64::INFINITY, -f64::INFINITY, f64::INFINITY, -f64::INFINITY];
-    for [x, y] in curves.iter().flat_map(|(_, curve)| curve.iter().cloned()) {
-        if x < v[0] {
-            v[0] = x;
+/// Get the bounding box of the data, ignore the labels.
+pub fn bounding_box<L>(curves: &[(L, &[[f64; 2]])]) -> [f64; 4] {
+    let [mut x_min, mut x_max] = [&f64::INFINITY, &-f64::INFINITY];
+    let [mut y_min, mut y_max] = [&f64::INFINITY, &-f64::INFINITY];
+    for [x, y] in curves.iter().flat_map(|(_, curve)| curve.iter()) {
+        if x < x_min {
+            x_min = x;
         }
-        if x > v[1] {
-            v[1] = x;
+        if x > x_max {
+            x_max = x;
         }
-        if y < v[2] {
-            v[2] = y;
+        if y < y_min {
+            y_min = y;
         }
-        if y > v[3] {
-            v[3] = y;
+        if y > y_max {
+            y_max = y;
         }
     }
-    let dx = (v[1] - v[0]).abs();
-    let dy = (v[3] - v[2]).abs();
+    let dx = (x_max - x_min).abs();
+    let dy = (y_max - y_min).abs();
     if dx > dy {
-        let cen = (v[2] + v[3]) * 0.5;
+        let cen = (y_min + y_max) * 0.5;
         let r = dx * 0.5;
-        v[2] = cen - r;
-        v[3] = cen + r;
+        [*x_min, *x_max, cen - r, cen + r]
     } else {
-        let cen = (v[0] + v[1]) * 0.5;
+        let cen = (x_min + x_max) * 0.5;
         let r = dy * 0.5;
-        v[0] = cen - r;
-        v[1] = cen + r;
+        [cen - r, cen + r, *y_min, *y_max]
     }
-    v
 }
