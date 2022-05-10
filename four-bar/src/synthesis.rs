@@ -69,35 +69,38 @@ impl Planar {
         self.efd.harmonic()
     }
 
-    fn domain_search(&self, v: &[f64]) -> (f64, FourBar) {
+    fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
         use crate::mh::rayon::prelude::*;
-        let d = repr::grashof_transform(v);
+        let v = repr::grashof_transform(xs);
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
-                    let m = Mechanism::new(&repr::four_bar_v(d, inv));
+                    let m = Mechanism::new(&repr::four_bar_v(&v, inv));
                     (curve::close_loop(m.par_curve(t1, t2, self.n)), inv)
                 })
                 .filter(|(curve, _)| curve::is_valid(curve))
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
-                    let four_bar = repr::four_bar_transform(&d, inv, efd.to(&self.efd));
+                    let four_bar = repr::four_bar_transform(&v, inv, efd.to(&self.efd));
                     let fitness = efd.discrepancy(&self.efd);
                     (fitness, four_bar)
                 })
         };
+        let default = || (1e10, FourBar::default());
         if self.open {
-            [[v[5], v[6]], [v[6], v[5]]]
+            [[xs[5], xs[6]], [xs[6], xs[5]]]
                 .into_par_iter()
                 .map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
                 .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
                 .flat_map(f)
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                .unwrap_or_else(default)
         } else {
-            f([0., TAU]).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+            f([0., TAU])
+                .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                .unwrap_or_else(default)
         }
-        .unwrap_or_else(|| (1e10, FourBar::default()))
     }
 }
 
@@ -105,12 +108,12 @@ impl ObjFunc for Planar {
     type Result = FourBar;
     type Fitness = f64;
 
-    fn fitness(&self, v: &[f64], _: f64) -> Self::Fitness {
-        self.domain_search(v).0
+    fn fitness(&self, xs: &[f64], _: f64) -> Self::Fitness {
+        self.domain_search(xs).0
     }
 
-    fn result(&self, v: &[f64]) -> Self::Result {
-        self.domain_search(v).1
+    fn result(&self, xs: &[f64]) -> Self::Result {
+        self.domain_search(xs).1
     }
 
     fn ub(&self) -> &[f64] {

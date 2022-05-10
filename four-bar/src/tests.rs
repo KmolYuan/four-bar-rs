@@ -59,8 +59,8 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
     plot::plot_curve(svg, "Synthesis Test", &curves).unwrap();
 }
 
-#[cfg(feature = "plot_export")]
 #[test]
+#[cfg(feature = "plot")]
 fn planar() {
     // let target = Mechanism::four_bar(FourBar {
     //     p0: (0., 0.),

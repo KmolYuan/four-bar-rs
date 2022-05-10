@@ -35,10 +35,8 @@ where
         .y_desc("Fitness")
         .y_label_style(font())
         .draw()?;
-    chart.draw_series(LineSeries::new(
-        history.iter().enumerate().map(|(i, x)| (i, *x)),
-        &BLUE,
-    ))?;
+    let history = history.iter().enumerate().map(|(i, x)| (i, *x));
+    chart.draw_series(LineSeries::new(history, &BLUE))?;
     Ok(())
 }
 
@@ -65,11 +63,12 @@ where
         .x_label_style(font())
         .y_label_style(font())
         .draw()?;
-    for &(label, curve) in curves {
+    for (i, &(label, curve)) in curves.iter().enumerate() {
+        let color = Palette99::pick(i);
         chart
-            .draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &BLUE))?
+            .draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &color))?
             .label(label)
-            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+            .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
     }
     chart
         .configure_series_labels()
