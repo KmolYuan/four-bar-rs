@@ -1,5 +1,5 @@
-.idea/
-target/
+/.idea/
+/target/
 /docs/*
 !/docs/index.html
 !/docs/main.js
