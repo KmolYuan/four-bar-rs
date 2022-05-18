@@ -3,6 +3,7 @@
 use self::prelude::*;
 pub use plotters::*;
 
+/// Get font setting.
 pub fn font() -> TextStyle<'static> {
     ("Times New Roman", 24).into_font().color(&BLACK)
 }
