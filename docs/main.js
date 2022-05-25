@@ -35,4 +35,12 @@ window.logout = done =>
     }).then(res => done(res.ok));
 
 // Startup WebAssembly
-wasm.default().then(() => wasm.start("main_canvas"));
+wasm.default().then(() => {
+    wasm.start("main_canvas");
+    document.getElementById("loading-text").remove();
+}).catch(err => {
+    document.getElementById("loading-text").innerHTML = `
+    <p>An error occurred during loading:</p>
+    <p style="font-family: Courier New, serif">${err}</p>
+    <p style="font-size: 14px">Make sure you use a modern browser with WebGL and WASM enabled.</p>`;
+});
