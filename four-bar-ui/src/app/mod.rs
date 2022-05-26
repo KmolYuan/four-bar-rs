@@ -42,8 +42,8 @@ impl App {
     pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Self {
         let mut app = ctx
             .storage
-            .map(|s| eframe::get_value::<Self>(s, eframe::APP_KEY).unwrap_or_default())
-            .unwrap_or_else(App::default);
+            .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
+            .unwrap_or_default();
         app.linkage.open_project(files);
         app
     }
