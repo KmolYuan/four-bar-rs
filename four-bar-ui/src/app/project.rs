@@ -308,7 +308,7 @@ impl Project {
                 });
                 angle(ui, "Theta: ", &mut proj.angles.theta2, "");
                 angle(ui, "Omega: ", &mut proj.angles.omega2, "/s");
-                angle(ui, "Alpha: ", &mut proj.angles.alpha2, "/s^2");
+                angle(ui, "Alpha: ", &mut proj.angles.alpha2, "/s²");
                 if ui.button("🌋 Dynamics").clicked() {
                     proj.angles.open = !proj.angles.open;
                 }

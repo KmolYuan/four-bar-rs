@@ -5,7 +5,7 @@ use std::{
 };
 
 /// The classification of the four-bar linkage.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Class {
     /// Grashof double crank
     GCCC,
@@ -51,7 +51,7 @@ impl Class {
 /// Data type of the four-bar mechanism.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
-#[derive(Default, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct FourBar {
     /// Origin.
     pub p0: [f64; 2],
@@ -73,7 +73,26 @@ pub struct FourBar {
     pub inv: bool,
 }
 
+impl Default for FourBar {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
 impl FourBar {
+    /// Zeros data. (Default value)
+    pub const ZERO: Self = Self {
+        p0: [0.; 2],
+        a: 0.0,
+        l0: 0.0,
+        l1: 0.0,
+        l2: 0.0,
+        l3: 0.0,
+        l4: 0.0,
+        g: 0.0,
+        inv: false,
+    };
+
     /// An example crank rocker.
     pub const fn example() -> Self {
         Self {
