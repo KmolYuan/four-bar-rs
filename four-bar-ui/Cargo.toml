@@ -23,13 +23,14 @@ csv = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
-clap = { version = "3", features = ["derive"] }
 ureq = { version = "2", features = ["cookies"] }
+clap = { version = "3", features = ["derive"] }
 actix-web = "4"
 actix-identity = "0.4"
 actix-files = "0.6"
 webbrowser = "0.7"
 temp-dir = "0.1"
+image = "0.24"
 zip = "0.6"
 rfd = "0.8"
 
@@ -41,8 +42,6 @@ wasm-bindgen = "0.2"
 # windows here!
 winapi = { version = "0.3", features = ["wincon", "winuser"] }
 
-[target.'cfg(not(target_arch = "wasm32"))'.build-dependencies]
-image = "0.24"
-
 [target.'cfg(windows)'.build-dependencies]
+image = "0.24"
 winres = "0.1"

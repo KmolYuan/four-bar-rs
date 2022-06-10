@@ -13,7 +13,7 @@ echo "Generating JS bindings for wasm..."
 wasm-pack build --release --out-dir ../docs/pkg -t web --no-typescript "${REPO}/four-bar-ui"
 rm "${REPO}/docs/pkg/.gitignore"
 rm "${REPO}/docs/pkg/package.json"
-cp "${REPO}/four-bar-ui/src/assets/favicon.png" "${REPO}/docs"
+cp "${REPO}/four-bar-ui/assets/favicon.png" "${REPO}/docs"
 cp "${REPO}/LICENSE" "${REPO}/docs"
 
 echo "Make the archive..."

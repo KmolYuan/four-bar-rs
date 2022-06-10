@@ -1,13 +1,13 @@
 use clap::Parser;
 use eframe::{IconData, NativeOptions};
 use four_bar_ui::App;
+use image::ImageFormat;
 use std::io::Result;
 
 mod serve;
 mod update;
-mod icon {
-    include!(concat![env!("OUT_DIR"), "/icon.rs"]);
-}
+
+const ICON: &[u8] = include_bytes!("../../../assets/favicon.png");
 
 #[derive(Parser)]
 #[clap(
@@ -54,11 +54,12 @@ fn main() -> Result<()> {
 }
 
 fn run_native(files: Vec<String>) -> ! {
+    let icon = image::load_from_memory_with_format(ICON, ImageFormat::Png).unwrap();
     let opt = NativeOptions {
         icon_data: Some(IconData {
-            rgba: icon::ICON.to_vec(),
-            width: icon::WIDTH,
-            height: icon::HEIGHT,
+            width: icon.width(),
+            height: icon.height(),
+            rgba: icon.into_bytes(),
         }),
         ..Default::default()
     };
