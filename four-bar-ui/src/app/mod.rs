@@ -107,9 +107,8 @@ impl App {
                 ui.ctx().set_visuals(v);
             }
             if ui.small_button("↻").on_hover_text("Reset UI").clicked() {
-                let v = style.visuals.clone();
                 *ui.ctx().memory() = Default::default();
-                ui.ctx().set_visuals(v);
+                ui.ctx().set_style(style);
             }
             url_button(ui, "⮋", "Release", RELEASE_URL);
             url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
@@ -157,5 +156,9 @@ impl eframe::App for App {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
+    }
+
+    fn persist_egui_memory(&self) -> bool {
+        false
     }
 }
