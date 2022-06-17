@@ -11,6 +11,7 @@ mod synthesis;
 mod widgets;
 
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
+const FONT: &[u8] = include_bytes!("../../assets/GoNotoCurrent.ttf");
 
 #[derive(Deserialize, Serialize, PartialEq)]
 enum Panel {
@@ -40,6 +41,31 @@ pub struct App {
 
 impl App {
     pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Self {
+        let font_name = "Go-Noto".to_string();
+        let mut font_def = FontDefinitions::default();
+        font_def.font_data.retain(|s, _| s == "emoji-icon-font");
+        font_def
+            .font_data
+            .insert(font_name.clone(), FontData::from_static(FONT));
+        let families = vec![font_name, "emoji-icon-font".to_string()];
+        font_def.families.clear();
+        font_def.families.extend([
+            (FontFamily::Proportional, families.clone()),
+            (FontFamily::Monospace, families),
+        ]);
+        ctx.egui_ctx.set_fonts(font_def);
+        let mut style = (*ctx.egui_ctx.style()).clone();
+        for (text_style, size) in [
+            (TextStyle::Small, 18.),
+            (TextStyle::Body, 24.),
+            (TextStyle::Monospace, 24.),
+            (TextStyle::Button, 30.),
+            (TextStyle::Heading, 40.),
+        ] {
+            let id = FontId::proportional(size);
+            style.text_styles.insert(text_style, id);
+        }
+        ctx.egui_ctx.set_style(style);
         let mut app = ctx
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
@@ -61,6 +87,7 @@ impl App {
                 ui.heading("License");
                 ui.label("This software is under AGPL v3 license.");
                 ui.label("The commercial usages under server or client side are not allowed.");
+                ui.allocate_space(ui.available_size());
             });
         self.welcome_off = !welcome;
     }
@@ -68,7 +95,7 @@ impl App {
     fn menu(&mut self, ui: &mut Ui) {
         ui.selectable_value(&mut self.panel, Panel::Linkages, "🍀")
             .on_hover_text("Linkages");
-        ui.selectable_value(&mut self.panel, Panel::Synthesis, "⛓")
+        ui.selectable_value(&mut self.panel, Panel::Synthesis, "💡")
             .on_hover_text("Synthesis");
         ui.selectable_value(&mut self.panel, Panel::Monitor, "🖥")
             .on_hover_text("Renderer Monitor");
@@ -86,7 +113,7 @@ impl App {
             }
             url_button(ui, "⮋", "Release", RELEASE_URL);
             url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
-            if ui.small_button("ℹ").on_hover_text("Welcome").clicked() {
+            if ui.small_button("💁").on_hover_text("Welcome").clicked() {
                 self.welcome_off = !self.welcome_off;
             }
             ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui/");

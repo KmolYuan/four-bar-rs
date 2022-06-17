@@ -86,7 +86,7 @@ impl Remote {
             ui.label("Address");
             ui.text_edit_singleline(&mut self.address);
         });
-        if ui.button("Connect").clicked() {
+        if ui.button("🖧 Connect").clicked() {
             self.connect(ctx);
         }
     }

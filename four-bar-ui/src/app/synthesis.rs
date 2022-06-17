@@ -207,7 +207,7 @@ impl Synthesis {
         }
         ui.group(|ui| {
             ui.heading("Local Computation");
-            if ui.button("🗠 Convergence Plot").clicked() {
+            if ui.button("📉 Convergence Plot").clicked() {
                 self.conv_open = !self.conv_open;
             }
             self.tasks.retain(|task| {
@@ -272,7 +272,7 @@ impl Synthesis {
     }
 
     fn convergence_plot(&mut self, ui: &mut Ui) {
-        Window::new("🗠 Convergence Plot")
+        Window::new("📉 Convergence Plot")
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
                 plot::Plot::new("plot_conv")

@@ -309,7 +309,7 @@ impl Project {
                 angle(ui, "Theta: ", &mut proj.angles.theta2, "");
                 angle(ui, "Omega: ", &mut proj.angles.omega2, "/s");
                 angle(ui, "Alpha: ", &mut proj.angles.alpha2, "/s²");
-                if ui.button("🌋 Dynamics").clicked() {
+                if ui.button("⚽ Dynamics").clicked() {
                     proj.angles.open = !proj.angles.open;
                 }
             });
@@ -360,7 +360,7 @@ impl Project {
         let mut proj = self.0.write().unwrap();
         let theta3 = plot::Values::from_values(proj.cache.theta3.clone());
         let theta4 = plot::Values::from_values(proj.cache.theta4.clone());
-        Window::new("🌋 Dynamics")
+        Window::new("⚽ Dynamics")
             .open(&mut proj.angles.open)
             .show(ui.ctx(), |ui| {
                 plot(ui, "plot_theta3", "Theta3", theta3);
@@ -466,7 +466,7 @@ impl Projects {
                     }
                 });
             }
-            if ui.button("➕ New").clicked() {
+            if ui.button("🗋 New").clicked() {
                 self.push_default();
             }
             if !self.is_empty() {
