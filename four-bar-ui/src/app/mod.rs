@@ -12,10 +12,9 @@ mod synthesis;
 mod widgets;
 
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
-#[rustfmt::skip]
 const FONT: &[(&str, &[u8])] = &[
     ("Noto", include_bytes!("../../assets/GoNotoCurrent.ttf")),
-    ("emoji", include_bytes!("../../assets/NotoEmoji-Regular.ttf")),
+    ("emoji", include_bytes!("../../assets/emoji-icon-font.ttf")),
 ];
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -116,8 +115,8 @@ impl App {
                 *ui.ctx().memory() = Default::default();
                 ui.ctx().set_style(style);
             }
-            url_button(ui, "⮋", "Release", RELEASE_URL);
-            url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
+            url_btn(ui, "⮋", "Release", RELEASE_URL);
+            url_btn(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
             if ui.small_button("💁").on_hover_text("Welcome").clicked() {
                 self.welcome_off = !self.welcome_off;
             }

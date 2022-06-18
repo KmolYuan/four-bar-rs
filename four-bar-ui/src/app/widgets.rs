@@ -1,7 +1,7 @@
 use eframe::egui::*;
 use std::f64::consts::TAU;
 
-pub fn url_button(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
+pub fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     if ui.small_button(icon).on_hover_text(tip).clicked() {
         ui.ctx().output().open_url(url);
     }
