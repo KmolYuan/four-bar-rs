@@ -183,8 +183,8 @@ impl Synthesis {
                     .on_hover_text(format!("More about {}", method.name()));
             });
         });
-        ui.add(unit("Generation: ", &mut self.config.syn.gen, 1));
-        ui.add(unit("Population: ", &mut self.config.syn.pop, 1));
+        unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
+        unit(ui, "Population: ", &mut self.config.syn.pop, 1);
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
             let curve_csv = self.config.curve_csv.read().unwrap();

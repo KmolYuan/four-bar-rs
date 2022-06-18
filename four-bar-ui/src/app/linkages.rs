@@ -41,13 +41,13 @@ impl Linkages {
                 ui.heading("Options");
                 reset_button(ui, &mut self.config);
             });
-            ui.add(link("Drag interval: ", &mut self.config.interval, 0.01));
-            ui.add(unit("Curve resolution: ", &mut self.config.res, 1));
+            link(ui, "Drag interval: ", &mut self.config.interval, 0.01);
+            unit(ui, "Curve resolution: ", &mut self.config.res, 1);
         });
     }
 
     pub fn plot(&mut self, ui: &mut plot::PlotUi) {
-        self.projects.plot(ui);
+        self.projects.plot(ui, self.config.res);
     }
 
     pub fn open_project(&mut self, files: Vec<String>) {
