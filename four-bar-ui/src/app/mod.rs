@@ -39,7 +39,7 @@ pub struct App {
     welcome_off: bool,
     panel: Panel,
     started: bool,
-    ctx: IoCtx,
+    ctx: Ctx,
     linkage: Linkages,
     synthesis: Synthesis,
 }

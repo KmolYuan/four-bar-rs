@@ -37,14 +37,14 @@ fn js_ext(ext: &[&str]) -> String {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct IoCtx {
+pub struct Ctx {
     #[cfg(not(target_arch = "wasm32"))]
     #[serde(serialize_with = "self::serde_agent::serialize")]
     #[serde(deserialize_with = "self::serde_agent::deserialize")]
     agent: ureq::Agent,
 }
 
-impl Default for IoCtx {
+impl Default for Ctx {
     fn default() -> Self {
         Self {
             #[cfg(not(target_arch = "wasm32"))]
@@ -54,7 +54,7 @@ impl Default for IoCtx {
 }
 
 #[cfg(target_arch = "wasm32")]
-impl IoCtx {
+impl Ctx {
     pub fn alert(s: &str) {
         alert(s);
     }
@@ -110,7 +110,7 @@ impl IoCtx {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl IoCtx {
+impl Ctx {
     pub fn alert(s: &str) {
         rfd::MessageDialog::new()
             .set_title("Message")
@@ -205,7 +205,7 @@ impl IoCtx {
     }
 }
 
-impl IoCtx {
+impl Ctx {
     pub fn open_ron<C>(done: C)
     where
         C: Fn(String, String) + 'static,

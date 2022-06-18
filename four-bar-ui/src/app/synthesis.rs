@@ -1,4 +1,4 @@
-use super::{linkages::Linkages, project::Queue, remote::Remote, widgets::unit, IoCtx};
+use super::{linkages::Linkages, project::Queue, remote::Remote, widgets::unit, Ctx};
 use crate::{as_values::as_values, dump_csv, parse_csv};
 use eframe::egui::*;
 use four_bar::curve;
@@ -158,7 +158,7 @@ struct Task {
 }
 
 impl Synthesis {
-    pub fn show(&mut self, ui: &mut Ui, ctx: &IoCtx, linkage: &mut Linkages) {
+    pub fn show(&mut self, ui: &mut Ui, ctx: &Ctx, linkage: &mut Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.config);
@@ -298,9 +298,7 @@ impl Synthesis {
                 ui.horizontal(|ui| {
                     if ui.button("🖴 Open CSV").clicked() {
                         let curve_csv = self.config.curve_csv.clone();
-                        IoCtx::open_csv_single(move |_, s| {
-                            curve_csv.write().unwrap().clone_from(&s)
-                        });
+                        Ctx::open_csv_single(move |_, s| curve_csv.write().unwrap().clone_from(&s));
                     }
                     if ui.button("🗑 Clear").clicked() {
                         self.config.curve_csv.write().unwrap().clear();
@@ -320,7 +318,7 @@ impl Synthesis {
                                 .clone_from(&dump_csv(curve).unwrap());
                         }
                         if ui.button("💾 Export CSV").clicked() {
-                            IoCtx::save_csv_ask(curve);
+                            Ctx::save_csv_ask(curve);
                         }
                         !ui.button("🗑").clicked()
                     })
@@ -357,7 +355,7 @@ impl Synthesis {
 
     #[cfg(target_arch = "wasm32")]
     fn native_syn(&mut self, _queue: Queue) {
-        IoCtx::alert("Local computation is not supported!");
+        Ctx::alert("Local computation is not supported!");
     }
 
     #[cfg(not(target_arch = "wasm32"))]
