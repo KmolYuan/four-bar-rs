@@ -9,8 +9,9 @@ use std::sync::{
 /// Sha512 encrypt function.
 pub fn sha512(s: &str) -> String {
     hmac_sha512::Hash::hash(s)
-        .map(|n| format!("{:02x?}", n))
-        .join("")
+        .into_iter()
+        .map(|n| format!("{n:02x?}"))
+        .collect()
 }
 
 /// Store the login information.

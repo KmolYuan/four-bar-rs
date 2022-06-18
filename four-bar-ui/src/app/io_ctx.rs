@@ -31,7 +31,7 @@ extern "C" {
 #[cfg(target_arch = "wasm32")]
 fn js_ext(ext: &[&str]) -> String {
     ext.iter()
-        .map(|s| format!(".{}", s))
+        .map(|s| format!(".{s}"))
         .collect::<Vec<_>>()
         .join(",")
 }

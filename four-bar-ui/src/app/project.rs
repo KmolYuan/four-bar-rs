@@ -201,13 +201,15 @@ impl ProjInner {
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 ui.heading("Offset");
-                let btn = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
-                if btn.clicked() {
+                let res = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
+                if res.clicked() {
                     fb.align();
+                    self.cache.changed = true;
                 }
             });
             if ui.button("Normalize").clicked() {
                 fb.normalize();
+                self.cache.changed = true;
             }
             let res = unit(ui, "X Offset: ", &mut fb.p0[0], interval)
                 | unit(ui, "Y Offset: ", &mut fb.p0[1], interval)
@@ -228,7 +230,11 @@ impl ProjInner {
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 ui.heading("Angle");
-                reset_button(ui, &mut self.angles);
+                let res = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
+                if res.clicked() && self.angles != Default::default() {
+                    self.angles = Default::default();
+                    self.cache.changed = true;
+                }
             });
             let res = angle(ui, "Theta: ", &mut self.angles.theta2, "")
                 | angle(ui, "Omega: ", &mut self.angles.omega2, "/s")
@@ -240,8 +246,8 @@ impl ProjInner {
         });
         if self.angles.omega2 != 0. {
             self.angles.theta2 += self.angles.omega2 / 60.;
-            ui.ctx().request_repaint();
             self.cache.changed = true;
+            ui.ctx().request_repaint();
         }
     }
 
@@ -501,11 +507,8 @@ impl Projects {
         if self.select(ui) {
             ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n));
         } else {
-            let head = RichText::new("No project here!")
-                .color(Color32::BLUE)
-                .heading();
-            ui.label(head);
-            ui.colored_label(Color32::BLUE, "Please open or create a project.");
+            ui.heading("No project here!");
+            ui.label("Please open or create a project.");
         }
     }
 

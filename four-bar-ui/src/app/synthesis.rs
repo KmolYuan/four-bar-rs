@@ -115,6 +115,12 @@ impl Method {
     }
 }
 
+impl std::fmt::Display for Method {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 struct SynConfig {
@@ -180,7 +186,7 @@ impl Synthesis {
             });
             ui.horizontal_wrapped(|ui| {
                 ui.hyperlink_to(method.name(), method.url())
-                    .on_hover_text(format!("More about {}", method.name()));
+                    .on_hover_text(format!("More about {method}"));
             });
         });
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
