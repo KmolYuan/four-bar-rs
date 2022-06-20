@@ -25,7 +25,7 @@ Download: <https://github.com/KmolYuan/four-bar-rs/releases/latest>
 Native GUI is the default startup behaviour, use `--help` option to see more commands.
 
 ```bash
-# Equivalent to double-clicking the binary file
+# Equivalent to double-clicking the executable
 four-bar
 four-bar ui
 ```
