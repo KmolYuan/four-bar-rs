@@ -73,7 +73,7 @@ pub fn serve(port: u16, open: bool) -> Result<()> {
     println!("Unpacked archive at: {:?}", &path);
     println!("Press Ctrl+C to close the server...");
     if open {
-        webbrowser::open(&format!("http://localhost:{}/", port))?;
+        webbrowser::open(&format!("http://localhost:{port}/"))?;
     }
     let server = HttpServer::new(move || {
         let cookie_policy = CookieIdentityPolicy::new(&[0; 32])

@@ -2,6 +2,7 @@ pub use self::remote::{sha512, LoginInfo};
 use self::{io_ctx::*, linkages::*, synthesis::*, widgets::*};
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 mod io_ctx;
 mod linkages;
@@ -11,7 +12,10 @@ mod synthesis;
 mod widgets;
 
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
-const FONT: &[u8] = include_bytes!("../../assets/GoNotoCurrent.ttf");
+const FONT: &[(&str, &[u8])] = &[
+    ("Noto", include_bytes!("../../assets/GoNotoCurrent.ttf")),
+    ("emoji", include_bytes!("../../assets/emoji-icon-font.ttf")),
+];
 
 #[derive(Deserialize, Serialize, PartialEq)]
 enum Panel {
@@ -34,26 +38,27 @@ pub struct App {
     welcome_off: bool,
     panel: Panel,
     started: bool,
-    ctx: IoCtx,
+    ctx: Ctx,
     linkage: Linkages,
     synthesis: Synthesis,
 }
 
 impl App {
     pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Self {
-        let font_name = "Go-Noto".to_string();
-        let mut font_def = FontDefinitions::default();
-        font_def.font_data.retain(|s, _| s == "emoji-icon-font");
-        font_def
-            .font_data
-            .insert(font_name.clone(), FontData::from_static(FONT));
-        let families = vec![font_name, "emoji-icon-font".to_string()];
-        font_def.families.clear();
-        font_def.families.extend([
+        let mut font_data = BTreeMap::new();
+        let mut families = Vec::new();
+        for &(name, font) in FONT {
+            font_data.insert(name.to_string(), FontData::from_static(font));
+            families.push(name.to_string());
+        }
+        let families = BTreeMap::from_iter([
             (FontFamily::Proportional, families.clone()),
             (FontFamily::Monospace, families),
         ]);
-        ctx.egui_ctx.set_fonts(font_def);
+        ctx.egui_ctx.set_fonts(FontDefinitions {
+            font_data,
+            families,
+        });
         let mut style = (*ctx.egui_ctx.style()).clone();
         for (text_style, size) in [
             (TextStyle::Small, 18.),
@@ -110,8 +115,8 @@ impl App {
                 *ui.ctx().memory() = Default::default();
                 ui.ctx().set_style(style);
             }
-            url_button(ui, "⮋", "Release", RELEASE_URL);
-            url_button(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
+            url_btn(ui, "⮋", "Release", RELEASE_URL);
+            url_btn(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
             if ui.small_button("💁").on_hover_text("Welcome").clicked() {
                 self.welcome_off = !self.welcome_off;
             }

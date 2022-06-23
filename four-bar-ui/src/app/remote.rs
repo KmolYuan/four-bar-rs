@@ -1,4 +1,4 @@
-use super::IoCtx;
+use super::Ctx;
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{
@@ -9,8 +9,9 @@ use std::sync::{
 /// Sha512 encrypt function.
 pub fn sha512(s: &str) -> String {
     hmac_sha512::Hash::hash(s)
-        .map(|n| format!("{:02x?}", n))
-        .join("")
+        .into_iter()
+        .map(|n| format!("{n:02x?}"))
+        .collect()
 }
 
 /// Store the login information.
@@ -53,7 +54,7 @@ pub struct Remote {
 impl Default for Remote {
     fn default() -> Self {
         Self {
-            address: IoCtx::get_host(),
+            address: Ctx::get_host(),
             info: LoginInfo::default(),
             is_connected: false,
             is_login: Default::default(),
@@ -62,7 +63,7 @@ impl Default for Remote {
 }
 
 impl Remote {
-    pub fn show(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    pub fn show(&mut self, ui: &mut Ui, ctx: &Ctx) {
         ui.heading("Cloud Computing Service");
         if self.is_connected {
             if self.is_login.load(Relaxed) {
@@ -76,12 +77,12 @@ impl Remote {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn before_connect(&mut self, _ui: &mut Ui, ctx: &IoCtx) {
+    fn before_connect(&mut self, _ui: &mut Ui, ctx: &Ctx) {
         self.connect(ctx);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn before_connect(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    fn before_connect(&mut self, ui: &mut Ui, ctx: &Ctx) {
         ui.horizontal(|ui| {
             ui.label("Address");
             ui.text_edit_singleline(&mut self.address);
@@ -91,7 +92,7 @@ impl Remote {
         }
     }
 
-    fn connect(&mut self, ctx: &IoCtx) {
+    fn connect(&mut self, ctx: &Ctx) {
         match ctx.get_username(&self.address) {
             Some(id) => {
                 self.is_connected = true;
@@ -101,13 +102,13 @@ impl Remote {
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
-            None => IoCtx::alert("Connection failed!"),
+            None => Ctx::alert("Connection failed!"),
             #[cfg(target_arch = "wasm32")]
             None => unreachable!(),
         }
     }
 
-    fn before_login(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    fn before_login(&mut self, ui: &mut Ui, ctx: &Ctx) {
         ui.horizontal(|ui| {
             ui.label("Account");
             ui.text_edit_singleline(&mut self.info.account);
@@ -121,9 +122,9 @@ impl Remote {
             let is_login = self.is_login.clone();
             let done = move |b| {
                 if b {
-                    IoCtx::alert("Login successfully!");
+                    Ctx::alert("Login successfully!");
                 } else {
-                    IoCtx::alert("Login failed!");
+                    Ctx::alert("Login failed!");
                 }
                 is_login.store(b, Relaxed)
             };
@@ -131,7 +132,7 @@ impl Remote {
         }
     }
 
-    fn after_login(&mut self, ui: &mut Ui, ctx: &IoCtx) {
+    fn after_login(&mut self, ui: &mut Ui, ctx: &Ctx) {
         ui.horizontal(|ui| {
             ui.label("Account");
             ui.label(&self.info.account);
@@ -140,10 +141,10 @@ impl Remote {
             let is_login = self.is_login.clone();
             let done = move |b| {
                 if b {
-                    IoCtx::alert("Logout successfully!");
+                    Ctx::alert("Logout successfully!");
                     is_login.store(false, Relaxed);
                 } else {
-                    IoCtx::alert("Logout failed!");
+                    Ctx::alert("Logout failed!");
                 }
             };
             ctx.logout(&self.address, done);

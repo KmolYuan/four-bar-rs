@@ -1,5 +1,5 @@
 use super::{
-    io_ctx::IoCtx,
+    io_ctx::Ctx,
     widgets::{angle, link, unit},
 };
 use crate::{as_values::as_values, dump_csv, ext};
@@ -127,7 +127,7 @@ struct Angles {
 #[allow(dead_code)] // TODO
 #[derive(Default)]
 struct Cache {
-    cached: bool,
+    changed: bool,
     joints: [[f64; 2]; 5],
     curves: [Vec<[f64; 2]>; 3],
     theta3: Vec<plot::Value>,
@@ -156,7 +156,154 @@ impl Default for ProjInner {
             four_bar: FourBar::example(),
             angles: Default::default(),
             hide: false,
-            cache: Default::default(),
+            cache: Cache {
+                changed: true,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+impl ProjInner {
+    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+        let fb = &mut self.four_bar;
+        let get_curve = |pivot: &Pivot| {
+            let m = Mechanism::new(fb);
+            let [curve1, curve2, curve3] = m.curve_all(0., TAU, n);
+            curve::get_valid_part(&match pivot {
+                Pivot::Driver => curve1,
+                Pivot::Follower => curve2,
+                Pivot::Coupler => curve3,
+            })
+        };
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                if ui.button("💾 Save Curve").clicked() {
+                    Ctx::save_csv_ask(&get_curve(pivot));
+                }
+                ComboBox::from_label("")
+                    .selected_text(pivot.name())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(pivot, Pivot::Coupler, Pivot::Coupler.name());
+                        ui.selectable_value(pivot, Pivot::Driver, Pivot::Driver.name());
+                        ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
+                    });
+            });
+            if ui.button("🗐 Copy Curve to CSV").clicked() {
+                ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
+            }
+            let curve = get_curve(pivot);
+            if !curve.is_empty() {
+                ui.label(format!("Cusps: {}", curve::cusp(&curve, false)));
+                ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
+            }
+        });
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Offset");
+                let res = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
+                if res.clicked() {
+                    fb.align();
+                    self.cache.changed = true;
+                }
+            });
+            if ui.button("Normalize").clicked() {
+                fb.normalize();
+                self.cache.changed = true;
+            }
+            let res = unit(ui, "X Offset: ", &mut fb.p0[0], interval)
+                | unit(ui, "Y Offset: ", &mut fb.p0[1], interval)
+                | angle(ui, "Rotation: ", &mut fb.a, "");
+            self.cache.changed |= res.changed();
+        });
+        ui.group(|ui| {
+            ui.heading("Parameters");
+            let res = link(ui, "Ground: ", &mut fb.l0, interval)
+                | link(ui, "Driver: ", &mut fb.l1, interval)
+                | link(ui, "Coupler: ", &mut fb.l2, interval)
+                | link(ui, "Follower: ", &mut fb.l3, interval)
+                | link(ui, "Extended: ", &mut fb.l4, interval)
+                | angle(ui, "Angle: ", &mut fb.g, "");
+            self.cache.changed |= res.changed();
+            ui.checkbox(&mut fb.inv, "Invert follower and coupler");
+        });
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Angle");
+                let res = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
+                if res.clicked() && self.angles != Default::default() {
+                    self.angles = Default::default();
+                    self.cache.changed = true;
+                }
+            });
+            let res = angle(ui, "Theta: ", &mut self.angles.theta2, "")
+                | angle(ui, "Omega: ", &mut self.angles.omega2, "/s")
+                | angle(ui, "Alpha: ", &mut self.angles.alpha2, "/s²");
+            self.cache.changed |= res.changed();
+            if ui.button("⚽ Dynamics").clicked() {
+                self.angles.open = !self.angles.open;
+            }
+        });
+        if self.angles.omega2 != 0. {
+            self.angles.theta2 += self.angles.omega2 / 60.;
+            self.cache.changed = true;
+            ui.ctx().request_repaint();
+        }
+    }
+
+    fn cache(&mut self, n: usize) {
+        // Recalculation
+        self.cache.changed = false;
+        let m = Mechanism::new(&self.four_bar);
+        m.apply(self.angles.theta2, [0, 1, 2, 3, 4], &mut self.cache.joints);
+        self.cache.curves = m.curve_all(0., TAU, n);
+        let step = 360. / n as f64;
+        self.cache.theta3 = self.cache.curves[0]
+            .iter()
+            .zip(&self.cache.curves[1])
+            .enumerate()
+            .map(|(i, ([x1, y1], [x2, y2]))| {
+                plot::Value::new(i as f64 * step, (y1 - y2).atan2(x1 - x2).to_degrees())
+            })
+            .collect();
+        self.cache.theta4 = self.cache.curves[1]
+            .iter()
+            .enumerate()
+            .map(|(i, [x, y])| {
+                let y = (y - self.cache.joints[1][1])
+                    .atan2(x - self.cache.joints[1][0])
+                    .to_degrees();
+                plot::Value::new(i as f64 * step, y)
+            })
+            .collect();
+    }
+
+    fn plot(&mut self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
+        if self.hide {
+            return;
+        }
+        if self.cache.changed {
+            self.cache(n);
+        }
+        let is_main = i == id;
+        draw_link(ui, &[self.cache.joints[0], self.cache.joints[2]], is_main);
+        draw_link(ui, &[self.cache.joints[1], self.cache.joints[3]], is_main);
+        draw_link(ui, &self.cache.joints[2..], is_main);
+        let float_j = plot::Points::new(as_values(&self.cache.joints[2..]))
+            .radius(5.)
+            .color(JOINT_COLOR);
+        let fixed_j = plot::Points::new(as_values(&self.cache.joints[..2]))
+            .radius(10.)
+            .shape(plot::MarkerShape::Up)
+            .color(JOINT_COLOR);
+        ui.points(float_j);
+        ui.points(fixed_j);
+        const NAMES: &[&str] = &["Crank pivot", "Follower pivot", "Coupler pivot"];
+        for (path, name) in self.cache.curves.iter().zip(NAMES) {
+            let line = plot::Line::new(as_values(path))
+                .name(format!("{}:{}", name, i))
+                .width(3.);
+            ui.line(line);
         }
     }
 }
@@ -203,13 +350,13 @@ impl Project {
     fn save(&self) {
         let proj = self.0.read().unwrap();
         if let ProjName::Path(path) = &proj.path {
-            IoCtx::save_ron(&proj.four_bar, path);
+            Ctx::save_ron(&proj.four_bar, path);
         } else {
             let name = proj.path.name();
             let four_bar = proj.four_bar.clone();
             drop(proj);
             let proj_cloned = self.clone();
-            IoCtx::save_ron_ask(&four_bar, &name, move |path| proj_cloned.set_path(path));
+            Ctx::save_ron_ask(&four_bar, &name, move |path| proj_cloned.set_path(path));
         }
     }
 
@@ -238,108 +385,7 @@ impl Project {
         });
         ui.label(format!("Linkage type: {}", proj.four_bar.class()));
         ui.checkbox(&mut proj.hide, "Hide 👁");
-        ui.add_enabled_ui(!proj.hide, |ui| {
-            let angles_o = proj.angles.clone();
-            let fb_o = proj.four_bar.clone();
-            let fb = &mut proj.four_bar;
-            let get_curve = |pivot: &Pivot| {
-                let m = Mechanism::new(fb);
-                let [curve1, curve2, curve3] = m.curve_all(0., TAU, n);
-                curve::get_valid_part(&match pivot {
-                    Pivot::Driver => curve1,
-                    Pivot::Follower => curve2,
-                    Pivot::Coupler => curve3,
-                })
-            };
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    if ui.button("💾 Save Curve").clicked() {
-                        IoCtx::save_csv_ask(&get_curve(pivot));
-                    }
-                    ComboBox::from_label("")
-                        .selected_text(pivot.name())
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(pivot, Pivot::Coupler, Pivot::Coupler.name());
-                            ui.selectable_value(pivot, Pivot::Driver, Pivot::Driver.name());
-                            ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
-                        });
-                });
-                if ui.button("🗐 Copy Curve to CSV").clicked() {
-                    ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
-                }
-                let curve = get_curve(pivot);
-                if !curve.is_empty() {
-                    ui.label(format!("Cusps: {}", curve::cusp(&curve, false)));
-                    ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
-                }
-            });
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ui.heading("Offset");
-                    let btn = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
-                    if btn.clicked() {
-                        fb.align();
-                    }
-                });
-                if ui.button("Normalize").clicked() {
-                    fb.normalize();
-                }
-                ui.add(unit("X Offset: ", &mut fb.p0[0], interval));
-                ui.add(unit("Y Offset: ", &mut fb.p0[1], interval));
-                angle(ui, "Rotation: ", &mut fb.a, "");
-            });
-            ui.group(|ui| {
-                ui.heading("Parameters");
-                ui.add(link("Ground: ", &mut fb.l0, interval));
-                ui.add(link("Driver: ", &mut fb.l1, interval));
-                ui.add(link("Coupler: ", &mut fb.l2, interval));
-                ui.add(link("Follower: ", &mut fb.l3, interval));
-                ui.checkbox(&mut fb.inv, "Invert follower and coupler");
-            });
-            ui.group(|ui| {
-                ui.heading("Coupler");
-                ui.add(link("Extended: ", &mut fb.l4, interval));
-                angle(ui, "Angle: ", &mut fb.g, "");
-            });
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ui.heading("Angle");
-                    reset_button(ui, &mut proj.angles);
-                });
-                angle(ui, "Theta: ", &mut proj.angles.theta2, "");
-                angle(ui, "Omega: ", &mut proj.angles.omega2, "/s");
-                angle(ui, "Alpha: ", &mut proj.angles.alpha2, "/s²");
-                if ui.button("⚽ Dynamics").clicked() {
-                    proj.angles.open = !proj.angles.open;
-                }
-            });
-            if !proj.cache.cached || fb_o != proj.four_bar || angles_o != proj.angles {
-                // Recalculation
-                proj.cache.cached = true;
-                let m = Mechanism::new(&proj.four_bar);
-                m.apply(proj.angles.theta2, [0, 1, 2, 3, 4], &mut proj.cache.joints);
-                proj.cache.curves = m.curve_all(0., TAU, n);
-                let step = 360. / n as f64;
-                proj.cache.theta3 = proj.cache.curves[0]
-                    .iter()
-                    .zip(&proj.cache.curves[1])
-                    .enumerate()
-                    .map(|(i, ([x1, y1], [x2, y2]))| {
-                        plot::Value::new(i as f64 * step, (y1 - y2).atan2(x1 - x2).to_degrees())
-                    })
-                    .collect();
-                proj.cache.theta4 = proj.cache.curves[1]
-                    .iter()
-                    .enumerate()
-                    .map(|(i, [x, y])| {
-                        let y = (y - proj.cache.joints[1][1])
-                            .atan2(x - proj.cache.joints[1][0])
-                            .to_degrees();
-                        plot::Value::new(i as f64 * step, y)
-                    })
-                    .collect();
-            }
-        });
+        ui.add_enabled_ui(!proj.hide, |ui| proj.ui(ui, pivot, interval, n));
         drop(proj);
         self.dynamics(ui);
     }
@@ -366,37 +412,10 @@ impl Project {
                 plot(ui, "plot_theta3", "Theta3", theta3);
                 plot(ui, "plot_theta4", "Theta4", theta4);
             });
-        if proj.angles.omega2 != 0. {
-            proj.angles.theta2 += proj.angles.omega2 / 60.;
-            ui.ctx().request_repaint();
-        }
     }
 
-    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize) {
-        let proj = self.0.read().unwrap();
-        if proj.hide {
-            return;
-        }
-        let is_main = i == id;
-        draw_link(ui, &[proj.cache.joints[0], proj.cache.joints[2]], is_main);
-        draw_link(ui, &[proj.cache.joints[1], proj.cache.joints[3]], is_main);
-        draw_link(ui, &proj.cache.joints[2..], is_main);
-        let float_j = plot::Points::new(as_values(&proj.cache.joints[2..]))
-            .radius(5.)
-            .color(JOINT_COLOR);
-        let fixed_j = plot::Points::new(as_values(&proj.cache.joints[..2]))
-            .radius(10.)
-            .shape(plot::MarkerShape::Up)
-            .color(JOINT_COLOR);
-        ui.points(float_j);
-        ui.points(fixed_j);
-        const NAMES: &[&str] = &["Crank pivot", "Follower pivot", "Coupler pivot"];
-        for (path, name) in proj.cache.curves.iter().zip(NAMES) {
-            let line = plot::Line::new(as_values(path))
-                .name(format!("{}:{}", name, i))
-                .width(3.);
-            ui.line(line);
-        }
+    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
+        self.0.write().unwrap().plot(ui, i, id, n);
     }
 }
 
@@ -460,7 +479,7 @@ impl Projects {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
-                IoCtx::open_ron(move |path, s| {
+                Ctx::open_ron(move |path, s| {
                     if let Ok(fb) = ron::from_str(&s) {
                         queue.push(Some(path), fb);
                     }
@@ -488,11 +507,8 @@ impl Projects {
         if self.select(ui) {
             ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n));
         } else {
-            let head = RichText::new("No project here!")
-                .color(Color32::BLUE)
-                .heading();
-            ui.label(head);
-            ui.colored_label(Color32::BLUE, "Please open or create a project.");
+            ui.heading("No project here!");
+            ui.label("Please open or create a project.");
         }
     }
 
@@ -515,9 +531,9 @@ impl Projects {
         Mechanism::new(&self.list[self.current].0.read().unwrap().four_bar).curve(0., TAU, n)
     }
 
-    pub fn plot(&self, ui: &mut plot::PlotUi) {
+    pub fn plot(&self, ui: &mut plot::PlotUi, n: usize) {
         for (i, proj) in self.list.iter().enumerate() {
-            proj.plot(ui, i, self.current);
+            proj.plot(ui, i, self.current, n);
         }
     }
 
