@@ -60,11 +60,7 @@ impl<L: Linkage> Mechanism<L> {
     /// Create a mechanism for the linkage.
     pub fn new(linkage: &L) -> Self {
         let (joints, fs) = linkage.allocate();
-        Self {
-            joints,
-            fs,
-            _marker: PhantomData,
-        }
+        Self { joints, fs, _marker: PhantomData }
     }
 
     /// A loop trajectory for only coupler point.

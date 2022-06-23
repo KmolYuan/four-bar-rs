@@ -152,17 +152,7 @@ impl Linkage for FourBar {
     type Joint = [[f64; 2]; 5];
 
     fn allocate(&self) -> (Self::Joint, Vec<Formula>) {
-        let Self {
-            p0,
-            a,
-            l0,
-            l1,
-            l2,
-            l3,
-            l4,
-            g,
-            inv,
-        } = self;
+        let Self { p0, a, l0, l1, l2, l3, l4, g, inv } = self;
         let joints = [
             [p0.x(), p0.y()],
             [p0.x() + l0 * a.cos(), p0.y() + l0 * a.sin()],

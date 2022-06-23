@@ -49,14 +49,7 @@ impl Planar {
             lb.extend_from_slice(&[0.; 2]);
         }
         let efd = Efd::from_curve(&curve, harmonic);
-        Self {
-            curve,
-            efd,
-            n,
-            ub,
-            lb,
-            open,
-        }
+        Self { curve, efd, n, ub, lb, open }
     }
 
     /// Check if the target is defined as  open curve.
