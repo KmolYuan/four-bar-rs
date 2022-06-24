@@ -10,12 +10,7 @@ mod update;
 const ICON: &[u8] = include_bytes!("../../../assets/favicon.png");
 
 #[derive(Parser)]
-#[clap(
-    name = "four-bar",
-    version = env!("CARGO_PKG_VERSION"),
-    author = env!("CARGO_PKG_AUTHORS"),
-    about = env!("CARGO_PKG_DESCRIPTION"),
-)]
+#[clap(name = "four-bar", version, author, about)]
 struct Entry {
     /// File path
     files: Vec<String>,
