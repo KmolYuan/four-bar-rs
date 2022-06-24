@@ -22,10 +22,7 @@ struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            interval: 1.,
-            res: 360,
-        }
+        Self { interval: 1., res: 360 }
     }
 }
 
