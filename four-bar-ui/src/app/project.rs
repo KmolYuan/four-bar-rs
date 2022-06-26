@@ -156,10 +156,7 @@ impl Default for ProjInner {
             four_bar: FourBar::example(),
             angles: Default::default(),
             hide: false,
-            cache: Cache {
-                changed: true,
-                ..Default::default()
-            },
+            cache: Cache { changed: true, ..Cache::default() },
         }
     }
 }
@@ -223,9 +220,9 @@ impl ProjInner {
                 | link(ui, "Coupler: ", &mut fb.l2, interval)
                 | link(ui, "Follower: ", &mut fb.l3, interval)
                 | link(ui, "Extended: ", &mut fb.l4, interval)
-                | angle(ui, "Angle: ", &mut fb.g, "");
+                | angle(ui, "Angle: ", &mut fb.g, "")
+                | ui.checkbox(&mut fb.inv, "Invert follower and coupler");
             self.cache.changed |= res.changed();
-            ui.checkbox(&mut fb.inv, "Invert follower and coupler");
         });
         ui.group(|ui| {
             ui.horizontal(|ui| {
