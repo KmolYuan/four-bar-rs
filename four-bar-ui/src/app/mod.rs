@@ -44,7 +44,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Self {
+    pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Box<Self> {
         let mut font_data = BTreeMap::new();
         let mut families = Vec::new();
         for &(name, font) in FONT {
@@ -55,10 +55,8 @@ impl App {
             (FontFamily::Proportional, families.clone()),
             (FontFamily::Monospace, families),
         ]);
-        ctx.egui_ctx.set_fonts(FontDefinitions {
-            font_data,
-            families,
-        });
+        ctx.egui_ctx
+            .set_fonts(FontDefinitions { font_data, families });
         let mut style = (*ctx.egui_ctx.style()).clone();
         for (text_style, size) in [
             (TextStyle::Small, 18.),
@@ -76,7 +74,7 @@ impl App {
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
         app.linkage.open_project(files);
-        app
+        Box::new(app)
     }
 
     fn welcome(&mut self, ctx: &Context) {

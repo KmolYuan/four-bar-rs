@@ -15,17 +15,17 @@ struct Entry {
     /// File path
     files: Vec<String>,
     #[clap(subcommand)]
-    subcommand: Option<Subcommand>,
+    cmd: Option<Cmd>,
 }
 
 #[derive(clap::Subcommand)]
-enum Subcommand {
+enum Cmd {
     /// Download the latest WebAssembly archive
     Update,
     /// Start web server to host WebAssembly UI program
     Serve {
         /// Port number
-        #[clap(long, default_value = "8080")]
+        #[clap(long, default_value_t = 8080)]
         port: u16,
         /// Open the server
         #[clap(long)]
@@ -40,10 +40,10 @@ enum Subcommand {
 
 fn main() -> Result<()> {
     let args = Entry::parse();
-    match args.subcommand {
-        Some(Subcommand::Update) => update::update(),
-        Some(Subcommand::Serve { port, open }) => serve::serve(port, open),
-        Some(Subcommand::Ui { files }) => run_native(files),
+    match args.cmd {
+        Some(Cmd::Update) => update::update(),
+        Some(Cmd::Serve { port, open }) => serve::serve(port, open),
+        Some(Cmd::Ui { files }) => run_native(files),
         None => run_native(args.files),
     }
 }
@@ -60,9 +60,5 @@ fn run_native(files: Vec<String>) -> ! {
     };
     #[cfg(windows)]
     let _ = unsafe { winapi::um::wincon::FreeConsole() };
-    eframe::run_native(
-        "Four bar",
-        opt,
-        Box::new(|ctx| Box::new(App::new(ctx, files))),
-    )
+    eframe::run_native("Four bar", opt, Box::new(|ctx| App::new(ctx, files)))
 }
