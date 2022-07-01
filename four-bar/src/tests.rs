@@ -1,7 +1,4 @@
 #![doc(hidden)]
-
-#[cfg(all(test, feature = "plot"))]
-use crate::plot::prelude::SVGBackend;
 use crate::*;
 
 #[test]
@@ -20,7 +17,7 @@ fn anti_symmetry_extension() {
 #[test]
 #[cfg(feature = "plot")]
 fn test_plot_curve() {
-    let svg = SVGBackend::new("test_curve.svg", (800, 600));
+    let svg = plot::SVGBackend::new("test_curve.svg", (800, 600));
     let curve = efd::Efd::from_curve(CRUNODE, None).generate(90);
     plot::plot_curve(svg, "Test Curve", &[("Target", &curve)]).unwrap();
 }
@@ -28,7 +25,7 @@ fn test_plot_curve() {
 #[test]
 #[cfg(feature = "plot")]
 fn test_plot_history() {
-    let svg = SVGBackend::new("test_history.svg", (800, 600));
+    let svg = plot::SVGBackend::new("test_history.svg", (800, 600));
     plot::plot_history(svg, &[1e3, 1e2, 1., 1e-2, 1e-3], 1e-3).unwrap();
 }
 
@@ -46,14 +43,14 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
         .record(|ctx| ctx.best_f)
         .solve(Planar::new(target, 720, None, open));
     pb.finish();
-    let svg = SVGBackend::new("history.svg", (800, 600));
+    let svg = plot::SVGBackend::new("history.svg", (800, 600));
     plot::plot_history(svg, s.report(), s.best_fitness()).unwrap();
     let ans = s.result();
     write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
     let curve = Mechanism::new(&ans).curve(0., TAU, 360);
     println!("harmonic: {}", s.func().harmonic());
     println!("seed: {}", s.seed());
-    let svg = SVGBackend::new("result.svg", (800, 600));
+    let svg = plot::SVGBackend::new("result.svg", (800, 600));
     let curves = [("Target", target), ("Optimized", &curve)];
     plot::plot_curve(svg, "Synthesis Test", &curves).unwrap();
 }

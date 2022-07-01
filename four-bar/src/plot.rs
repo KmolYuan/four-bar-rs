@@ -1,7 +1,6 @@
 //! The functions used to plot the curve and synthesis result.
 
-use self::prelude::*;
-pub use plotters::*;
+pub use plotters::{prelude::*, *};
 
 /// Get font setting.
 pub fn font() -> TextStyle<'static> {
