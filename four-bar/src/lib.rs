@@ -11,7 +11,7 @@
 //! // Get the trajectory of the coupler point
 //! let path = m.curve(0., TAU, 360);
 //! ```
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 pub use crate::{four_bar::*, mechanism::*, point::*};
 #[doc(no_inline)]
