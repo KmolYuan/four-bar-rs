@@ -1,5 +1,7 @@
 # Four🍀bar
 
+[![documentation](https://docs.rs/four-bar/badge.svg)](https://docs.rs/four-bar)
+
 Four-bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
 ```rust
