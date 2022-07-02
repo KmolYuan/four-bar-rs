@@ -24,7 +24,7 @@ pub struct Planar {
     /// Target curve
     pub curve: Vec<[f64; 2]>,
     /// Target coefficient
-    pub efd: Efd,
+    pub efd: Efd<f64>,
     // How many points need to be generated / compared
     n: usize,
     ub: Vec<f64>,
@@ -76,7 +76,7 @@ impl Planar {
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
                     let four_bar = repr::four_bar_transform(&v, inv, efd.to(&self.efd));
-                    let fitness = efd.discrepancy(&self.efd);
+                    let fitness = efd.manhattan(&self.efd);
                     (fitness, four_bar)
                 })
         };

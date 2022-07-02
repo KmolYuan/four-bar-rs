@@ -18,7 +18,7 @@ pub const fn four_bar_v(v: &[f64; 5], inv: bool) -> FourBar {
 }
 
 /// Transform a normalized four-bar linkage from a vector.
-pub fn four_bar_transform(v: &[f64; 5], inv: bool, geo: GeoInfo) -> FourBar {
+pub fn four_bar_transform(v: &[f64; 5], inv: bool, geo: GeoInfo<f64>) -> FourBar {
     let [l0, l2, l3, l4, g] = *v;
     FourBar {
         p0: geo.center,

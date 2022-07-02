@@ -19,7 +19,7 @@ metaheuristics-nature = { version = "1", features = ["rayon"] }
 serde = { version = "1", features = ["derive"], optional = true }
 plotters = { version = "0.3", optional = true }
 anyhow = { version = "1", optional = true }
-efd = "0.11"
+efd = "0.12"
 
 [dev-dependencies]
 indicatif = "0.16"
