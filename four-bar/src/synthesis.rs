@@ -34,7 +34,10 @@ pub struct Planar {
 
 impl Planar {
     /// Create a new task.
-    pub fn new(curve: &[[f64; 2]], n: usize, harmonic: Option<usize>, open: bool) -> Self {
+    pub fn new<H>(curve: &[[f64; 2]], n: usize, harmonic: H, open: bool) -> Self
+    where
+        H: Into<Option<usize>>,
+    {
         let curve = curve::close_loop(curve::get_valid_part(curve));
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
