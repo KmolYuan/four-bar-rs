@@ -1,7 +1,7 @@
 use super::{linkages::Linkages, project::Queue, remote::Remote, widgets::unit, Ctx};
 use crate::{as_values::as_values, dump_csv, parse_csv};
 use eframe::egui::*;
-use four_bar::curve;
+use four_bar::{curve, syn::Mode};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -18,7 +18,7 @@ const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
     S: four_bar::mh::Setting,
-    S::Algorithm: four_bar::mh::Algorithm<four_bar::synthesis::Planar>,
+    S::Algorithm: four_bar::mh::Algorithm<four_bar::syn::Planar>,
 {
     use std::time::Instant;
     let start_time = Instant::now();
@@ -34,11 +34,11 @@ where
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
         })
-        .solve(four_bar::synthesis::Planar::new(
+        .solve(four_bar::syn::Planar::new(
             &config.target,
             720,
             None,
-            config.open,
+            config.mode,
         ))
         .result()
 }
@@ -127,7 +127,7 @@ struct SynConfig {
     method: Method,
     gen: u64,
     pop: usize,
-    open: bool,
+    mode: Mode,
     #[serde(skip)]
     target: Vec<[f64; 2]>,
 }
@@ -138,7 +138,7 @@ impl Default for SynConfig {
             method: Method::default(),
             gen: 50,
             pop: 400,
-            open: false,
+            mode: Mode::Close,
             target: Vec::new(),
         }
     }
@@ -259,13 +259,13 @@ impl Synthesis {
         let curve = linkage.current_curve();
         let target = &self.config.syn.target;
         if !curve.is_empty() {
-            let c = curve::cusp(&curve, self.config.syn.open);
+            let c = curve::cusp(&curve, self.config.syn.mode.is_open());
             ui.label(format!("Cusps of current curve: {}", c));
             let c = curve::crunode(&curve);
             ui.label(format!("Crunodes of current curve: {}", c));
         }
         if !target.is_empty() {
-            let c = curve::cusp(target, self.config.syn.open);
+            let c = curve::cusp(target, self.config.syn.mode.is_target_open());
             ui.label(format!("Cusps of target curve: {}", c));
             let c = curve::crunode(target);
             ui.label(format!("Crunodes of target curve: {}", c));
@@ -309,7 +309,10 @@ impl Synthesis {
                     if ui.button("🗑 Clear").clicked() {
                         self.config.curve_csv.write().unwrap().clear();
                     }
-                    ui.checkbox(&mut self.config.syn.open, "Is open curve");
+                    let mode = &mut self.config.syn.mode;
+                    ui.radio_value(mode, Mode::Close, "Close matching");
+                    ui.radio_value(mode, Mode::Partial, "Close match open");
+                    ui.radio_value(mode, Mode::Open, "Open matching");
                 });
                 if !self.targets.is_empty() {
                     ui.label("Saved targets (local):");

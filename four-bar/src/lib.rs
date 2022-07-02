@@ -26,5 +26,5 @@ mod mechanism;
 pub mod plot;
 mod point;
 pub mod repr;
-pub mod synthesis;
+pub mod syn;
 pub mod tests;

@@ -1,6 +1,6 @@
 [package]
 name = "four-bar"
-version = "1.3.0"
+version = "1.4.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 description = "Four🍀bar library provides simulation and synthesis function for four-bar linkage mechanism."
@@ -11,14 +11,16 @@ keywords = ["mechanism", "simulation", "optimization"]
 categories = ["algorithms"]
 
 [features]
+default = ["rayon"]
 serde = ["dep:serde"]
+rayon = ["metaheuristics-nature/rayon"]
 plot = ["plotters", "anyhow"]
 
 [dependencies]
-metaheuristics-nature = { version = "1", features = ["rayon"] }
 serde = { version = "1", features = ["derive"], optional = true }
 plotters = { version = "0.3", optional = true }
 anyhow = { version = "1", optional = true }
+metaheuristics-nature = "1"
 efd = "0.12"
 
 [dev-dependencies]

@@ -30,18 +30,17 @@ fn test_plot_history() {
 }
 
 #[cfg(all(test, feature = "plot"))]
-fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, open: bool) {
-    use crate::synthesis::*;
+fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, mode: syn::Mode) {
+    use crate::syn::*;
     use indicatif::ProgressBar;
     use std::{f64::consts::TAU, fs::write};
-
     let pb = ProgressBar::new(gen);
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(pop_num)
         .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, None, open));
+        .solve(Planar::new(target, 720, None, mode));
     pb.finish();
     let svg = plot::SVGBackend::new("history.svg", (800, 600));
     plot::plot_history(svg, s.report(), s.best_fitness()).unwrap();
@@ -81,7 +80,7 @@ fn planar() {
     // let target = TRIANGLE2;
     let target = CRUNODE;
     // let target = LINE;
-    planar_synthesis(target, 50, 400, false);
+    planar_synthesis(target, 50, 400, syn::Mode::Close);
 }
 
 pub const HAND: &[[f64; 2]] = &[

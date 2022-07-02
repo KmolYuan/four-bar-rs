@@ -3,7 +3,7 @@
 //! ```
 //! use four_bar::{
 //!     mh::{Rga, Solver},
-//!     synthesis::Planar,
+//!     syn::{Mode, Planar},
 //! };
 //!
 //! # let curve = [[0., 0.], [1., 0.]];
@@ -13,11 +13,35 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(Planar::new(&curve, 720, None, false));
+//!     .solve(Planar::new(&curve, 720, None, Mode::Close));
 //! let result = s.result();
 //! ```
 use crate::{curve, efd::Efd, mh::ObjFunc, repr, FourBar, Mechanism};
 use std::f64::consts::{FRAC_PI_4, TAU};
+
+/// Synthesis mode.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(PartialEq, Copy, Clone)]
+pub enum Mode {
+    /// Close path matching
+    Close,
+    /// Use close path to match open path
+    Partial,
+    /// Open path matching
+    Open,
+}
+
+impl Mode {
+    /// Return true if the target curve is open.
+    pub const fn is_target_open(&self) -> bool {
+        matches!(self, Self::Partial | Self::Open)
+    }
+
+    /// Return true if the synthesis curve is open.
+    pub const fn is_open(&self) -> bool {
+        matches!(self, Self::Open)
+    }
+}
 
 /// Synthesis task of planar four-bar linkage.
 pub struct Planar {
@@ -29,12 +53,12 @@ pub struct Planar {
     n: usize,
     ub: Vec<f64>,
     lb: Vec<f64>,
-    open: bool,
+    mode: Mode,
 }
 
 impl Planar {
     /// Create a new task.
-    pub fn new<H>(curve: &[[f64; 2]], n: usize, harmonic: H, open: bool) -> Self
+    pub fn new<H>(curve: &[[f64; 2]], n: usize, harmonic: H, mode: Mode) -> Self
     where
         H: Into<Option<usize>>,
     {
@@ -47,17 +71,12 @@ impl Planar {
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        if open {
+        if mode == Mode::Partial {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
         }
         let efd = Efd::from_curve(&curve, harmonic);
-        Self { curve, efd, n, ub, lb, open }
-    }
-
-    /// Check if the target is defined as  open curve.
-    pub fn is_open(&self) -> bool {
-        self.open
+        Self { curve, efd, n, ub, lb, mode }
     }
 
     /// The harmonic used of target EFD.
@@ -84,18 +103,18 @@ impl Planar {
                 })
         };
         let default = || (1e10, FourBar::default());
-        if self.open {
-            [[xs[5], xs[6]], [xs[6], xs[5]]]
+        match self.mode {
+            Mode::Partial => [[xs[5], xs[6]], [xs[6], xs[5]]]
                 .into_par_iter()
                 .map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
                 .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
                 .flat_map(f)
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                .unwrap_or_else(default)
-        } else {
-            f([0., TAU])
+                .unwrap_or_else(default),
+            Mode::Close => f([0., TAU])
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                .unwrap_or_else(default)
+                .unwrap_or_else(default),
+            Mode::Open => todo!(),
         }
     }
 }
