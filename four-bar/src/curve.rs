@@ -63,8 +63,37 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
-/// Close the open curve directly.
+/// Close the open curve with a line.
+///
+/// Panic with empty curve.
 pub fn close_loop(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    curve.push(curve[0]);
+    curve
+}
+
+/// Close the open curve with a symmetry part.
+///
+/// Panic with empty curve.
+pub fn close_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    fn mirror(p: &[f64; 2], p1: &[f64; 2], p2: &[f64; 2]) -> [f64; 2] {
+        let dx = p2[0] - p1[0];
+        let dy = p2[1] - p1[1];
+        let a = (dx * dx - dy * dy) / (dx * dx + dy * dy);
+        let b = 2. * dx * dy / (dx * dx + dy * dy);
+        let x = (a * (p[0] - p1[0]) + b * (p[1] - p1[1]) + p1[0]).round();
+        let y = (b * (p[0] - p1[0]) - a * (p[1] - p1[1]) + p1[1]).round();
+        [x, y]
+    }
+    let first = &curve[0];
+    let end = &curve[curve.len() - 1];
+    let curve2 = curve
+        .iter()
+        .rev()
+        .take(curve.len() - 1)
+        .skip(1)
+        .map(|p| mirror(p, first, end))
+        .collect::<Vec<_>>();
+    curve.extend(curve2);
     curve.push(curve[0]);
     curve
 }
@@ -231,7 +260,6 @@ pub fn intersect(p1: [f64; 2], q1: [f64; 2], p2: [f64; 2], q2: [f64; 2]) -> bool
             && q[1] <= p[1].max(r[1])
             && q[1] >= p[1].min(r[1])
     }
-
     let o1 = orientation(p1, q1, p2);
     let o2 = orientation(p1, q1, q2);
     let o3 = orientation(p2, q2, p1);
