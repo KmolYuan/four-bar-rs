@@ -17,6 +17,11 @@ macro_rules! impl_parm_method {
     )+};
 }
 
+fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
+    fb.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    fb
+}
+
 /// The classification of the four-bar linkage.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Class {
@@ -116,14 +121,33 @@ impl NormFourBar {
     ///
     /// Panic when the length of `xs` is not greater than 5.
     pub fn cr_transform(xs: &[f64]) -> [f64; 5] {
-        let v = &xs[..5]; // Length assertion
-        let mut four = [v[0], 1., v[1], v[2]];
-        four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        if four[0] + four[3] - four[1] - four[2] < 0. && (four[0] == 1. || four[0] == v[0]) {
-            [v[0], v[1], v[2], v[3], v[4]]
+        if let [l0, l2, l3, l4, g, ..] = xs[..5] {
+            let [s, p, q, l] = sort_link([l0, 1., l2, l3]);
+            if s + l < p + q && s == 1. {
+                [l0, l2, l3, l4, g]
+            } else {
+                let l1 = s;
+                [q / l1, l / l1, p / l1, l4 / l1, g]
+            }
         } else {
-            let l1 = four[0];
-            [four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
+            panic!("invalid lengths")
+        }
+    }
+
+    /// Transform from any linkages to Grashof double-rocker.
+    ///
+    /// Panic when the length of `xs` is not greater than 5.
+    pub fn dr_transform(xs: &[f64]) -> [f64; 5] {
+        if let [l0, l2, l3, l4, g, ..] = xs[..5] {
+            let [s, p, q, l] = sort_link([l0, 1., l2, l3]);
+            if s + l < p + q && l == 1. {
+                [l0, l2, l3, l4, g]
+            } else {
+                let l1 = l;
+                [q / l1, s / l1, p / l1, l4 / l1, g]
+            }
+        } else {
+            panic!("invalid lengths")
         }
     }
 }

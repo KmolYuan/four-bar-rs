@@ -88,7 +88,7 @@ impl Planar {
         use crate::mh::rayon::prelude::*;
         let v = match self.mode {
             Mode::Close | Mode::Partial => NormFourBar::cr_transform(xs),
-            Mode::Open => todo!(),
+            Mode::Open => NormFourBar::dr_transform(xs),
         };
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
