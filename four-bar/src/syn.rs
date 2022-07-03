@@ -16,7 +16,7 @@
 //!     .solve(Planar::new(&curve, 720, None, Mode::Close));
 //! let result = s.result();
 //! ```
-use crate::{curve, efd::Efd, mh::ObjFunc, FourBar, Mechanism};
+use crate::{curve, efd::Efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
 /// Synthesis mode.
@@ -86,12 +86,15 @@ impl Planar {
 
     fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
         use crate::mh::rayon::prelude::*;
-        let v = FourBar::cr_transform(xs);
+        let v = match self.mode {
+            Mode::Close | Mode::Partial => NormFourBar::cr_transform(xs),
+            Mode::Open => todo!(),
+        };
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
-                    let m = Mechanism::new(&FourBar::from_vec(v, inv));
+                    let m = Mechanism::new(&NormFourBar::from_vec(v, inv));
                     (curve::close_line(m.par_curve(t1, t2, self.n)), inv)
                 })
                 .filter(|(curve, _)| curve::is_valid(curve))
@@ -102,18 +105,17 @@ impl Planar {
                     (fitness, four_bar)
                 })
         };
-        let default = || (1e10, FourBar::default());
         match self.mode {
+            Mode::Close => f([0., TAU])
+                .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                .unwrap_or((1e10, FourBar::ZERO)),
             Mode::Partial => [[xs[5], xs[6]], [xs[6], xs[5]]]
                 .into_par_iter()
                 .map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
                 .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
                 .flat_map(f)
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                .unwrap_or_else(default),
-            Mode::Close => f([0., TAU])
-                .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                .unwrap_or_else(default),
+                .unwrap_or((1e10, FourBar::ZERO)),
             Mode::Open => todo!(),
         }
     }

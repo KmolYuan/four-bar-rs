@@ -111,6 +111,21 @@ impl NormFourBar {
     pub fn inv_mut(&mut self) -> &mut bool {
         &mut self.inv
     }
+
+    /// Transform from any linkages to Grashof crank-rocker.
+    ///
+    /// Panic when the length of `xs` is not greater than 5.
+    pub fn cr_transform(xs: &[f64]) -> [f64; 5] {
+        let v = &xs[..5]; // Length assertion
+        let mut four = [v[0], 1., v[1], v[2]];
+        four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        if four[0] + four[3] - four[1] - four[2] < 0. && (four[0] == 1. || four[0] == v[0]) {
+            [v[0], v[1], v[2], v[3], v[4]]
+        } else {
+            let l1 = four[0];
+            [four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
+        }
+    }
 }
 
 /// Four-bar linkage with offset.
@@ -168,19 +183,6 @@ impl FourBar {
         let norm = NormFourBar::from_vec(v, inv);
         let v = [p0x, p0y, geo.rot, geo.scale];
         Self { v, norm }
-    }
-
-    /// Transform from any linkages to Grashof crank-rocker.
-    pub fn cr_transform(xs: &[f64]) -> [f64; 5] {
-        let v = &xs[..5]; // Length assertion
-        let mut four = [v[0], 1., v[1], v[2]];
-        four.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        if four[0] + four[3] - four[1] - four[2] < 0. && (four[0] == 1. || four[0] == v[0]) {
-            [v[0], v[1], v[2], v[3], v[4]]
-        } else {
-            let l1 = four[0];
-            [four[1] / l1, four[3] / l1, four[2] / l1, v[3] / l1, v[4]]
-        }
     }
 
     impl_parm_method! {

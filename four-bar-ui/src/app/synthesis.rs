@@ -14,6 +14,18 @@ use std::{
 const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
     Increase resolution for more accurate calculations.";
 
+fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
+    if let Ok(curve) = parse_csv(s) {
+        Some(curve)
+    } else if let Ok(curve) = ron::from_str::<Vec<Vec<f64>>>(s) {
+        Some(curve.into_iter().map(|c| [c[0], c[1]]).collect())
+    } else if let Ok(curve) = ron::from_str(s) {
+        Some(curve)
+    } else {
+        None
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
@@ -193,11 +205,8 @@ impl Synthesis {
         unit(ui, "Population: ", &mut self.config.syn.pop, 1);
         let mut error = "";
         if !self.config.curve_csv.read().unwrap().is_empty() {
-            let curve_csv = self.config.curve_csv.read().unwrap();
-            if let Ok(curve) = parse_csv(&curve_csv) {
+            if let Some(curve) = parse_curve(&self.config.curve_csv.read().unwrap()) {
                 self.config.syn.target = curve;
-            } else if let Ok(curve) = ron::from_str::<Vec<Vec<f64>>>(&curve_csv) {
-                self.config.syn.target = curve.into_iter().map(|c| [c[0], c[1]]).collect();
             } else {
                 error = "The provided curve is invalid.";
             }
@@ -301,19 +310,20 @@ impl Synthesis {
         Window::new("✏ Target Curve Editor")
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
+                ui.label("Support CSV or RON array only.");
                 ui.horizontal(|ui| {
-                    if ui.button("🖴 Open CSV").clicked() {
+                    if ui.button("🖴 Open Curves").clicked() {
                         let curve_csv = self.config.curve_csv.clone();
                         Ctx::open_csv_single(move |_, s| curve_csv.write().unwrap().clone_from(&s));
                     }
                     if ui.button("🗑 Clear").clicked() {
                         self.config.curve_csv.write().unwrap().clear();
                     }
-                    let mode = &mut self.config.syn.mode;
-                    ui.radio_value(mode, Mode::Close, "Close matching");
-                    ui.radio_value(mode, Mode::Partial, "Close match open");
-                    ui.radio_value(mode, Mode::Open, "Open matching");
                 });
+                let mode = &mut self.config.syn.mode;
+                ui.radio_value(mode, Mode::Close, "Close path matching");
+                ui.radio_value(mode, Mode::Partial, "Close path match open path");
+                ui.radio_value(mode, Mode::Open, "Open path matching");
                 if !self.targets.is_empty() {
                     ui.label("Saved targets (local):");
                 }
@@ -333,16 +343,25 @@ impl Synthesis {
                     })
                     .inner
                 });
-                ui.label("Past CSV data here:");
+                ui.label("Past curve data here:");
+                if ui.button("✏ To CSV").clicked() {
+                    if let Some(curve) = parse_curve(&self.config.curve_csv.read().unwrap()) {
+                        self.config
+                            .curve_csv
+                            .write()
+                            .unwrap()
+                            .clone_from(&dump_csv(&curve).unwrap());
+                    }
+                }
                 ui.horizontal(|ui| {
                     if ui.button("💾 Update (local)").clicked() {
-                        if let Ok(curve) = parse_csv(&self.config.curve_csv.read().unwrap()) {
+                        if let Some(curve) = parse_curve(&self.config.curve_csv.read().unwrap()) {
                             self.targets.insert(self.target_name.clone(), curve);
                         }
                     }
                     ui.text_edit_singleline(&mut self.target_name);
                 });
-                ScrollArea::both().auto_shrink([true; 2]).show(ui, |ui| {
+                ScrollArea::both().show(ui, |ui| {
                     let mut s = self.config.curve_csv.write().unwrap();
                     let w = TextEdit::multiline(&mut *s)
                         .code_editor()
