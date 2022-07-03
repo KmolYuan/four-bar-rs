@@ -330,11 +330,7 @@ impl Synthesis {
                 self.targets.retain(|name, curve| {
                     ui.horizontal(|ui| {
                         if ui.button(name).clicked() {
-                            self.config
-                                .curve_csv
-                                .write()
-                                .unwrap()
-                                .clone_from(&dump_csv(curve).unwrap());
+                            *self.config.curve_csv.write().unwrap() = dump_csv(curve).unwrap();
                         }
                         if ui.button("💾 Export CSV").clicked() {
                             Ctx::save_csv_ask(curve);
@@ -345,12 +341,9 @@ impl Synthesis {
                 });
                 ui.label("Past curve data here:");
                 if ui.button("✏ To CSV").clicked() {
-                    if let Some(curve) = parse_curve(&self.config.curve_csv.read().unwrap()) {
-                        self.config
-                            .curve_csv
-                            .write()
-                            .unwrap()
-                            .clone_from(&dump_csv(&curve).unwrap());
+                    let curve = parse_curve(&self.config.curve_csv.read().unwrap());
+                    if let Some(curve) = curve {
+                        *self.config.curve_csv.write().unwrap() = dump_csv(&curve).unwrap();
                     }
                 }
                 ui.horizontal(|ui| {

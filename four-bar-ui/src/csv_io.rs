@@ -1,4 +1,4 @@
-use csv::{Error as CsvError, Reader, Writer};
+use csv::{Error as CsvError, ReaderBuilder, Writer};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, io::Cursor};
 
@@ -7,7 +7,11 @@ pub fn parse_csv<D>(s: &str) -> Result<Vec<D>, CsvError>
 where
     D: DeserializeOwned,
 {
-    Reader::from_reader(Cursor::new(s)).deserialize().collect()
+    ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(Cursor::new(s))
+        .deserialize()
+        .collect()
 }
 
 /// Dump CSV to string.
