@@ -489,24 +489,8 @@ pub const YU2: &[[f64; 2]] = &[
     [6., 27.],
     [0., 31.],
 ];
-pub const KHAN1: FourBar = FourBar {
-    l0: 2.9587,
-    l1: 1.,
-    l2: 3.4723,
-    l3: 3.5771,
-    l4: 3.3454,
-    g: 3.3771,
-    ..FourBar::ZERO
-};
-pub const KHAN2: FourBar = FourBar {
-    l0: 3.,
-    l1: 1.,
-    l2: 3.,
-    l3: 2.5,
-    l4: 1.,
-    g: 5.,
-    ..FourBar::ZERO
-};
+pub const KHAN1: FourBar = FourBar::new([2.9587, 1., 3.4723, 3.5771, 3.3454, 3.3771], false);
+pub const KHAN2: FourBar = FourBar::new([3., 1., 3., 2.5, 1., 5.], false);
 pub const OPEN_CURVE1: &[[f64; 2]] = &[
     [0.028607755880487345, 47.07692307692308],
     [6.182453909726641, 52.76923076923077],

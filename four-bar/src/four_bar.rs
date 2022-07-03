@@ -1,8 +1,21 @@
-use crate::{efd::GeoInfo, Formula, Linkage, Mechanism, Point as _};
+use crate::{efd::GeoInfo, Formula, Linkage, Mechanism};
 use std::{
     f64::consts::FRAC_PI_6,
     ops::{Div, DivAssign},
 };
+
+macro_rules! impl_parm_method {
+    ($(#[doc = $doc:literal] fn $name:ident, $name_mut:ident => $ind:literal)+) => {$(
+        #[doc = $doc]
+        #[doc = "\n\nGet the value."]
+        #[inline]
+        pub const fn $name(&self) -> f64 { self.v[$ind] }
+        #[doc = $doc]
+        #[doc = "\n\nModify the value."]
+        #[inline]
+        pub fn $name_mut(&mut self) -> &mut f64 { &mut self.v[$ind] }
+    )+};
+}
 
 /// The classification of the four-bar linkage.
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -48,29 +61,65 @@ impl Class {
     }
 }
 
-/// Data type of the four-bar mechanism.
+/// Normalized four-bar linkage.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
+#[derive(Clone, PartialEq, Debug)]
+pub struct NormFourBar {
+    v: [f64; 5],
+    inv: bool,
+}
+
+impl Default for NormFourBar {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
+impl NormFourBar {
+    /// Zeros data. (Default value)
+    pub const ZERO: Self = Self::from_vec([0.; 5], false);
+
+    /// Create a normalized four-bar linkage from a vector.
+    pub const fn from_vec(v: [f64; 5], inv: bool) -> Self {
+        Self { v, inv }
+    }
+
+    impl_parm_method! {
+        /// Length of the ground link.
+        fn l0, l0_mut => 0
+        /// Length of the coupler link.
+        fn l2, l2_mut => 1
+        /// Length of the follower link.
+        fn l3, l3_mut => 2
+        /// Length of the extended link.
+        fn l4, l4_mut => 3
+        /// Angle of the extended link on the coupler.
+        fn g, g_mut => 4
+    }
+
+    /// Inverse coupler and follower to another circuit.
+    ///
+    /// Get the value.
+    pub const fn inv(&self) -> bool {
+        self.inv
+    }
+
+    /// Inverse coupler and follower to another circuit.
+    ///
+    /// Modify the value.
+    pub fn inv_mut(&mut self) -> &mut bool {
+        &mut self.inv
+    }
+}
+
+/// Four-bar linkage with offset.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Clone, PartialEq, Debug)]
 pub struct FourBar {
-    /// Origin.
-    pub p0: [f64; 2],
-    /// Offset angle.
-    pub a: f64,
-    /// Length of the ground link.
-    pub l0: f64,
-    /// Length of the driver link.
-    pub l1: f64,
-    /// Length of the coupler link.
-    pub l2: f64,
-    /// Length of te follower link.
-    pub l3: f64,
-    /// Length of the extended link on the coupler.
-    pub l4: f64,
-    /// Angle of the extended link on the coupler.
-    pub g: f64,
-    /// Invert the direction of the follower and the  coupler.
-    pub inv: bool,
+    v: [f64; 4], // p0x + p0y + a + l1
+    norm: NormFourBar,
 }
 
 impl Default for FourBar {
@@ -81,48 +130,44 @@ impl Default for FourBar {
 
 impl FourBar {
     /// Zeros data. (Default value)
-    pub const ZERO: Self = Self {
-        p0: [0.; 2],
-        a: 0.0,
-        l0: 0.0,
-        l1: 0.0,
-        l2: 0.0,
-        l3: 0.0,
-        l4: 0.0,
-        g: 0.0,
-        inv: false,
-    };
+    pub const ZERO: Self = Self { v: [0.; 4], norm: NormFourBar::ZERO };
+
+    /// Create with linkage lengths.
+    pub const fn new(v: [f64; 6], inv: bool) -> Self {
+        let [l0, l1, l2, l3, l4, g] = v;
+        let norm = NormFourBar::from_vec([l0, l2, l3, l4, g], inv);
+        let v = [0., 0., 0., l1];
+        Self { v, norm }
+    }
+
+    /// Create with linkage lengths and offset.
+    pub const fn with_offset(v: [f64; 9], inv: bool) -> Self {
+        let [p0x, p0y, a, l0, l1, l2, l3, l4, g] = v;
+        let norm = NormFourBar::from_vec([l0, l2, l3, l4, g], inv);
+        let v = [p0x, p0y, a, l1];
+        Self { v, norm }
+    }
 
     /// Create a normalized four-bar linkage from a vector.
-    pub const fn from_vec(v: &[f64; 5], inv: bool) -> Self {
-        let [l0, l2, l3, l4, g] = *v;
-        Self {
-            p0: [0., 0.],
-            a: 0.,
-            l0,
-            l1: 1.,
-            l2,
-            l3,
-            l4,
-            g,
-            inv,
-        }
+    pub const fn from_vec(v: [f64; 5], inv: bool) -> Self {
+        let norm = NormFourBar::from_vec(v, inv);
+        Self { v: [0.; 4], norm }
     }
 
     /// Transform a normalized four-bar linkage from a vector.
-    pub fn transform_vec(v: &[f64; 5], inv: bool, geo: GeoInfo<f64>) -> Self {
-        let [l0, l2, l3, l4, g] = *v;
-        Self {
-            p0: geo.center,
-            a: geo.rot,
-            l0: l0 * geo.scale,
-            l1: geo.scale,
-            l2: l2 * geo.scale,
-            l3: l3 * geo.scale,
-            l4: l4 * geo.scale,
+    pub fn from_transform(v: [f64; 5], inv: bool, geo: GeoInfo<f64>) -> Self {
+        let [p0x, p0y] = geo.center;
+        let [l0, l2, l3, l4, g] = v;
+        let v = [
+            l0 * geo.scale,
+            l2 * geo.scale,
+            l3 * geo.scale,
+            l4 * geo.scale,
             g,
-            inv,
-        }
+        ];
+        let norm = NormFourBar::from_vec(v, inv);
+        let v = [p0x, p0y, geo.rot, geo.scale];
+        Self { v, norm }
     }
 
     /// Transform from any linkages to Grashof crank-rocker.
@@ -138,19 +183,20 @@ impl FourBar {
         }
     }
 
+    impl_parm_method! {
+        /// X offset of the driver link pivot.
+        fn p0x, p0x_mut => 0
+        /// Y offset of the driver link pivot.
+        fn p0y, p0y_mut  => 1
+        /// Angle offset of the ground link.
+        fn a, a_mut  => 2
+        /// Length of the driver link.
+        fn l1, l1_mut => 3
+    }
+
     /// An example crank rocker.
     pub const fn example() -> Self {
-        Self {
-            p0: [0., 0.],
-            a: 0.,
-            l0: 90.,
-            l1: 35.,
-            l2: 70.,
-            l3: 70.,
-            l4: 45.,
-            g: FRAC_PI_6,
-            inv: false,
-        }
+        Self::new([90., 35., 70., 70., 45., FRAC_PI_6], false)
     }
 
     /// Return the the type according to this linkage lengths.
@@ -158,15 +204,15 @@ impl FourBar {
         macro_rules! arms {
             ($d:expr => $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
                 match $d {
-                    d if d == self.l0 => $c1,
-                    d if d == self.l1 => $c2,
-                    d if d == self.l2 => $c3,
-                    d if d == self.l3 => $c4,
+                    d if d == self.l0() => $c1,
+                    d if d == self.l1() => $c2,
+                    d if d == self.l2() => $c3,
+                    d if d == self.l3() => $c4,
                     _ => unreachable!(),
                 }
             };
         }
-        let mut d = [self.l0, self.l1, self.l2, self.l3];
+        let mut d = [self.l0(), self.l1(), self.l2(), self.l3()];
         d.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         if d[0] + d[3] < d[1] + d[2] {
             arms! { d[0] => Class::GCCC, Class::GCRR, Class::GRCR, Class::GRRC }
@@ -177,37 +223,69 @@ impl FourBar {
 
     /// Return true if the linkage has no offset and offset angle.
     pub fn is_aligned(&self) -> bool {
-        self.p0[0] == 0. && self.p0[1] == 0. && self.a == 0.
+        self.p0x() == 0. && self.p0y() == 0. && self.a() == 0.
     }
 
     /// Remove the origin offset and the offset angle.
     pub fn align(&mut self) {
-        self.p0 = [0., 0.];
-        self.a = 0.;
+        self.v[..3].fill(0.);
     }
 
     /// Transform into normalized four-bar linkage.
     pub fn normalize(&mut self) {
         self.align();
-        *self /= self.l1;
+        *self /= self.l1();
     }
 }
 
-impl Linkage for FourBar {
+impl From<NormFourBar> for FourBar {
+    fn from(norm: NormFourBar) -> Self {
+        Self { v: [0.; 4], norm }
+    }
+}
+
+impl std::ops::Deref for FourBar {
+    type Target = NormFourBar;
+
+    fn deref(&self) -> &Self::Target {
+        &self.norm
+    }
+}
+
+impl std::ops::DerefMut for FourBar {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.norm
+    }
+}
+
+impl Div<f64> for FourBar {
+    type Output = Self;
+
+    fn div(mut self, rhs: f64) -> Self::Output {
+        self /= rhs;
+        self
+    }
+}
+
+impl DivAssign<f64> for FourBar {
+    fn div_assign(&mut self, rhs: f64) {
+        *self.l0_mut() /= rhs;
+        *self.l1_mut() /= rhs;
+        *self.l2_mut() /= rhs;
+        *self.l3_mut() /= rhs;
+        *self.l4_mut() /= rhs;
+    }
+}
+
+impl Linkage for NormFourBar {
     type Joint = [[f64; 2]; 5];
 
     fn allocate(&self) -> (Self::Joint, Vec<Formula>) {
-        let Self { p0, a, l0, l1, l2, l3, l4, g, inv } = self;
-        let joints = [
-            [p0.x(), p0.y()],
-            [p0.x() + l0 * a.cos(), p0.y() + l0 * a.sin()],
-            [0., 0.],
-            [0., 0.],
-            [0., 0.],
-        ];
+        let Self { v: [l0, l2, l3, l4, g], inv } = self;
+        let joints = [[0., 0.], [*l0, 0.], [0., 0.], [0., 0.], [0., 0.]];
         let mut fs = Vec::with_capacity(3);
-        fs.push(Formula::Pla(0, *l1, 0., 2));
-        if (l0 - l2).abs() < 1e-20 && (l1 - l3).abs() < 1e-20 {
+        fs.push(Formula::Pla(0, 1., 0., 2));
+        if (l0 - l2).abs() < 1e-20 && (1. - l3).abs() < 1e-20 {
             // Special case
             fs.push(Formula::Ppp(0, 2, 1, 3));
         } else {
@@ -217,12 +295,14 @@ impl Linkage for FourBar {
         (joints, fs)
     }
 
-    fn apply<const N: usize>(
-        m: &Mechanism<Self>,
+    fn apply<L, const N: usize>(
+        m: &Mechanism<L>,
         angle: f64,
         joint: [usize; N],
         ans: &mut [[f64; 2]; N],
-    ) {
+    ) where
+        L: Linkage<Joint = Self::Joint>,
+    {
         let mut joints = m.joints;
         let mut formulas = m.fs.clone();
         match formulas.first_mut() {
@@ -242,30 +322,41 @@ impl Linkage for FourBar {
     }
 }
 
-impl Div<f64> for FourBar {
-    type Output = Self;
+impl Linkage for FourBar {
+    type Joint = [[f64; 2]; 5];
 
-    fn div(self, rhs: f64) -> Self::Output {
-        Self {
-            l0: self.l0 / rhs,
-            l1: self.l1 / rhs,
-            l2: self.l2 / rhs,
-            l3: self.l3 / rhs,
-            l4: self.l4 / rhs,
-            ..self
+    fn allocate(&self) -> (Self::Joint, Vec<Formula>) {
+        let Self {
+            v: [p0x, p0y, a, l1],
+            norm: NormFourBar { v: [l0, l2, l3, l4, g], inv },
+        } = self;
+        let joints = [
+            [*p0x, *p0y],
+            [p0x + l0 * a.cos(), p0y + l0 * a.sin()],
+            [0., 0.],
+            [0., 0.],
+            [0., 0.],
+        ];
+        let mut fs = Vec::with_capacity(3);
+        fs.push(Formula::Pla(0, *l1, 0., 2));
+        if (l0 - l2).abs() < 1e-20 && (l1 - l3).abs() < 1e-20 {
+            // Special case
+            fs.push(Formula::Ppp(0, 2, 1, 3));
+        } else {
+            fs.push(Formula::Pllp(2, *l2, *l3, 1, *inv, 3));
         }
+        fs.push(Formula::Plap(2, *l4, *g, 3, 4));
+        (joints, fs)
     }
-}
 
-impl DivAssign<f64> for FourBar {
-    fn div_assign(&mut self, rhs: f64) {
-        *self = Self {
-            l0: self.l0 / rhs,
-            l1: self.l1 / rhs,
-            l2: self.l2 / rhs,
-            l3: self.l3 / rhs,
-            l4: self.l4 / rhs,
-            ..*self
-        };
+    fn apply<L, const N: usize>(
+        m: &Mechanism<L>,
+        angle: f64,
+        joint: [usize; N],
+        ans: &mut [[f64; 2]; N],
+    ) where
+        L: Linkage<Joint = Self::Joint>,
+    {
+        <NormFourBar as Linkage>::apply(m, angle, joint, ans)
     }
 }

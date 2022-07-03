@@ -91,13 +91,13 @@ impl Planar {
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
-                    let m = Mechanism::new(&FourBar::from_vec(&v, inv));
+                    let m = Mechanism::new(&FourBar::from_vec(v, inv));
                     (curve::close_line(m.par_curve(t1, t2, self.n)), inv)
                 })
                 .filter(|(curve, _)| curve::is_valid(curve))
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
-                    let four_bar = FourBar::transform_vec(&v, inv, efd.to(&self.efd));
+                    let four_bar = FourBar::from_transform(v, inv, efd.to(&self.efd));
                     let fitness = efd.manhattan(&self.efd);
                     (fitness, four_bar)
                 })

@@ -39,12 +39,13 @@ pub trait Linkage: Sized + Sync {
     /// Allocate memory for [`Mechanism`] type.
     fn allocate(&self) -> (Self::Joint, Vec<Formula>);
     /// Calculate the formula, and write the answer into provided array.
-    fn apply<const N: usize>(
-        m: &Mechanism<Self>,
+    fn apply<L, const N: usize>(
+        m: &Mechanism<L>,
         angle: f64,
         joint: [usize; N],
         ans: &mut [[f64; 2]; N],
-    );
+    ) where
+        L: Linkage<Joint = Self::Joint>;
 }
 
 /// Geometry constraint solver of the linkage mechanisms.

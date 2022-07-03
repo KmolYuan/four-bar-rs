@@ -198,8 +198,10 @@ impl ProjInner {
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 ui.heading("Offset");
-                let res = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
-                if res.clicked() {
+                if ui
+                    .add_enabled(!fb.is_aligned(), Button::new("Reset"))
+                    .clicked()
+                {
                     fb.align();
                     self.cache.changed = true;
                 }
@@ -208,27 +210,29 @@ impl ProjInner {
                 fb.normalize();
                 self.cache.changed = true;
             }
-            let res = unit(ui, "X Offset: ", &mut fb.p0[0], interval)
-                | unit(ui, "Y Offset: ", &mut fb.p0[1], interval)
-                | angle(ui, "Rotation: ", &mut fb.a, "");
+            let res = unit(ui, "X Offset: ", fb.p0x_mut(), interval)
+                | unit(ui, "Y Offset: ", fb.p0y_mut(), interval)
+                | angle(ui, "Rotation: ", fb.a_mut(), "");
             self.cache.changed |= res.changed();
         });
         ui.group(|ui| {
             ui.heading("Parameters");
-            let res = link(ui, "Ground: ", &mut fb.l0, interval)
-                | link(ui, "Driver: ", &mut fb.l1, interval)
-                | link(ui, "Coupler: ", &mut fb.l2, interval)
-                | link(ui, "Follower: ", &mut fb.l3, interval)
-                | link(ui, "Extended: ", &mut fb.l4, interval)
-                | angle(ui, "Angle: ", &mut fb.g, "")
-                | ui.checkbox(&mut fb.inv, "Invert follower and coupler");
+            let res = link(ui, "Ground: ", fb.l0_mut(), interval)
+                | link(ui, "Driver: ", fb.l1_mut(), interval)
+                | link(ui, "Coupler: ", fb.l2_mut(), interval)
+                | link(ui, "Follower: ", fb.l3_mut(), interval)
+                | link(ui, "Extended: ", fb.l4_mut(), interval)
+                | angle(ui, "Angle: ", fb.g_mut(), "")
+                | ui.checkbox(fb.inv_mut(), "Invert follower and coupler");
             self.cache.changed |= res.changed();
         });
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 ui.heading("Angle");
-                let res = ui.add_enabled(!fb.is_aligned(), Button::new("Reset"));
-                if res.clicked() && self.angles != Default::default() {
+                if ui
+                    .add_enabled(self.angles != Default::default(), Button::new("Reset"))
+                    .clicked()
+                {
                     self.angles = Default::default();
                     self.cache.changed = true;
                 }
