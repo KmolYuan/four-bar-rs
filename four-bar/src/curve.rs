@@ -5,7 +5,7 @@ fn boxed_iter<'a, I>(iter: I) -> Box<dyn Iterator<Item = &'a [f64; 2]> + 'a>
 where
     I: Iterator<Item = &'a [f64; 2]> + 'a,
 {
-    Box::new(iter) as _
+    Box::new(iter)
 }
 
 /// Input a curve, split out finite parts to a continuous curve. (greedy method)
@@ -66,7 +66,7 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
 /// Close the open curve with a line.
 ///
 /// Panic with empty curve.
-pub fn close_loop(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+pub fn close_line(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
     curve.push(curve[0]);
     curve
 }

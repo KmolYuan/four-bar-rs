@@ -16,7 +16,7 @@
 //!     .solve(Planar::new(&curve, 720, None, Mode::Close));
 //! let result = s.result();
 //! ```
-use crate::{curve, efd::Efd, mh::ObjFunc, repr, FourBar, Mechanism};
+use crate::{curve, efd::Efd, mh::ObjFunc, FourBar, Mechanism};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
 /// Synthesis mode.
@@ -62,7 +62,7 @@ impl Planar {
     where
         H: Into<Option<usize>>,
     {
-        let curve = curve::close_loop(curve::get_valid_part(curve));
+        let curve = curve::close_line(curve::get_valid_part(curve));
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
         // linkages
@@ -86,18 +86,18 @@ impl Planar {
 
     fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
         use crate::mh::rayon::prelude::*;
-        let v = repr::grashof_transform(xs);
+        let v = FourBar::cr_transform(xs);
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
-                    let m = Mechanism::new(&repr::four_bar_v(&v, inv));
-                    (curve::close_loop(m.par_curve(t1, t2, self.n)), inv)
+                    let m = Mechanism::new(&FourBar::from_vec(&v, inv));
+                    (curve::close_line(m.par_curve(t1, t2, self.n)), inv)
                 })
                 .filter(|(curve, _)| curve::is_valid(curve))
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
-                    let four_bar = repr::four_bar_transform(&v, inv, efd.to(&self.efd));
+                    let four_bar = FourBar::transform_vec(&v, inv, efd.to(&self.efd));
                     let fitness = efd.manhattan(&self.efd);
                     (fitness, four_bar)
                 })

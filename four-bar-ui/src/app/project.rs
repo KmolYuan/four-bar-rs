@@ -124,7 +124,7 @@ struct Angles {
     open: bool,
 }
 
-#[allow(dead_code)] // TODO
+#[allow(dead_code)]
 #[derive(Default)]
 struct Cache {
     changed: bool,

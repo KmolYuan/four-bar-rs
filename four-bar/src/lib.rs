@@ -25,6 +25,5 @@ mod mechanism;
 #[cfg(feature = "plot")]
 pub mod plot;
 mod point;
-pub mod repr;
 pub mod syn;
 pub mod tests;
