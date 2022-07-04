@@ -117,13 +117,14 @@ impl NormFourBar {
         &mut self.inv
     }
 
-    /// Transform from any linkages to Grashof crank-rocker.
+    /// Transform from any linkages to Grashof crank-rocker / double crank,
+    /// the linkage types with continuous motion.
     ///
     /// Panic when the length of `xs` is not greater than 5.
-    pub fn cr_transform(xs: &[f64]) -> [f64; 5] {
+    pub fn cr_dc_transform(xs: &[f64]) -> [f64; 5] {
         if let [l0, l2, l3, l4, g, ..] = xs[..5] {
             let [s, p, q, l] = sort_link([l0, 1., l2, l3]);
-            if s + l < p + q && s == 1. {
+            if s + l < p + q && (s == 1. || s == l0) {
                 [l0, l2, l3, l4, g]
             } else {
                 let l1 = s;
@@ -134,7 +135,8 @@ impl NormFourBar {
         }
     }
 
-    /// Transform from any linkages to Grashof double-rocker.
+    /// Transform from any linkages to Grashof double-rocker,
+    /// the linkage type with non-continuous motion.
     ///
     /// Panic when the length of `xs` is not greater than 5.
     pub fn dr_transform(xs: &[f64]) -> [f64; 5] {
