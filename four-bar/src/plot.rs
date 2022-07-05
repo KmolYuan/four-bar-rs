@@ -1,5 +1,6 @@
 //! The functions used to plot the curve and synthesis result.
 
+#[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
 /// Get font setting.
