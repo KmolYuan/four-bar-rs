@@ -63,6 +63,13 @@ pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
+/// Check if a curve is closed. (first point and end point are close)
+pub fn is_closed(curve: &[[f64; 2]]) -> bool {
+    let first = curve[0];
+    let end = curve[curve.len() - 1];
+    (first[0] - end[0]).abs() < f64::EPSILON && (first[1] - end[1]).abs() < f64::EPSILON
+}
+
 /// Close the open curve with a line.
 ///
 /// Panic with empty curve.

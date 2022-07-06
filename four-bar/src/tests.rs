@@ -29,10 +29,11 @@ fn test_plot_history() {
 }
 
 #[cfg(all(test, feature = "plot"))]
-fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, mode: syn::Mode) {
+fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: syn::Mode) {
     use crate::syn::*;
     use indicatif::ProgressBar;
-    use std::{f64::consts::TAU, fs::write};
+    use std::{f64::consts::TAU, fs::write, time::Instant};
+    let t0 = Instant::now();
     let pb = ProgressBar::new(gen);
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
@@ -41,14 +42,17 @@ fn planar_synthesis(target: &[[f64; 2]], gen: u64, pop_num: usize, mode: syn::Mo
         .record(|ctx| ctx.best_f)
         .solve(Planar::new(target, 720, None, mode));
     pb.finish();
-    let svg = plot::SVGBackend::new("history.svg", (800, 600));
+    println!("Finish at: {:?}", Instant::now() - t0);
+    let his_filename = format!("{title}_history.svg");
+    let svg = plot::SVGBackend::new(&his_filename, (800, 600));
     plot::plot_history(svg, s.report(), s.best_fitness()).unwrap();
     let ans = s.result();
     write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
     let curve = Mechanism::new(&ans).curve(0., TAU, 360);
     println!("harmonic: {}", s.func().harmonic());
     println!("seed: {}", s.seed());
-    let svg = plot::SVGBackend::new("result.svg", (800, 600));
+    let filename = format!("{title}_result.svg");
+    let svg = plot::SVGBackend::new(&filename, (800, 600));
     let curves = [("Target", target), ("Optimized", &curve)];
     plot::plot_curve(svg, "Synthesis Test", &curves).unwrap();
 }
@@ -74,12 +78,13 @@ fn planar() {
     // .curve(TAU / 6., 360);
     // let target = YU1;
     // let target = HAND;
-    // let target = OPEN_CURVE1;
     // let target = OPEN_CURVE2;
     // let target = TRIANGLE2;
-    let target = CRUNODE;
     // let target = LINE;
-    planar_synthesis(target, 50, 400, syn::Mode::Close);
+    let target = OPEN_CURVE1;
+    planar_syn("open", target, 50, 400, syn::Mode::Partial);
+    let target = CRUNODE;
+    planar_syn("close", target, 50, 400, syn::Mode::Close);
 }
 
 pub const HAND: &[[f64; 2]] = &[

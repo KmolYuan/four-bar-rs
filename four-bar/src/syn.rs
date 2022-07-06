@@ -62,7 +62,12 @@ impl Planar {
     where
         H: Into<Option<usize>>,
     {
-        let curve = curve::close_line(curve::get_valid_part(curve));
+        let curve = curve::get_valid_part(curve);
+        let curve = match mode {
+            Mode::Close if curve::is_closed(&curve) => curve,
+            Mode::Close => curve::close_line(curve),
+            _ => curve::close_symmetric(curve),
+        };
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
         // linkages
@@ -91,12 +96,16 @@ impl Planar {
             Mode::Close | Mode::Partial => NormFourBar::cr_dc_transform(xs),
             Mode::Open => NormFourBar::dr_transform(xs),
         };
+        let close_f = match self.mode {
+            Mode::Close => curve::close_line,
+            Mode::Partial | Mode::Open => curve::close_symmetric,
+        };
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
                     let m = Mechanism::new(&NormFourBar::from_vec(v, inv));
-                    (curve::close_line(m.par_curve(t1, t2, self.n)), inv)
+                    (close_f(m.par_curve(t1, t2, self.n)), inv)
                 })
                 .filter(|(curve, _)| curve::is_valid(curve))
                 .map(|(curve, inv)| {
