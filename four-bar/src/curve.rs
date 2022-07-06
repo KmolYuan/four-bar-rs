@@ -75,15 +75,6 @@ pub fn close_line(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 ///
 /// Panic with empty curve.
 pub fn close_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
-    fn mirror(p: &[f64; 2], p1: &[f64; 2], p2: &[f64; 2]) -> [f64; 2] {
-        let dx = p2[0] - p1[0];
-        let dy = p2[1] - p1[1];
-        let a = (dx * dx - dy * dy) / (dx * dx + dy * dy);
-        let b = 2. * dx * dy / (dx * dx + dy * dy);
-        let x = (a * (p[0] - p1[0]) + b * (p[1] - p1[1]) + p1[0]).round();
-        let y = (b * (p[0] - p1[0]) - a * (p[1] - p1[1]) + p1[1]).round();
-        [x, y]
-    }
     let first = &curve[0];
     let end = &curve[curve.len() - 1];
     let curve2 = curve
@@ -91,7 +82,17 @@ pub fn close_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
         .rev()
         .take(curve.len() - 1)
         .skip(1)
-        .map(|p| mirror(p, first, end))
+        .map(|p| {
+            let dx = end[0] - first[0];
+            let dy = end[1] - first[1];
+            let a = (dx * dx - dy * dy) / (dx * dx + dy * dy);
+            let b = 2. * dx * dy / (dx * dx + dy * dy);
+            let p_first_dx = p[0] - first[0];
+            let p_first_dy = p[1] - first[1];
+            let x = a * p_first_dx + b * p_first_dy + first[0];
+            let y = b * p_first_dx - a * p_first_dy + first[1];
+            [x, y]
+        })
         .collect::<Vec<_>>();
     curve.extend(curve2);
     curve.push(curve[0]);

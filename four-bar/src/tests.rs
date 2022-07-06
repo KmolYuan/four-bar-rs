@@ -10,8 +10,7 @@ fn cusp() {
 
 #[test]
 fn anti_symmetry_extension() {
-    let ans = curve::anti_sym_ext(OPEN_CURVE1);
-    assert_eq!(ans, OPEN_CURVE1_ANS);
+    assert_eq!(curve::anti_sym_ext(OPEN_CURVE1), OPEN_CURVE1_ANS);
 }
 
 #[test]
