@@ -52,7 +52,7 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
     println!("harmonic: {}", s.func().harmonic());
     println!("seed: {}", s.seed());
     let filename = format!("{title}_result.svg");
-    let svg = plot::SVGBackend::new(&filename, (800, 600));
+    let svg = plot::SVGBackend::new(&filename, (800, 800));
     let curves = [("Target", target), ("Optimized", &curve)];
     plot::plot_curve(svg, "Synthesis Test", &curves).unwrap();
 }
@@ -78,11 +78,12 @@ fn planar() {
     // .curve(TAU / 6., 360);
     // let target = YU1;
     // let target = HAND;
-    // let target = OPEN_CURVE2;
     // let target = TRIANGLE2;
     // let target = LINE;
     let target = OPEN_CURVE1;
-    planar_syn("open", target, 50, 400, syn::Mode::Partial);
+    planar_syn("open1", target, 50, 400, syn::Mode::Partial);
+    let target = OPEN_CURVE2;
+    planar_syn("open2", target, 50, 400, syn::Mode::Partial);
     let target = CRUNODE;
     planar_syn("close", target, 50, 400, syn::Mode::Close);
 }
