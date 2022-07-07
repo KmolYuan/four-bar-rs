@@ -66,7 +66,7 @@ impl Planar {
         let curve = match mode {
             Mode::Close if curve::is_closed(&curve) => curve,
             Mode::Close => curve::close_line(curve),
-            _ => curve::close_symmetric(curve),
+            Mode::Partial | Mode::Open => curve::close_symmetric(curve),
         };
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
