@@ -58,6 +58,9 @@ pub struct Planar {
 
 impl Planar {
     /// Create a new task.
+    ///
+    /// Panic if target curve is not long enough,
+    /// or `n` is not longer than target curve.
     pub fn new<H>(curve: &[[f64; 2]], n: usize, harmonic: H, mode: Mode) -> Self
     where
         H: Into<Option<usize>>,
