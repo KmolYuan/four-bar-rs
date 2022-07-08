@@ -1,6 +1,6 @@
 use crate::{efd::GeoInfo, Formula, Linkage, Mechanism};
 use std::{
-    f64::consts::FRAC_PI_6,
+    f64::consts::{FRAC_PI_6, TAU},
     ops::{Div, DivAssign},
 };
 
@@ -263,6 +263,39 @@ impl FourBar {
     pub fn normalize(&mut self) {
         self.align();
         *self /= self.l1();
+    }
+
+    /// Input angle bounds of Grashof linkage.
+    ///
+    /// Return `None` if unsupported.
+    pub fn grashof_bound(&self) -> Option<[f64; 2]> {
+        let d_func = |l23: f64| {
+            (self.l0() * self.l0() + self.l1() * self.l1() - l23 * l23)
+                / (2. * self.l0() * self.l1())
+        };
+        if self.l0() + self.l1() <= self.l2() + self.l3()
+            && (self.l0() - self.l1()).abs() >= (self.l2() - self.l3()).abs()
+        {
+            Some([0., TAU])
+        } else if self.l0() + self.l1() >= self.l2() + self.l3()
+            && (self.l0() - self.l1()).abs() >= (self.l2() - self.l3()).abs()
+        {
+            let d = d_func(self.l2() + self.l3());
+            Some([-d.acos(), d.acos()])
+        } else if self.l0() + self.l1() >= self.l2() + self.l3()
+            && self.l0() + self.l1() <= self.l2() + self.l3()
+        {
+            let d1 = d_func(self.l2() - self.l3());
+            let d2 = d_func(self.l2() + self.l3());
+            Some([d1.acos(), d2.acos()])
+        } else if self.l0() + self.l1() <= self.l2() + self.l3()
+            && (self.l0() - self.l1()).abs() <= (self.l2() - self.l3()).abs()
+        {
+            let d = d_func(self.l2() - self.l3());
+            Some([d.acos(), TAU - d.acos()])
+        } else {
+            None
+        }
     }
 }
 
