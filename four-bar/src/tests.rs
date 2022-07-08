@@ -40,7 +40,7 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(pop_num)
         .record(|ctx| ctx.best_f)
-        .solve(Planar::new(target, 720, None, mode));
+        .solve(Task::new(target, 720, None, mode));
     pb.finish();
     println!("Finish at: {:?}", Instant::now() - t0);
     let his_filename = format!("{title}_history.svg");

@@ -30,7 +30,7 @@ fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
     S: four_bar::mh::Setting,
-    S::Algorithm: four_bar::mh::Algorithm<four_bar::syn::Planar>,
+    S::Algorithm: four_bar::mh::Algorithm<four_bar::syn::Task>,
 {
     use std::time::Instant;
     let start_time = Instant::now();
@@ -46,7 +46,7 @@ where
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
         })
-        .solve(four_bar::syn::Planar::new(
+        .solve(four_bar::syn::Task::new(
             &config.target,
             720,
             None,

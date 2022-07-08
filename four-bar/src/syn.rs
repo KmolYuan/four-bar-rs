@@ -3,7 +3,7 @@
 //! ```
 //! use four_bar::{
 //!     mh::{Rga, Solver},
-//!     syn::{Mode, Planar},
+//!     syn::{Mode, Task},
 //! };
 //!
 //! # let curve = [[0., 0.], [1., 0.]];
@@ -13,7 +13,7 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(Planar::new(&curve, 720, None, Mode::Close));
+//!     .solve(Task::new(&curve, 720, None, Mode::Close));
 //! let result = s.result();
 //! ```
 use crate::{curve, efd::Efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
@@ -44,7 +44,7 @@ impl Mode {
 }
 
 /// Synthesis task of planar four-bar linkage.
-pub struct Planar {
+pub struct Task {
     /// Target curve
     pub curve: Vec<[f64; 2]>,
     /// Target coefficient
@@ -56,8 +56,11 @@ pub struct Planar {
     mode: Mode,
 }
 
-impl Planar {
+impl Task {
     /// Create a new task.
+    ///
+    /// Panic if target curve is not long enough,
+    /// or `n` is not longer than target curve.
     pub fn new<H>(curve: &[[f64; 2]], n: usize, harmonic: H, mode: Mode) -> Self
     where
         H: Into<Option<usize>>,
@@ -66,7 +69,7 @@ impl Planar {
         let curve = match mode {
             Mode::Close if curve::is_closed(&curve) => curve,
             Mode::Close => curve::close_line(curve),
-            _ => curve::close_symmetric(curve),
+            Mode::Partial | Mode::Open => curve::close_symmetric(curve),
         };
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
@@ -131,7 +134,7 @@ impl Planar {
     }
 }
 
-impl ObjFunc for Planar {
+impl ObjFunc for Task {
     type Result = FourBar;
     type Fitness = f64;
 
@@ -143,10 +146,12 @@ impl ObjFunc for Planar {
         self.domain_search(xs).1
     }
 
+    #[inline]
     fn ub(&self) -> &[f64] {
         &self.ub
     }
 
+    #[inline]
     fn lb(&self) -> &[f64] {
         &self.lb
     }
