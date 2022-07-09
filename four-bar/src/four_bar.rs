@@ -265,10 +265,10 @@ impl FourBar {
         *self /= self.l1();
     }
 
-    /// Input angle bounds of Grashof linkage.
+    /// Input angle bounds of the linkage.
     ///
     /// Return `None` if unsupported.
-    pub fn grashof_bound(&self) -> Option<[f64; 2]> {
+    pub fn angle_bound(&self) -> Option<[f64; 2]> {
         let d_func = |l23: f64| {
             (self.l0() * self.l0() + self.l1() * self.l1() - l23 * l23)
                 / (2. * self.l0() * self.l1())
@@ -281,18 +281,18 @@ impl FourBar {
             && (self.l0() - self.l1()).abs() >= (self.l2() - self.l3()).abs()
         {
             let d = d_func(self.l2() + self.l3());
-            Some([-d.acos(), d.acos()])
+            Some([-d.acos() + self.a(), d.acos() + self.a()])
         } else if self.l0() + self.l1() >= self.l2() + self.l3()
             && self.l0() + self.l1() <= self.l2() + self.l3()
         {
             let d1 = d_func(self.l2() - self.l3());
             let d2 = d_func(self.l2() + self.l3());
-            Some([d1.acos(), d2.acos()])
+            Some([d1.acos() + self.a(), d2.acos() + self.a()])
         } else if self.l0() + self.l1() <= self.l2() + self.l3()
             && (self.l0() - self.l1()).abs() <= (self.l2() - self.l3()).abs()
         {
             let d = d_func(self.l2() - self.l3());
-            Some([d.acos(), TAU - d.acos()])
+            Some([d.acos() + self.a(), TAU - d.acos() + self.a()])
         } else {
             None
         }

@@ -237,6 +237,25 @@ impl ProjInner {
                     self.cache.changed = true;
                 }
             });
+            if let Some([s, e]) = self.four_bar.angle_bound() {
+                ui.group(|ui| {
+                    ui.label("Click to copy angle bounds:");
+                    let mut copy_btn = |s: f64, e: f64, suffix: &str| {
+                        ui.horizontal(|ui| {
+                            let s_str = format!("{:.04}", s);
+                            if ui.button(format!("{s_str} {suffix}")).clicked() {
+                                ui.output().copied_text = s_str;
+                            }
+                            let e_str = format!("{:.04}", e);
+                            if ui.button(format!("{e_str} {suffix}")).clicked() {
+                                ui.output().copied_text = e_str;
+                            }
+                        });
+                    };
+                    copy_btn(s, e, "rad");
+                    copy_btn(s.to_degrees(), e.to_degrees(), "deg");
+                });
+            }
             let res = angle(ui, "Theta: ", &mut self.angles.theta2, "")
                 | angle(ui, "Omega: ", &mut self.angles.omega2, "/s")
                 | angle(ui, "Alpha: ", &mut self.angles.alpha2, "/s²");
@@ -362,6 +381,11 @@ impl Project {
     }
 
     fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+        self.show_proj(ui, pivot, interval, n);
+        self.dynamics(ui);
+    }
+
+    fn show_proj(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
         let mut proj = self.0.write().unwrap();
         ui.horizontal(|ui| match &mut proj.path {
             ProjName::Path(path) => {
@@ -384,11 +408,10 @@ impl Project {
                 }
             }
         });
-        ui.label(format!("Linkage type: {}", proj.four_bar.class()));
+        ui.label("Linkage type:");
+        ui.label(proj.four_bar.class().to_string());
         ui.checkbox(&mut proj.hide, "Hide 👁");
         ui.add_enabled_ui(!proj.hide, |ui| proj.ui(ui, pivot, interval, n));
-        drop(proj);
-        self.dynamics(ui);
     }
 
     fn dynamics(&self, ui: &mut Ui) {
