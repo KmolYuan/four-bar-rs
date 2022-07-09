@@ -117,6 +117,13 @@ impl NormFourBar {
         &mut self.inv
     }
 
+    /// Return true if the linkage length is valid.
+    pub fn is_valid(&self) -> bool {
+        let mut v = [self.l0(), 1., self.l2(), self.l3()];
+        v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        v[3] < v[..3].iter().sum()
+    }
+
     /// Transform from any linkages to Grashof crank-rocker / double crank,
     /// the linkage types with continuous motion.
     ///
@@ -249,6 +256,13 @@ impl FourBar {
         }
     }
 
+    /// Return true if the linkage length is valid.
+    pub fn is_valid(&self) -> bool {
+        let mut v = [self.l0(), self.l1(), self.l2(), self.l3()];
+        v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        v[3] < v[..3].iter().sum()
+    }
+
     /// Return true if the linkage has no offset and offset angle.
     pub fn is_aligned(&self) -> bool {
         self.p0x() == 0. && self.p0y() == 0. && self.a() == 0.
@@ -273,7 +287,9 @@ impl FourBar {
             (self.l0() * self.l0() + self.l1() * self.l1() - l23 * l23)
                 / (2. * self.l0() * self.l1())
         };
-        if self.l0() + self.l1() <= self.l2() + self.l3()
+        if !self.is_valid() {
+            None
+        } else if self.l0() + self.l1() <= self.l2() + self.l3()
             && (self.l0() - self.l1()).abs() >= (self.l2() - self.l3()).abs()
         {
             Some([0., TAU])

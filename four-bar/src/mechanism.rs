@@ -92,7 +92,7 @@ impl<L: Linkage> Mechanism<L> {
             .collect()
     }
 
-    /// A loop trajectory for all moving pivot.
+    /// A loop trajectory for all moving pivot. (3)
     pub fn curve_all(&self, start: f64, end: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
         let interval = (end - start) / n as f64;
         let mut path = [vec![[0.; 2]; n], vec![[0.; 2]; n], vec![[0.; 2]; n]];

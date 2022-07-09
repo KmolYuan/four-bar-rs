@@ -243,13 +243,14 @@ impl ProjInner {
                     let mut copy_btn = |s: f64, e: f64, suffix: &str| {
                         ui.horizontal(|ui| {
                             let s_str = format!("{:.04}", s);
-                            if ui.button(format!("{s_str} {suffix}")).clicked() {
+                            if ui.selectable_label(false, &s_str).clicked() {
                                 ui.output().copied_text = s_str;
                             }
                             let e_str = format!("{:.04}", e);
-                            if ui.button(format!("{e_str} {suffix}")).clicked() {
+                            if ui.selectable_label(false, &e_str).clicked() {
                                 ui.output().copied_text = e_str;
                             }
+                            ui.label(suffix);
                         });
                     };
                     copy_btn(s, e, "rad");
@@ -276,7 +277,11 @@ impl ProjInner {
         self.cache.changed = false;
         let m = Mechanism::new(&self.four_bar);
         m.apply(self.angles.theta2, [0, 1, 2, 3, 4], &mut self.cache.joints);
-        self.cache.curves = m.curve_all(0., TAU, n);
+        self.cache.curves = if let Some([start, _]) = self.four_bar.angle_bound() {
+            m.curve_all(start, start + TAU, n)
+        } else {
+            Default::default()
+        };
         let step = 360. / n as f64;
         self.cache.theta3 = self.cache.curves[0]
             .iter()
@@ -537,17 +542,15 @@ impl Projects {
     }
 
     pub fn select(&mut self, ui: &mut Ui) -> bool {
-        match self.is_empty() {
-            true => false,
-            false => {
-                ui.horizontal_wrapped(|ui| {
-                    for (i, proj) in self.list.iter().enumerate() {
-                        ui.selectable_value(&mut self.current, i, proj.name());
-                    }
-                    true
-                })
-                .inner
-            }
+        if !self.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                for (i, proj) in self.list.iter().enumerate() {
+                    ui.selectable_value(&mut self.current, i, proj.name());
+                }
+            });
+            true
+        } else {
+            false
         }
     }
 
