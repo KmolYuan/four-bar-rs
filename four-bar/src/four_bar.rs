@@ -159,6 +159,38 @@ impl NormFourBar {
             panic!("invalid lengths")
         }
     }
+
+    /// Input angle bounds of the linkage.
+    ///
+    /// Return `None` if unsupported.
+    pub fn angle_bound(&self) -> Option<[f64; 2]> {
+        let d_func = |l23: f64| (self.l0() * self.l0() + 1. - l23 * l23) / (2. * self.l0());
+        if !self.is_valid() {
+            None
+        } else if self.l0() + 1. <= self.l2() + self.l3()
+            && (self.l0() - 1.).abs() >= (self.l2() - self.l3()).abs()
+        {
+            Some([0., TAU])
+        } else if self.l0() + 1. >= self.l2() + self.l3()
+            && (self.l0() - 1.).abs() >= (self.l2() - self.l3()).abs()
+        {
+            let d = d_func(self.l2() + self.l3());
+            Some([-d.acos(), d.acos()])
+        } else if self.l0() + 1. >= self.l2() + self.l3()
+            && self.l0() + 1.0 <= self.l2() + self.l3()
+        {
+            let d1 = d_func(self.l2() - self.l3());
+            let d2 = d_func(self.l2() + self.l3());
+            Some([d1.acos(), d2.acos()])
+        } else if self.l0() + 1. <= self.l2() + self.l3()
+            && (self.l0() - 1.).abs() <= (self.l2() - self.l3()).abs()
+        {
+            let d = d_func(self.l2() - self.l3());
+            Some([d.acos(), TAU - d.acos()])
+        } else {
+            None
+        }
+    }
 }
 
 /// Four-bar linkage with offset.

@@ -118,18 +118,22 @@ impl Task {
                     (fitness, four_bar)
                 })
         };
+        const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
         match self.mode {
             Mode::Close => f([0., TAU])
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                .unwrap_or((1e10, FourBar::ZERO)),
+                .unwrap_or(INFEASIBLE),
             Mode::Partial => [[xs[5], xs[6]], [xs[6], xs[5]]]
                 .into_par_iter()
                 .map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
                 .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
                 .flat_map(f)
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                .unwrap_or((1e10, FourBar::ZERO)),
-            Mode::Open => todo!(),
+                .unwrap_or(INFEASIBLE),
+            Mode::Open => NormFourBar::from_vec(v, false)
+                .angle_bound()
+                .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
+                .unwrap_or(INFEASIBLE),
         }
     }
 }
