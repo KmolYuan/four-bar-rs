@@ -83,7 +83,7 @@ fn planar() {
     let target = OPEN_CURVE1;
     planar_syn("open1", target, 50, 400, syn::Mode::Partial);
     let target = OPEN_CURVE2;
-    planar_syn("open2", target, 50, 400, syn::Mode::Partial);
+    planar_syn("open2", target, 50, 400, syn::Mode::Open);
     let target = CRUNODE;
     planar_syn("close", target, 50, 400, syn::Mode::Close);
 }
