@@ -123,7 +123,7 @@ pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
         .iter()
         .enumerate()
         .map(|(i, [x, y])| (i, (target[0][0] - x).hypot(target[0][1] - y)))
-        .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+        .min_by(|(_, a), (_, b)| a.total_cmp(b))
         .unwrap();
     let iter = boxed_iter(curve.iter().cycle().skip(index).take(end));
     let rev = boxed_iter(curve.iter().rev().cycle().skip(end - index).take(end));
@@ -149,7 +149,7 @@ pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
             }
             geo_err
         })
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
+        .min_by(|a, b| a.total_cmp(b))
         .unwrap();
     (basic_err + err) / target.len() as f64
 }
@@ -183,7 +183,7 @@ pub fn cusp(curve: &[[f64; 2]], open: bool) -> usize {
 /// Count the crunodes of the curve.
 pub fn crunode(curve: &[[f64; 2]]) -> usize {
     let mut order = (0..curve.len()).collect::<Vec<_>>();
-    order.sort_unstable_by(|a, b| curve[*a][0].partial_cmp(&curve[*b][0]).unwrap());
+    order.sort_unstable_by(|a, b| curve[*a][0].total_cmp(&curve[*b][0]));
     // Active list
     let mut act = vec![0; curve.len()];
     // Sweep line
