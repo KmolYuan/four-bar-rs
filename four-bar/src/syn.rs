@@ -69,7 +69,7 @@ impl Task {
         let curve = match mode {
             Mode::Close if curve::is_closed(&curve) => curve,
             Mode::Close => curve::close_line(curve),
-            Mode::Partial | Mode::Open => curve::close_anti_symmetric(curve),
+            Mode::Partial | Mode::Open => curve::close_rev(curve),
         };
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
@@ -101,7 +101,7 @@ impl Task {
         };
         let close_f = match self.mode {
             Mode::Close => curve::close_line,
-            Mode::Partial | Mode::Open => curve::close_anti_symmetric,
+            Mode::Partial | Mode::Open => curve::close_rev,
         };
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]

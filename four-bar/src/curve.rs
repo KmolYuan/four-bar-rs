@@ -94,7 +94,6 @@ pub fn close_anti_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
     let curve2 = curve
         .iter()
         .take(curve.len() - 1)
-        .skip(1)
         .map(|[x, y]| {
             let x = ox + PI.cos() * (x - ox) - PI.sin() * (y - oy);
             let y = oy + PI.sin() * (x - ox) + PI.cos() * (y - oy);
@@ -123,15 +122,24 @@ pub fn close_anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
             [x - x0 - xd * i_n, y - y0 - yd * i_n]
         })
         .collect::<Vec<_>>();
-    let mut v2 = v1
+    let v2 = v1
         .iter()
         .take(curve.len() - 1)
         .skip(1)
         .map(|[x, y]| [-x, -y])
         .rev()
-        .collect();
-    v1.append(&mut v2);
+        .collect::<Vec<_>>();
+    v1.extend(v2);
     v1
+}
+
+/// Close the open curve with its reversion part.
+///
+/// Panic with empty curve.
+pub fn close_rev(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    let curve2 = curve.iter().rev().skip(1).copied().collect::<Vec<_>>();
+    curve.extend(curve2);
+    curve
 }
 
 /// Geometry error between two curves.
