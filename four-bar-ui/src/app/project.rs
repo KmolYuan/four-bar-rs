@@ -529,10 +529,6 @@ impl Projects {
                 }
             }
         });
-        if !self.queue.0.read().unwrap().is_empty() {
-            self.list.append(&mut *self.queue.0.write().unwrap());
-            self.current = self.len() - 1;
-        }
         if self.select(ui) {
             ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n));
         } else {
@@ -558,7 +554,11 @@ impl Projects {
         Mechanism::new(&self.list[self.current].0.read().unwrap().four_bar).curve(0., TAU, n)
     }
 
-    pub fn plot(&self, ui: &mut plot::PlotUi, n: usize) {
+    pub fn plot(&mut self, ui: &mut plot::PlotUi, n: usize) {
+        if !self.queue.0.read().unwrap().is_empty() {
+            self.list.append(&mut *self.queue.0.write().unwrap());
+            self.current = self.len() - 1;
+        }
         for (i, proj) in self.list.iter().enumerate() {
             proj.plot(ui, i, self.current, n);
         }

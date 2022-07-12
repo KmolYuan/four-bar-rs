@@ -243,6 +243,9 @@ impl Synthesis {
                 keep
             });
             ui.horizontal(|ui| {
+                #[cfg(target_arch = "wasm32")]
+                let _ = ui.add_enabled(false, Button::new("▶ Start"));
+                #[cfg(not(target_arch = "wasm32"))]
                 if ui
                     .add_enabled(error.is_empty(), Button::new("▶ Start"))
                     .clicked()
@@ -372,11 +375,6 @@ impl Synthesis {
                 .width(3.);
             ui.line(line);
         }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn native_syn(&mut self, _queue: Queue) {
-        Ctx::alert("Local computation is not supported!");
     }
 
     #[cfg(not(target_arch = "wasm32"))]
