@@ -279,8 +279,7 @@ impl FourBar {
                 }
             };
         }
-        let mut d = [self.l0(), self.l1(), self.l2(), self.l3()];
-        d.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        let d = sort_link([self.l0(), self.l1(), self.l2(), self.l3()]);
         if d[0] + d[3] < d[1] + d[2] {
             arms! { d[0] => Class::GCCC, Class::GCRR, Class::GRCR, Class::GRRC }
         } else {

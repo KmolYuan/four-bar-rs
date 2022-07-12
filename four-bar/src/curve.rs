@@ -1,4 +1,8 @@
 //! Curve (trajectory) operation.
+//!
+//! Curves are typed with `&[[f64; 2]]`, allow containing `NaN`s.
+
+use std::f64::consts::PI;
 
 #[inline(always)]
 fn boxed_iter<'a, I>(iter: I) -> Box<dyn Iterator<Item = &'a [f64; 2]> + 'a>
@@ -6,6 +10,13 @@ where
     I: Iterator<Item = &'a [f64; 2]> + 'a,
 {
     Box::new(iter)
+}
+
+/// Check if a curve is closed. (first point and end point are close)
+pub fn is_closed(curve: &[[f64; 2]]) -> bool {
+    let first = curve[0];
+    let end = curve[curve.len() - 1];
+    (first[0] - end[0]).abs() < f64::EPSILON && (first[1] - end[1]).abs() < f64::EPSILON
 }
 
 /// Input a curve, split out finite parts to a continuous curve. (greedy method)
@@ -34,40 +45,6 @@ pub fn get_valid_part(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
             }
         },
     }
-}
-
-/// Anti-symmetric extension function.
-pub fn anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
-    let n = curve.len() - 1;
-    let [x0, y0] = curve[0];
-    let [xn, yn] = curve[n];
-    let xd = xn - x0;
-    let yd = yn - y0;
-    let n = n as f64;
-    let mut v1 = curve
-        .iter()
-        .enumerate()
-        .map(|(i, &[x, y])| {
-            let i_n = i as f64 / n;
-            [x - x0 - xd * i_n, y - y0 - yd * i_n]
-        })
-        .collect::<Vec<_>>();
-    let mut v2 = v1
-        .iter()
-        .take(curve.len() - 1)
-        .skip(1)
-        .map(|[x, y]| [-x, -y])
-        .rev()
-        .collect();
-    v1.append(&mut v2);
-    v1
-}
-
-/// Check if a curve is closed. (first point and end point are close)
-pub fn is_closed(curve: &[[f64; 2]]) -> bool {
-    let first = curve[0];
-    let end = curve[curve.len() - 1];
-    (first[0] - end[0]).abs() < f64::EPSILON && (first[1] - end[1]).abs() < f64::EPSILON
 }
 
 /// Close the open curve with a line.
@@ -102,13 +79,59 @@ pub fn close_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
         })
         .collect::<Vec<_>>();
     curve.extend(curve2);
-    curve.push(curve[0]);
-    curve
+    close_line(curve)
 }
 
-/// Return false if curve contains any NaN coordinate.
-pub fn is_valid(curve: &[[f64; 2]]) -> bool {
-    !curve.iter().any(|[x, y]| !x.is_finite() || !y.is_finite())
+/// Close the open curve with an anti-symmetry part.
+///
+/// Panic with empty curve.
+pub fn close_anti_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    let [ox, oy] = {
+        let first = &curve[0];
+        let end = &curve[curve.len() - 1];
+        [(first[0] + end[0]) * 0.5, (first[1] + end[1]) * 0.5]
+    };
+    let curve2 = curve
+        .iter()
+        .take(curve.len() - 1)
+        .skip(1)
+        .map(|[x, y]| {
+            let x = ox + PI.cos() * (x - ox) - PI.sin() * (y - oy);
+            let y = oy + PI.sin() * (x - ox) + PI.cos() * (y - oy);
+            [x, y]
+        })
+        .collect::<Vec<_>>();
+    curve.extend(curve2);
+    close_line(curve)
+}
+
+/// Close the open curve with anti-symmetric extension function.
+///
+/// Panic with empty curve.
+pub fn close_anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+    let n = curve.len() - 1;
+    let [x0, y0] = curve[0];
+    let [xn, yn] = curve[n];
+    let xd = xn - x0;
+    let yd = yn - y0;
+    let n = n as f64;
+    let mut v1 = curve
+        .iter()
+        .enumerate()
+        .map(|(i, &[x, y])| {
+            let i_n = i as f64 / n;
+            [x - x0 - xd * i_n, y - y0 - yd * i_n]
+        })
+        .collect::<Vec<_>>();
+    let mut v2 = v1
+        .iter()
+        .take(curve.len() - 1)
+        .skip(1)
+        .map(|[x, y]| [-x, -y])
+        .rev()
+        .collect();
+    v1.append(&mut v2);
+    v1
 }
 
 /// Geometry error between two curves.

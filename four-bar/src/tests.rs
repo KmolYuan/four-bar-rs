@@ -10,7 +10,7 @@ fn cusp() {
 
 #[test]
 fn anti_symmetry_extension() {
-    assert_eq!(curve::anti_sym_ext(OPEN_CURVE1), OPEN_CURVE1_ANS);
+    assert_eq!(curve::close_anti_sym_ext(OPEN_CURVE1), OPEN_CURVE1_ANS);
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn test_plot_history() {
 fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: syn::Mode) {
     use crate::syn::*;
     use indicatif::ProgressBar;
-    use std::{f64::consts::TAU, fs::write, time::Instant};
+    use std::{fs::write, time::Instant};
     let t0 = Instant::now();
     let pb = ProgressBar::new(gen);
     let s = mh::Solver::build(mh::De::default())
@@ -47,45 +47,24 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
     let svg = plot::SVGBackend::new(&his_filename, (800, 600));
     plot::plot_history(svg, s.report(), s.best_fitness()).unwrap();
     let ans = s.result();
-    write("result.ron", ron::to_string(&ans).unwrap()).unwrap();
-    let curve = Mechanism::new(&ans).curve(0., TAU, 360);
-    println!("harmonic: {}", s.func().harmonic());
-    println!("seed: {}", s.seed());
-    let filename = format!("{title}_result.svg");
-    let svg = plot::SVGBackend::new(&filename, (800, 800));
-    let curves = [("Target", target), ("Optimized", &curve)];
-    plot::plot_curve(svg, "Synthesis Test", &curves).unwrap();
+    write(format!("{title}_result.ron"), ron::to_string(&ans).unwrap()).unwrap();
+    if let Some([t1, t2]) = ans.angle_bound() {
+        let curve = curve::get_valid_part(&Mechanism::new(&ans).curve(t1, t2, 720));
+        println!("harmonic: {}", s.func().harmonic());
+        println!("seed: {}", s.seed());
+        let filename = format!("{title}_result.svg");
+        let svg = plot::SVGBackend::new(&filename, (800, 800));
+        let curves = [("Target", target), ("Optimized", &curve)];
+        plot::plot_curve(svg, "Synthesis Test", &curves).unwrap();
+    }
 }
 
 #[test]
 #[cfg(feature = "plot")]
 fn planar() {
-    // let target = Mechanism::four_bar(FourBar {
-    //     p0: (0., 0.),
-    //     a: 0.,
-    //     l0: 90.,
-    //     l1: 35.,
-    //     l2: 70.,
-    //     l3: 70.,
-    //     // l4: 40.,
-    //     // g: 0.5052948926891512,
-    //     // l4: 84.7387,
-    //     // g: 0.279854818911,
-    //     l4: 77.0875,
-    //     g: 5.88785793416,
-    //     inv: false,
-    // })
-    // .curve(TAU / 6., 360);
-    // let target = YU1;
-    // let target = HAND;
-    // let target = TRIANGLE2;
-    // let target = LINE;
-    let target = OPEN_CURVE1;
-    planar_syn("open1", target, 50, 400, syn::Mode::Partial);
-    let target = OPEN_CURVE2;
-    planar_syn("open2", target, 50, 400, syn::Mode::Open);
-    let target = CRUNODE;
-    planar_syn("close", target, 50, 400, syn::Mode::Close);
+    planar_syn("open1", OPEN_CURVE1, 50, 400, syn::Mode::Partial);
+    planar_syn("open2", OPEN_CURVE2, 50, 400, syn::Mode::Open);
+    planar_syn("close1", CRUNODE, 50, 400, syn::Mode::Close);
 }
 
 pub const HAND: &[[f64; 2]] = &[

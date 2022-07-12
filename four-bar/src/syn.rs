@@ -69,7 +69,7 @@ impl Task {
         let curve = match mode {
             Mode::Close if curve::is_closed(&curve) => curve,
             Mode::Close => curve::close_line(curve),
-            Mode::Partial | Mode::Open => curve::close_symmetric(curve),
+            Mode::Partial | Mode::Open => curve::close_anti_symmetric(curve),
         };
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
@@ -101,18 +101,19 @@ impl Task {
         };
         let close_f = match self.mode {
             Mode::Close => curve::close_line,
-            Mode::Partial | Mode::Open => curve::close_symmetric,
+            Mode::Partial | Mode::Open => curve::close_anti_symmetric,
         };
         let f = |[t1, t2]: [f64; 2]| {
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
                     let m = Mechanism::new(&NormFourBar::from_vec(v, inv));
-                    (close_f(m.par_curve(t1, t2, self.n)), inv)
+                    let curve = curve::get_valid_part(&m.par_curve(t1, t2, self.n));
+                    (curve, inv)
                 })
-                .filter(|(curve, _)| curve::is_valid(curve))
+                .filter(|(curve, _)| !curve.is_empty())
                 .map(|(curve, inv)| {
-                    let efd = Efd::from_curve(&curve, Some(self.efd.harmonic()));
+                    let efd = Efd::from_curve(&close_f(curve), Some(self.efd.harmonic()));
                     let four_bar = FourBar::from_transform(v, inv, efd.to(&self.efd));
                     let fitness = efd.manhattan(&self.efd);
                     (fitness, four_bar)
