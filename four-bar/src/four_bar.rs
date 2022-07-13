@@ -43,9 +43,44 @@ pub enum Class {
     RRR4,
 }
 
-impl std::fmt::Display for Class {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let s = match self {
+impl From<[f64; 4]> for Class {
+    fn from([l0, l1, l2, l3]: [f64; 4]) -> Self {
+        macro_rules! arms {
+            ($d:expr => $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
+                match $d {
+                    d if d == l0 => $c1,
+                    d if d == l1 => $c2,
+                    d if d == l2 => $c3,
+                    d if d == l3 => $c4,
+                    _ => unreachable!(),
+                }
+            };
+        }
+        let [s, p, q, l] = sort_link([l0, l1, l2, l3]);
+        if s + l < p + q {
+            arms! { s => Class::GCCC, Class::GCRR, Class::GRCR, Class::GRRC }
+        } else {
+            arms! { l => Class::RRR1, Class::RRR2, Class::RRR3, Class::RRR4 }
+        }
+    }
+}
+
+impl From<&NormFourBar> for Class {
+    fn from(fb: &NormFourBar) -> Self {
+        Self::from([fb.l0(), 1., fb.l2(), fb.l3()])
+    }
+}
+
+impl From<&FourBar> for Class {
+    fn from(fb: &FourBar) -> Self {
+        Self::from([fb.l0(), fb.l1(), fb.l2(), fb.l3()])
+    }
+}
+
+impl Class {
+    /// Name of the type.
+    pub const fn name(&self) -> &'static str {
+        match self {
             Self::GCCC => "Grashof double crank (GCCC)",
             Self::GCRR => "Grashof crank rocker (GCRR)",
             Self::GRCR => "Grashof double rocker (GRCR)",
@@ -54,12 +89,9 @@ impl std::fmt::Display for Class {
             Self::RRR2 => "Non-Grashof Double rocker (RRR2)",
             Self::RRR3 => "Non-Grashof Double rocker (RRR3)",
             Self::RRR4 => "Non-Grashof Double rocker (RRR4)",
-        };
-        f.write_str(s)
+        }
     }
-}
 
-impl Class {
     /// Return true if the type is Grashof linkage.
     pub fn is_grashof(&self) -> bool {
         matches!(self, Self::GCCC | Self::GCRR | Self::GRCR | Self::GRRC)
@@ -81,13 +113,44 @@ impl Default for NormFourBar {
     }
 }
 
+impl From<[f64; 5]> for NormFourBar {
+    fn from(v: [f64; 5]) -> Self {
+        Self { v, inv: false }
+    }
+}
+
+impl From<&[f64]> for NormFourBar {
+    fn from(v: &[f64]) -> Self {
+        Self::from_slice(v, false)
+    }
+}
+
 impl NormFourBar {
     /// Zeros data. (Default value)
+    ///
+    /// This is a invalid linkage.
     pub const ZERO: Self = Self::from_vec([0.; 5], false);
 
     /// Create a normalized four-bar linkage from a vector.
     pub const fn from_vec(v: [f64; 5], inv: bool) -> Self {
         Self { v, inv }
+    }
+
+    /// Create a normalized four-bar linkage from a slice.
+    ///
+    /// Panic if the slice length are less than 5.
+    /// Please see [`Self::from_vec`] for the constant version.
+    pub fn from_slice(v: &[f64], inv: bool) -> Self {
+        if let &[l0, l2, l3, l4, g, ..] = v {
+            Self { v: [l0, l2, l3, l4, g], inv }
+        } else {
+            panic!("invalid slice: {v:?}")
+        }
+    }
+
+    /// Construct with `inv` option.
+    pub const fn with_inv(self, inv: bool) -> Self {
+        Self { inv, ..self }
     }
 
     impl_parm_method! {
@@ -126,37 +189,25 @@ impl NormFourBar {
 
     /// Transform from any linkages to Grashof crank-rocker / double crank,
     /// the linkage types with continuous motion.
-    ///
-    /// Panic when the length of `xs` is not greater than 5.
-    pub fn cr_dc_transform(xs: &[f64]) -> [f64; 5] {
-        if let [l0, l2, l3, l4, g, ..] = xs[..5] {
-            let [s, p, q, l] = sort_link([l0, 1., l2, l3]);
-            if s + l < p + q && (s == 1. || s == l0) {
-                [l0, l2, l3, l4, g]
-            } else {
-                let l1 = s;
-                [q / l1, l / l1, p / l1, l4 / l1, g]
-            }
+    pub fn to_close_curve(&self) -> [f64; 5] {
+        let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
+        if s + l < p + q && (s == 1. || s == self.l0()) {
+            self.v
         } else {
-            panic!("invalid lengths")
+            let l1 = s;
+            [q / l1, l / l1, p / l1, self.l4() / l1, self.g()]
         }
     }
 
     /// Transform from any linkages to Grashof double-rocker,
     /// the linkage type with non-continuous motion.
-    ///
-    /// Panic when the length of `xs` is not greater than 5.
-    pub fn dr_transform(xs: &[f64]) -> [f64; 5] {
-        if let [l0, l2, l3, l4, g, ..] = xs[..5] {
-            let [s, p, q, l] = sort_link([l0, 1., l2, l3]);
-            if s + l < p + q && l == 1. {
-                [l0, l2, l3, l4, g]
-            } else {
-                let l1 = l;
-                [q / l1, s / l1, p / l1, l4 / l1, g]
-            }
+    pub fn to_open_curve(&self) -> [f64; 5] {
+        let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
+        if s + l < p + q && l == 1. {
+            self.v
         } else {
-            panic!("invalid lengths")
+            let l1 = l;
+            [q / l1, s / l1, p / l1, self.l4() / l1, self.g()]
         }
     }
 
@@ -208,9 +259,17 @@ impl Default for FourBar {
     }
 }
 
+impl From<NormFourBar> for FourBar {
+    fn from(norm: NormFourBar) -> Self {
+        Self::from_norm(norm)
+    }
+}
+
 impl FourBar {
     /// Zeros data. (Default value)
-    pub const ZERO: Self = Self { v: [0.; 4], norm: NormFourBar::ZERO };
+    ///
+    /// This is a invalid linkage.
+    pub const ZERO: Self = Self::new([0.; 6], false);
 
     /// Create with linkage lengths.
     pub const fn new(v: [f64; 6], inv: bool) -> Self {
@@ -230,8 +289,12 @@ impl FourBar {
 
     /// Create a normalized four-bar linkage from a vector.
     pub const fn from_vec(v: [f64; 5], inv: bool) -> Self {
-        let norm = NormFourBar::from_vec(v, inv);
-        Self { v: [0.; 4], norm }
+        Self::from_norm(NormFourBar::from_vec(v, inv))
+    }
+
+    /// Create from normalized linkage.
+    pub const fn from_norm(norm: NormFourBar) -> Self {
+        Self { v: [0., 0., 0., 1.], norm }
     }
 
     /// Transform a normalized four-bar linkage from a vector.
@@ -264,27 +327,6 @@ impl FourBar {
     /// An example crank rocker.
     pub const fn example() -> Self {
         Self::new([90., 35., 70., 70., 45., FRAC_PI_6], false)
-    }
-
-    /// Return the the type according to this linkage lengths.
-    pub fn class(&self) -> Class {
-        macro_rules! arms {
-            ($d:expr => $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
-                match $d {
-                    d if d == self.l0() => $c1,
-                    d if d == self.l1() => $c2,
-                    d if d == self.l2() => $c3,
-                    d if d == self.l3() => $c4,
-                    _ => unreachable!(),
-                }
-            };
-        }
-        let d = sort_link([self.l0(), self.l1(), self.l2(), self.l3()]);
-        if d[0] + d[3] < d[1] + d[2] {
-            arms! { d[0] => Class::GCCC, Class::GCRR, Class::GRCR, Class::GRRC }
-        } else {
-            arms! { d[3] => Class::RRR1, Class::RRR2, Class::RRR3, Class::RRR4 }
-        }
     }
 
     /// Return true if the linkage length is valid.
@@ -343,12 +385,6 @@ impl FourBar {
         } else {
             None
         }
-    }
-}
-
-impl From<NormFourBar> for FourBar {
-    fn from(norm: NormFourBar) -> Self {
-        Self { v: [0.; 4], norm }
     }
 }
 

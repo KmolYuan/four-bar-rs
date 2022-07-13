@@ -96,8 +96,8 @@ impl Task {
         // Only parallelize here!!
         use crate::mh::rayon::prelude::*;
         let v = match self.mode {
-            Mode::Close | Mode::Partial => NormFourBar::cr_dc_transform(xs),
-            Mode::Open => NormFourBar::dr_transform(xs),
+            Mode::Close | Mode::Partial => NormFourBar::from(xs).to_close_curve(),
+            Mode::Open => NormFourBar::from(xs).to_open_curve(),
         };
         let close_f = match self.mode {
             Mode::Close => curve::close_line,
@@ -111,7 +111,7 @@ impl Task {
                     let curve = curve::get_valid_part(&m.par_curve(t1, t2, self.n));
                     (curve, inv)
                 })
-                .filter(|(curve, _)| !curve.is_empty())
+                .filter(|(curve, _)| curve.len() > 2)
                 .map(|(curve, inv)| {
                     let efd = Efd::from_curve(&close_f(curve), Some(self.efd.harmonic()));
                     let four_bar = FourBar::from_transform(v, inv, efd.to(&self.efd));
