@@ -133,7 +133,7 @@ pub fn close_anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
     v1
 }
 
-/// Close the open curve with its reversion part.
+/// Close the open curve with its direction-inverted part.
 ///
 /// Panic with empty curve.
 pub fn close_rev(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
