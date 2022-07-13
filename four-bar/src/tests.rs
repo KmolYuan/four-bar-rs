@@ -62,9 +62,10 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
 #[test]
 #[cfg(feature = "plot")]
 fn planar() {
-    planar_syn("open1", OPEN_CURVE1, 50, 400, syn::Mode::Partial);
-    planar_syn("open2", OPEN_CURVE2, 50, 400, syn::Mode::Open);
     planar_syn("close1", CRUNODE, 50, 400, syn::Mode::Close);
+    planar_syn("partial1", OPEN_CURVE1, 50, 400, syn::Mode::Partial);
+    planar_syn("open1", OPEN_CURVE1, 50, 400, syn::Mode::Open);
+    planar_syn("open2", OPEN_CURVE2, 50, 400, syn::Mode::Open);
 }
 
 pub const HAND: &[[f64; 2]] = &[
