@@ -95,26 +95,29 @@ impl Task {
     fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
         // Only parallelize here!!
         use crate::mh::rayon::prelude::*;
-        let v = match self.mode {
-            Mode::Close | Mode::Partial => NormFourBar::from(xs).to_close_curve(),
-            Mode::Open => NormFourBar::from(xs).to_open_curve(),
+        let norm = NormFourBar::from(xs);
+        let norm = match self.mode {
+            Mode::Close | Mode::Partial => norm.to_close_curve(),
+            Mode::Open => norm.to_open_curve(),
         };
         let close_f = match self.mode {
             Mode::Close => curve::close_line,
             Mode::Partial | Mode::Open => curve::close_rev,
         };
         let f = |[t1, t2]: [f64; 2]| {
+            let norm = &norm;
             [false, true]
                 .into_par_iter()
                 .map(move |inv| {
-                    let m = Mechanism::new(&NormFourBar::from_vec(v, inv));
+                    let norm = norm.with_inv(inv);
+                    let m = Mechanism::new(&norm);
                     let curve = curve::get_valid_part(&m.par_curve(t1, t2, self.n));
-                    (curve, inv)
+                    (curve, norm)
                 })
                 .filter(|(curve, _)| curve.len() > 2)
-                .map(|(curve, inv)| {
+                .map(|(curve, norm)| {
                     let efd = Efd::from_curve(&close_f(curve), Some(self.efd.harmonic()));
-                    let four_bar = FourBar::from_transform(v, inv, efd.to(&self.efd));
+                    let four_bar = FourBar::from_transform(norm, efd.to(&self.efd));
                     let fitness = efd.manhattan(&self.efd);
                     (fitness, four_bar)
                 })
@@ -131,7 +134,7 @@ impl Task {
                 .flat_map(f)
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
                 .unwrap_or(INFEASIBLE),
-            Mode::Open => NormFourBar::from_vec(v, false)
+            Mode::Open => norm
                 .angle_bound()
                 .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
                 .unwrap_or(INFEASIBLE),

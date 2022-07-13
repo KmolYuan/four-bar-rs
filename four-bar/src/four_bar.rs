@@ -1,7 +1,7 @@
 use crate::{efd::GeoInfo, Formula, Linkage, Mechanism};
 use std::{
     f64::consts::{FRAC_PI_6, TAU},
-    ops::{Div, DivAssign},
+    ops::{Div, DivAssign, Mul, MulAssign},
 };
 
 macro_rules! impl_parm_method {
@@ -149,8 +149,8 @@ impl NormFourBar {
     }
 
     /// Construct with `inv` option.
-    pub const fn with_inv(self, inv: bool) -> Self {
-        Self { inv, ..self }
+    pub const fn with_inv(&self, inv: bool) -> Self {
+        Self { inv, ..*self }
     }
 
     impl_parm_method! {
@@ -189,25 +189,27 @@ impl NormFourBar {
 
     /// Transform from any linkages to Grashof crank-rocker / double crank,
     /// the linkage types with continuous motion.
-    pub fn to_close_curve(&self) -> [f64; 5] {
+    pub fn to_close_curve(self) -> Self {
         let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
         if s + l < p + q && (s == 1. || s == self.l0()) {
-            self.v
+            self
         } else {
             let l1 = s;
-            [q / l1, l / l1, p / l1, self.l4() / l1, self.g()]
+            let v = [q / l1, l / l1, p / l1, self.l4() / l1, self.g()];
+            Self { v, ..self }
         }
     }
 
     /// Transform from any linkages to Grashof double-rocker,
     /// the linkage type with non-continuous motion.
-    pub fn to_open_curve(&self) -> [f64; 5] {
+    pub fn to_open_curve(self) -> Self {
         let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
         if s + l < p + q && l == 1. {
-            self.v
+            self
         } else {
             let l1 = l;
-            [q / l1, s / l1, p / l1, self.l4() / l1, self.g()]
+            let v = [q / l1, s / l1, p / l1, self.l4() / l1, self.g()];
+            Self { v, ..self }
         }
     }
 
@@ -298,17 +300,9 @@ impl FourBar {
     }
 
     /// Transform a normalized four-bar linkage from a vector.
-    pub fn from_transform(v: [f64; 5], inv: bool, geo: GeoInfo<f64>) -> Self {
+    pub fn from_transform(mut norm: NormFourBar, geo: GeoInfo<f64>) -> Self {
         let [p0x, p0y] = geo.center;
-        let [l0, l2, l3, l4, g] = v;
-        let v = [
-            l0 * geo.scale,
-            l2 * geo.scale,
-            l3 * geo.scale,
-            l4 * geo.scale,
-            g,
-        ];
-        let norm = NormFourBar::from_vec(v, inv);
+        norm *= geo.scale;
         let v = [p0x, p0y, geo.rot, geo.scale];
         Self { v, norm }
     }
@@ -402,9 +396,57 @@ impl std::ops::DerefMut for FourBar {
     }
 }
 
+impl Mul<f64> for NormFourBar {
+    type Output = Self;
+    fn mul(mut self, rhs: f64) -> Self::Output {
+        self *= rhs;
+        self
+    }
+}
+
+impl MulAssign<f64> for NormFourBar {
+    fn mul_assign(&mut self, rhs: f64) {
+        *self.l0_mut() *= rhs;
+        *self.l2_mut() *= rhs;
+        *self.l3_mut() *= rhs;
+        *self.l4_mut() *= rhs;
+    }
+}
+
+impl Div<f64> for NormFourBar {
+    type Output = Self;
+    fn div(mut self, rhs: f64) -> Self::Output {
+        self /= rhs;
+        self
+    }
+}
+
+impl DivAssign<f64> for NormFourBar {
+    fn div_assign(&mut self, rhs: f64) {
+        *self.l0_mut() /= rhs;
+        *self.l2_mut() /= rhs;
+        *self.l3_mut() /= rhs;
+        *self.l4_mut() /= rhs;
+    }
+}
+
+impl Mul<f64> for FourBar {
+    type Output = Self;
+    fn mul(mut self, rhs: f64) -> Self::Output {
+        self *= rhs;
+        self
+    }
+}
+
+impl MulAssign<f64> for FourBar {
+    fn mul_assign(&mut self, rhs: f64) {
+        self.norm *= rhs;
+        *self.l1_mut() *= rhs;
+    }
+}
+
 impl Div<f64> for FourBar {
     type Output = Self;
-
     fn div(mut self, rhs: f64) -> Self::Output {
         self /= rhs;
         self
@@ -413,11 +455,8 @@ impl Div<f64> for FourBar {
 
 impl DivAssign<f64> for FourBar {
     fn div_assign(&mut self, rhs: f64) {
-        *self.l0_mut() /= rhs;
+        self.norm /= rhs;
         *self.l1_mut() /= rhs;
-        *self.l2_mut() /= rhs;
-        *self.l3_mut() /= rhs;
-        *self.l4_mut() /= rhs;
     }
 }
 
