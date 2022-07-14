@@ -235,6 +235,8 @@ impl NormFourBar {
 
     /// Transform from any linkages to Grashof crank-rocker / double crank,
     /// the linkage types with continuous motion.
+    ///
+    /// The result might be invalid.
     pub fn to_close_curve(self) -> Self {
         let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
         if s + l < p + q && (s == 1. || s == self.l0()) {
@@ -248,6 +250,8 @@ impl NormFourBar {
 
     /// Transform from any linkages to Grashof double-rocker,
     /// the linkage type with non-continuous motion.
+    ///
+    /// The result might be invalid.
     pub fn to_open_curve(self) -> Self {
         let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
         if s + l < p + q && l == 1. {
