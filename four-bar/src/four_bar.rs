@@ -22,6 +22,25 @@ fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
     fb
 }
 
+fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> Option<[f64; 2]> {
+    let d_func = |l23: f64| (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
+    if l0 + l1 <= l2 + l3 && (l0 - l1).abs() >= (l2 - l3).abs() {
+        Some([0., TAU])
+    } else if l0 + l1 >= l2 + l3 && (l0 - l1).abs() >= (l2 - l3).abs() {
+        let d = d_func(l2 + l3);
+        Some([-d.acos() + a, d.acos() + a])
+    } else if ((l0 + l1) - (l2 + l3)).abs() < f64::EPSILON {
+        let d1 = d_func(l2 - l3);
+        let d2 = d_func(l2 + l3);
+        Some([d1.acos() + a, d2.acos() + a])
+    } else if l0 + l1 <= l2 + l3 && (l0 - l1).abs() <= (l2 - l3).abs() {
+        let d = d_func(l2 - l3);
+        Some([d.acos() + a, TAU - d.acos() + a])
+    } else {
+        None
+    }
+}
+
 /// The classification of the four-bar linkage.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Class {
@@ -217,31 +236,10 @@ impl NormFourBar {
     ///
     /// Return `None` if unsupported.
     pub fn angle_bound(&self) -> Option<[f64; 2]> {
-        let d_func = |l23: f64| (self.l0() * self.l0() + 1. - l23 * l23) / (2. * self.l0());
         if !self.is_valid() {
             None
-        } else if self.l0() + 1. <= self.l2() + self.l3()
-            && (self.l0() - 1.).abs() >= (self.l2() - self.l3()).abs()
-        {
-            Some([0., TAU])
-        } else if self.l0() + 1. >= self.l2() + self.l3()
-            && (self.l0() - 1.).abs() >= (self.l2() - self.l3()).abs()
-        {
-            let d = d_func(self.l2() + self.l3());
-            Some([-d.acos(), d.acos()])
-        } else if self.l0() + 1. >= self.l2() + self.l3()
-            && self.l0() + 1.0 <= self.l2() + self.l3()
-        {
-            let d1 = d_func(self.l2() - self.l3());
-            let d2 = d_func(self.l2() + self.l3());
-            Some([d1.acos(), d2.acos()])
-        } else if self.l0() + 1. <= self.l2() + self.l3()
-            && (self.l0() - 1.).abs() <= (self.l2() - self.l3()).abs()
-        {
-            let d = d_func(self.l2() - self.l3());
-            Some([d.acos(), TAU - d.acos()])
         } else {
-            None
+            angle_bound([self.l0(), 1., self.l2(), self.l3(), 0.])
         }
     }
 }
@@ -350,34 +348,10 @@ impl FourBar {
     ///
     /// Return `None` if unsupported.
     pub fn angle_bound(&self) -> Option<[f64; 2]> {
-        let d_func = |l23: f64| {
-            (self.l0() * self.l0() + self.l1() * self.l1() - l23 * l23)
-                / (2. * self.l0() * self.l1())
-        };
         if !self.is_valid() {
             None
-        } else if self.l0() + self.l1() <= self.l2() + self.l3()
-            && (self.l0() - self.l1()).abs() >= (self.l2() - self.l3()).abs()
-        {
-            Some([0., TAU])
-        } else if self.l0() + self.l1() >= self.l2() + self.l3()
-            && (self.l0() - self.l1()).abs() >= (self.l2() - self.l3()).abs()
-        {
-            let d = d_func(self.l2() + self.l3());
-            Some([-d.acos() + self.a(), d.acos() + self.a()])
-        } else if self.l0() + self.l1() >= self.l2() + self.l3()
-            && self.l0() + self.l1() <= self.l2() + self.l3()
-        {
-            let d1 = d_func(self.l2() - self.l3());
-            let d2 = d_func(self.l2() + self.l3());
-            Some([d1.acos() + self.a(), d2.acos() + self.a()])
-        } else if self.l0() + self.l1() <= self.l2() + self.l3()
-            && (self.l0() - self.l1()).abs() <= (self.l2() - self.l3()).abs()
-        {
-            let d = d_func(self.l2() - self.l3());
-            Some([d.acos() + self.a(), TAU - d.acos() + self.a()])
         } else {
-            None
+            angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()])
         }
     }
 }
