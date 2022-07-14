@@ -84,6 +84,18 @@ impl From<[f64; 4]> for Class {
     }
 }
 
+impl From<NormFourBar> for Class {
+    fn from(fb: NormFourBar) -> Self {
+        Self::from(&fb)
+    }
+}
+
+impl From<FourBar> for Class {
+    fn from(fb: FourBar) -> Self {
+        Self::from(&fb)
+    }
+}
+
 impl From<&NormFourBar> for Class {
     fn from(fb: &NormFourBar) -> Self {
         Self::from([fb.l0(), 1., fb.l2(), fb.l3()])
