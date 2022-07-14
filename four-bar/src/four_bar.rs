@@ -124,8 +124,18 @@ impl FourBarTy {
     }
 
     /// Return true if the type is Grashof linkage.
-    pub fn is_grashof(&self) -> bool {
+    pub const fn is_grashof(&self) -> bool {
         matches!(self, Self::GCCC | Self::GCRR | Self::GRCR | Self::GRRC)
+    }
+
+    /// Return true if the type has continuous motion.
+    pub const fn is_close_curve(&self) -> bool {
+        matches!(self, Self::GCCC | Self::GCRR)
+    }
+
+    /// Return true if the type has non-continuous motion.
+    pub const fn is_open_curve(&self) -> bool {
+        !self.is_close_curve()
     }
 }
 

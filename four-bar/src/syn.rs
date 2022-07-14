@@ -95,11 +95,22 @@ impl Task {
     fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
         // Only parallelize here!!
         use crate::mh::rayon::prelude::*;
+        const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
         let norm = NormFourBar::from(xs);
         let norm = match self.mode {
             Mode::Close | Mode::Partial => norm.to_close_curve(),
             Mode::Open => norm.to_open_curve(),
         };
+        if !norm.is_valid() {
+            return INFEASIBLE;
+        } else if matches!(self.mode, Mode::Close | Mode::Partial) {
+            if norm.ty().is_open_curve() {
+                return INFEASIBLE;
+            }
+        } else if norm.ty().is_close_curve() {
+            // Mode::Open
+            return INFEASIBLE;
+        }
         let close_f = match self.mode {
             Mode::Close => curve::close_line,
             Mode::Partial | Mode::Open => curve::close_rev,
@@ -122,7 +133,6 @@ impl Task {
                     (fitness, four_bar)
                 })
         };
-        const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
         match self.mode {
             Mode::Close => f([0., TAU])
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
