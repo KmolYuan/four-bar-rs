@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{as_values::as_values, dump_csv, ext};
 use eframe::egui::*;
-use four_bar::{curve, Class, FourBar, Mechanism};
+use four_bar::{curve, FourBar, Mechanism};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,
@@ -414,7 +414,7 @@ impl Project {
             }
         });
         ui.label("Linkage type:");
-        ui.label(Class::from(&proj.four_bar).name());
+        ui.label(proj.four_bar.ty().name());
         ui.checkbox(&mut proj.hide, "Hide 👁");
         ui.add_enabled_ui(!proj.hide, |ui| proj.ui(ui, pivot, interval, n));
     }

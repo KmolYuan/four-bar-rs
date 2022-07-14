@@ -41,9 +41,9 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> Option<[f64; 2]> {
     }
 }
 
-/// The classification of the four-bar linkage.
+/// Type of the four-bar linkage.
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Class {
+pub enum FourBarTy {
     /// Grashof double crank
     GCCC,
     /// Grashof crank rocker
@@ -62,7 +62,7 @@ pub enum Class {
     RRR4,
 }
 
-impl From<[f64; 4]> for Class {
+impl From<[f64; 4]> for FourBarTy {
     fn from([l0, l1, l2, l3]: [f64; 4]) -> Self {
         macro_rules! arms {
             ($d:expr => $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
@@ -77,38 +77,38 @@ impl From<[f64; 4]> for Class {
         }
         let [s, p, q, l] = sort_link([l0, l1, l2, l3]);
         if s + l < p + q {
-            arms! { s => Class::GCCC, Class::GCRR, Class::GRCR, Class::GRRC }
+            arms! { s => FourBarTy::GCCC, FourBarTy::GCRR, FourBarTy::GRCR, FourBarTy::GRRC }
         } else {
-            arms! { l => Class::RRR1, Class::RRR2, Class::RRR3, Class::RRR4 }
+            arms! { l => FourBarTy::RRR1, FourBarTy::RRR2, FourBarTy::RRR3, FourBarTy::RRR4 }
         }
     }
 }
 
-impl From<NormFourBar> for Class {
+impl From<NormFourBar> for FourBarTy {
     fn from(fb: NormFourBar) -> Self {
         Self::from(&fb)
     }
 }
 
-impl From<FourBar> for Class {
+impl From<FourBar> for FourBarTy {
     fn from(fb: FourBar) -> Self {
         Self::from(&fb)
     }
 }
 
-impl From<&NormFourBar> for Class {
+impl From<&NormFourBar> for FourBarTy {
     fn from(fb: &NormFourBar) -> Self {
         Self::from([fb.l0(), 1., fb.l2(), fb.l3()])
     }
 }
 
-impl From<&FourBar> for Class {
+impl From<&FourBar> for FourBarTy {
     fn from(fb: &FourBar) -> Self {
         Self::from([fb.l0(), fb.l1(), fb.l2(), fb.l3()])
     }
 }
 
-impl Class {
+impl FourBarTy {
     /// Name of the type.
     pub const fn name(&self) -> &'static str {
         match self {
@@ -216,6 +216,11 @@ impl NormFourBar {
         let mut v = [self.l0(), 1., self.l2(), self.l3()];
         v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         v[3] < v[..3].iter().sum()
+    }
+
+    /// Return the type of this linkage.
+    pub fn ty(&self) -> FourBarTy {
+        FourBarTy::from(self)
     }
 
     /// Transform from any linkages to Grashof crank-rocker / double crank,
@@ -343,6 +348,11 @@ impl FourBar {
     /// Return true if the linkage has no offset and offset angle.
     pub fn is_aligned(&self) -> bool {
         self.p0x() == 0. && self.p0y() == 0. && self.a() == 0.
+    }
+
+    /// Return the type of this linkage.
+    pub fn ty(&self) -> FourBarTy {
+        FourBarTy::from(self)
     }
 
     /// Remove the origin offset and the offset angle.
