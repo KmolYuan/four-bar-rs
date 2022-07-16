@@ -329,13 +329,14 @@ impl Synthesis {
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
                 ui.label("Support CSV or RON array only.");
+                let curve_str = self.config.curve_str.clone();
                 ui.horizontal(|ui| {
                     if ui.button("🖴 Open Curves").clicked() {
-                        let curve_csv = self.config.curve_str.clone();
+                        let curve_csv = curve_str.clone();
                         Ctx::open_csv_single(move |_, s| *curve_csv.write().unwrap() = s);
                     }
                     if ui.button("🗑 Clear").clicked() {
-                        self.config.curve_str.write().unwrap().clear();
+                        curve_str.write().unwrap().clear();
                     }
                 });
                 let mode = &mut self.config.syn.mode;
@@ -348,7 +349,7 @@ impl Synthesis {
                 self.targets.retain(|name, curve| {
                     ui.horizontal(|ui| {
                         if ui.button(name).clicked() {
-                            *self.config.curve_str.write().unwrap() = dump_csv(curve).unwrap();
+                            *curve_str.write().unwrap() = dump_csv(curve).unwrap();
                         }
                         if ui.button("💾 Export CSV").clicked() {
                             Ctx::save_csv_ask(curve);
@@ -360,13 +361,13 @@ impl Synthesis {
                 ui.label("Past curve data here:");
                 ui.horizontal(|ui| {
                     if ui.button("✏ To CSV").clicked() {
-                        write_curve_str(&self.config.curve_str, |c| dump_csv(&c).unwrap());
+                        write_curve_str(&curve_str, |c| dump_csv(&c).unwrap());
                     }
                     if ui.button("✏ To tuple array").clicked() {
-                        write_curve_str(&self.config.curve_str, ron_pretty);
+                        write_curve_str(&curve_str, ron_pretty);
                     }
                     if ui.button("✏ To nested array").clicked() {
-                        write_curve_str(&self.config.curve_str, |c| {
+                        write_curve_str(&curve_str, |c| {
                             let c = c.into_iter().map(Vec::from).collect::<Vec<_>>();
                             ron_pretty(c)
                         });
@@ -374,14 +375,14 @@ impl Synthesis {
                 });
                 ui.horizontal(|ui| {
                     if ui.button("💾 Update (local)").clicked() {
-                        if let Some(curve) = parse_curve(&self.config.curve_str.read().unwrap()) {
+                        if let Some(curve) = parse_curve(&curve_str.read().unwrap()) {
                             self.targets.insert(self.target_name.clone(), curve);
                         }
                     }
                     ui.text_edit_singleline(&mut self.target_name);
                 });
                 ScrollArea::both().show(ui, |ui| {
-                    let mut s = self.config.curve_str.write().unwrap();
+                    let mut s = curve_str.write().unwrap();
                     let w = TextEdit::multiline(&mut *s)
                         .code_editor()
                         .desired_width(f32::INFINITY);
