@@ -25,7 +25,7 @@ fn test_plot_curve() {
 #[cfg(feature = "plot")]
 fn test_plot_history() {
     let svg = plot::SVGBackend::new("test_history.svg", (800, 600));
-    plot::history(svg, &[1e3, 1e2, 1., 1e-2, 1e-3], 1e-3).unwrap();
+    plot::history(svg, &[1e3, 1e2, 1., 1e-2, 1e-3]).unwrap();
 }
 
 #[cfg(all(test, feature = "plot"))]
@@ -45,7 +45,7 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
     println!("Finish at: {:?}", Instant::now() - t0);
     let his_filename = format!("{title}_history.svg");
     let svg = plot::SVGBackend::new(&his_filename, (800, 600));
-    plot::history(svg, s.report(), s.best_fitness()).unwrap();
+    plot::history(svg, s.report()).unwrap();
     let ans = s.result();
     write(format!("{title}_result.ron"), ron::to_string(&ans).unwrap()).unwrap();
     if let Some([t1, t2]) = ans.angle_bound() {

@@ -9,14 +9,17 @@ fn font() -> TextStyle<'static> {
 }
 
 /// Plot the synthesis history.
-pub fn history<B>(backend: B, history: &[f64], fitness: f64) -> anyhow::Result<()>
+pub fn history<B>(backend: B, history: &[f64]) -> anyhow::Result<()>
 where
     B: DrawingBackend,
     B::ErrorType: 'static,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let cap = format!("Convergence Plot (Best Fitness: {:.04})", fitness);
+    let cap = format!(
+        "Convergence Plot (Best Fitness: {:.04})",
+        history[history.len() - 1]
+    );
     let max_fitness = history
         .iter()
         .max_by(|a, b| a.partial_cmp(b).unwrap())

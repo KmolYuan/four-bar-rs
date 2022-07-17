@@ -1,6 +1,6 @@
 use self::impl_io::*;
 use super::csv::dump_csv;
-use four_bar::FourBar;
+use four_bar::{plot, FourBar};
 
 #[macro_export]
 macro_rules! ext {
@@ -9,10 +9,12 @@ macro_rules! ext {
     };
 }
 
-const FMT: &str = "Rusty Object Notation";
-const CSV_FMT: &str = "Delimiter-Separated Values";
+const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &[ext!()];
+const CSV_FMT: &str = "Delimiter-Separated Values (CSV)";
 const CSV_EXT: &[&str] = &["csv", "txt"];
+const SVG_FMT: &str = "Scalable Vector Graphics (SVG)";
+const SVG_EXT: &[&str] = &["svg"];
 
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
@@ -135,4 +137,11 @@ where
 pub fn save_ron(four_bar: &FourBar, path: &str) {
     let s = ron::to_string(four_bar).unwrap();
     save(&s, path)
+}
+
+pub fn save_history_ask(history: &[f64], name: &str) {
+    let mut buf = String::new();
+    let svg = plot::SVGBackend::with_string(&mut buf, (800, 600));
+    plot::history(svg, history).unwrap();
+    save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }

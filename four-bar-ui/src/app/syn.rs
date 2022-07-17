@@ -1,5 +1,5 @@
 use super::{
-    as_values::as_values,
+    as_values::{as_values, as_values_lin},
     csv::{dump_csv, parse_csv},
     io,
     linkages::Linkages,
@@ -58,10 +58,7 @@ where
         .pop_num(config.pop)
         .task(|ctx| ctx.gen == config.gen || !task.start.load(Ordering::Relaxed))
         .callback(|ctx| {
-            task.conv
-                .write()
-                .unwrap()
-                .push([ctx.gen as f64, ctx.best_f]);
+            task.conv.write().unwrap().push(ctx.best_f);
             task.gen.store(ctx.gen, Ordering::Relaxed);
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
@@ -165,7 +162,7 @@ struct Task {
         deserialize_with = "super::atomic::deserialize_u64"
     )]
     time: Arc<AtomicU64>,
-    conv: Arc<RwLock<Vec<[f64; 2]>>>,
+    conv: Arc<RwLock<Vec<f64>>>,
 }
 
 impl Synthesis {
@@ -224,6 +221,7 @@ impl Synthesis {
             if ui.button("📉 Convergence Plot").clicked() {
                 self.conv_open = !self.conv_open;
             }
+            ui.separator();
             self.tasks.retain(|task| {
                 let mut keep = true;
                 ui.horizontal(|ui| {
@@ -232,8 +230,13 @@ impl Synthesis {
                         if ui.small_button("⏹").clicked() {
                             task.start.store(false, Ordering::Relaxed);
                         }
-                    } else if ui.small_button("🗑").clicked() {
-                        keep = false;
+                    } else {
+                        if ui.small_button("🗑").clicked() {
+                            keep = false;
+                        }
+                        if ui.small_button("📉").clicked() {
+                            io::save_history_ask(&task.conv.read().unwrap(), "history.svg");
+                        }
                     }
                     ui.label(format!("{}s", task.time.load(Ordering::Relaxed)));
                     let pb = task.gen.load(Ordering::Relaxed) as f32 / task.total_gen as f32;
@@ -300,8 +303,12 @@ impl Synthesis {
                         for (i, task) in self.tasks.iter().enumerate() {
                             let conv = task.conv.read().unwrap();
                             let name = format!("Best Fitness {}", i + 1);
-                            ui.line(plot::Line::new(as_values(&*conv)).fill(-1.5).name(&name));
-                            ui.points(plot::Points::new(as_values(&*conv)).name(&name).stems(0.));
+                            ui.line(plot::Line::new(as_values_lin(&conv)).fill(-1.5).name(&name));
+                            ui.points(
+                                plot::Points::new(as_values_lin(&conv))
+                                    .name(&name)
+                                    .stems(0.),
+                            );
                         }
                     });
             });

@@ -546,6 +546,7 @@ impl Projects {
                     ui.selectable_value(&mut self.current, i, proj.name());
                 }
             });
+            ui.separator();
             true
         } else {
             false
