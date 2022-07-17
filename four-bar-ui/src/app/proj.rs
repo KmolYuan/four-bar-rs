@@ -193,7 +193,6 @@ impl ProjInner {
             }
             let curve = get_curve(pivot);
             if !curve.is_empty() {
-                ui.label(format!("Cusps: {}", curve::cusp(&curve, false)));
                 ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
             }
         });
@@ -554,7 +553,8 @@ impl Projects {
     }
 
     pub fn current_curve(&self, n: usize) -> Vec<[f64; 2]> {
-        Mechanism::new(&self.list[self.current].0.read().unwrap().four_bar).curve(0., TAU, n)
+        let proj = self.list[self.current].0.read().unwrap();
+        curve::get_valid_part(&Mechanism::new(&proj.four_bar).curve(0., TAU, n))
     }
 
     pub fn plot(&mut self, ui: &mut plot::PlotUi, n: usize) {

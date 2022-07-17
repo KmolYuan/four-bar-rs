@@ -271,15 +271,14 @@ impl Synthesis {
     fn with_current_project(&self, ui: &mut Ui, linkage: &Linkages) {
         let curve = linkage.current_curve();
         let target = &self.config.syn.target;
+        if ui.button("🗠 Comparison").clicked() {
+            io::save_curve_ask(target, &curve, "comparison.svg");
+        }
         if !curve.is_empty() {
-            let c = curve::cusp(&curve, self.config.syn.mode.is_open());
-            ui.label(format!("Cusps of current curve: {}", c));
             let c = curve::crunode(&curve);
             ui.label(format!("Crunodes of current curve: {}", c));
         }
         if !target.is_empty() {
-            let c = curve::cusp(target, self.config.syn.mode.is_target_open());
-            ui.label(format!("Cusps of target curve: {}", c));
             let c = curve::crunode(target);
             ui.label(format!("Crunodes of target curve: {}", c));
         }

@@ -130,18 +130,24 @@ pub fn save_ron_ask<C>(four_bar: &FourBar, name: &str, done: C)
 where
     C: FnOnce(String) + 'static,
 {
-    let s = ron::to_string(four_bar).unwrap();
-    save_ask(&s, name, FMT, EXT, done)
+    save_ask(&ron::to_string(four_bar).unwrap(), name, FMT, EXT, done)
 }
 
 pub fn save_ron(four_bar: &FourBar, path: &str) {
-    let s = ron::to_string(four_bar).unwrap();
-    save(&s, path)
+    save(&ron::to_string(four_bar).unwrap(), path)
 }
 
 pub fn save_history_ask(history: &[f64], name: &str) {
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 600));
     plot::history(svg, history).unwrap();
+    save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
+}
+
+pub fn save_curve_ask(target: &[[f64; 2]], curve: &[[f64; 2]], name: &str) {
+    let mut buf = String::new();
+    let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));
+    let curves = [("Target", target), ("Optimized", curve)];
+    plot::curve(svg, "Comparison", &curves).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }

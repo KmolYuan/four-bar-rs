@@ -2,13 +2,6 @@
 use crate::*;
 
 #[test]
-fn cusp() {
-    assert_eq!(curve::cusp(HAND_CUSP, false), 1);
-    assert_eq!(curve::cusp(CRUNODE, false), 0);
-    assert_eq!(curve::cusp(OPEN_CURVE1, true), 0);
-}
-
-#[test]
 fn anti_symmetry_extension() {
     assert_eq!(curve::close_anti_sym_ext(OPEN_CURVE1), OPEN_CURVE1_ANS);
 }
@@ -55,7 +48,7 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
         let filename = format!("{title}_result.svg");
         let svg = plot::SVGBackend::new(&filename, (800, 800));
         let curves = [("Target", target), ("Optimized", &curve)];
-        plot::curve(svg, "Synthesis Test", &curves).unwrap();
+        plot::curve(svg, "Comparison", &curves).unwrap();
     }
 }
 

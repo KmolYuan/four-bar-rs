@@ -185,32 +185,6 @@ pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     (basic_err + err) / target.len() as f64
 }
 
-/// Count the cusp of the curve.
-pub fn cusp(curve: &[[f64; 2]], open: bool) -> usize {
-    use std::f64::consts::{FRAC_PI_2, TAU};
-    let mut iter = curve
-        .iter()
-        .cycle()
-        .take(if open { curve.len() } else { curve.len() + 1 });
-    let mut pre = match iter.next() {
-        Some(v) => v,
-        None => return 0,
-    };
-    let mut num = 0;
-    let mut pre_angle = 0.;
-    for c @ [x, y] in &mut iter {
-        let [pre_x, pre_y] = pre;
-        let angle = (y - pre_y).atan2(x - pre_x);
-        let angle_diff = (angle - pre_angle).rem_euclid(TAU);
-        if pre_angle != 0. && angle_diff > FRAC_PI_2 && angle_diff < TAU - FRAC_PI_2 {
-            num += 1;
-        }
-        pre_angle = angle;
-        pre = c;
-    }
-    num
-}
-
 /// Count the crunodes of the curve.
 pub fn crunode(curve: &[[f64; 2]]) -> usize {
     let mut order = (0..curve.len()).collect::<Vec<_>>();
