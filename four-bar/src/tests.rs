@@ -18,14 +18,14 @@ fn anti_symmetry_extension() {
 fn test_plot_curve() {
     let svg = plot::SVGBackend::new("test_curve.svg", (800, 600));
     let curve = efd::Efd::from_curve(CRUNODE, None).generate(90);
-    plot::plot_curve(svg, "Test Curve", &[("Target", &curve)]).unwrap();
+    plot::curve(svg, "Test Curve", &[("Target", &curve)]).unwrap();
 }
 
 #[test]
 #[cfg(feature = "plot")]
 fn test_plot_history() {
     let svg = plot::SVGBackend::new("test_history.svg", (800, 600));
-    plot::plot_history(svg, &[1e3, 1e2, 1., 1e-2, 1e-3], 1e-3).unwrap();
+    plot::history(svg, &[1e3, 1e2, 1., 1e-2, 1e-3], 1e-3).unwrap();
 }
 
 #[cfg(all(test, feature = "plot"))]
@@ -45,7 +45,7 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
     println!("Finish at: {:?}", Instant::now() - t0);
     let his_filename = format!("{title}_history.svg");
     let svg = plot::SVGBackend::new(&his_filename, (800, 600));
-    plot::plot_history(svg, s.report(), s.best_fitness()).unwrap();
+    plot::history(svg, s.report(), s.best_fitness()).unwrap();
     let ans = s.result();
     write(format!("{title}_result.ron"), ron::to_string(&ans).unwrap()).unwrap();
     if let Some([t1, t2]) = ans.angle_bound() {
@@ -55,7 +55,7 @@ fn planar_syn(title: &str, target: &[[f64; 2]], gen: u64, pop_num: usize, mode: 
         let filename = format!("{title}_result.svg");
         let svg = plot::SVGBackend::new(&filename, (800, 800));
         let curves = [("Target", target), ("Optimized", &curve)];
-        plot::plot_curve(svg, "Synthesis Test", &curves).unwrap();
+        plot::curve(svg, "Synthesis Test", &curves).unwrap();
     }
 }
 

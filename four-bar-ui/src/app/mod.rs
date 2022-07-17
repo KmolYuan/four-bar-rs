@@ -1,12 +1,15 @@
-use self::{linkages::*, synthesis::*, widgets::*};
+use self::{linkages::*, syn::*, widgets::*};
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod as_values;
+mod atomic;
+mod csv;
 mod io;
 mod linkages;
-mod project;
-mod synthesis;
+mod proj;
+mod syn;
 mod widgets;
 
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];

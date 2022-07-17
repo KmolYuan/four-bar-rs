@@ -1,5 +1,5 @@
 use super::{
-    project::{Projects, Queue},
+    proj::{Projects, Queue},
     widgets::{link, unit},
 };
 use eframe::egui::*;

@@ -1,5 +1,10 @@
-use super::{io, linkages::Linkages, widgets::unit};
-use crate::{as_values::as_values, dump_csv, parse_csv};
+use super::{
+    as_values::as_values,
+    csv::{dump_csv, parse_csv},
+    io,
+    linkages::Linkages,
+    widgets::unit,
+};
 use eframe::egui::*;
 use four_bar::{curve, syn::Mode};
 use serde::{Deserialize, Serialize};
@@ -119,32 +124,6 @@ impl Method {
             Method::Tlbo => "Teaching Learning Based Optimization",
         }
     }
-
-    const fn abbreviation(&self) -> &'static str {
-        match self {
-            Method::De => "DE",
-            Method::Fa => "FA",
-            Method::Pso => "PSO",
-            Method::Rga => "RGA",
-            Method::Tlbo => "TLBO",
-        }
-    }
-
-    const fn url(&self) -> &'static str {
-        match self {
-            Method::De => "https://en.wikipedia.org/wiki/Differential_evolution",
-            Method::Fa => "https://en.wikipedia.org/wiki/Firefly_algorithm",
-            Method::Pso => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
-            Method::Rga => "https://en.wikipedia.org/wiki/Genetic_algorithm",
-            Method::Tlbo => "https://doi.org/10.1016/j.cad.2010.12.015",
-        }
-    }
-}
-
-impl std::fmt::Display for Method {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(self.name())
-    }
 }
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
@@ -176,14 +155,14 @@ struct Task {
     #[serde(skip)]
     start: Arc<AtomicBool>,
     #[serde(
-        serialize_with = "crate::atomic::serialize_u64",
-        deserialize_with = "crate::atomic::deserialize_u64"
+        serialize_with = "super::atomic::serialize_u64",
+        deserialize_with = "super::atomic::deserialize_u64"
     )]
     gen: Arc<AtomicU64>,
     total_gen: u64,
     #[serde(
-        serialize_with = "crate::atomic::serialize_u64",
-        deserialize_with = "crate::atomic::deserialize_u64"
+        serialize_with = "super::atomic::serialize_u64",
+        deserialize_with = "super::atomic::deserialize_u64"
     )]
     time: Arc<AtomicU64>,
     conv: Arc<RwLock<Vec<[f64; 2]>>>,
@@ -198,21 +177,27 @@ impl Synthesis {
         ui.group(|ui| {
             let method = &mut self.config.syn.method;
             ui.horizontal_wrapped(|ui| {
-                for m in [
-                    Method::De,
-                    Method::Fa,
-                    Method::Pso,
-                    Method::Rga,
-                    Method::Tlbo,
+                for (m, abb) in [
+                    (Method::De, "DE"),
+                    (Method::Fa, "FA"),
+                    (Method::Pso, "PSO"),
+                    (Method::Rga, "RGA"),
+                    (Method::Tlbo, "TLBO"),
                 ] {
-                    let abb = m.abbreviation();
                     let name = m.name();
                     ui.selectable_value(method, m, abb).on_hover_text(name);
                 }
             });
             ui.horizontal_wrapped(|ui| {
-                ui.hyperlink_to(method.name(), method.url())
-                    .on_hover_text(format!("More about {method}"));
+                let url = match method {
+                    Method::De => "https://en.wikipedia.org/wiki/Differential_evolution",
+                    Method::Fa => "https://en.wikipedia.org/wiki/Firefly_algorithm",
+                    Method::Pso => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
+                    Method::Rga => "https://en.wikipedia.org/wiki/Genetic_algorithm",
+                    Method::Tlbo => "https://doi.org/10.1016/j.cad.2010.12.015",
+                };
+                ui.hyperlink_to(method.name(), url)
+                    .on_hover_text(format!("More about {}", method.name()));
             });
         });
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
@@ -235,7 +220,7 @@ impl Synthesis {
             self.config.syn.target = Default::default();
         }
         ui.group(|ui| {
-            ui.heading("Local Computation");
+            ui.heading("Optimization");
             if ui.button("📉 Convergence Plot").clicked() {
                 self.conv_open = !self.conv_open;
             }
@@ -400,7 +385,7 @@ impl Synthesis {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn native_syn(&mut self, queue: super::project::Queue) {
+    fn native_syn(&mut self, queue: super::proj::Queue) {
         use four_bar::mh::{methods::*, rayon::spawn};
         let config = self.config.syn.clone();
         let task = Task {

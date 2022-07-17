@@ -3,13 +3,13 @@
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
-/// Get font setting.
-pub fn font() -> TextStyle<'static> {
+#[inline]
+fn font() -> TextStyle<'static> {
     ("Times New Roman", 24).into_font().color(&BLACK)
 }
 
 /// Plot the synthesis history.
-pub fn plot_history<B>(backend: B, history: &[f64], fitness: f64) -> anyhow::Result<()>
+pub fn history<B>(backend: B, history: &[f64], fitness: f64) -> anyhow::Result<()>
 where
     B: DrawingBackend,
     B::ErrorType: 'static,
@@ -42,7 +42,7 @@ where
 }
 
 /// Plot 2D curve.
-pub fn plot_curve<B>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])]) -> anyhow::Result<()>
+pub fn curve<B>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])]) -> anyhow::Result<()>
 where
     B: DrawingBackend,
     B::ErrorType: 'static,

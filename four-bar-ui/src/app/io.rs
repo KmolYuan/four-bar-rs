@@ -1,5 +1,5 @@
 use self::impl_io::*;
-use crate::dump_csv;
+use super::csv::dump_csv;
 use four_bar::FourBar;
 
 #[macro_export]
