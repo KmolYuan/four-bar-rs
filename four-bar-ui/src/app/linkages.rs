@@ -62,6 +62,7 @@ impl Linkages {
         self.projects.current_curve(self.config.res)
     }
 
+    #[allow(unused)]
     pub fn queue(&self) -> Queue {
         self.projects.queue()
     }

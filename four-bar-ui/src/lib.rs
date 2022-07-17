@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 pub use crate::{
-    app::{sha512, App, LoginInfo},
+    app::App,
     csv_io::{dump_csv, parse_csv},
 };
 #[cfg(target_arch = "wasm32")]

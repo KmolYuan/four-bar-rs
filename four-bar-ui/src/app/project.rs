@@ -1,5 +1,5 @@
 use super::{
-    io_ctx::Ctx,
+    io,
     widgets::{angle, link, unit},
 };
 use crate::{as_values::as_values, dump_csv, ext};
@@ -176,7 +176,7 @@ impl ProjInner {
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 if ui.button("💾 Save Curve").clicked() {
-                    Ctx::save_csv_ask(&get_curve(pivot));
+                    io::save_csv_ask(&get_curve(pivot));
                 }
                 ComboBox::from_label("")
                     .selected_text(pivot.name())
@@ -375,13 +375,13 @@ impl Project {
     fn save(&self) {
         let proj = self.0.read().unwrap();
         if let ProjName::Path(path) = &proj.path {
-            Ctx::save_ron(&proj.four_bar, path);
+            io::save_ron(&proj.four_bar, path);
         } else {
             let name = proj.path.name();
             let four_bar = proj.four_bar.clone();
             drop(proj);
             let proj_cloned = self.clone();
-            Ctx::save_ron_ask(&four_bar, &name, move |path| proj_cloned.set_path(path));
+            io::save_ron_ask(&four_bar, &name, move |path| proj_cloned.set_path(path));
         }
     }
 
@@ -508,7 +508,7 @@ impl Projects {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
-                Ctx::open_ron(move |path, s| {
+                io::open_ron(move |path, s| {
                     if let Ok(fb) = ron::from_str(&s) {
                         queue.push(Some(path), fb);
                     }

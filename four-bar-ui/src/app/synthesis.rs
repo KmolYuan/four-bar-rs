@@ -1,4 +1,4 @@
-use super::{linkages::Linkages, project::Queue, remote::Remote, widgets::unit, Ctx};
+use super::{io, linkages::Linkages, widgets::unit};
 use crate::{as_values::as_values, dump_csv, parse_csv};
 use eframe::egui::*;
 use four_bar::{curve, syn::Mode};
@@ -77,7 +77,6 @@ pub struct Synthesis {
     tasks: Vec<Task>,
     csv_open: bool,
     conv_open: bool,
-    remote: Remote,
     target_name: String,
     targets: HashMap<String, Vec<[f64; 2]>>,
 }
@@ -191,7 +190,7 @@ struct Task {
 }
 
 impl Synthesis {
-    pub fn show(&mut self, ui: &mut Ui, ctx: &Ctx, linkage: &mut Linkages) {
+    pub fn show(&mut self, ui: &mut Ui, linkage: &mut Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.config);
@@ -270,7 +269,6 @@ impl Synthesis {
                 ui.add(ProgressBar::new(0.).show_percentage());
             });
         });
-        ui.group(|ui| self.remote.show(ui, ctx));
         ui.group(|ui| {
             ui.heading("Projects");
             ui.label("Results from the coupler trajectories.");
@@ -333,7 +331,7 @@ impl Synthesis {
                 ui.horizontal(|ui| {
                     if ui.button("🖴 Open Curves").clicked() {
                         let curve_csv = curve_str.clone();
-                        Ctx::open_csv_single(move |_, s| *curve_csv.write().unwrap() = s);
+                        io::open_csv_single(move |_, s| *curve_csv.write().unwrap() = s);
                     }
                     if ui.button("🗑 Clear").clicked() {
                         curve_str.write().unwrap().clear();
@@ -352,7 +350,7 @@ impl Synthesis {
                             *curve_str.write().unwrap() = dump_csv(curve).unwrap();
                         }
                         if ui.button("💾 Export CSV").clicked() {
-                            Ctx::save_csv_ask(curve);
+                            io::save_csv_ask(curve);
                         }
                         !ui.button("🗑").clicked()
                     })
@@ -402,7 +400,7 @@ impl Synthesis {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn native_syn(&mut self, queue: Queue) {
+    fn native_syn(&mut self, queue: super::project::Queue) {
         use four_bar::mh::{methods::*, rayon::spawn};
         let config = self.config.syn.clone();
         let task = Task {

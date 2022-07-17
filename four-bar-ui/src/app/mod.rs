@@ -1,13 +1,11 @@
-pub use self::remote::{sha512, LoginInfo};
-use self::{io_ctx::*, linkages::*, synthesis::*, widgets::*};
+use self::{linkages::*, synthesis::*, widgets::*};
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-mod io_ctx;
+mod io;
 mod linkages;
 mod project;
-mod remote;
 mod synthesis;
 mod widgets;
 
@@ -38,7 +36,6 @@ pub struct App {
     welcome_off: bool,
     panel: Panel,
     started: bool,
-    ctx: Ctx,
     linkage: Linkages,
     synthesis: Synthesis,
 }
@@ -135,9 +132,9 @@ impl eframe::App for App {
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         match self.panel {
             Panel::Linkages => Self::side_panel(ctx, |ui| self.linkage.show(ui)),
-            Panel::Synthesis => Self::side_panel(ctx, |ui| {
-                self.synthesis.show(ui, &self.ctx, &mut self.linkage)
-            }),
+            Panel::Synthesis => {
+                Self::side_panel(ctx, |ui| self.synthesis.show(ui, &mut self.linkage))
+            }
             Panel::Monitor => Self::side_panel(ctx, |ui| {
                 ui.heading("Renderer Monitor");
                 ctx.memory_ui(ui);

@@ -15,7 +15,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 eframe = { version = "0.18", default-features = false, features = ["persistence", "dark-light"] }
-four-bar = { version = "2", path = "../four-bar", features = ["serde"] }
+four-bar = { version = "2", path = "../four-bar", features = ["serde", "plot"] }
 serde = { version = "1", features = ["derive"] }
 hmac-sha512 = "1"
 ron = "0.7"
@@ -23,15 +23,8 @@ csv = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
-ureq = { version = "2", features = ["cookies"] }
 clap = { version = "3", features = ["derive"] }
-actix-web = "4"
-actix-identity = "0.4"
-actix-files = "0.6"
-webbrowser = "0.7"
-temp-dir = "0.1"
 image = "0.24"
-zip = "0.6"
 rfd = "0.9"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
