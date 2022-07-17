@@ -19,20 +19,6 @@ window.save_file = (s, path) => {
     a.href = URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
     a.click();
 };
-window.get_host = () => location.href;
-window.get_username = () => ("; " + document.cookie).split("; username=").pop().split(";").shift();
-window.login = (account, body, done) =>
-    fetch(location.href + "login/" + account, {
-        method: "POST",
-        body: body,
-        headers: {"content-type": "application/json"},
-        mode: "cors",
-    }).then(res => done(res.ok));
-window.logout = done =>
-    fetch(location.href + "logout", {
-        method: "POST",
-        mode: "cors",
-    }).then(res => done(res.ok));
 
 // Startup WebAssembly
 wasm.default().then(() => {
