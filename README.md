@@ -27,7 +27,8 @@ Native GUI is the default startup behaviour, use `--help` option to see more com
 ```bash
 # Equivalent to double-clicking the executable
 four-bar
-four-bar ui
+# Equivalent to opening by the app or file dragging
+four-bar FILE_PATH1 FILE_PATH2
 ```
 
 ## Native Build
@@ -41,29 +42,22 @@ sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbc
 Then run with cargo directly:
 
 ```bash
+cargo run
+# CLI Mode
 cargo run -- --help
 ```
 
-## Serving WebAssembly Client in Localhost
-
-### From Releases
-
-The default port is 8080.
-
-```bash
-four-bar serve --port PORT
-```
-
-A security connection (https) can be built with encryption program like [Stunnel](https://www.stunnel.org/).
-
-### From Repository
+## WebAssembly Build
 
 Run those scripts from the repository:
 
 ```bash
 ./setup_web.sh
 ./build_web.sh
-cargo run -- serve --port PORT
+# Start local server at 127.0.0.1:8080
+./start_web.sh
 ```
 
-The client-side application is deployed in the `docs` directory (entire files).
+The application is deployed in the `docs` directory (entire files).
+
+Windows platform also has the `*.bat` files corresponding to the same names.
