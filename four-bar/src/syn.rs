@@ -3,7 +3,7 @@
 //! ```
 //! use four_bar::{
 //!     mh::{Rga, Solver},
-//!     syn::{Mode, Task},
+//!     syn::{Mode, PathSyn},
 //! };
 //!
 //! # let curve = [[0., 0.], [1., 0.]];
@@ -13,7 +13,7 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(Task::new(&curve, 720, None, Mode::Close));
+//!     .solve(PathSyn::new(&curve, 720, None, Mode::Close));
 //! let result = s.result();
 //! ```
 use crate::{curve, efd::Efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
@@ -43,8 +43,8 @@ impl Mode {
     }
 }
 
-/// Synthesis task of planar four-bar linkage.
-pub struct Task {
+/// Path generation task of planar four-bar linkage.
+pub struct PathSyn {
     /// Target curve
     pub curve: Vec<[f64; 2]>,
     /// Target coefficient
@@ -56,7 +56,7 @@ pub struct Task {
     mode: Mode,
 }
 
-impl Task {
+impl PathSyn {
     /// Create a new task.
     ///
     /// Panic if target curve is not long enough,
@@ -152,7 +152,7 @@ impl Task {
     }
 }
 
-impl ObjFunc for Task {
+impl ObjFunc for PathSyn {
     type Result = FourBar;
     type Fitness = f64;
 

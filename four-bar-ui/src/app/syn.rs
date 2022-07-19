@@ -50,7 +50,7 @@ fn ron_pretty(s: impl Serialize) -> String {
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
     S: four_bar::mh::Setting,
-    S::Algorithm: four_bar::mh::Algorithm<four_bar::syn::Task>,
+    S::Algorithm: four_bar::mh::Algorithm<four_bar::syn::PathSyn>,
 {
     use std::time::Instant;
     let start_time = Instant::now();
@@ -63,7 +63,7 @@ where
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
         })
-        .solve(four_bar::syn::Task::new(
+        .solve(four_bar::syn::PathSyn::new(
             &config.target,
             720,
             None,
