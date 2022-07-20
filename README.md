@@ -6,7 +6,7 @@
 Four🍀bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
 + GUI program is called `four-bar-ui`, but the runtime is called `four-bar`.
-+ Kernel library `four-bar` is on crates-io.
++ Kernel library `four-bar` is on <https://crates.io>.
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>
 
@@ -18,7 +18,7 @@ Powered by <https://github.com/emilk/egui>.
 
 In Linux, `libxcb` and `libgtk-3` are required. (most desktops are already provided)
 
-In Windows, [the support of Visual C++](https://docs.microsoft.com/zh-TW/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
+In Windows, since the builds are set in Visual Studio, the [support of Visual C++](https://docs.microsoft.com/zh-TW/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
 
 Download: <https://github.com/KmolYuan/four-bar-rs/releases/latest>
 
