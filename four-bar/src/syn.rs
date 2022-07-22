@@ -94,6 +94,7 @@ impl PathSyn {
 
     fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
         // Only parallelize here!!
+        #[cfg(feature = "rayon")]
         use crate::mh::rayon::prelude::*;
         const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
         let norm = NormFourBar::from(xs);
@@ -117,33 +118,42 @@ impl PathSyn {
         };
         let f = |[t1, t2]: [f64; 2]| {
             let norm = &norm;
-            [false, true]
-                .into_par_iter()
-                .map(move |inv| {
-                    let norm = norm.with_inv(inv);
-                    let m = Mechanism::new(&norm);
-                    let curve = curve::get_valid_part(&m.par_curve(t1, t2, self.n));
-                    (curve, norm)
-                })
-                .filter(|(curve, _)| curve.len() > 2)
-                .map(|(curve, norm)| {
-                    let efd = Efd::from_curve(&close_f(curve), Some(self.efd.harmonic()));
-                    let four_bar = FourBar::from_transform(norm, efd.to(&self.efd));
-                    let fitness = efd.manhattan(&self.efd);
-                    (fitness, four_bar)
-                })
+            #[cfg(feature = "rayon")]
+            let iter = [false, true].into_par_iter();
+            #[cfg(not(feature = "rayon"))]
+            let iter = [false, true].into_iter();
+            iter.map(move |inv| {
+                let norm = norm.with_inv(inv);
+                let m = Mechanism::new(&norm);
+                #[cfg(feature = "rayon")]
+                let curve = m.par_curve(t1, t2, self.n);
+                #[cfg(not(feature = "rayon"))]
+                let curve = m.curve(t1, t2, self.n);
+                (curve::get_valid_part(&curve), norm)
+            })
+            .filter(|(curve, _)| curve.len() > 2)
+            .map(|(curve, norm)| {
+                let efd = Efd::from_curve(&close_f(curve), Some(self.efd.harmonic()));
+                let four_bar = FourBar::from_transform(norm, efd.to(&self.efd));
+                let fitness = efd.manhattan(&self.efd);
+                (fitness, four_bar)
+            })
         };
         match self.mode {
             Mode::Close => f([0., TAU])
                 .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
                 .unwrap_or(INFEASIBLE),
-            Mode::Partial => [[xs[5], xs[6]], [xs[6], xs[5]]]
-                .into_par_iter()
-                .map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
-                .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
-                .flat_map(f)
-                .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                .unwrap_or(INFEASIBLE),
+            Mode::Partial => {
+                #[cfg(feature = "rayon")]
+                let iter = [[xs[5], xs[6]], [xs[6], xs[5]]].into_par_iter();
+                #[cfg(not(feature = "rayon"))]
+                let iter = [[xs[5], xs[6]], [xs[6], xs[5]]].into_iter();
+                iter.map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
+                    .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
+                    .flat_map(f)
+                    .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                    .unwrap_or(INFEASIBLE)
+            }
             Mode::Open => norm
                 .angle_bound()
                 .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))

@@ -78,6 +78,7 @@ impl<L: Linkage> Mechanism<L> {
     }
 
     /// Get the trajectory by parallel computing.
+    #[cfg(feature = "rayon")]
     pub fn par_curve(&self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
         use crate::mh::rayon::prelude::*;
         let interval = (end - start) / n as f64;

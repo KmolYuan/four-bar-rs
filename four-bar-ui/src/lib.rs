@@ -9,5 +9,6 @@ mod app;
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub fn start(id: &str) -> Result<(), JsValue> {
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     eframe::start_web(id, Box::new(|ctx| App::new(ctx, Vec::new())))
 }

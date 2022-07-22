@@ -46,12 +46,14 @@ fn ron_pretty(s: impl Serialize) -> String {
     ron::ser::to_string_pretty(&s, Default::default()).unwrap()
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
     S: four_bar::mh::Setting,
     S::Algorithm: four_bar::mh::Algorithm<four_bar::syn::PathSyn>,
 {
+    #[cfg(target_arch = "wasm32")]
+    use instant::Instant;
+    #[cfg(not(target_arch = "wasm32"))]
     use std::time::Instant;
     let start_time = Instant::now();
     four_bar::mh::Solver::build(setting)
@@ -245,14 +247,11 @@ impl Synthesis {
                 keep
             });
             ui.horizontal(|ui| {
-                #[cfg(target_arch = "wasm32")]
-                let _ = ui.add_enabled(false, Button::new("▶ Start"));
-                #[cfg(not(target_arch = "wasm32"))]
                 if ui
                     .add_enabled(error.is_empty(), Button::new("▶ Start"))
                     .clicked()
                 {
-                    self.native_syn(linkage.queue());
+                    self.start_syn(linkage.queue());
                 }
                 ui.add(ProgressBar::new(0.).show_percentage());
             });
@@ -390,9 +389,12 @@ impl Synthesis {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn native_syn(&mut self, queue: super::proj::Queue) {
-        use four_bar::mh::{methods::*, rayon::spawn};
+    fn start_syn(&mut self, queue: super::proj::Queue) {
+        use four_bar::mh::methods::*;
+        #[cfg(not(target_arch = "wasm32"))]
+        use four_bar::mh::rayon::spawn;
+        #[cfg(target_arch = "wasm32")]
+        use wasm_bindgen_futures::spawn_local;
         let config = self.config.syn.clone();
         let task = Task {
             total_gen: config.gen,
@@ -400,7 +402,7 @@ impl Synthesis {
             ..Task::default()
         };
         self.tasks.push(task.clone());
-        spawn(move || {
+        let f = move || {
             let four_bar = match config.method {
                 Method::De => solve(&task, config, De::default()),
                 Method::Fa => solve(&task, config, Fa::default()),
@@ -410,6 +412,14 @@ impl Synthesis {
             };
             queue.push(None, four_bar);
             task.start.store(false, Ordering::Relaxed);
-        });
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            spawn(f);
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            spawn_local(async { f() });
+        }
     }
 }
