@@ -124,6 +124,7 @@ struct Angles {
     omega2: f64,
     alpha2: f64,
     open: bool,
+    use_rad: bool,
 }
 
 #[allow(dead_code)]
@@ -132,12 +133,12 @@ struct Cache {
     changed: bool,
     joints: [[f64; 2]; 5],
     curves: [Vec<[f64; 2]>; 3],
-    theta3: Vec<plot::Value>,
-    theta4: Vec<plot::Value>,
-    omega3: Vec<plot::Value>,
-    omega4: Vec<plot::Value>,
-    alpha3: Vec<plot::Value>,
-    alpha4: Vec<plot::Value>,
+    theta3: Vec<[f64; 2]>,
+    theta4: Vec<[f64; 2]>,
+    omega3: Vec<[f64; 2]>,
+    omega4: Vec<[f64; 2]>,
+    alpha3: Vec<[f64; 2]>,
+    alpha4: Vec<[f64; 2]>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -283,25 +284,50 @@ impl ProjInner {
         } else {
             Default::default()
         };
-        let step = 360. / n as f64;
+        let step = TAU / n as f64;
         self.cache.theta3 = self.cache.curves[0]
             .iter()
             .zip(&self.cache.curves[1])
             .enumerate()
-            .map(|(i, ([x1, y1], [x2, y2]))| {
-                plot::Value::new(i as f64 * step, (y1 - y2).atan2(x1 - x2).to_degrees())
-            })
+            .map(|(i, ([x1, y1], [x2, y2]))| [i as f64 * step, (y1 - y2).atan2(x1 - x2)])
             .collect();
         self.cache.theta4 = self.cache.curves[1]
             .iter()
             .enumerate()
-            .map(|(i, [x, y])| {
-                let y = (y - self.cache.joints[1][1])
-                    .atan2(x - self.cache.joints[1][0])
-                    .to_degrees();
-                plot::Value::new(i as f64 * step, y)
+            .map(|(i, [x1, y1])| {
+                let [x2, y2] = self.cache.joints[1];
+                [i as f64 * step, (y1 - y2).atan2(x1 - x2)]
             })
             .collect();
+    }
+
+    fn dynamics(&mut self, ui: &mut Ui) {
+        Window::new("⚽ Dynamics")
+            .open(&mut self.angles.open)
+            .show(ui.ctx(), |ui| {
+                ui.checkbox(&mut self.angles.use_rad, "Use radians");
+                let mut plot = |id: &str, title: &str, values: &[[f64; 2]]| {
+                    ui.heading(title);
+                    let values = if self.angles.use_rad {
+                        let iter = values.iter().map(|&[x, y]| plot::Value::new(x, y));
+                        plot::Values::from_values_iter(iter)
+                    } else {
+                        let iter = values
+                            .iter()
+                            .map(|[x, y]| plot::Value::new(x.to_degrees(), y.to_degrees()));
+                        plot::Values::from_values_iter(iter)
+                    };
+                    let line = plot::Line::new(values).color(Color32::BLUE);
+                    plot::Plot::new(id)
+                        .allow_drag(false)
+                        .allow_zoom(false)
+                        .allow_scroll(false)
+                        .height(200.)
+                        .show(ui, |ui| ui.line(line));
+                };
+                plot("plot_theta3", "Theta3", &self.cache.theta3);
+                plot("plot_theta4", "Theta4", &self.cache.theta4);
+            });
     }
 
     fn plot(&mut self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
@@ -421,27 +447,7 @@ impl Project {
     }
 
     fn dynamics(&self, ui: &mut Ui) {
-        fn plot(ui: &mut Ui, id: &str, title: &str, values: plot::Values) {
-            let line = plot::Line::new(values).color(Color32::BLUE);
-            ui.vertical(|ui| {
-                ui.heading(title);
-                plot::Plot::new(id)
-                    .allow_drag(false)
-                    .allow_zoom(false)
-                    .allow_scroll(false)
-                    .height(200.)
-                    .show(ui, |ui| ui.line(line));
-            });
-        }
-        let mut proj = self.0.write().unwrap();
-        let theta3 = plot::Values::from_values(proj.cache.theta3.clone());
-        let theta4 = plot::Values::from_values(proj.cache.theta4.clone());
-        Window::new("⚽ Dynamics")
-            .open(&mut proj.angles.open)
-            .show(ui.ctx(), |ui| {
-                plot(ui, "plot_theta3", "Theta3", theta3);
-                plot(ui, "plot_theta4", "Theta4", theta4);
-            });
+        self.0.write().unwrap().dynamics(ui);
     }
 
     fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
