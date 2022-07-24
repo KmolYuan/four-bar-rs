@@ -62,6 +62,21 @@ fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
     }
 }
 
+fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], title: &str, use_rad: bool) {
+    for i in 0..=2 {
+        let values = if use_rad {
+            let iter = values.iter().map(|(x, y)| plot::Value::new(*x, y[i]));
+            plot::Values::from_values_iter(iter)
+        } else {
+            let iter = values
+                .iter()
+                .map(|(x, y)| plot::Value::new(x.to_degrees(), y[i].to_degrees()));
+            plot::Values::from_values_iter(iter)
+        };
+        ui.line(plot::Line::new(values).name(format!("{}{}", title, i + 2)));
+    }
+}
+
 #[derive(Deserialize, Serialize, PartialEq)]
 pub enum Pivot {
     Driver,
@@ -123,8 +138,6 @@ struct Angles {
     theta2: f64,
     omega2: f64,
     alpha2: f64,
-    open: bool,
-    use_rad: bool,
 }
 
 #[allow(dead_code)]
@@ -132,22 +145,19 @@ struct Angles {
 struct Cache {
     changed: bool,
     joints: [[f64; 2]; 5],
-    curves: [Vec<[f64; 2]>; 3],
-    theta3: Vec<[f64; 2]>,
-    theta4: Vec<[f64; 2]>,
-    omega3: Vec<[f64; 2]>,
-    omega4: Vec<[f64; 2]>,
-    alpha3: Vec<[f64; 2]>,
-    alpha4: Vec<[f64; 2]>,
+    curves: Vec<[[f64; 2]; 3]>,
+    dynamics: Vec<(f64, [[f64; 3]; 3])>,
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 struct ProjInner {
     path: ProjName,
-    four_bar: FourBar,
+    fb: FourBar,
     angles: Angles,
     hide: bool,
+    angle_open: bool,
+    angle_use_rad: bool,
     #[serde(skip)]
     cache: Cache,
 }
@@ -156,9 +166,11 @@ impl Default for ProjInner {
     fn default() -> Self {
         Self {
             path: Default::default(),
-            four_bar: FourBar::example(),
+            fb: FourBar::example(),
             angles: Default::default(),
             hide: false,
+            angle_open: false,
+            angle_use_rad: false,
             cache: Cache { changed: true, ..Cache::default() },
         }
     }
@@ -166,14 +178,14 @@ impl Default for ProjInner {
 
 impl ProjInner {
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
-        let fb = &mut self.four_bar;
+        let fb = &mut self.fb;
         let get_curve = |pivot: &Pivot| {
             let m = Mechanism::new(fb);
-            let [curve1, curve2, curve3] = m.curve_all(0., TAU, n);
+            let curve = m.curve_all(0., TAU, n);
             curve::get_valid_part(&match pivot {
-                Pivot::Driver => curve1,
-                Pivot::Follower => curve2,
-                Pivot::Coupler => curve3,
+                Pivot::Driver => curve.into_iter().map(|[c, _, _]| c).collect::<Vec<_>>(),
+                Pivot::Follower => curve.into_iter().map(|[_, c, _]| c).collect::<Vec<_>>(),
+                Pivot::Coupler => curve.into_iter().map(|[_, _, c]| c).collect::<Vec<_>>(),
             })
         };
         ui.group(|ui| {
@@ -239,7 +251,7 @@ impl ProjInner {
                     self.cache.changed = true;
                 }
             });
-            if let Some([s, e]) = self.four_bar.angle_bound() {
+            if let Some([s, e]) = self.fb.angle_bound() {
                 ui.group(|ui| {
                     ui.label("Click to copy angle bounds:");
                     let mut copy_btn = |s: f64, e: f64, suffix: &str| {
@@ -264,69 +276,87 @@ impl ProjInner {
                 | angle(ui, "Alpha: ", &mut self.angles.alpha2, "/s²");
             self.cache.changed |= res.changed();
             if ui.button("⚽ Dynamics").clicked() {
-                self.angles.open = !self.angles.open;
+                self.angle_open = !self.angle_open;
             }
         });
-        if self.angles.omega2 != 0. {
-            self.angles.theta2 += self.angles.omega2 / 60.;
-            self.cache.changed = true;
-            ui.ctx().request_repaint();
-        }
     }
 
     fn cache(&mut self, n: usize) {
         // Recalculation
         self.cache.changed = false;
-        let m = Mechanism::new(&self.four_bar);
+        let m = Mechanism::new(&self.fb);
         m.apply(self.angles.theta2, [0, 1, 2, 3, 4], &mut self.cache.joints);
-        self.cache.curves = if let Some([start, _]) = self.four_bar.angle_bound() {
+        self.cache.curves = if let Some([start, _]) = self.fb.angle_bound() {
             m.curve_all(start, start + TAU, n)
         } else {
             Default::default()
         };
         let step = TAU / n as f64;
-        self.cache.theta3 = self.cache.curves[0]
-            .iter()
-            .zip(&self.cache.curves[1])
-            .enumerate()
-            .map(|(i, ([x1, y1], [x2, y2]))| [i as f64 * step, (y1 - y2).atan2(x1 - x2)])
-            .collect();
-        self.cache.theta4 = self.cache.curves[1]
+        self.cache.dynamics = self
+            .cache
+            .curves
             .iter()
             .enumerate()
-            .map(|(i, [x1, y1])| {
-                let [x2, y2] = self.cache.joints[1];
-                [i as f64 * step, (y1 - y2).atan2(x1 - x2)]
+            .map(|(i, [[x2, y2], [x3, y3], _])| {
+                let [x0, y0] = self.cache.joints[0];
+                let [x1, y1] = self.cache.joints[1];
+                let theta2 = (y2 - y0).atan2(x2 - x0);
+                let theta3 = (y3 - y2).atan2(x3 - x2);
+                let theta4 = (y3 - y1).atan2(x3 - x1);
+                let theta = [theta2, theta3, theta4];
+                let omega2 = self.angles.omega2;
+                let omega3 = -omega2 * self.fb.l1() * (theta4 - theta2).sin()
+                    / (self.fb.l2() * (theta4 - theta3).sin() + f64::EPSILON);
+                let omega4 = omega2 * self.fb.l1() * (theta3 - theta2).sin()
+                    / (self.fb.l3() * (theta3 - theta4).sin() + f64::EPSILON);
+                let omega = [omega2, omega3, omega4];
+                let alpha2 = self.angles.alpha2;
+                let alpha3 = (-self.fb.l1() * alpha2 * (theta4 - theta2).sin()
+                    + self.fb.l1() * omega2 * omega2 * (theta4 - theta2).cos()
+                    + self.fb.l2() * omega3 * omega3 * (theta4 - theta3).cos()
+                    - self.fb.l3() * omega4 * omega4)
+                    / self.fb.l2()
+                    * (theta4 - theta3).sin();
+                let alpha4 = (self.fb.l1() * alpha2 * (theta3 - theta2).sin()
+                    - self.fb.l1() * omega2 * omega2 * (theta3 - theta2).cos()
+                    + self.fb.l3() * omega4 * omega4 * (theta3 - theta4).cos()
+                    - self.fb.l2() * omega3 * omega3)
+                    / self.fb.l3()
+                    * (theta3 - theta4).sin();
+                let alpha = [alpha2, alpha3, alpha4];
+                (i as f64 * step, [theta, omega, alpha])
             })
             .collect();
     }
 
     fn dynamics(&mut self, ui: &mut Ui) {
         Window::new("⚽ Dynamics")
-            .open(&mut self.angles.open)
+            .open(&mut self.angle_open)
             .show(ui.ctx(), |ui| {
-                ui.checkbox(&mut self.angles.use_rad, "Use radians");
-                let mut plot = |id: &str, title: &str, values: &[[f64; 2]]| {
+                ui.checkbox(&mut self.angle_use_rad, "Use radians");
+                for (i, (id, title)) in [
+                    ("plot_theta", "theta"),
+                    ("plot_omega", "omega"),
+                    ("plot_alpha", "alpha"),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    let values = self
+                        .cache
+                        .dynamics
+                        .iter()
+                        .map(|(x, t)| (*x, t[i]))
+                        .collect::<Vec<_>>();
                     ui.heading(title);
-                    let values = if self.angles.use_rad {
-                        let iter = values.iter().map(|&[x, y]| plot::Value::new(x, y));
-                        plot::Values::from_values_iter(iter)
-                    } else {
-                        let iter = values
-                            .iter()
-                            .map(|[x, y]| plot::Value::new(x.to_degrees(), y.to_degrees()));
-                        plot::Values::from_values_iter(iter)
-                    };
-                    let line = plot::Line::new(values).color(Color32::BLUE);
                     plot::Plot::new(id)
                         .allow_drag(false)
                         .allow_zoom(false)
                         .allow_scroll(false)
+                        .legend(Default::default())
                         .height(200.)
-                        .show(ui, |ui| ui.line(line));
-                };
-                plot("plot_theta3", "Theta3", &self.cache.theta3);
-                plot("plot_theta4", "Theta4", &self.cache.theta4);
+                        .show(ui, |ui| plot_values(ui, &values, title, self.angle_use_rad));
+                }
             });
     }
 
@@ -350,9 +380,17 @@ impl ProjInner {
             .color(JOINT_COLOR);
         ui.points(float_j);
         ui.points(fixed_j);
-        const NAMES: &[&str] = &["Crank pivot", "Follower pivot", "Coupler pivot"];
-        for (path, name) in self.cache.curves.iter().zip(NAMES) {
-            let line = plot::Line::new(as_values(path))
+        for (i, name) in ["Crank pivot", "Follower pivot", "Coupler pivot"]
+            .into_iter()
+            .enumerate()
+        {
+            let iter = self
+                .cache
+                .curves
+                .iter()
+                .map(|c| c[i])
+                .map(|[x, y]| plot::Value::new(x, y));
+            let line = plot::Line::new(plot::Values::from_values_iter(iter))
                 .name(format!("{}:{}", name, i))
                 .width(3.);
             ui.line(line);
@@ -364,10 +402,10 @@ impl ProjInner {
 pub struct Project(Arc<RwLock<ProjInner>>);
 
 impl Project {
-    fn new(path: Option<String>, four_bar: FourBar) -> Self {
+    fn new(path: Option<String>, fb: FourBar) -> Self {
         let inner = ProjInner {
             path: ProjName::from(path),
-            four_bar,
+            fb,
             ..Default::default()
         };
         Self(Arc::new(RwLock::new(inner)))
@@ -387,8 +425,8 @@ impl Project {
     fn reload(&self) {
         let mut proj = self.0.write().unwrap();
         if let ProjName::Path(path) = &proj.path {
-            if let Some(four_bar) = open(path) {
-                proj.four_bar = four_bar;
+            if let Some(fb) = open(path) {
+                proj.fb = fb;
             } else {
                 proj.path = ProjName::Named(path.clone());
             }
@@ -402,13 +440,13 @@ impl Project {
     fn save(&self) {
         let proj = self.0.read().unwrap();
         if let ProjName::Path(path) = &proj.path {
-            io::save_ron(&proj.four_bar, path);
+            io::save_ron(&proj.fb, path);
         } else {
             let name = proj.path.name();
-            let four_bar = proj.four_bar.clone();
+            let fb = proj.fb.clone();
             drop(proj);
             let proj_cloned = self.clone();
-            io::save_ron_ask(&four_bar, &name, move |path| proj_cloned.set_path(path));
+            io::save_ron_ask(&fb, &name, move |path| proj_cloned.set_path(path));
         }
     }
 
@@ -441,7 +479,7 @@ impl Project {
             }
         });
         ui.label("Linkage type:");
-        ui.label(proj.four_bar.ty().name());
+        ui.label(proj.fb.ty().name());
         ui.checkbox(&mut proj.hide, "Hide 👁");
         ui.add_enabled_ui(!proj.hide, |ui| proj.ui(ui, pivot, interval, n));
     }
@@ -459,8 +497,8 @@ impl Project {
 pub struct Queue(Arc<RwLock<Vec<Project>>>);
 
 impl Queue {
-    pub fn push(&self, path: Option<String>, four_bar: FourBar) {
-        self.0.write().unwrap().push(Project::new(path, four_bar));
+    pub fn push(&self, path: Option<String>, fb: FourBar) {
+        self.0.write().unwrap().push(Project::new(path, fb));
     }
 }
 
@@ -474,7 +512,7 @@ pub struct Projects {
 }
 
 impl Projects {
-    pub fn push(&mut self, path: Option<String>, four_bar: FourBar) {
+    pub fn push(&mut self, path: Option<String>, fb: FourBar) {
         // Prevent opening duplicate project
         if match &path {
             None => true,
@@ -483,7 +521,7 @@ impl Projects {
                 None => false,
             }),
         } {
-            self.list.push(Project::new(path, four_bar));
+            self.list.push(Project::new(path, fb));
             self.current = self.len() - 1;
         }
     }
@@ -495,8 +533,8 @@ impl Projects {
 
     pub fn open(&mut self, file: impl AsRef<Path>) {
         let path = file.as_ref().to_str().unwrap().to_string();
-        if let Some(four_bar) = open(file) {
-            self.push(Some(path), four_bar);
+        if let Some(fb) = open(file) {
+            self.push(Some(path), fb);
             self.current = self.len() - 1;
         }
     }
@@ -560,7 +598,7 @@ impl Projects {
 
     pub fn current_curve(&self, n: usize) -> Vec<[f64; 2]> {
         let proj = self.list[self.current].0.read().unwrap();
-        curve::get_valid_part(&Mechanism::new(&proj.four_bar).curve(0., TAU, n))
+        curve::get_valid_part(&Mechanism::new(&proj.fb).curve(0., TAU, n))
     }
 
     pub fn plot(&mut self, ui: &mut plot::PlotUi, n: usize) {

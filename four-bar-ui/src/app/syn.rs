@@ -394,7 +394,7 @@ impl Synthesis {
         #[cfg(not(target_arch = "wasm32"))]
         use four_bar::mh::rayon::spawn;
         #[cfg(target_arch = "wasm32")]
-        use wasm_bindgen_futures::spawn_local;
+        use wasm_bindgen_futures::spawn_local as spawn;
         let config = self.config.syn.clone();
         let task = Task {
             total_gen: config.gen,
@@ -403,23 +403,18 @@ impl Synthesis {
         };
         self.tasks.push(task.clone());
         let f = move || {
-            let four_bar = match config.method {
+            let fb = match config.method {
                 Method::De => solve(&task, config, De::default()),
                 Method::Fa => solve(&task, config, Fa::default()),
                 Method::Pso => solve(&task, config, Pso::<f64>::default()),
                 Method::Rga => solve(&task, config, Rga::<f64>::default()),
                 Method::Tlbo => solve(&task, config, Tlbo::default()),
             };
-            queue.push(None, four_bar);
+            queue.push(None, fb);
             task.start.store(false, Ordering::Relaxed);
         };
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            spawn(f);
-        }
         #[cfg(target_arch = "wasm32")]
-        {
-            spawn_local(async { f() });
-        }
+        let f = async { f() };
+        spawn(f);
     }
 }

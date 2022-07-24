@@ -126,15 +126,15 @@ where
     save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ())
 }
 
-pub fn save_ron_ask<C>(four_bar: &FourBar, name: &str, done: C)
+pub fn save_ron_ask<C>(fb: &FourBar, name: &str, done: C)
 where
     C: FnOnce(String) + 'static,
 {
-    save_ask(&ron::to_string(four_bar).unwrap(), name, FMT, EXT, done)
+    save_ask(&ron::to_string(fb).unwrap(), name, FMT, EXT, done)
 }
 
-pub fn save_ron(four_bar: &FourBar, path: &str) {
-    save(&ron::to_string(four_bar).unwrap(), path)
+pub fn save_ron(fb: &FourBar, path: &str) {
+    save(&ron::to_string(fb).unwrap(), path)
 }
 
 pub fn save_history_ask(history: &[f64], name: &str) {

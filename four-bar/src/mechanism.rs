@@ -64,6 +64,14 @@ impl<L: Linkage> Mechanism<L> {
         Self { joints, fs, _marker: PhantomData }
     }
 
+    /// Calculate the formula, and write the answer into provided array.
+    pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
+        L::apply(self, angle, joint, ans)
+    }
+}
+
+/// Methods for four-bar linkages.
+impl<L: Linkage<Joint = [[f64; 2]; 5]>> Mechanism<L> {
     /// A loop trajectory for only coupler point.
     pub fn curve(&self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
         let interval = (end - start) / n as f64;
@@ -93,23 +101,20 @@ impl<L: Linkage> Mechanism<L> {
             .collect()
     }
 
-    /// A loop trajectory for all moving pivot. (3)
-    pub fn curve_all(&self, start: f64, end: f64, n: usize) -> [Vec<[f64; 2]>; 3] {
+    /// A loop trajectory for all moving pivots. (3)
+    ///
+    /// + (1) Driver
+    /// + (2) Follower
+    /// + (3) Coupler
+    pub fn curve_all(&self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
         let interval = (end - start) / n as f64;
-        let mut path = [vec![[0.; 2]; n], vec![[0.; 2]; n], vec![[0.; 2]; n]];
-        for i in 0..n {
+        let mut path = vec![[[0.; 2]; 3]; n];
+        for (i, path) in path.iter_mut().enumerate() {
             let a = start + i as f64 * interval;
             let mut ans = [[0., 0.]; 3];
             L::apply(self, a, [2, 3, 4], &mut ans);
-            for (path, ans) in path.iter_mut().zip(ans) {
-                path[i] = ans;
-            }
+            *path = ans;
         }
         path
-    }
-
-    /// Calculate the formula, and write the answer into provided array.
-    pub fn apply<const N: usize>(&self, angle: f64, joint: [usize; N], ans: &mut [[f64; 2]; N]) {
-        L::apply(self, angle, joint, ans)
     }
 }

@@ -194,6 +194,13 @@ impl NormFourBar {
         Self { inv, ..*self }
     }
 
+    /// Length of the driver link. (immutable)
+    ///
+    /// Get the value.
+    pub const fn l1(&self) -> f64 {
+        1.
+    }
+
     impl_parm_method! {
         /// Length of the ground link.
         fn l0, l0_mut => 0
