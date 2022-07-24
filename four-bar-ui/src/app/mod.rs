@@ -18,18 +18,12 @@ const FONT: &[(&str, &[u8])] = &[
     ("emoji", include_bytes!("../../assets/emoji-icon-font.ttf")),
 ];
 
-#[derive(Deserialize, Serialize, PartialEq)]
+#[derive(Default, Deserialize, Serialize, PartialEq)]
 enum Panel {
+    #[default]
     Linkages,
     Synthesis,
-    Monitor,
     Off,
-}
-
-impl Default for Panel {
-    fn default() -> Self {
-        Self::Linkages
-    }
 }
 
 /// Main app state.
@@ -37,10 +31,11 @@ impl Default for Panel {
 #[serde(default)]
 pub struct App {
     welcome_off: bool,
-    panel: Panel,
     started: bool,
     linkage: Linkages,
     synthesis: Synthesis,
+    #[serde(skip)]
+    panel: Panel,
 }
 
 impl App {
@@ -100,18 +95,12 @@ impl App {
             .on_hover_text("Linkages");
         ui.selectable_value(&mut self.panel, Panel::Synthesis, "💡")
             .on_hover_text("Synthesis");
-        ui.selectable_value(&mut self.panel, Panel::Monitor, "🖥")
-            .on_hover_text("Renderer Monitor");
         ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
             .on_hover_text("Close Panel");
         ui.with_layout(Layout::right_to_left(), |ui| {
             let style = ui.style().clone();
             if let Some(v) = style.visuals.light_dark_small_toggle_button(ui) {
                 ui.ctx().set_visuals(v);
-            }
-            if ui.small_button("↻").on_hover_text("Reset UI").clicked() {
-                *ui.ctx().memory() = Default::default();
-                ui.ctx().set_style(style);
             }
             url_btn(ui, "⮋", "Release", RELEASE_URL);
             url_btn(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
@@ -138,17 +127,12 @@ impl eframe::App for App {
             Panel::Synthesis => {
                 Self::side_panel(ctx, |ui| self.synthesis.show(ui, &mut self.linkage))
             }
-            Panel::Monitor => Self::side_panel(ctx, |ui| {
-                ui.heading("Renderer Monitor");
-                ctx.memory_ui(ui);
-                ctx.inspection_ui(ui);
-            }),
             Panel::Off => (),
         }
         CentralPanel::default().show(ctx, |ui| {
             plot::Plot::new("canvas")
-                .legend(Default::default())
                 .data_aspect(1.)
+                .legend(Default::default())
                 .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
                 .show(ui, |ui| {
                     self.linkage.plot(ui);

@@ -62,7 +62,7 @@ fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
     }
 }
 
-fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], title: &str, use_rad: bool) {
+fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], symbol: &str, use_rad: bool) {
     for i in 0..=2 {
         let values = if use_rad {
             let iter = values.iter().map(|(x, y)| plot::Value::new(*x, y[i]));
@@ -73,21 +73,16 @@ fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], title: &str, u
                 .map(|(x, y)| plot::Value::new(x.to_degrees(), y[i].to_degrees()));
             plot::Values::from_values_iter(iter)
         };
-        ui.line(plot::Line::new(values).name(format!("{}{}", title, i + 2)));
+        ui.line(plot::Line::new(values).name(format!("{}{}", symbol, i + 2)));
     }
 }
 
-#[derive(Deserialize, Serialize, PartialEq)]
+#[derive(Default, Deserialize, Serialize, PartialEq)]
 pub enum Pivot {
     Driver,
     Follower,
+    #[default]
     Coupler,
-}
-
-impl Default for Pivot {
-    fn default() -> Self {
-        Self::Coupler
-    }
 }
 
 impl Pivot {
@@ -100,17 +95,12 @@ impl Pivot {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Default, Deserialize, Serialize, Clone)]
 enum ProjName {
     Path(String),
     Named(String),
+    #[default]
     Untitled,
-}
-
-impl Default for ProjName {
-    fn default() -> Self {
-        Self::Untitled
-    }
 }
 
 impl ProjName {
@@ -177,6 +167,62 @@ impl Default for ProjInner {
 }
 
 impl ProjInner {
+    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+        ui.horizontal(|ui| match &mut self.path {
+            ProjName::Path(path) => {
+                let filename = filename(path);
+                if ui.small_button("✏").on_hover_text("Rename path").clicked() {
+                    self.path = ProjName::Named(filename);
+                } else {
+                    ui.label(&filename);
+                }
+            }
+            ProjName::Named(name) => {
+                ui.colored_label(Color32::RED, "Unsaved path");
+                ui.text_edit_singleline(name);
+            }
+            ProjName::Untitled => {
+                ui.colored_label(Color32::RED, "Unsaved path");
+                let mut name = "untitled".to_string();
+                if ui.text_edit_singleline(&mut name).changed() {
+                    self.path = ProjName::Named(name);
+                }
+            }
+        });
+        ui.label("Linkage type:");
+        ui.label(self.fb.ty().name());
+        ui.checkbox(&mut self.hide, "Hide 👁");
+        ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot, interval, n));
+        Window::new("⚽ Dynamics")
+            .open(&mut self.angle_open)
+            .vscroll(true)
+            .show(ui.ctx(), |ui| {
+                ui.checkbox(&mut self.angle_use_rad, "Use radians");
+                for (i, (id, symbol, title)) in [
+                    ("plot_theta", "theta", "Angle"),
+                    ("plot_omega", "omega", "Angular Velocity"),
+                    ("plot_alpha", "alpha", "Angular Acceleration"),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    let values = self
+                        .cache
+                        .dynamics
+                        .iter()
+                        .map(|(x, t)| (*x, t[i]))
+                        .collect::<Vec<_>>();
+                    ui.heading(title);
+                    plot::Plot::new(id)
+                        .legend(Default::default())
+                        .height(200.)
+                        .show(ui, |ui| {
+                            plot_values(ui, &values, symbol, self.angle_use_rad)
+                        });
+                }
+            });
+    }
+
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
         let fb = &mut self.fb;
         let get_curve = |pivot: &Pivot| {
@@ -329,37 +375,6 @@ impl ProjInner {
             .collect();
     }
 
-    fn dynamics(&mut self, ui: &mut Ui) {
-        Window::new("⚽ Dynamics")
-            .open(&mut self.angle_open)
-            .show(ui.ctx(), |ui| {
-                ui.checkbox(&mut self.angle_use_rad, "Use radians");
-                for (i, (id, title)) in [
-                    ("plot_theta", "theta"),
-                    ("plot_omega", "omega"),
-                    ("plot_alpha", "alpha"),
-                ]
-                .into_iter()
-                .enumerate()
-                {
-                    let values = self
-                        .cache
-                        .dynamics
-                        .iter()
-                        .map(|(x, t)| (*x, t[i]))
-                        .collect::<Vec<_>>();
-                    ui.heading(title);
-                    plot::Plot::new(id)
-                        .allow_drag(false)
-                        .allow_zoom(false)
-                        .allow_scroll(false)
-                        .legend(Default::default())
-                        .height(200.)
-                        .show(ui, |ui| plot_values(ui, &values, title, self.angle_use_rad));
-                }
-            });
-    }
-
     fn plot(&mut self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
         if self.hide {
             return;
@@ -451,41 +466,7 @@ impl Project {
     }
 
     fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
-        self.show_proj(ui, pivot, interval, n);
-        self.dynamics(ui);
-    }
-
-    fn show_proj(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
-        let mut proj = self.0.write().unwrap();
-        ui.horizontal(|ui| match &mut proj.path {
-            ProjName::Path(path) => {
-                let filename = filename(path);
-                if ui.small_button("✏").on_hover_text("Rename path").clicked() {
-                    proj.path = ProjName::Named(filename);
-                } else {
-                    ui.label(&filename);
-                }
-            }
-            ProjName::Named(name) => {
-                ui.colored_label(Color32::RED, "Unsaved path");
-                ui.text_edit_singleline(name);
-            }
-            ProjName::Untitled => {
-                ui.colored_label(Color32::RED, "Unsaved path");
-                let mut name = "untitled".to_string();
-                if ui.text_edit_singleline(&mut name).changed() {
-                    proj.path = ProjName::Named(name);
-                }
-            }
-        });
-        ui.label("Linkage type:");
-        ui.label(proj.fb.ty().name());
-        ui.checkbox(&mut proj.hide, "Hide 👁");
-        ui.add_enabled_ui(!proj.hide, |ui| proj.ui(ui, pivot, interval, n));
-    }
-
-    fn dynamics(&self, ui: &mut Ui) {
-        self.0.write().unwrap().dynamics(ui);
+        self.0.write().unwrap().show(ui, pivot, interval, n);
     }
 
     fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {

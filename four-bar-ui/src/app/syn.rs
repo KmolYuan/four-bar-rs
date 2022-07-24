@@ -98,19 +98,14 @@ impl PartialEq for UiConfig {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Default, Deserialize, Serialize, Clone, PartialEq)]
 enum Method {
+    #[default]
     De,
     Fa,
     Pso,
     Rga,
     Tlbo,
-}
-
-impl Default for Method {
-    fn default() -> Self {
-        Self::De
-    }
 }
 
 impl Method {
