@@ -87,6 +87,23 @@ impl PathSyn {
         Self { curve, efd, n, ub, lb, mode }
     }
 
+    /// Create a new task using a four-bar linkage as the target curve.
+    pub fn from_four_bar<H>(fb: FourBar, n: usize, harmonic: H, mode: Mode) -> Option<Self>
+    where
+        H: Into<Option<usize>>,
+    {
+        if let Some([t1, t2]) = fb.angle_bound() {
+            let m = Mechanism::new(&fb);
+            #[cfg(feature = "rayon")]
+            let curve = m.par_curve(t1, t2, n);
+            #[cfg(not(feature = "rayon"))]
+            let curve = m.curve(t1, t2, n);
+            Some(Self::new(&curve, n, harmonic, mode))
+        } else {
+            None
+        }
+    }
+
     /// The harmonic used of target EFD.
     pub fn harmonic(&self) -> usize {
         self.efd.harmonic()
@@ -97,7 +114,7 @@ impl PathSyn {
         #[cfg(feature = "rayon")]
         use crate::mh::rayon::prelude::*;
         const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
-        let norm = NormFourBar::from(xs);
+        let norm = NormFourBar::try_from(xs).unwrap();
         let norm = match self.mode {
             Mode::Close | Mode::Partial => norm.to_close_curve(),
             Mode::Open => norm.to_open_curve(),

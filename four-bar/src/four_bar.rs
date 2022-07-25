@@ -139,6 +139,16 @@ impl FourBarTy {
     }
 }
 
+/// The error used the slice length is not enough.
+#[derive(Debug)]
+pub struct ShortSliceErr(pub usize);
+
+impl std::fmt::Display for ShortSliceErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "slice is less than {}!", self.0)
+    }
+}
+
 /// Normalized four-bar linkage.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -160,9 +170,11 @@ impl From<[f64; 5]> for NormFourBar {
     }
 }
 
-impl From<&[f64]> for NormFourBar {
-    fn from(v: &[f64]) -> Self {
-        Self::from_slice(v, false)
+impl TryFrom<&[f64]> for NormFourBar {
+    type Error = ShortSliceErr;
+
+    fn try_from(v: &[f64]) -> Result<Self, Self::Error> {
+        Self::try_from_slice(v, false)
     }
 }
 
@@ -179,13 +191,20 @@ impl NormFourBar {
 
     /// Create a normalized four-bar linkage from a slice.
     ///
-    /// Panic if the slice length are less than 5.
+    /// Panic if the slice length is less than 5.
     /// Please see [`Self::from_vec`] for the constant version.
     pub fn from_slice(v: &[f64], inv: bool) -> Self {
+        Self::try_from_slice(v, inv).unwrap()
+    }
+
+    /// Create from a slice, return none if the slice length is less than 5.
+    ///
+    /// See also [`Self::from_slice`].
+    pub fn try_from_slice(v: &[f64], inv: bool) -> Result<Self, ShortSliceErr> {
         if let &[l0, l2, l3, l4, g, ..] = v {
-            Self { v: [l0, l2, l3, l4, g], inv }
+            Ok(Self { v: [l0, l2, l3, l4, g], inv })
         } else {
-            panic!("invalid slice: {v:?}")
+            Err(ShortSliceErr(5))
         }
     }
 
@@ -385,6 +404,11 @@ impl FourBar {
     pub fn normalize(&mut self) {
         self.align();
         *self /= self.l1();
+    }
+
+    /// Get the normalized four-bar linkage from this one.
+    pub fn to_norm(&self) -> NormFourBar {
+        self.norm.clone() / self.l1()
     }
 
     /// Input angle bounds of the linkage.
