@@ -1,5 +1,5 @@
 use super::{
-    proj::{Projects, Queue},
+    proj::{Project, Projects, Queue},
     widgets::{link, unit},
 };
 use eframe::egui::*;
@@ -28,19 +28,23 @@ impl Default for Config {
 
 impl Linkages {
     pub fn show(&mut self, ui: &mut Ui) {
-        ui.group(|ui| {
-            ui.heading("Linkages");
-            self.projects
-                .show(ui, self.config.interval, self.config.res);
+        ui.heading("Linkages");
+        self.projects
+            .show(ui, self.config.interval, self.config.res);
+    }
+
+    pub fn option(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.heading("Options");
+            reset_button(ui, &mut self.config);
         });
-        ui.group(|ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Options");
-                reset_button(ui, &mut self.config);
-            });
-            link(ui, "Drag interval: ", &mut self.config.interval, 0.01);
-            unit(ui, "Curve resolution: ", &mut self.config.res, 1);
-        });
+        link(ui, "Drag interval: ", &mut self.config.interval, 0.01);
+        unit(ui, "Curve resolution: ", &mut self.config.res, 1);
+        ui.heading("Control Tips");
+        ui.label("Pan move: Left-drag / Drag");
+        ui.label("Zoom: Ctrl+wheel / Pinch+stretch");
+        ui.label("Box Zoom: Right-drag");
+        ui.label("Reset: Right-click / Double-click");
     }
 
     pub fn plot(&mut self, ui: &mut plot::PlotUi) {
@@ -48,7 +52,7 @@ impl Linkages {
     }
 
     pub fn open_project(&mut self, files: Vec<String>) {
-        self.projects.reload();
+        self.projects.iter().for_each(Project::re_open);
         for file in files {
             self.projects.open(file);
         }

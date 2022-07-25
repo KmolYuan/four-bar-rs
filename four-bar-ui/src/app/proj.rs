@@ -19,7 +19,7 @@ const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 
 #[cfg(not(target_arch = "wasm32"))]
-fn open(file: impl AsRef<Path>) -> Option<FourBar> {
+fn pre_open(file: impl AsRef<Path>) -> Option<FourBar> {
     if let Ok(s) = std::fs::read_to_string(file) {
         ron::from_str(&s).ok()
     } else {
@@ -28,7 +28,8 @@ fn open(file: impl AsRef<Path>) -> Option<FourBar> {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn open(_file: impl AsRef<Path>) -> Option<FourBar> {
+#[inline]
+fn pre_open<F>(_file: F) -> Option<FourBar> {
     None
 }
 
@@ -437,10 +438,10 @@ impl Project {
         }
     }
 
-    fn reload(&self) {
+    pub fn re_open(&self) {
         let mut proj = self.0.write().unwrap();
         if let ProjName::Path(path) = &proj.path {
-            if let Some(fb) = open(path) {
+            if let Some(fb) = pre_open(path) {
                 proj.fb = fb;
             } else {
                 proj.path = ProjName::Named(path.clone());
@@ -514,7 +515,7 @@ impl Projects {
 
     pub fn open(&mut self, file: impl AsRef<Path>) {
         let path = file.as_ref().to_str().unwrap().to_string();
-        if let Some(fb) = open(file) {
+        if let Some(fb) = pre_open(file) {
             self.push(Some(path), fb);
             self.current = self.len() - 1;
         }
@@ -556,7 +557,8 @@ impl Projects {
             }
         });
         if self.select(ui) {
-            ui.group(|ui| self.list[self.current].show(ui, &mut self.pivot, interval, n));
+            ui.separator();
+            self.list[self.current].show(ui, &mut self.pivot, interval, n);
         } else {
             ui.heading("No project here!");
             ui.label("Please open or create a project.");
@@ -570,7 +572,6 @@ impl Projects {
                     ui.selectable_value(&mut self.current, i, proj.name());
                 }
             });
-            ui.separator();
             true
         } else {
             false
@@ -589,12 +590,6 @@ impl Projects {
         }
         for (i, proj) in self.list.iter().enumerate() {
             proj.plot(ui, i, self.current, n);
-        }
-    }
-
-    pub fn reload(&self) {
-        for p in self.list.iter() {
-            p.reload();
         }
     }
 }

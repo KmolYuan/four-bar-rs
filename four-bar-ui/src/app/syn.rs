@@ -255,6 +255,7 @@ impl Synthesis {
             ui.heading("Projects");
             ui.label("Results from the coupler trajectories.");
             if linkage.select_projects(ui) {
+                ui.separator();
                 self.with_current_project(ui, linkage);
             }
         });

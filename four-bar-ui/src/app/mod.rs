@@ -23,6 +23,7 @@ enum Panel {
     #[default]
     Linkages,
     Synthesis,
+    Options,
     Off,
 }
 
@@ -33,7 +34,7 @@ pub struct App {
     welcome_off: bool,
     started: bool,
     linkage: Linkages,
-    synthesis: Synthesis,
+    syn: Synthesis,
     #[serde(skip)]
     panel: Panel,
 }
@@ -95,6 +96,8 @@ impl App {
             .on_hover_text("Linkages");
         ui.selectable_value(&mut self.panel, Panel::Synthesis, "💡")
             .on_hover_text("Synthesis");
+        ui.selectable_value(&mut self.panel, Panel::Options, "🛠")
+            .on_hover_text("Options");
         ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
             .on_hover_text("Close Panel");
         ui.with_layout(Layout::right_to_left(), |ui| {
@@ -124,9 +127,8 @@ impl eframe::App for App {
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         match self.panel {
             Panel::Linkages => Self::side_panel(ctx, |ui| self.linkage.show(ui)),
-            Panel::Synthesis => {
-                Self::side_panel(ctx, |ui| self.synthesis.show(ui, &mut self.linkage))
-            }
+            Panel::Synthesis => Self::side_panel(ctx, |ui| self.syn.show(ui, &mut self.linkage)),
+            Panel::Options => Self::side_panel(ctx, |ui| self.linkage.option(ui)),
             Panel::Off => (),
         }
         CentralPanel::default().show(ctx, |ui| {
@@ -136,7 +138,7 @@ impl eframe::App for App {
                 .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
                 .show(ui, |ui| {
                     self.linkage.plot(ui);
-                    self.synthesis.plot(ui);
+                    self.syn.plot(ui);
                 });
         });
     }
