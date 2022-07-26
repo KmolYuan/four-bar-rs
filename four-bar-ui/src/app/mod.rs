@@ -81,8 +81,10 @@ impl App {
             .show(ctx, |ui| {
                 ui.label(concat!["Version: v", env!("CARGO_PKG_VERSION")]);
                 ui.label(env!("CARGO_PKG_DESCRIPTION"));
+                ui.separator();
                 ui.heading("Author");
                 ui.label(env!("CARGO_PKG_AUTHORS"));
+                ui.separator();
                 ui.heading("License");
                 ui.label("This software is under AGPL v3 license.");
                 ui.label("The commercial usages under server or client side are not allowed.");

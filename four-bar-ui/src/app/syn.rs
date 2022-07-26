@@ -168,31 +168,29 @@ impl Synthesis {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.config);
         });
-        ui.group(|ui| {
-            let method = &mut self.config.syn.method;
-            ui.horizontal_wrapped(|ui| {
-                for (m, abb) in [
-                    (Method::De, "DE"),
-                    (Method::Fa, "FA"),
-                    (Method::Pso, "PSO"),
-                    (Method::Rga, "RGA"),
-                    (Method::Tlbo, "TLBO"),
-                ] {
-                    let name = m.name();
-                    ui.selectable_value(method, m, abb).on_hover_text(name);
-                }
-            });
-            ui.horizontal_wrapped(|ui| {
-                let url = match method {
-                    Method::De => "https://en.wikipedia.org/wiki/Differential_evolution",
-                    Method::Fa => "https://en.wikipedia.org/wiki/Firefly_algorithm",
-                    Method::Pso => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
-                    Method::Rga => "https://en.wikipedia.org/wiki/Genetic_algorithm",
-                    Method::Tlbo => "https://doi.org/10.1016/j.cad.2010.12.015",
-                };
-                ui.hyperlink_to(method.name(), url)
-                    .on_hover_text(format!("More about {}", method.name()));
-            });
+        let method = &mut self.config.syn.method;
+        ui.horizontal_wrapped(|ui| {
+            for (m, abb) in [
+                (Method::De, "DE"),
+                (Method::Fa, "FA"),
+                (Method::Pso, "PSO"),
+                (Method::Rga, "RGA"),
+                (Method::Tlbo, "TLBO"),
+            ] {
+                let name = m.name();
+                ui.selectable_value(method, m, abb).on_hover_text(name);
+            }
+        });
+        ui.horizontal_wrapped(|ui| {
+            let url = match method {
+                Method::De => "https://en.wikipedia.org/wiki/Differential_evolution",
+                Method::Fa => "https://en.wikipedia.org/wiki/Firefly_algorithm",
+                Method::Pso => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
+                Method::Rga => "https://en.wikipedia.org/wiki/Genetic_algorithm",
+                Method::Tlbo => "https://doi.org/10.1016/j.cad.2010.12.015",
+            };
+            ui.hyperlink_to(method.name(), url)
+                .on_hover_text(format!("More about {}", method.name()));
         });
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
         unit(ui, "Population: ", &mut self.config.syn.pop, 1);
@@ -213,52 +211,48 @@ impl Synthesis {
             ui.colored_label(Color32::RED, error);
             self.config.syn.target = Default::default();
         }
-        ui.group(|ui| {
-            ui.heading("Optimization");
-            if ui.button("📉 Convergence Plot").clicked() {
-                self.conv_open = !self.conv_open;
-            }
-            ui.separator();
-            self.tasks.retain(|task| {
-                let mut keep = true;
-                ui.horizontal(|ui| {
-                    let start = task.start.load(Ordering::Relaxed);
-                    if start {
-                        if ui.small_button("⏹").clicked() {
-                            task.start.store(false, Ordering::Relaxed);
-                        }
-                    } else {
-                        if ui.small_button("🗑").clicked() {
-                            keep = false;
-                        }
-                        if ui.small_button("📉").clicked() {
-                            io::save_history_ask(&task.conv.read().unwrap(), "history.svg");
-                        }
-                    }
-                    ui.label(format!("{}s", task.time.load(Ordering::Relaxed)));
-                    let pb = task.gen.load(Ordering::Relaxed) as f32 / task.total_gen as f32;
-                    ui.add(ProgressBar::new(pb).show_percentage().animate(start));
-                });
-                keep
-            });
+        ui.separator();
+        ui.heading("Optimization");
+        if ui.button("📉 Convergence Plot").clicked() {
+            self.conv_open = !self.conv_open;
+        }
+        self.tasks.retain(|task| {
+            let mut keep = true;
             ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(error.is_empty(), Button::new("▶ Start"))
-                    .clicked()
-                {
-                    self.start_syn(linkage.queue());
+                let start = task.start.load(Ordering::Relaxed);
+                if start {
+                    if ui.small_button("⏹").clicked() {
+                        task.start.store(false, Ordering::Relaxed);
+                    }
+                } else {
+                    if ui.small_button("🗑").clicked() {
+                        keep = false;
+                    }
+                    if ui.small_button("💾").on_hover_text("Save").clicked() {
+                        io::save_history_ask(&task.conv.read().unwrap(), "history.svg");
+                    }
                 }
-                ui.add(ProgressBar::new(0.).show_percentage());
+                ui.label(format!("{}s", task.time.load(Ordering::Relaxed)));
+                let pb = task.gen.load(Ordering::Relaxed) as f32 / task.total_gen as f32;
+                ui.add(ProgressBar::new(pb).show_percentage().animate(start));
             });
+            keep
         });
-        ui.group(|ui| {
-            ui.heading("Projects");
-            ui.label("Results from the coupler trajectories.");
-            if linkage.select_projects(ui) {
-                ui.separator();
-                self.with_current_project(ui, linkage);
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(error.is_empty(), Button::new("▶ Start"))
+                .clicked()
+            {
+                self.start_syn(linkage.queue());
             }
+            ui.add(ProgressBar::new(0.).show_percentage());
         });
+        ui.separator();
+        ui.heading("Projects");
+        ui.label("Results from the coupler trajectories.");
+        if linkage.projects.select(ui, false) {
+            self.with_current_project(ui, linkage);
+        }
         self.convergence_plot(ui);
         self.target_curve_editor(ui);
     }
@@ -266,7 +260,7 @@ impl Synthesis {
     fn with_current_project(&self, ui: &mut Ui, linkage: &Linkages) {
         let curve = linkage.current_curve();
         let target = &self.config.syn.target;
-        if ui.button("🗠 Comparison").clicked() {
+        if ui.button("💾 Save Comparison").clicked() {
             io::save_curve_ask(target, &curve, "comparison.svg");
         }
         if !curve.is_empty() {
@@ -358,7 +352,7 @@ impl Synthesis {
                     }
                 });
                 ui.horizontal(|ui| {
-                    if ui.button("💾 Update (local)").clicked() {
+                    if ui.button("⮉ Update (local)").clicked() {
                         if let Some(curve) = parse_curve(&curve_str.read().unwrap()) {
                             self.targets.insert(self.target_name.clone(), curve);
                         }

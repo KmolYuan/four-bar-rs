@@ -198,7 +198,10 @@ impl ProjInner {
             .open(&mut self.angle_open)
             .vscroll(true)
             .show(ui.ctx(), |ui| {
-                ui.checkbox(&mut self.angle_use_rad, "Use radians");
+                let res = angle(ui, "Omega: ", &mut self.angles.omega2, "/s")
+                    | angle(ui, "Alpha: ", &mut self.angles.alpha2, "/s²");
+                self.cache.changed |= res.changed();
+                ui.checkbox(&mut self.angle_use_rad, "Plot radians");
                 for (i, (id, symbol, title)) in [
                     ("plot_theta", "theta", "Angle"),
                     ("plot_omega", "omega", "Angular Velocity"),
@@ -235,97 +238,89 @@ impl ProjInner {
                 Pivot::Coupler => curve.into_iter().map(|[_, _, c]| c).collect::<Vec<_>>(),
             })
         };
-        ui.group(|ui| {
-            ui.horizontal(|ui| {
-                if ui.button("💾 Save Curve").clicked() {
-                    io::save_csv_ask(&get_curve(pivot));
-                }
-                ComboBox::from_label("")
-                    .selected_text(pivot.name())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(pivot, Pivot::Coupler, Pivot::Coupler.name());
-                        ui.selectable_value(pivot, Pivot::Driver, Pivot::Driver.name());
-                        ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
-                    });
-            });
-            if ui.button("🗐 Copy Curve to CSV").clicked() {
+        ui.heading("Curve");
+        ui.horizontal(|ui| {
+            ComboBox::from_label("")
+                .selected_text(pivot.name())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(pivot, Pivot::Coupler, Pivot::Coupler.name());
+                    ui.selectable_value(pivot, Pivot::Driver, Pivot::Driver.name());
+                    ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
+                });
+            if ui.small_button("💾").on_hover_text("Save").clicked() {
+                io::save_csv_ask(&get_curve(pivot));
+            }
+            if ui.button("🗐").on_hover_text("Copy").clicked() {
                 ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
             }
-            let curve = get_curve(pivot);
-            if !curve.is_empty() {
-                ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
-            }
         });
-        ui.group(|ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Offset");
-                if ui
-                    .add_enabled(!fb.is_aligned(), Button::new("Reset"))
-                    .clicked()
-                {
-                    fb.align();
-                    self.cache.changed = true;
-                }
-            });
-            if ui.button("Normalize").clicked() {
-                fb.normalize();
+        let curve = get_curve(pivot);
+        if !curve.is_empty() {
+            ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
+        }
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.heading("Offset");
+            if ui
+                .add_enabled(!fb.is_aligned(), Button::new("Reset"))
+                .clicked()
+            {
+                fb.align();
                 self.cache.changed = true;
             }
-            let res = unit(ui, "X Offset: ", fb.p0x_mut(), interval)
-                | unit(ui, "Y Offset: ", fb.p0y_mut(), interval)
-                | angle(ui, "Rotation: ", fb.a_mut(), "");
-            self.cache.changed |= res.changed();
         });
-        ui.group(|ui| {
-            ui.heading("Parameters");
-            let res = link(ui, "Ground: ", fb.l0_mut(), interval)
-                | link(ui, "Driver: ", fb.l1_mut(), interval)
-                | link(ui, "Coupler: ", fb.l2_mut(), interval)
-                | link(ui, "Follower: ", fb.l3_mut(), interval)
-                | link(ui, "Extended: ", fb.l4_mut(), interval)
-                | angle(ui, "Angle: ", fb.g_mut(), "")
-                | ui.checkbox(fb.inv_mut(), "Invert follower and coupler");
-            self.cache.changed |= res.changed();
+        if ui.button("Normalize").clicked() {
+            fb.normalize();
+            self.cache.changed = true;
+        }
+        let mut res = unit(ui, "X Offset: ", fb.p0x_mut(), interval)
+            | unit(ui, "Y Offset: ", fb.p0y_mut(), interval)
+            | angle(ui, "Rotation: ", fb.a_mut(), "");
+        ui.separator();
+        ui.heading("Parameters");
+        res |= link(ui, "Ground: ", fb.l0_mut(), interval)
+            | link(ui, "Driver: ", fb.l1_mut(), interval)
+            | link(ui, "Coupler: ", fb.l2_mut(), interval)
+            | link(ui, "Follower: ", fb.l3_mut(), interval)
+            | link(ui, "Extended: ", fb.l4_mut(), interval)
+            | angle(ui, "Angle: ", fb.g_mut(), "")
+            | ui.checkbox(fb.inv_mut(), "Invert follower and coupler");
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.heading("Angle");
+            if ui
+                .add_enabled(self.angles != Default::default(), Button::new("Reset"))
+                .clicked()
+            {
+                self.angles = Default::default();
+                self.cache.changed = true;
+            }
         });
-        ui.group(|ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Angle");
-                if ui
-                    .add_enabled(self.angles != Default::default(), Button::new("Reset"))
-                    .clicked()
-                {
-                    self.angles = Default::default();
-                    self.cache.changed = true;
-                }
+        if let Some([s, e]) = self.fb.angle_bound() {
+            ui.group(|ui| {
+                ui.label("Click to copy angle bounds:");
+                let mut copy_btn = |s: f64, e: f64, suffix: &str| {
+                    ui.horizontal(|ui| {
+                        let s_str = format!("{:.04}", s);
+                        if ui.selectable_label(false, &s_str).clicked() {
+                            ui.output().copied_text = s_str;
+                        }
+                        let e_str = format!("{:.04}", e);
+                        if ui.selectable_label(false, &e_str).clicked() {
+                            ui.output().copied_text = e_str;
+                        }
+                        ui.label(suffix);
+                    });
+                };
+                copy_btn(s, e, "rad");
+                copy_btn(s.to_degrees(), e.to_degrees(), "deg");
             });
-            if let Some([s, e]) = self.fb.angle_bound() {
-                ui.group(|ui| {
-                    ui.label("Click to copy angle bounds:");
-                    let mut copy_btn = |s: f64, e: f64, suffix: &str| {
-                        ui.horizontal(|ui| {
-                            let s_str = format!("{:.04}", s);
-                            if ui.selectable_label(false, &s_str).clicked() {
-                                ui.output().copied_text = s_str;
-                            }
-                            let e_str = format!("{:.04}", e);
-                            if ui.selectable_label(false, &e_str).clicked() {
-                                ui.output().copied_text = e_str;
-                            }
-                            ui.label(suffix);
-                        });
-                    };
-                    copy_btn(s, e, "rad");
-                    copy_btn(s.to_degrees(), e.to_degrees(), "deg");
-                });
-            }
-            let res = angle(ui, "Theta: ", &mut self.angles.theta2, "")
-                | angle(ui, "Omega: ", &mut self.angles.omega2, "/s")
-                | angle(ui, "Alpha: ", &mut self.angles.alpha2, "/s²");
-            self.cache.changed |= res.changed();
-            if ui.button("⚽ Dynamics").clicked() {
-                self.angle_open = !self.angle_open;
-            }
-        });
+        }
+        res |= angle(ui, "Theta: ", &mut self.angles.theta2, "");
+        self.cache.changed |= res.changed();
+        if ui.button("⚽ Dynamics").clicked() {
+            self.angle_open = !self.angle_open;
+        }
     }
 
     fn cache(&mut self, n: usize) {
@@ -490,7 +485,7 @@ pub struct Projects {
     list: Vec<Project>,
     queue: Queue,
     pivot: Pivot,
-    current: usize,
+    curr: usize,
 }
 
 impl Projects {
@@ -504,20 +499,20 @@ impl Projects {
             }),
         } {
             self.list.push(Project::new(path, fb));
-            self.current = self.len() - 1;
+            self.curr = self.len() - 1;
         }
     }
 
     pub fn push_default(&mut self) {
         self.list.push(Project::default());
-        self.current = self.len() - 1;
+        self.curr = self.len() - 1;
     }
 
     pub fn open(&mut self, file: impl AsRef<Path>) {
         let path = file.as_ref().to_str().unwrap().to_string();
         if let Some(fb) = pre_open(file) {
             self.push(Some(path), fb);
-            self.current = self.len() - 1;
+            self.curr = self.len() - 1;
         }
     }
 
@@ -544,52 +539,48 @@ impl Projects {
             if ui.button("🗋 New").clicked() {
                 self.push_default();
             }
-            if !self.is_empty() {
-                if ui.button("💾 Save").clicked() {
-                    self.list[self.current].save();
-                }
-                if ui.button("✖ Close").clicked() {
-                    self.list.remove(self.current);
-                    if self.current > 0 {
-                        self.current -= 1;
-                    }
-                }
-            }
         });
-        if self.select(ui) {
-            ui.separator();
-            self.list[self.current].show(ui, &mut self.pivot, interval, n);
+        if self.select(ui, true) {
+            self.list[self.curr].show(ui, &mut self.pivot, interval, n);
         } else {
             ui.heading("No project here!");
             ui.label("Please open or create a project.");
         }
     }
 
-    pub fn select(&mut self, ui: &mut Ui) -> bool {
+    pub fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
         if !self.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                for (i, proj) in self.list.iter().enumerate() {
-                    ui.selectable_value(&mut self.current, i, proj.name());
+            ui.horizontal(|ui| {
+                ComboBox::from_label("")
+                    .show_index(ui, &mut self.curr, self.list.len(), |i| self.list[i].name());
+                if show_btn {
+                    if ui.button("💾 Save").clicked() {
+                        self.list[self.curr].save();
+                    }
+                    if ui.button("✖ Close").clicked() {
+                        self.list.remove(self.curr);
+                        if self.curr > 0 {
+                            self.curr -= 1;
+                        }
+                    }
                 }
             });
-            true
-        } else {
-            false
         }
+        !self.is_empty()
     }
 
     pub fn current_curve(&self, n: usize) -> Vec<[f64; 2]> {
-        let proj = self.list[self.current].0.read().unwrap();
+        let proj = self.list[self.curr].0.read().unwrap();
         curve::get_valid_part(&Mechanism::new(&proj.fb).curve(0., TAU, n))
     }
 
     pub fn plot(&mut self, ui: &mut plot::PlotUi, n: usize) {
         if !self.queue.0.read().unwrap().is_empty() {
             self.list.append(&mut *self.queue.0.write().unwrap());
-            self.current = self.len() - 1;
+            self.curr = self.len() - 1;
         }
         for (i, proj) in self.list.iter().enumerate() {
-            proj.plot(ui, i, self.current, n);
+            proj.plot(ui, i, self.curr, n);
         }
     }
 }

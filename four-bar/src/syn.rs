@@ -93,11 +93,7 @@ impl PathSyn {
         H: Into<Option<usize>>,
     {
         if let Some([t1, t2]) = fb.angle_bound() {
-            let m = Mechanism::new(&fb);
-            #[cfg(feature = "rayon")]
-            let curve = m.par_curve(t1, t2, n);
-            #[cfg(not(feature = "rayon"))]
-            let curve = m.curve(t1, t2, n);
+            let curve = Mechanism::new(&fb).curve(t1, t2, n);
             Some(Self::new(&curve, n, harmonic, mode))
         } else {
             None
@@ -141,11 +137,7 @@ impl PathSyn {
             let iter = [false, true].into_iter();
             iter.map(move |inv| {
                 let norm = norm.with_inv(inv);
-                let m = Mechanism::new(&norm);
-                #[cfg(feature = "rayon")]
-                let curve = m.par_curve(t1, t2, self.n);
-                #[cfg(not(feature = "rayon"))]
-                let curve = m.curve(t1, t2, self.n);
+                let curve = Mechanism::new(&norm).curve(t1, t2, self.n);
                 (curve::get_valid_part(&curve), norm)
             })
             .filter(|(curve, _)| curve.len() > 2)

@@ -74,31 +74,20 @@ impl<L: Linkage> Mechanism<L> {
 impl<L: Linkage<Joint = [[f64; 2]; 5]>> Mechanism<L> {
     /// A loop trajectory for only coupler point.
     pub fn curve(&self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
+        #[cfg(feature = "rayon")]
+        use crate::mh::rayon::prelude::*;
         let interval = (end - start) / n as f64;
-        let mut path = vec![[0.; 2]; n];
-        for (i, c) in path.iter_mut().enumerate() {
+        #[cfg(feature = "rayon")]
+        let iter = (0..n).into_par_iter();
+        #[cfg(not(feature = "rayon"))]
+        let iter = 0..n;
+        iter.map(|i| {
             let a = start + i as f64 * interval;
             let mut ans = [[0., 0.]];
             L::apply(self, a, [4], &mut ans);
-            *c = ans[0];
-        }
-        path
-    }
-
-    /// Get the trajectory by parallel computing.
-    #[cfg(feature = "rayon")]
-    pub fn par_curve(&self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
-        use crate::mh::rayon::prelude::*;
-        let interval = (end - start) / n as f64;
-        (0..n)
-            .into_par_iter()
-            .map(|i| {
-                let a = start + i as f64 * interval;
-                let mut ans = [[0., 0.]];
-                L::apply(self, a, [4], &mut ans);
-                ans[0]
-            })
-            .collect()
+            ans[0]
+        })
+        .collect()
     }
 
     /// A loop trajectory for all moving pivots. (3)

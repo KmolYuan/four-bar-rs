@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct Linkages {
     config: Config,
-    projects: Projects,
+    pub projects: Projects,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -40,6 +40,7 @@ impl Linkages {
         });
         link(ui, "Drag interval: ", &mut self.config.interval, 0.01);
         unit(ui, "Curve resolution: ", &mut self.config.res, 1);
+        ui.separator();
         ui.heading("Control Tips");
         ui.label("Pan move: Left-drag / Drag");
         ui.label("Zoom: Ctrl+wheel / Pinch+stretch");
@@ -56,10 +57,6 @@ impl Linkages {
         for file in files {
             self.projects.open(file);
         }
-    }
-
-    pub fn select_projects(&mut self, ui: &mut Ui) -> bool {
-        self.projects.select(ui)
     }
 
     pub fn current_curve(&self) -> Vec<[f64; 2]> {
