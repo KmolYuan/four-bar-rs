@@ -22,16 +22,16 @@ jobs:
         include:
           - os: ubuntu-latest
             asset_name: four-bar-linux-amd64
-            artifact_name: four-bar
+            artifact_name: target/release/four-bar
           - os: ubuntu-latest
             asset_name: four-bar-wasm-unknown
             artifact_name: docs/
           - os: macos-latest
             asset_name: four-bar-macos-amd64
-            artifact_name: four-bar
+            artifact_name: target/release/four-bar
           - os: windows-latest
             asset_name: four-bar-windows-amd64
-            artifact_name: four-bar.exe
+            artifact_name: target/release/four-bar.exe
     runs-on: ${{ matrix.os }}
     env:
       GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
@@ -49,55 +49,30 @@ jobs:
         name: WASM Build
         run: ./setup_web.sh && ./build_web.sh
       - if: matrix.asset_name != 'four-bar-wasm-unknown'
-        name: Cargo Clippy
-        run: cargo clippy -- -D warnings
-      - if: matrix.asset_name != 'four-bar-wasm-unknown'
-        name: Cargo Build
-        run: cargo build --release
-      - if: matrix.asset_name != 'four-bar-wasm-unknown'
-        name: Pack binaries
+        name: Native Build
+        run: cargo clippy -- -D warnings && cargo build --release
+      - name: Pack
         uses: vimtor/action-zip@v1
         with:
-          files: target/release/${{ matrix.artifact_name }}
+          files: ${{ matrix.artifact_name }}
+          recursive: false
           dest: ${{ matrix.asset_name }}.zip
-      - if: matrix.asset_name == 'four-bar-wasm-unknown'
-        name: Pack WASM
-        uses: thedoctor0/zip-release@0.6.0
-        with:
-          type: zip
-          directory: ${{ matrix.artifact_name }}
-          filename: ../${{ matrix.asset_name }}.zip
-      - if: matrix.asset_name != 'four-bar-wasm-unknown'
-        name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.asset_name }}
-          path: target/release/${{ matrix.artifact_name }}
-          if-no-files-found: error
-      - if: matrix.asset_name == 'four-bar-wasm-unknown'
-        name: Upload artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.asset_name }}
           path: ${{ matrix.artifact_name }}
           if-no-files-found: error
-      - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name != 'four-bar-wasm-unknown'
-        name: Upload binaries to release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-        with:
-          files: ${{ matrix.asset_name }}.zip
-      - if: startsWith(github.ref, 'refs/tags/v') && matrix.asset_name == 'four-bar-wasm-unknown'
-        name: Upload binaries to release
+      - if: startsWith(github.ref, 'refs/tags/v')
+        name: Release binary
         uses: softprops/action-gh-release@v1
         with:
+          token: ${{ secrets.PUBLISH_TOKEN }}
           files: ${{ matrix.asset_name }}.zip
       - if: matrix.asset_name == 'four-bar-wasm-unknown'
         name: Deploy to gh-pages
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+        uses: JamesIves/github-pages-deploy-action@releases/v4
         with:
-          ACCESS_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: ${{ matrix.artifact_name }}
-          CLEAN: true
+          token: ${{ secrets.PUBLISH_TOKEN }}
+          folder: ${{ matrix.artifact_name }}
+          clean: true

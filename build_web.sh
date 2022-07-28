@@ -16,12 +16,4 @@ rm "${REPO}/docs/pkg/package.json"
 cp "${REPO}/four-bar-ui/assets/favicon.png" "${REPO}/docs"
 cp "${REPO}/LICENSE" "${REPO}/docs"
 
-echo "Make the archive..."
-cd "${REPO}/docs" || exit
-for RELEASE in "${REPO}/target/debug" "${REPO}/target/release"; do
-  if command -v zip &> /dev/null && [ -d ${RELEASE} ]; then
-    zip -r "${RELEASE}/four-bar-wasm-unknown.zip" *
-  fi
-done
-
 echo "Finished"
