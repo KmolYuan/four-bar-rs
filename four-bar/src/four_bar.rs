@@ -355,7 +355,7 @@ impl FourBar {
     }
 
     /// Transform a normalized four-bar linkage from a vector.
-    pub fn from_transform(mut norm: NormFourBar, geo: GeoInfo<f64>) -> Self {
+    pub fn from_transform(mut norm: NormFourBar, geo: GeoInfo) -> Self {
         let [p0x, p0y] = geo.center;
         norm *= geo.scale;
         let v = [p0x, p0y, geo.rot, geo.scale];

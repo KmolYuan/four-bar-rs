@@ -16,7 +16,7 @@
 //!     .solve(PathSyn::new(&curve, 720, None, Mode::Close));
 //! let result = s.result();
 //! ```
-use crate::{curve, efd::Efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
+use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
 /// Synthesis mode.
@@ -48,7 +48,7 @@ pub struct PathSyn {
     /// Target curve
     pub curve: Vec<[f64; 2]>,
     /// Target coefficient
-    pub efd: Efd<f64>,
+    pub efd: Efd2,
     // How many points need to be generated / compared
     n: usize,
     ub: Vec<f64>,
@@ -83,7 +83,7 @@ impl PathSyn {
             ub.extend_from_slice(&[TAU; 2]);
             lb.extend_from_slice(&[0.; 2]);
         }
-        let efd = Efd::from_curve(&curve, harmonic);
+        let efd = Efd2::from_curve(&curve, harmonic);
         Self { curve, efd, n, ub, lb, mode }
     }
 
@@ -144,7 +144,7 @@ impl PathSyn {
             })
             .filter(|(curve, _)| curve.len() > 2)
             .map(|(curve, norm)| {
-                let efd = Efd::from_curve(&close_f(curve), Some(self.efd.harmonic()));
+                let efd = Efd2::from_curve(&close_f(curve), Some(self.efd.harmonic()));
                 let four_bar = FourBar::from_transform(norm, efd.to(&self.efd));
                 let fitness = efd.manhattan(&self.efd);
                 (fitness, four_bar)
