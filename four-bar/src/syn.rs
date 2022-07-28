@@ -88,10 +88,12 @@ impl PathSyn {
     }
 
     /// Create a new task using a four-bar linkage as the target curve.
-    pub fn from_four_bar<H>(fb: FourBar, n: usize, harmonic: H, mode: Mode) -> Option<Self>
+    pub fn from_four_bar<F, H>(fb: F, n: usize, harmonic: H, mode: Mode) -> Option<Self>
     where
+        F: Into<FourBar>,
         H: Into<Option<usize>>,
     {
+        let fb = fb.into();
         if let Some([t1, t2]) = fb.angle_bound() {
             let curve = Mechanism::new(&fb).curve(t1, t2, n);
             Some(Self::new(&curve, n, harmonic, mode))
