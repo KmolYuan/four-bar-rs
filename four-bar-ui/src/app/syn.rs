@@ -6,11 +6,7 @@ use super::{
     widgets::unit,
 };
 use eframe::egui::*;
-use four_bar::{
-    curve,
-    mh::{Algorithm, Setting},
-    syn::{Mode, PathSyn},
-};
+use four_bar::{curve, mh, syn};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -52,8 +48,8 @@ fn ron_pretty(s: impl Serialize) -> String {
 
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
-    S: Setting,
-    S::Algorithm: Algorithm<PathSyn>,
+    S: mh::Setting,
+    S::Algorithm: mh::Algorithm<syn::PathSyn>,
 {
     #[cfg(target_arch = "wasm32")]
     use instant::Instant;
@@ -69,7 +65,7 @@ where
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
         })
-        .solve(PathSyn::new(&config.target, 720, None, config.mode))
+        .solve(syn::PathSyn::new(&config.target, 720, None, config.mode))
         .result()
 }
 
@@ -125,7 +121,7 @@ struct SynConfig {
     method: Method,
     gen: u64,
     pop: usize,
-    mode: Mode,
+    mode: syn::Mode,
     #[serde(skip)]
     target: Vec<[f64; 2]>,
 }
@@ -136,7 +132,7 @@ impl Default for SynConfig {
             method: Method::default(),
             gen: 50,
             pop: 400,
-            mode: Mode::Close,
+            mode: syn::Mode::Close,
             target: Vec::new(),
         }
     }
@@ -319,9 +315,9 @@ impl Synthesis {
                     }
                 });
                 let mode = &mut self.config.syn.mode;
-                ui.radio_value(mode, Mode::Close, "Close path matching");
-                ui.radio_value(mode, Mode::Partial, "Close path match open path");
-                ui.radio_value(mode, Mode::Open, "Open path matching");
+                ui.radio_value(mode, syn::Mode::Close, "Close path matching");
+                ui.radio_value(mode, syn::Mode::Partial, "Close path match open path");
+                ui.radio_value(mode, syn::Mode::Open, "Open path matching");
                 if !self.targets.is_empty() {
                     ui.label("Saved targets (local):");
                 }
