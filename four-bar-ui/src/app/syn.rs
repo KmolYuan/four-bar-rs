@@ -6,7 +6,11 @@ use super::{
     widgets::unit,
 };
 use eframe::egui::*;
-use four_bar::{curve, syn::Mode};
+use four_bar::{
+    curve,
+    mh::{Algorithm, Setting},
+    syn::{Mode, PathSyn},
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -48,8 +52,8 @@ fn ron_pretty(s: impl Serialize) -> String {
 
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
 where
-    S: four_bar::mh::Setting,
-    S::Algorithm: four_bar::mh::Algorithm<four_bar::syn::PathSyn>,
+    S: Setting,
+    S::Algorithm: Algorithm<PathSyn>,
 {
     #[cfg(target_arch = "wasm32")]
     use instant::Instant;
@@ -65,12 +69,7 @@ where
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
         })
-        .solve(four_bar::syn::PathSyn::new(
-            &config.target,
-            720,
-            None,
-            config.mode,
-        ))
+        .solve(PathSyn::new(&config.target, 720, None, config.mode))
         .result()
 }
 
@@ -239,6 +238,8 @@ impl Synthesis {
             keep
         });
         ui.horizontal(|ui| {
+            #[cfg(target_arch = "wasm32")]
+            let _ = ui.label("Web platform will freeze UI when start solving!");
             if ui
                 .add_enabled(error.is_empty(), Button::new("▶ Start"))
                 .clicked()
@@ -396,8 +397,8 @@ impl Synthesis {
             let fb = match config.method {
                 Method::De => solve(&task, config, De::default()),
                 Method::Fa => solve(&task, config, Fa::default()),
-                Method::Pso => solve(&task, config, Pso::<f64>::default()),
-                Method::Rga => solve(&task, config, Rga::<f64>::default()),
+                Method::Pso => solve(&task, config, Pso::default()),
+                Method::Rga => solve(&task, config, Rga::default()),
                 Method::Tlbo => solve(&task, config, Tlbo::default()),
             };
             queue.push(None, fb);
