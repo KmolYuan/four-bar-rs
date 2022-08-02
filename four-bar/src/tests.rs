@@ -10,7 +10,7 @@ fn anti_symmetry_extension() {
 #[cfg(feature = "plot")]
 fn test_plot_curve() {
     let svg = plot::SVGBackend::new("test_curve.svg", (800, 600));
-    let curve = efd::Efd::from_curve(CRUNODE, None).generate(90);
+    let curve = efd::Efd2::from_curve(CRUNODE, None).generate(90);
     plot::curve(svg, "Test Curve", &[("Target", &curve)]).unwrap();
 }
 
