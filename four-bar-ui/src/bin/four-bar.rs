@@ -24,5 +24,5 @@ fn main() -> ! {
     #[cfg(windows)]
     let _ = unsafe { winapi::um::wincon::FreeConsole() };
     let files = Entry::parse().files;
-    eframe::run_native("Four bar", opt, Box::new(|ctx| App::new(ctx, files)))
+    eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files)))
 }

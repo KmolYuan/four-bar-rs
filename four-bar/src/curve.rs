@@ -2,6 +2,7 @@
 //!
 //! Curves are typed with `&[[f64; 2]]`, allow containing `NaN`s.
 
+use crate::{FourBar, Mechanism};
 use std::f64::consts::PI;
 
 #[inline(always)]
@@ -10,6 +11,13 @@ where
     I: Iterator<Item = &'a [f64; 2]> + 'a,
 {
     Box::new(iter)
+}
+
+/// Get curve from four-bar linkage.
+pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> {
+    let fb = fb.into();
+    fb.angle_bound()
+        .map(|[t1, t2]| Mechanism::new(&fb).curve(t1, t2, n))
 }
 
 /// Check if a curve is closed. (first point and end point are close)
