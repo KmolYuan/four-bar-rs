@@ -1,0 +1,7 @@
+[package]
+name = "four-bar-codebook"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+four-bar = { version = "2", path = "../four-bar" }
