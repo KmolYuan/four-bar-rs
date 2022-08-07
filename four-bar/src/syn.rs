@@ -45,8 +45,6 @@ impl Mode {
 
 /// Path generation task of planar four-bar linkage.
 pub struct PathSyn {
-    /// Target curve
-    pub curve: Vec<[f64; 2]>,
     /// Target coefficient
     pub efd: Efd2,
     // How many points need to be generated / compared
@@ -66,13 +64,13 @@ impl PathSyn {
         H: Into<Option<usize>>,
     {
         let curve = curve::get_valid_part(curve);
+        assert!(curve.len() > 2, "target curve is not long enough");
+        assert!(n > curve.len() - 1, "n must longer than target curve");
         let curve = match mode {
             Mode::Close if curve::is_closed(&curve) => curve,
             Mode::Close => curve::close_line(curve),
             Mode::Partial | Mode::Open => curve::close_rev(curve),
         };
-        assert!(curve.len() > 2, "target curve is not long enough");
-        assert!(n > curve.len() - 1, "n must longer than target curve");
         // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
@@ -84,7 +82,7 @@ impl PathSyn {
             lb.extend_from_slice(&[0.; 2]);
         }
         let efd = Efd2::from_curve(&curve, harmonic);
-        Self { curve, efd, n, ub, lb, mode }
+        Self { efd, n, ub, lb, mode }
     }
 
     /// Create a new task using a four-bar linkage as the target curve.
@@ -93,13 +91,7 @@ impl PathSyn {
         F: Into<FourBar>,
         H: Into<Option<usize>>,
     {
-        let fb = fb.into();
-        if let Some([t1, t2]) = fb.angle_bound() {
-            let curve = Mechanism::new(&fb).curve(t1, t2, n);
-            Some(Self::new(&curve, n, harmonic, mode))
-        } else {
-            None
-        }
+        curve::from_four_bar(fb, n).map(|curve| Self::new(&curve, n, harmonic, mode))
     }
 
     /// The harmonic used of target EFD.

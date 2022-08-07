@@ -329,6 +329,8 @@ impl FourBar {
     pub const ZERO: Self = Self::new([0.; 6], false);
 
     /// Create with linkage lengths.
+    ///
+    /// Order: `[l0, l1, l2, l3, l4, g]`
     pub const fn new(v: [f64; 6], inv: bool) -> Self {
         let [l0, l1, l2, l3, l4, g] = v;
         let norm = NormFourBar::from_vec([l0, l2, l3, l4, g], inv);
@@ -337,6 +339,8 @@ impl FourBar {
     }
 
     /// Create with linkage lengths and offset.
+    ///
+    /// Order: `[p0x, p0y, a, l0, l1, l2, l3, l4, g]`
     pub const fn with_offset(v: [f64; 9], inv: bool) -> Self {
         let [p0x, p0y, a, l0, l1, l2, l3, l4, g] = v;
         let norm = NormFourBar::from_vec([l0, l2, l3, l4, g], inv);
@@ -531,7 +535,7 @@ impl Linkage for NormFourBar {
         let mut formulas = m.fs.clone();
         match formulas.first_mut() {
             Some(Formula::Pla(_, _, ref mut a, _)) => *a = angle,
-            _ => panic!("invalid four bar"),
+            _ => panic!("invalid four-bar"),
         }
         for f in formulas {
             f.apply(&mut joints);
