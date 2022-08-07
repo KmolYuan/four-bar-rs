@@ -1,5 +1,6 @@
 use crate::{efd::GeoInfo, Formula, Linkage, Mechanism};
 use std::{
+    array::TryFromSliceError,
     f64::consts::{FRAC_PI_6, TAU},
     ops::{Div, DivAssign, Mul, MulAssign},
 };
@@ -139,16 +140,6 @@ impl FourBarTy {
     }
 }
 
-/// The error used the slice length is not enough.
-#[derive(Debug)]
-pub struct ShortSliceErr(pub usize);
-
-impl std::fmt::Display for ShortSliceErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "slice is less than {}!", self.0)
-    }
-}
-
 /// Normalized four-bar linkage.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -171,7 +162,7 @@ impl From<[f64; 5]> for NormFourBar {
 }
 
 impl TryFrom<&[f64]> for NormFourBar {
-    type Error = ShortSliceErr;
+    type Error = TryFromSliceError;
 
     fn try_from(v: &[f64]) -> Result<Self, Self::Error> {
         Self::try_from_slice(v, false)
@@ -200,12 +191,8 @@ impl NormFourBar {
     /// Create from a slice, return none if the slice length is less than 5.
     ///
     /// See also [`Self::from_slice`].
-    pub fn try_from_slice(v: &[f64], inv: bool) -> Result<Self, ShortSliceErr> {
-        if let &[l0, l2, l3, l4, g, ..] = v {
-            Ok(Self { v: [l0, l2, l3, l4, g], inv })
-        } else {
-            Err(ShortSliceErr(5))
-        }
+    pub fn try_from_slice(v: &[f64], inv: bool) -> Result<Self, TryFromSliceError> {
+        <[f64; 5]>::try_from(v).map(|v| Self { v, inv })
     }
 
     /// Construct with `inv` option.
