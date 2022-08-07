@@ -1,4 +1,4 @@
-use crate::{efd::GeoInfo, Formula, Linkage, Mechanism};
+use crate::{efd::Geo2Info, Formula, Linkage, Mechanism};
 use std::{
     array::TryFromSliceError,
     f64::consts::{FRAC_PI_6, TAU},
@@ -344,7 +344,7 @@ impl FourBar {
     }
 
     /// Transform a normalized four-bar linkage from a vector.
-    pub fn from_transform(mut norm: NormFourBar, geo: GeoInfo) -> Self {
+    pub fn from_transform(mut norm: NormFourBar, geo: Geo2Info) -> Self {
         let [p0x, p0y] = geo.center;
         norm *= geo.scale;
         let v = [p0x, p0y, geo.rot, geo.scale];
