@@ -7,12 +7,10 @@ use std::{
 
 macro_rules! impl_parm_method {
     ($(#[doc = $doc:literal] fn $name:ident, $name_mut:ident => $ind:literal)+) => {$(
-        #[doc = $doc]
-        #[doc = "\n\nGet the value."]
+        #[doc = concat![$doc, "\n\nGet the value."]]
         #[inline]
         pub const fn $name(&self) -> f64 { self.v[$ind] }
-        #[doc = $doc]
-        #[doc = "\n\nModify the value."]
+        #[doc = concat![$doc, "\n\nModify the value."]]
         #[inline]
         pub fn $name_mut(&mut self) -> &mut f64 { &mut self.v[$ind] }
     )+};
