@@ -190,7 +190,7 @@ impl NormFourBar {
     ///
     /// See also [`Self::from_slice`].
     pub fn try_from_slice(v: &[f64], inv: bool) -> Result<Self, TryFromSliceError> {
-        <[f64; 5]>::try_from(v).map(|v| Self { v, inv })
+        TryFrom::try_from(v).map(|v| Self { v, inv })
     }
 
     /// Construct with `inv` option.
