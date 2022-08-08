@@ -8,12 +8,9 @@ use super::{
 use eframe::egui::*;
 use four_bar::{curve, mh, syn};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, RwLock,
-    },
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc, RwLock,
 };
 
 const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
@@ -76,8 +73,6 @@ pub struct Synthesis {
     tasks: Vec<Task>,
     csv_open: bool,
     conv_open: bool,
-    target_name: String,
-    targets: HashMap<String, Vec<[f64; 2]>>,
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -189,23 +184,17 @@ impl Synthesis {
         });
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
         unit(ui, "Population: ", &mut self.config.syn.pop, 1);
-        let mut error = "";
-        if !self.config.curve_str.read().unwrap().is_empty() {
-            if let Some(curve) = parse_curve(&self.config.curve_str.read().unwrap()) {
-                self.config.syn.target = curve;
-            } else {
-                error = "The provided curve is invalid.";
+        ui.label("Edit target curve then click refresh button to update the task.");
+        ui.horizontal(|ui| {
+            if ui.button("🛠 Target Curve").clicked() {
+                self.csv_open = !self.csv_open;
             }
-        } else {
-            error = "The target curve is empty.";
-        }
-        if ui.button("✏ Target Curve Editor").clicked() {
-            self.csv_open = !self.csv_open;
-        }
-        if !error.is_empty() {
-            ui.colored_label(Color32::RED, error);
-            self.config.syn.target = Default::default();
-        }
+            if ui.button("⟳ Refresh").clicked() {
+                if let Some(curve) = parse_curve(&self.config.curve_str.read().unwrap()) {
+                    self.config.syn.target = curve;
+                }
+            }
+        });
         ui.separator();
         ui.heading("Optimization");
         if ui.button("📉 Convergence Plot").clicked() {
@@ -236,10 +225,8 @@ impl Synthesis {
         ui.horizontal(|ui| {
             #[cfg(target_arch = "wasm32")]
             let _ = ui.label("Web platform will freeze UI when start solving!");
-            if ui
-                .add_enabled(error.is_empty(), Button::new("▶ Start"))
-                .clicked()
-            {
+            let enabled = !self.config.syn.target.is_empty();
+            if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
                 self.start_syn(linkage.queue());
             }
             ui.add(ProgressBar::new(0.).show_percentage());
@@ -300,7 +287,7 @@ impl Synthesis {
     }
 
     fn target_curve_editor(&mut self, ui: &mut Ui) {
-        Window::new("✏ Target Curve Editor")
+        Window::new("🛠 Target Curve")
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
                 ui.label("Support CSV or RON array only.");
@@ -310,6 +297,9 @@ impl Synthesis {
                         let curve_csv = curve_str.clone();
                         io::open_csv_single(move |_, s| *curve_csv.write().unwrap() = s);
                     }
+                    if ui.button("💾 Save CSV").clicked() {
+                        io::save_csv_ask(&self.config.syn.target);
+                    }
                     if ui.button("🗑 Clear").clicked() {
                         curve_str.write().unwrap().clear();
                     }
@@ -318,43 +308,20 @@ impl Synthesis {
                 ui.radio_value(mode, syn::Mode::Close, "Close path matching");
                 ui.radio_value(mode, syn::Mode::Partial, "Close path match open path");
                 ui.radio_value(mode, syn::Mode::Open, "Open path matching");
-                if !self.targets.is_empty() {
-                    ui.label("Saved targets (local):");
-                }
-                self.targets.retain(|name, curve| {
-                    ui.horizontal(|ui| {
-                        if ui.button(name).clicked() {
-                            *curve_str.write().unwrap() = dump_csv(curve).unwrap();
-                        }
-                        if ui.button("💾 Export CSV").clicked() {
-                            io::save_csv_ask(curve);
-                        }
-                        !ui.button("🗑").clicked()
-                    })
-                    .inner
-                });
                 ui.label("Past curve data here:");
-                ui.horizontal(|ui| {
-                    if ui.button("✏ To CSV").clicked() {
+                ui.horizontal_wrapped(|ui| {
+                    if ui.button("🔀 To CSV").clicked() {
                         write_curve_str(&curve_str, |c| dump_csv(&c).unwrap());
                     }
-                    if ui.button("✏ To tuple array").clicked() {
+                    if ui.button("🔀 To tuple array").clicked() {
                         write_curve_str(&curve_str, ron_pretty);
                     }
-                    if ui.button("✏ To nested array").clicked() {
+                    if ui.button("🔀 To nested array").clicked() {
                         write_curve_str(&curve_str, |c| {
                             let c = c.into_iter().map(Vec::from).collect::<Vec<_>>();
                             ron_pretty(c)
                         });
                     }
-                });
-                ui.horizontal(|ui| {
-                    if ui.button("⮉ Update (local)").clicked() {
-                        if let Some(curve) = parse_curve(&curve_str.read().unwrap()) {
-                            self.targets.insert(self.target_name.clone(), curve);
-                        }
-                    }
-                    ui.text_edit_singleline(&mut self.target_name);
                 });
                 ScrollArea::both().show(ui, |ui| {
                     let mut s = curve_str.write().unwrap();

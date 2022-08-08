@@ -172,7 +172,7 @@ impl ProjInner {
         ui.horizontal(|ui| match &mut self.path {
             ProjName::Path(path) => {
                 let filename = filename(path);
-                if ui.small_button("✏").on_hover_text("Rename path").clicked() {
+                if ui.small_button("🖊").on_hover_text("Rename path").clicked() {
                     self.path = ProjName::Named(filename);
                 } else {
                     ui.label(&filename);
@@ -210,13 +210,13 @@ impl ProjInner {
                 .into_iter()
                 .enumerate()
                 {
+                    ui.heading(title);
                     let values = self
                         .cache
                         .dynamics
                         .iter()
                         .map(|(x, t)| (*x, t[i]))
                         .collect::<Vec<_>>();
-                    ui.heading(title);
                     plot::Plot::new(id)
                         .legend(Default::default())
                         .height(200.)
