@@ -20,11 +20,9 @@ const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 
 #[cfg(not(target_arch = "wasm32"))]
 fn pre_open(file: impl AsRef<Path>) -> Option<FourBar> {
-    if let Ok(s) = std::fs::read_to_string(file) {
-        ron::from_str(&s).ok()
-    } else {
-        None
-    }
+    std::fs::read_to_string(file)
+        .ok()
+        .and_then(|s| ron::from_str(&s).ok())
 }
 
 #[cfg(target_arch = "wasm32")]

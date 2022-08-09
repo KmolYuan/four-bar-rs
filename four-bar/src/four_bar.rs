@@ -278,11 +278,9 @@ impl NormFourBar {
     ///
     /// Return `None` if unsupported.
     pub fn angle_bound(&self) -> Option<[f64; 2]> {
-        if !self.is_valid() {
-            None
-        } else {
-            angle_bound([self.l0(), 1., self.l2(), self.l3(), 0.])
-        }
+        self.is_valid()
+            .then(|| angle_bound([self.l0(), 1., self.l2(), self.l3(), 0.]))
+            .flatten()
     }
 }
 
@@ -404,11 +402,9 @@ impl FourBar {
     ///
     /// Return `None` if unsupported.
     pub fn angle_bound(&self) -> Option<[f64; 2]> {
-        if !self.is_valid() {
-            None
-        } else {
-            angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()])
-        }
+        self.is_valid()
+            .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
+            .flatten()
     }
 }
 
