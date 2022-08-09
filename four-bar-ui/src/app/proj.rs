@@ -254,10 +254,6 @@ impl ProjInner {
                 ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
             }
         });
-        let curve = get_curve(pivot);
-        if !curve.is_empty() {
-            ui.label(format!("Crunodes: {}", curve::crunode(&curve)));
-        }
         ui.separator();
         ui.horizontal(|ui| {
             ui.heading("Offset");
