@@ -52,7 +52,7 @@ impl Linkages {
         self.projects.plot(ui, self.config.res);
     }
 
-    pub fn open_project(&mut self, files: Vec<String>) {
+    pub fn open_proj(&mut self, files: Vec<String>) {
         self.projects.iter().for_each(Project::re_open);
         for file in files {
             self.projects.open(file);

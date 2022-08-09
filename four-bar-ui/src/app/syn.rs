@@ -235,18 +235,22 @@ impl Synthesis {
         ui.heading("Projects");
         ui.label("Results from the coupler trajectories.");
         if linkage.projects.select(ui, false) {
-            self.with_current_project(ui, linkage);
+            self.with_current_proj(ui, linkage);
         }
         self.convergence_plot(ui);
         self.target_curve_editor(ui);
     }
 
-    fn with_current_project(&self, ui: &mut Ui, linkage: &Linkages) {
+    fn with_current_proj(&mut self, ui: &mut Ui, linkage: &Linkages) {
         let curve = linkage.current_curve();
-        let target = &self.config.syn.target;
         if ui.button("💾 Save Comparison").clicked() {
-            io::save_curve_ask(target, &curve, "comparison.svg");
+            io::save_curve_ask(&self.config.syn.target, &curve, "comparison.svg");
         }
+        if ui.button("🗐 Copy Coupler Curve").clicked() {
+            self.config.syn.target = curve.clone();
+            *self.config.curve_str.write().unwrap() = dump_csv(&self.config.syn.target).unwrap();
+        }
+        let target = &self.config.syn.target;
         if !curve.is_empty() {
             let c = curve::crunode(&curve);
             ui.label(format!("Crunodes of current curve: {}", c));
@@ -308,7 +312,7 @@ impl Synthesis {
                 ui.radio_value(mode, syn::Mode::Close, "Close path matching");
                 ui.radio_value(mode, syn::Mode::Partial, "Close path match open path");
                 ui.radio_value(mode, syn::Mode::Open, "Open path matching");
-                ui.label("Past curve data here:");
+                ui.label("Transform:");
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("🔀 To CSV").clicked() {
                         write_curve_str(&curve_str, |c| dump_csv(&c).unwrap());
@@ -323,6 +327,7 @@ impl Synthesis {
                         });
                     }
                 });
+                ui.label("Past curve data here:");
                 ScrollArea::both().show(ui, |ui| {
                     let mut s = curve_str.write().unwrap();
                     let w = TextEdit::multiline(&mut *s)

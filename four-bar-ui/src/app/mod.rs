@@ -69,7 +69,7 @@ impl App {
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
-        app.linkage.open_project(files);
+        app.linkage.open_proj(files);
         Box::new(app)
     }
 
