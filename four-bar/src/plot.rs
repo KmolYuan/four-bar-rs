@@ -3,16 +3,17 @@
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
+type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
+
 #[inline]
 fn font() -> TextStyle<'static> {
     ("Times New Roman", 24).into_font().color(&BLACK)
 }
 
 /// Plot the synthesis history.
-pub fn history<B>(backend: B, history: &[f64]) -> anyhow::Result<()>
+pub fn history<B>(backend: B, history: &[f64]) -> PResult<(), B>
 where
     B: DrawingBackend,
-    B::ErrorType: 'static,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
@@ -45,14 +46,14 @@ where
 }
 
 /// Plot 2D curve.
-pub fn curve<B>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])]) -> anyhow::Result<()>
+pub fn curve<B>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])]) -> PResult<(), B>
 where
     B: DrawingBackend,
-    B::ErrorType: 'static,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let [x_min, x_max, y_min, y_max] = bounding_box(curves);
+    let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
+    let [x_min, x_max, y_min, y_max] = bounding_box(iter);
     let mut chart = ChartBuilder::on(&root)
         .caption(title, font())
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
@@ -81,10 +82,10 @@ where
 }
 
 /// Get the bounding box of the data, ignore the labels.
-pub fn bounding_box<L>(curves: &[(L, &[[f64; 2]])]) -> [f64; 4] {
+pub fn bounding_box<'a>(curves: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4] {
     let [mut x_min, mut x_max] = [&f64::INFINITY, &-f64::INFINITY];
     let [mut y_min, mut y_max] = [&f64::INFINITY, &-f64::INFINITY];
-    for [x, y] in curves.iter().flat_map(|(_, curve)| curve.iter()) {
+    for [x, y] in curves {
         if x < x_min {
             x_min = x;
         }

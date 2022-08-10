@@ -14,12 +14,11 @@ categories = ["algorithms"]
 default = []
 serde = ["dep:serde"]
 rayon = ["metaheuristics-nature/rayon"]
-plot = ["plotters", "anyhow"]
+plot = ["plotters"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 plotters = { version = "0.3", optional = true }
-anyhow = { version = "1", optional = true }
 metaheuristics-nature = "1"
 efd = "0.15"
 
