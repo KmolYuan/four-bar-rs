@@ -13,7 +13,7 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(PathSyn::new(&curve, 720, None, Mode::Close));
+//!     .solve(PathSyn::from_curve(&curve, None, 720, Mode::Close));
 //! let result = s.result();
 //! ```
 use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
@@ -59,7 +59,7 @@ impl PathSyn {
     ///
     /// Panic if target curve is not long enough,
     /// or `n` is not longer than target curve.
-    pub fn new<H>(curve: &[[f64; 2]], n: usize, harmonic: H, mode: Mode) -> Self
+    pub fn from_curve<H>(curve: &[[f64; 2]], harmonic: H, n: usize, mode: Mode) -> Self
     where
         H: Into<Option<usize>>,
     {
@@ -71,6 +71,21 @@ impl PathSyn {
             Mode::Close => curve::close_line(curve),
             Mode::Partial | Mode::Open => curve::close_rev(curve),
         };
+        let efd = Efd2::from_curve(&curve, harmonic);
+        Self::from_efd(efd, n, mode)
+    }
+
+    /// Create a new task using a four-bar linkage as the target curve.
+    pub fn from_four_bar<F, H>(fb: F, harmonic: H, n: usize, mode: Mode) -> Option<Self>
+    where
+        F: Into<FourBar>,
+        H: Into<Option<usize>>,
+    {
+        curve::from_four_bar(fb, n).map(|curve| Self::from_curve(&curve, harmonic, n, mode))
+    }
+
+    /// Create a new task from target EFD coefficients.
+    pub fn from_efd(efd: Efd2, n: usize, mode: Mode) -> Self {
         // linkages
         let mut ub = vec![10.; 5];
         let mut lb = vec![1e-6; 5];
@@ -78,20 +93,10 @@ impl PathSyn {
         ub[4] = TAU;
         lb[4] = 0.;
         if mode == Mode::Partial {
-            ub.extend_from_slice(&[TAU; 2]);
-            lb.extend_from_slice(&[0.; 2]);
+            ub.extend([TAU; 2]);
+            lb.extend([0.; 2]);
         }
-        let efd = Efd2::from_curve(&curve, harmonic);
         Self { efd, n, ub, lb, mode }
-    }
-
-    /// Create a new task using a four-bar linkage as the target curve.
-    pub fn from_four_bar<F, H>(fb: F, n: usize, harmonic: H, mode: Mode) -> Option<Self>
-    where
-        F: Into<FourBar>,
-        H: Into<Option<usize>>,
-    {
-        curve::from_four_bar(fb, n).map(|curve| Self::new(&curve, n, harmonic, mode))
     }
 
     /// The harmonic used of target EFD.
