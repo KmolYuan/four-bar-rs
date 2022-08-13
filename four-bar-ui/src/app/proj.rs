@@ -76,7 +76,7 @@ fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], symbol: &str, 
     }
 }
 
-#[derive(Default, Deserialize, Serialize, PartialEq)]
+#[derive(Default, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Pivot {
     Driver,
     Follower,

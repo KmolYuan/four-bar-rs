@@ -21,7 +21,7 @@ use std::f64::consts::{FRAC_PI_4, TAU};
 
 /// Synthesis mode.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum Mode {
     /// Close path matching
     Close,
@@ -92,7 +92,7 @@ impl PathSyn {
         // gamma
         ub[4] = TAU;
         lb[4] = 0.;
-        if mode == Mode::Partial {
+        if matches!(mode, Mode::Partial) {
             ub.extend([TAU; 2]);
             lb.extend([0.; 2]);
         }

@@ -41,7 +41,7 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> Option<[f64; 2]> {
 }
 
 /// Type of the four-bar linkage.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FourBarTy {
     /// Grashof double crank
     GCCC,
