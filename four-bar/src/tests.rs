@@ -35,6 +35,7 @@ fn test_syn() {
         use crate::syn::*;
         use indicatif::ProgressBar;
         use std::{fs::write, time::Instant};
+        println!("\"{title}\"");
         let t0 = Instant::now();
         let pb = ProgressBar::new(GEN);
         let s = mh::Solver::build(mh::De::default())
@@ -51,15 +52,14 @@ fn test_syn() {
         plot::history(svg, s.report()).unwrap();
         let ans = s.result();
         write(format!("{title}_result.ron"), ron::to_string(&ans).unwrap()).unwrap();
-        if let Some([t1, t2]) = ans.angle_bound() {
-            let curve = curve::get_valid_part(&Mechanism::new(&ans).curve(t1, t2, N));
-            println!("harmonic: {}", s.func().harmonic());
-            println!("seed: {}", s.seed());
-            let filename = format!("{title}_result.svg");
-            let svg = plot::SVGBackend::new(&filename, (800, 800));
-            let curves = [("Target", target), ("Optimized", &curve)];
-            plot::curve(svg, "Comparison", &curves).unwrap();
-        }
+        let [t1, t2] = ans.angle_bound().expect("solved error");
+        let curve = curve::get_valid_part(&Mechanism::new(&ans).curve(t1, t2, N));
+        println!("harmonic: {}", s.func().harmonic());
+        println!("seed: {}", s.seed());
+        let filename = format!("{title}_result.svg");
+        let svg = plot::SVGBackend::new(&filename, (800, 800));
+        let curves = [("Target", target), ("Optimized", &curve)];
+        plot::curve(svg, "Comparison", &curves).unwrap();
     }
     inner("close1", &to_curve(CLOSE_CRUNODE), syn::Mode::Close);
     inner("close2", &to_curve(CLOSE_CUSP), syn::Mode::Close);

@@ -486,7 +486,7 @@ impl Linkage for NormFourBar {
         let joints = [[0., 0.], [*l0, 0.], [0., 0.], [0., 0.], [0., 0.]];
         let mut fs = Vec::with_capacity(3);
         fs.push(Formula::Pla(0, 1., 0., 2));
-        if (l0 - l2).abs() < 1e-20 && (1. - l3).abs() < 1e-20 {
+        if (l0 - l2).abs() < f64::EPSILON && (1. - l3).abs() < f64::EPSILON {
             // Special case
             fs.push(Formula::Ppp(0, 2, 1, 3));
         } else {
@@ -510,15 +510,13 @@ impl Linkage for NormFourBar {
             Some(Formula::Pla(_, _, ref mut a, _)) => *a = angle,
             _ => panic!("invalid four-bar"),
         }
-        for f in formulas {
-            f.apply(&mut joints);
-        }
+        formulas.into_iter().for_each(|f| f.apply(&mut joints));
         if joints[4][0].is_nan() || joints[4][1].is_nan() {
-            ans.clone_from(&[[f64::NAN; 2]; N]);
+            *ans = [[f64::NAN; 2]; N];
         } else {
-            for (ans, joint) in ans.iter_mut().zip(joint) {
-                ans.clone_from(&joints[joint]);
-            }
+            ans.iter_mut()
+                .zip(joint)
+                .for_each(|(ans, j)| *ans = joints[j]);
         }
     }
 }
@@ -540,7 +538,7 @@ impl Linkage for FourBar {
         ];
         let mut fs = Vec::with_capacity(3);
         fs.push(Formula::Pla(0, *l1, 0., 2));
-        if (l0 - l2).abs() < 1e-20 && (l1 - l3).abs() < 1e-20 {
+        if (l0 - l2).abs() < f64::EPSILON && (l1 - l3).abs() < f64::EPSILON {
             // Special case
             fs.push(Formula::Ppp(0, 2, 1, 3));
         } else {

@@ -23,7 +23,10 @@ pub trait Point: Sized {
         let dx = rhs.x() - self.x();
         let dy = rhs.y() - self.y();
         let d = dx.hypot(dy);
-        if d > d0 + d1 || d < (d0 - d1).abs() || (d < 1e-20 && d0 - d1 < 1e-20) {
+        if d > d0 + d1
+            || d < (d0 - d1).abs()
+            || (d < f64::EPSILON && (d0 - d1).abs() < f64::EPSILON)
+        {
             return Self::point(f64::NAN, f64::NAN);
         }
         let a = (d0 * d0 - d1 * d1 + d * d) / (2. * d);

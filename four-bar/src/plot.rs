@@ -1,5 +1,6 @@
 //! The functions used to plot the curve and synthesis result.
 
+use crate::curve;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
@@ -66,6 +67,7 @@ where
         .y_label_style(font())
         .draw()?;
     for (i, &(label, curve)) in curves.iter().enumerate() {
+        let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
         chart
             .draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &color))?

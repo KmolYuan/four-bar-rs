@@ -17,7 +17,7 @@ where
 pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> {
     let fb = fb.into();
     fb.angle_bound()
-        .map(|[t1, t2]| Mechanism::new(&fb).curve(t1, t2, n))
+        .map(|[t1, t2]| get_valid_part(&Mechanism::new(&fb).curve(t1, t2, n)))
 }
 
 /// Check if a curve is closed. (first point and end point are close)
@@ -27,32 +27,21 @@ pub fn is_closed(curve: &[[f64; 2]]) -> bool {
     (first[0] - end[0]).abs() < f64::EPSILON && (first[1] - end[1]).abs() < f64::EPSILON
 }
 
-/// Input a curve, split out finite parts to a continuous curve. (greedy method)
-///
-/// The result is close to the first-found finite item,
-/// and the part of infinity and NaN will be dropped.
+/// Input a curve, split out the longest finite parts to a continuous curve.
 pub fn get_valid_part(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
-    let is_invalid = |[x, y]: &[f64; 2]| !x.is_finite() || !y.is_finite();
-    let is_valid = |[x, y]: &[f64; 2]| x.is_finite() && y.is_finite();
     let mut iter = curve.iter();
-    match iter.position(is_valid) {
-        None => Vec::new(),
-        Some(t1) => match iter.position(is_invalid) {
-            None => curve[t1..].to_vec(),
-            Some(t2) => {
-                let s1 = curve[t1..t1 + t2].to_vec();
-                let mut iter = curve.iter().rev();
-                match iter.position(is_valid) {
-                    Some(t1) if t1 == 0 => {
-                        let t1 = curve.len() - 1 - t1;
-                        let t2 = t1 - iter.position(is_invalid).unwrap();
-                        [&curve[t2..t1], &s1].concat()
-                    }
-                    _ => s1,
-                }
-            }
-        },
+    let mut last = Vec::new();
+    while iter.len() > 0 {
+        let v = iter
+            .by_ref()
+            .take_while(|[x, y]| x.is_finite() && y.is_finite())
+            .copied()
+            .collect::<Vec<_>>();
+        if v.len() > last.len() {
+            last = v;
+        }
     }
+    last
 }
 
 /// Close the open curve with a line.

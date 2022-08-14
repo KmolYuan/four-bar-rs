@@ -20,10 +20,10 @@ use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
 const BOUND: &[[f64; 2]] = &[
-    [1e-6, 10.],
-    [1e-6, 10.],
-    [1e-6, 10.],
-    [1e-6, 10.],
+    [1e-4, 10.],
+    [1e-4, 10.],
+    [1e-4, 10.],
+    [1e-4, 10.],
     [0., TAU],
     [0., TAU],
     [0., TAU],
