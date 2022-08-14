@@ -2,7 +2,7 @@
 use crate::*;
 
 #[test]
-fn anti_symmetry_extension() {
+fn test_anti_symmetry_extension() {
     assert_eq!(curve::close_anti_sym_ext(OPEN_CURVE1), OPEN_CURVE1_ANS);
 }
 
@@ -24,7 +24,7 @@ fn test_plot_history() {
 
 #[test]
 #[cfg(feature = "plot")]
-fn path_syn() {
+fn test_syn() {
     fn to_curve(fb: impl Into<FourBar>) -> Vec<[f64; 2]> {
         curve::from_four_bar(fb, 720).unwrap()
     }
