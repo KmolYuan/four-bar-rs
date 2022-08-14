@@ -107,7 +107,7 @@ impl PathSyn {
         #[cfg(feature = "rayon")]
         use crate::mh::rayon::prelude::*;
         const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
-        let norm = NormFourBar::try_from(xs).unwrap();
+        let norm = NormFourBar::try_from(&xs[..5]).unwrap();
         let norm = match self.mode {
             Mode::Close | Mode::Partial => norm.to_close_curve(),
             Mode::Open => norm.to_open_curve(),

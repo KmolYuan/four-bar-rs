@@ -25,15 +25,16 @@ fn test_plot_history() {
 #[test]
 #[cfg(feature = "plot")]
 fn test_syn() {
+    const N: usize = 90;
+    const GEN: u64 = 50;
+    const POP_NUM: usize = 400;
     fn to_curve(fb: impl Into<FourBar>) -> Vec<[f64; 2]> {
-        curve::from_four_bar(fb, 720).unwrap()
+        curve::from_four_bar(fb, N).unwrap()
     }
     fn inner(title: &str, target: &[[f64; 2]], mode: syn::Mode) {
         use crate::syn::*;
         use indicatif::ProgressBar;
         use std::{fs::write, time::Instant};
-        const GEN: u64 = 50;
-        const POP_NUM: usize = 400;
         let t0 = Instant::now();
         let pb = ProgressBar::new(GEN);
         let s = mh::Solver::build(mh::De::default())
@@ -41,7 +42,7 @@ fn test_syn() {
             .callback(|ctx| pb.set_position(ctx.gen))
             .pop_num(POP_NUM)
             .record(|ctx| ctx.best_f)
-            .solve(PathSyn::from_curve(target, None, 720, mode))
+            .solve(PathSyn::from_curve(target, None, N, mode))
             .unwrap();
         pb.finish();
         println!("Finish at: {:?}", Instant::now() - t0);
@@ -51,7 +52,7 @@ fn test_syn() {
         let ans = s.result();
         write(format!("{title}_result.ron"), ron::to_string(&ans).unwrap()).unwrap();
         if let Some([t1, t2]) = ans.angle_bound() {
-            let curve = curve::get_valid_part(&Mechanism::new(&ans).curve(t1, t2, 720));
+            let curve = curve::get_valid_part(&Mechanism::new(&ans).curve(t1, t2, N));
             println!("harmonic: {}", s.func().harmonic());
             println!("seed: {}", s.seed());
             let filename = format!("{title}_result.svg");

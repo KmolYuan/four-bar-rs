@@ -178,9 +178,9 @@ impl NormFourBar {
         Self { v, inv }
     }
 
-    /// Create from a slice, return none if the slice length is less than 5.
+    /// Create from a slice, equivalent to calling `<[f64; 5]>::try_from()`.
     ///
-    /// See also [`Self::from_slice`].
+    /// The `TryFrom` implementation has the same effects.
     pub fn try_from_slice(v: &[f64], inv: bool) -> Result<Self, TryFromSliceError> {
         Ok(Self { v: v.try_into()?, inv })
     }
