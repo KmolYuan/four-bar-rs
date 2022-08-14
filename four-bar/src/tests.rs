@@ -41,7 +41,8 @@ fn test_syn() {
             .callback(|ctx| pb.set_position(ctx.gen))
             .pop_num(POP_NUM)
             .record(|ctx| ctx.best_f)
-            .solve(PathSyn::from_curve(target, None, 720, mode));
+            .solve(PathSyn::from_curve(target, None, 720, mode))
+            .unwrap();
         pb.finish();
         println!("Finish at: {:?}", Instant::now() - t0);
         let his_filename = format!("{title}_history.svg");
