@@ -178,19 +178,11 @@ impl NormFourBar {
         Self { v, inv }
     }
 
-    /// Create a normalized four-bar linkage from a slice.
-    ///
-    /// Panic if the slice length is less than 5.
-    /// Please see [`Self::from_vec`] for the constant version.
-    pub fn from_slice(v: &[f64], inv: bool) -> Self {
-        Self::try_from_slice(v, inv).unwrap()
-    }
-
     /// Create from a slice, return none if the slice length is less than 5.
     ///
     /// See also [`Self::from_slice`].
     pub fn try_from_slice(v: &[f64], inv: bool) -> Result<Self, TryFromSliceError> {
-        TryFrom::try_from(v).map(|v| Self { v, inv })
+        Ok(Self { v: v.try_into()?, inv })
     }
 
     /// Construct with `inv` option.

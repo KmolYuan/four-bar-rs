@@ -68,6 +68,7 @@ where
             720,
             config.mode,
         ))
+        .unwrap()
         .result()
 }
 

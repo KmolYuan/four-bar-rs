@@ -19,6 +19,16 @@
 use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
+const BOUND: &[[f64; 2]] = &[
+    [1e-6, 10.],
+    [1e-6, 10.],
+    [1e-6, 10.],
+    [1e-6, 10.],
+    [0., TAU],
+    [0., TAU],
+    [0., TAU],
+];
+
 /// Synthesis mode.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -49,8 +59,6 @@ pub struct PathSyn {
     pub efd: Efd2,
     // How many points need to be generated / compared
     n: usize,
-    ub: Vec<f64>,
-    lb: Vec<f64>,
     mode: Mode,
 }
 
@@ -86,17 +94,7 @@ impl PathSyn {
 
     /// Create a new task from target EFD coefficients.
     pub fn from_efd(efd: Efd2, n: usize, mode: Mode) -> Self {
-        // linkages
-        let mut ub = vec![10.; 5];
-        let mut lb = vec![1e-6; 5];
-        // gamma
-        ub[4] = TAU;
-        lb[4] = 0.;
-        if matches!(mode, Mode::Partial) {
-            ub.extend([TAU; 2]);
-            lb.extend([0.; 2]);
-        }
-        Self { efd, n, ub, lb, mode }
+        Self { efd, n, mode }
     }
 
     /// The harmonic used of target EFD.
@@ -183,12 +181,11 @@ impl ObjFunc for PathSyn {
     }
 
     #[inline]
-    fn ub(&self) -> &[f64] {
-        &self.ub
-    }
-
-    #[inline]
-    fn lb(&self) -> &[f64] {
-        &self.lb
+    fn bound(&self) -> &[[f64; 2]] {
+        if matches!(self.mode, Mode::Partial) {
+            BOUND
+        } else {
+            &BOUND[..5]
+        }
     }
 }

@@ -13,6 +13,8 @@
 //! ```
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
+extern crate core;
+
 pub use crate::{four_bar::*, mechanism::*, point::*};
 #[doc(no_inline)]
 pub use efd;

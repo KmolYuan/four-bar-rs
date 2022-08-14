@@ -25,7 +25,7 @@ csv = "1"
 four-bar = { version = "2", path = "../four-bar", features = ["rayon"] }
 clap = { version = "3", features = ["derive"] }
 image = "0.24"
-rfd = "0.9"
+rfd = "0.10"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # wasm here!

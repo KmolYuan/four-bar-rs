@@ -19,7 +19,7 @@ plot = ["plotters"]
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 plotters = { version = "0.3", optional = true }
-metaheuristics-nature = "1"
+metaheuristics-nature = "2"
 efd = "0.15"
 
 [dev-dependencies]
