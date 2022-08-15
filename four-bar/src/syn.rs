@@ -19,7 +19,7 @@
 use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
 use std::f64::consts::{FRAC_PI_4, TAU};
 
-const BOUND: &[[f64; 2]] = &[
+const BOUND: [[f64; 2]; 7] = [
     [1e-4, 10.],
     [1e-4, 10.],
     [1e-4, 10.],
@@ -183,7 +183,7 @@ impl ObjFunc for PathSyn {
     #[inline]
     fn bound(&self) -> &[[f64; 2]] {
         if matches!(self.mode, Mode::Partial) {
-            BOUND
+            &BOUND
         } else {
             &BOUND[..5]
         }
