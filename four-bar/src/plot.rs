@@ -1,6 +1,6 @@
 //! The functions used to plot the curve and synthesis result.
 
-use crate::curve;
+use crate::{curve, FourBar, Mechanism};
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
@@ -41,20 +41,29 @@ where
         .y_desc("Fitness")
         .y_label_style(font())
         .draw()?;
-    let history = history.iter().enumerate().map(|(i, x)| (i, *x));
-    chart.draw_series(LineSeries::new(history, &BLUE))?;
+    chart.draw_series(LineSeries::new(history.iter().copied().enumerate(), BLUE))?;
     Ok(())
 }
 
 /// Plot 2D curve.
-pub fn curve<B>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])]) -> PResult<(), B>
+pub fn curve<B, F>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])], fb: F) -> PResult<(), B>
 where
     B: DrawingBackend,
+    F: Into<Option<FourBar>>,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
-    let [x_min, x_max, y_min, y_max] = bounding_box(iter);
+    let fb = fb.into();
+    let joints = if let Some(fb) = &fb {
+        let [start, end] = fb.angle_bound().expect("invalid linkage");
+        let mut joints = [[0.; 2]; 5];
+        Mechanism::new(fb).apply((start + end) * 0.5, [0, 1, 2, 3, 4], &mut joints);
+        Some(joints)
+    } else {
+        None
+    };
+    let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
     let mut chart = ChartBuilder::on(&root)
         .caption(title, font())
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
@@ -74,10 +83,19 @@ where
             .label(label)
             .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
     }
+    if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
+        for [[ax, ay], [bx, by]] in [[p0, p2], [p2, p3], [p1, p3], [p2, p4], [p3, p4]] {
+            chart.draw_series(LineSeries::new([(ax, ay), (bx, by)], BLACK))?;
+        }
+        for [x, y] in joints {
+            let style = BLACK.stroke_width(0).filled();
+            chart.draw_series(LineSeries::new([(x, y)], style).point_size(5))?;
+        }
+    }
     chart
         .configure_series_labels()
-        .background_style(&WHITE)
-        .border_style(&BLACK)
+        .background_style(WHITE)
+        .border_style(BLACK)
         .label_font(font())
         .draw()?;
     Ok(())

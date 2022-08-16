@@ -3,6 +3,7 @@ use super::{
     widgets::{link, unit},
 };
 use eframe::egui::*;
+use four_bar::FourBar;
 use serde::{Deserialize, Serialize};
 
 /// Linkage data.
@@ -57,6 +58,10 @@ impl Linkages {
         for file in files {
             self.projects.open(file);
         }
+    }
+
+    pub fn current_four_bar(&self) -> FourBar {
+        self.projects.current_four_bar()
     }
 
     pub fn current_curve(&self) -> Vec<[f64; 2]> {

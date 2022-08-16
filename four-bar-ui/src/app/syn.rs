@@ -250,7 +250,8 @@ impl Synthesis {
     fn with_current_proj(&mut self, ui: &mut Ui, linkage: &Linkages) {
         let curve = linkage.current_curve();
         if ui.button("💾 Save Comparison").clicked() {
-            io::save_curve_ask(&self.config.syn.target, &curve, "comparison.svg");
+            let fb = linkage.current_four_bar();
+            io::save_curve_ask(&self.config.syn.target, &curve, fb, "comparison.svg");
         }
         if ui.button("🗐 Copy Coupler Curve").clicked() {
             self.config.syn.target = curve.clone();

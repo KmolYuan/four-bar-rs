@@ -563,6 +563,10 @@ impl Projects {
         !self.is_empty()
     }
 
+    pub fn current_four_bar(&self) -> FourBar {
+        self.list[self.curr].0.read().unwrap().fb.clone()
+    }
+
     pub fn current_curve(&self, n: usize) -> Vec<[f64; 2]> {
         let proj = self.list[self.curr].0.read().unwrap();
         curve::get_valid_part(&Mechanism::new(&proj.fb).curve(0., TAU, n))

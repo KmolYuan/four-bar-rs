@@ -12,7 +12,7 @@ fn test_plot_curve() {
     let svg = plot::SVGBackend::new("test_curve.svg", (800, 600));
     let curve = curve::from_four_bar(CLOSE_CRUNODE, 720).unwrap();
     let curve = efd::Efd2::from_curve(&curve, None).generate(90);
-    plot::curve(svg, "Test Curve", &[("Target", &curve)]).unwrap();
+    plot::curve(svg, "Test Curve", &[("Target", &curve)], None).unwrap();
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn test_syn() {
         let filename = format!("{title}_result.svg");
         let svg = plot::SVGBackend::new(&filename, (800, 800));
         let curves = [("Target", target), ("Optimized", &curve)];
-        plot::curve(svg, "Comparison", &curves).unwrap();
+        plot::curve(svg, "Comparison", &curves, ans).unwrap();
     }
     inner("close1", &to_curve(CLOSE_CRUNODE), syn::Mode::Close);
     inner("close2", &to_curve(CLOSE_CUSP), syn::Mode::Close);
