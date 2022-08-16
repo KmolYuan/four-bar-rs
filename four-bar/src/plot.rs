@@ -76,16 +76,18 @@ where
         .y_label_style(font())
         .draw()?;
     for (i, &(label, curve)) in curves.iter().enumerate() {
-        let curve = curve::get_valid_part(curve);
+        let curve = curve::get_valid_part(curve)
+            .into_iter()
+            .map(|[x, y]| (x, y));
         let color = Palette99::pick(i);
         chart
-            .draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &color))?
+            .draw_series(LineSeries::new(curve, &color))?
             .label(label)
             .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
     }
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
-        for [[ax, ay], [bx, by]] in [[p0, p2], [p2, p3], [p1, p3], [p2, p4], [p3, p4]] {
-            chart.draw_series(LineSeries::new([(ax, ay), (bx, by)], BLACK))?;
+        for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
+            chart.draw_series(LineSeries::new(line.iter().map(|&[x, y]| (x, y)), BLACK))?;
         }
         for [x, y] in joints {
             let style = BLACK.stroke_width(0).filled();
