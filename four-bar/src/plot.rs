@@ -53,16 +53,13 @@ where
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
-    let fb = fb.into();
-    let joints = if let Some(fb) = &fb {
+    let joints = fb.into().map(|fb| {
         let [start, end] = fb.angle_bound().expect("invalid linkage");
         let mut joints = [[0.; 2]; 5];
-        Mechanism::new(fb).apply((start + end) * 0.5, [0, 1, 2, 3, 4], &mut joints);
-        Some(joints)
-    } else {
-        None
-    };
+        Mechanism::new(&fb).apply((start + end) * 0.5, [0, 1, 2, 3, 4], &mut joints);
+        joints
+    });
+    let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
     let mut chart = ChartBuilder::on(&root)
         .caption(title, font())
@@ -76,12 +73,10 @@ where
         .y_label_style(font())
         .draw()?;
     for (i, &(label, curve)) in curves.iter().enumerate() {
-        let curve = curve::get_valid_part(curve)
-            .into_iter()
-            .map(|[x, y]| (x, y));
+        let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
         chart
-            .draw_series(LineSeries::new(curve, &color))?
+            .draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &color))?
             .label(label)
             .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
     }
@@ -89,10 +84,9 @@ where
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             chart.draw_series(LineSeries::new(line.iter().map(|&[x, y]| (x, y)), BLACK))?;
         }
-        for [x, y] in joints {
-            let style = BLACK.stroke_width(0).filled();
-            chart.draw_series(LineSeries::new([(x, y)], style).point_size(5))?;
-        }
+        let iter = joints.iter().map(|&[x, y]| (x, y));
+        let style = BLACK.stroke_width(0).filled();
+        chart.draw_series(LineSeries::new(iter, style).point_size(5))?;
     }
     chart
         .configure_series_labels()
@@ -104,10 +98,10 @@ where
 }
 
 /// Get the bounding box of the data, ignore the labels.
-pub fn bounding_box<'a>(curves: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4] {
+pub fn bounding_box<'a>(pts: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4] {
     let [mut x_min, mut x_max] = [&f64::INFINITY, &-f64::INFINITY];
     let [mut y_min, mut y_max] = [&f64::INFINITY, &-f64::INFINITY];
-    for [x, y] in curves {
+    for [x, y] in pts {
         if x < x_min {
             x_min = x;
         }
