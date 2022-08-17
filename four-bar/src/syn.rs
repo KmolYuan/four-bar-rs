@@ -17,8 +17,10 @@
 //! let result = s.result();
 //! ```
 use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
-use std::f64::consts::{FRAC_PI_4, TAU};
+use std::f64::consts::{FRAC_PI_8, TAU};
 
+// π/16
+const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
 const BOUND: [[f64; 2]; 7] = [
     [1e-4, 10.],
     [1e-4, 10.],
@@ -155,13 +157,14 @@ impl PathSyn {
                 #[cfg(not(feature = "rayon"))]
                 let iter = [[xs[5], xs[6]], [xs[6], xs[5]]].into_iter();
                 iter.map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
-                    .filter(|[t1, t2]| t2 - t1 > FRAC_PI_4)
+                    .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
                     .flat_map(f)
                     .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
                     .unwrap_or(INFEASIBLE)
             }
             Mode::Open => norm
                 .angle_bound()
+                .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
                 .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
                 .unwrap_or(INFEASIBLE),
         }

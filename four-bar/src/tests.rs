@@ -66,6 +66,7 @@ fn test_syn() {
     }
     inner("close1", &to_curve(CLOSE_CRUNODE), syn::Mode::Close);
     inner("close2", &to_curve(CLOSE_CUSP), syn::Mode::Close);
+    inner("close3", &to_curve(FourBar::example()), syn::Mode::Close);
     inner("partial1", OPEN_CURVE1, syn::Mode::Partial);
     inner("open1", OPEN_CURVE1, syn::Mode::Open);
     inner("open2", &to_curve(OPEN_CURVE2), syn::Mode::Open);
