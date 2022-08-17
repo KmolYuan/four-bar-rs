@@ -56,13 +56,17 @@ fn test_syn() {
         let curve = curve::get_valid_part(&Mechanism::new(&ans).curve(t1, t2, N));
         println!("harmonic: {}", s.func().harmonic());
         println!("seed: {}", s.seed());
+        let filename = format!("{title}_linkage.svg");
+        let curves = [("Target", target), ("Optimized", &curve)];
+        let svg = plot::SVGBackend::new(&filename, (800, 800));
+        plot::curve(svg, "Linkage", &curves, ans).unwrap();
         let filename = format!("{title}_result.svg");
         let svg = plot::SVGBackend::new(&filename, (800, 800));
-        let curves = [("Target", target), ("Optimized", &curve)];
-        plot::curve(svg, "Comparison", &curves, ans).unwrap();
+        plot::curve(svg, "Comparison", &curves, None).unwrap();
     }
     inner("close1", &to_curve(CLOSE_CRUNODE), syn::Mode::Close);
     inner("close2", &to_curve(CLOSE_CUSP), syn::Mode::Close);
+    inner("close3", &to_curve(FourBar::example()), syn::Mode::Close);
     inner("partial1", OPEN_CURVE1, syn::Mode::Partial);
     inner("open1", OPEN_CURVE1, syn::Mode::Open);
     inner("open2", &to_curve(OPEN_CURVE2), syn::Mode::Open);
