@@ -140,8 +140,8 @@ impl PathSyn {
             .filter(|(curve, _)| curve.len() > 2)
             .map(|(curve, norm)| {
                 let efd = Efd2::from_curve(&close_f(curve), Some(self.efd.harmonic()));
-                let four_bar = FourBar::from_transform(norm, efd.to(&self.efd));
                 let fitness = efd.manhattan(&self.efd);
+                let four_bar = FourBar::from_transform(norm, efd.to(&self.efd));
                 (fitness, four_bar)
             })
         };
