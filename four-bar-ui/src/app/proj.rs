@@ -76,6 +76,42 @@ fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], symbol: &str, 
     }
 }
 
+fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Response {
+    ui.group(|ui| {
+        fn copy_btn(ui: &mut Ui, start: f64, end: f64, suffix: &str) {
+            ui.horizontal(|ui| {
+                let s_str = format!("{start:.04}");
+                if ui.selectable_label(false, &s_str).clicked() {
+                    ui.output().copied_text = s_str;
+                }
+                let e_str = format!("{end:.04}");
+                if ui.selectable_label(false, &e_str).clicked() {
+                    ui.output().copied_text = e_str;
+                }
+                ui.label(suffix);
+            });
+        }
+        ui.label("Click to copy angle bounds:");
+        copy_btn(ui, start, end, "rad");
+        copy_btn(ui, start.to_degrees(), end.to_degrees(), "deg");
+        ui.horizontal(|ui| {
+            let mut res1 = ui.button("➡ To Start");
+            if res1.clicked() {
+                res1.mark_changed();
+                *theta2 = start;
+            }
+            let mut res2 = ui.button("➡ To End");
+            if res2.clicked() {
+                res2.mark_changed();
+                *theta2 = end;
+            }
+            res1 | res2
+        })
+    })
+    .inner
+    .inner
+}
+
 #[derive(Default, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Pivot {
     Driver,
@@ -290,25 +326,8 @@ impl ProjInner {
                 self.cache.changed = true;
             }
         });
-        if let Some([s, e]) = self.fb.angle_bound() {
-            ui.group(|ui| {
-                ui.label("Click to copy angle bounds:");
-                let mut copy_btn = |s: f64, e: f64, suffix: &str| {
-                    ui.horizontal(|ui| {
-                        let s_str = format!("{:.04}", s);
-                        if ui.selectable_label(false, &s_str).clicked() {
-                            ui.output().copied_text = s_str;
-                        }
-                        let e_str = format!("{:.04}", e);
-                        if ui.selectable_label(false, &e_str).clicked() {
-                            ui.output().copied_text = e_str;
-                        }
-                        ui.label(suffix);
-                    });
-                };
-                copy_btn(s, e, "rad");
-                copy_btn(s.to_degrees(), e.to_degrees(), "deg");
-            });
+        if let Some([start, end]) = self.fb.angle_bound() {
+            res |= angle_bound_btns(ui, &mut self.angles.theta2, start, end);
         }
         res |= angle(ui, "Theta: ", &mut self.angles.theta2, "");
         self.cache.changed |= res.changed();
