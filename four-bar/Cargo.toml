@@ -24,7 +24,7 @@ efd = "0.15"
 
 [dev-dependencies]
 indicatif = "0.17"
-ron = "0.7"
+ron = "0.8"
 
 [package.metadata.docs.rs]
 all-features = true
