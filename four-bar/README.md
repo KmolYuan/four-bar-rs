@@ -16,8 +16,12 @@ let path = m.curve(0., 360);
 The synthesis function let you synthesize a four-bar mechanism by fitting target curve.
 
 ```rust
-use four_bar::synthesis::synthesis;
+use four_bar::{mh, syn};
 
-let s = synthesis(&curve, gen, pop, |_| true);
-let result = s.result();
+let s = mh::Solver::build(mh::De::default())
+    .task(|ctx| ctx.gen == gen)
+    .pop_num(pop_num)
+    .record(|ctx| ctx.best_f)
+    .solve(syn::PathSyn::from_curve(target, None, n, syn::Mode::Close))
+    .unwrap();
 ```
