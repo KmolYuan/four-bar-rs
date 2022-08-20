@@ -15,6 +15,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+mod undo;
+
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 
@@ -185,6 +187,8 @@ struct ProjInner {
     angle_use_rad: bool,
     #[serde(skip)]
     cache: Cache,
+    #[serde(skip)]
+    undo: undo::Undo<undo::FourBarDelta>,
 }
 
 impl Default for ProjInner {
@@ -197,6 +201,7 @@ impl Default for ProjInner {
             angle_open: false,
             angle_use_rad: false,
             cache: Cache { changed: true, ..Cache::default() },
+            undo: Default::default(),
         }
     }
 }
@@ -226,7 +231,22 @@ impl ProjInner {
         });
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
-        ui.checkbox(&mut self.hide, "Hide 👁");
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut self.hide, "Hide 👁");
+            let enabled = self.undo.is_able_undo();
+            if ui.add_enabled(enabled, Button::new("⮪ Undo")).clicked() {
+                self.undo.undo(&mut self.fb);
+                self.cache.changed = true;
+            }
+            let enabled = self.undo.is_able_redo();
+            if ui.add_enabled(enabled, Button::new("⮫ Redo")).clicked() {
+                self.undo.redo(&mut self.fb);
+                self.cache.changed = true;
+            }
+            if ui.small_button("🗑").on_hover_text("Clear undo").clicked() {
+                self.undo.clear();
+            }
+        });
         ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot, interval, n));
         Window::new("⚽ Dynamics")
             .open(&mut self.angle_open)
@@ -259,6 +279,7 @@ impl ProjInner {
                         });
                 }
             });
+        self.undo.fetch(ui.ctx().input().time, &self.fb);
     }
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
