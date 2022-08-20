@@ -20,7 +20,7 @@ where
     root.fill(&WHITE)?;
     let cap = format!(
         "Convergence Plot (Best Fitness: {:.04})",
-        history[history.len() - 1]
+        history.last().unwrap()
     );
     let max_fitness = history
         .iter()

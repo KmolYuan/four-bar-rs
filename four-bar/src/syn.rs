@@ -1,20 +1,18 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 //!
 //! ```
-//! use four_bar::{
-//!     mh::{Rga, Solver},
-//!     syn::{Mode, PathSyn},
-//! };
+//! use four_bar::{mh, syn};
 //!
-//! # let curve = [[0., 0.], [1., 0.]];
+//! # let curve = [[0., 0.], [1., 0.], [2., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
-//! let s = Solver::build(Rga::default())
+//! # let n = 3;
+//! let s = mh::Solver::build(mh::Rga::default())
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(PathSyn::from_curve(&curve, None, 720, Mode::Close));
-//! let result = s.result();
+//!     .solve(syn::PathSyn::from_curve(&curve, None, n, syn::Mode::Close))
+//!     .unwrap();
 //! ```
 use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
 use std::f64::consts::{FRAC_PI_8, TAU};
