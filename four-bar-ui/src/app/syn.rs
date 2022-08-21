@@ -1,5 +1,4 @@
 use super::{
-    as_values::{as_values, as_values_lin},
     csv::{dump_csv, parse_csv},
     io,
     linkages::Linkages,
@@ -285,13 +284,11 @@ impl Synthesis {
                     .show(ui, |ui| {
                         for (i, task) in self.tasks.iter().enumerate() {
                             let conv = task.conv.read().unwrap();
+                            let pts1 = plot::PlotPoints::from_ys_f64(&conv);
+                            let pts2 = plot::PlotPoints::from_ys_f64(&conv);
                             let name = format!("Best Fitness {}", i + 1);
-                            ui.line(plot::Line::new(as_values_lin(&conv)).fill(-1.5).name(&name));
-                            ui.points(
-                                plot::Points::new(as_values_lin(&conv))
-                                    .name(&name)
-                                    .stems(0.),
-                            );
+                            ui.line(plot::Line::new(pts1).fill(-1.5).name(&name));
+                            ui.points(plot::Points::new(pts2).name(&name).stems(0.));
                         }
                     });
             });
@@ -347,7 +344,7 @@ impl Synthesis {
 
     pub fn plot(&self, ui: &mut plot::PlotUi) {
         if !self.config.syn.target.is_empty() {
-            let line = plot::Line::new(as_values(&self.config.syn.target))
+            let line = plot::Line::new(self.config.syn.target.clone())
                 .name("Synthesis target")
                 .style(plot::LineStyle::dashed_loose())
                 .width(3.);

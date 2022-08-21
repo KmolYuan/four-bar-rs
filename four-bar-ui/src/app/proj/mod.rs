@@ -1,5 +1,4 @@
 use super::{
-    as_values::as_values,
     csv::dump_csv,
     io,
     widgets::{angle, link, unit},
@@ -50,12 +49,14 @@ fn filename(path: &str) -> String {
 }
 
 fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
-    let values = as_values(points);
     let width = if is_main { 3. } else { 1. };
     if points.len() == 2 {
-        ui.line(plot::Line::new(values).width(width).color(LINK_COLOR));
+        let line = plot::Line::new(points.to_vec())
+            .width(width)
+            .color(LINK_COLOR);
+        ui.line(line);
     } else {
-        let polygon = plot::Polygon::new(values)
+        let polygon = plot::Polygon::new(points.to_vec())
             .width(width)
             .fill_alpha(if is_main { 0.8 } else { 0.2 })
             .color(LINK_COLOR);
@@ -66,13 +67,12 @@ fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
 fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], symbol: &str, use_rad: bool) {
     for i in 0..=2 {
         let values = if use_rad {
-            let iter = values.iter().map(|(x, y)| plot::Value::new(*x, y[i]));
-            plot::Values::from_values_iter(iter)
+            values.iter().map(|(x, y)| [*x, y[i]]).collect::<Vec<_>>()
         } else {
-            let iter = values
+            values
                 .iter()
-                .map(|(x, y)| plot::Value::new(x.to_degrees(), y[i].to_degrees()));
-            plot::Values::from_values_iter(iter)
+                .map(|(x, y)| [x.to_degrees(), y[i].to_degrees()])
+                .collect()
         };
         ui.line(plot::Line::new(values).name(format!("{}{}", symbol, i + 2)));
     }
@@ -416,10 +416,10 @@ impl ProjInner {
         draw_link(ui, &[self.cache.joints[0], self.cache.joints[2]], is_main);
         draw_link(ui, &[self.cache.joints[1], self.cache.joints[3]], is_main);
         draw_link(ui, &self.cache.joints[2..], is_main);
-        let float_j = plot::Points::new(as_values(&self.cache.joints[2..]))
+        let float_j = plot::Points::new(self.cache.joints[2..].to_vec())
             .radius(5.)
             .color(JOINT_COLOR);
-        let fixed_j = plot::Points::new(as_values(&self.cache.joints[..2]))
+        let fixed_j = plot::Points::new(self.cache.joints[..2].to_vec())
             .radius(10.)
             .shape(plot::MarkerShape::Up)
             .color(JOINT_COLOR);
@@ -429,13 +429,8 @@ impl ProjInner {
             .into_iter()
             .enumerate()
         {
-            let iter = self
-                .cache
-                .curves
-                .iter()
-                .map(|c| c[i])
-                .map(|[x, y]| plot::Value::new(x, y));
-            let line = plot::Line::new(plot::Values::from_values_iter(iter))
+            let iter = self.cache.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
+            let line = plot::Line::new(iter)
                 .name(format!("{}:{}", name, i))
                 .width(3.);
             ui.line(line);

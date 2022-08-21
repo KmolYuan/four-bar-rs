@@ -3,7 +3,6 @@ use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-mod as_values;
 mod atomic;
 mod csv;
 mod io;
@@ -102,7 +101,7 @@ impl App {
             .on_hover_text("Options");
         ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
             .on_hover_text("Close Panel");
-        ui.with_layout(Layout::right_to_left(), |ui| {
+        ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
             let style = ui.style().clone();
             if let Some(v) = style.visuals.light_dark_small_toggle_button(ui) {
                 ui.ctx().set_visuals(v);

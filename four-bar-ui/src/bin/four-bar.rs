@@ -10,7 +10,7 @@ struct Entry {
     files: Vec<String>,
 }
 
-fn main() -> ! {
+fn main() {
     const ICON: &[u8] = include_bytes!("../../assets/favicon.png");
     let icon = image::load_from_memory_with_format(ICON, ImageFormat::Png).unwrap();
     let opt = NativeOptions {
