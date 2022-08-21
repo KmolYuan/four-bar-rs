@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta content="text/html; charset=utf-8" http-equiv="Content-Type"/>
-    <!-- Disable zooming: -->
-    <meta content="width=device-width, initial-scale=1.0, user-scalable=no" name="viewport">
+<!DOCTYPE html><html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- Disable zooming: -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
     <title>Four-bar</title>
-    <link rel="icon" href="./favicon.png">
+    <base href="/">
+    <link rel="icon" href="/favicon.png">
     <style>
         html {
             /* Remove touch delay: */
@@ -31,6 +30,8 @@
             overflow: hidden;
             margin: 0 !important;
             padding: 0 !important;
+            height: 100%;
+            width: 100%;
         }
 
         /* Position canvas in center-top: */
@@ -87,15 +88,20 @@
             }
         }
     </style>
-</head>
+
+<link rel="preload" href="/four-bar-ui_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="/four-bar-ui.js"></head>
 <body>
 <!-- The WASM code will resize this canvas to cover the entire screen -->
-<canvas id="main_canvas"></canvas>
+<canvas id="app"></canvas>
 <div class="centered" id="loading-text">
     <p style="font-size: 16px">Loading…</p>
     <div class="lds-dual-ring"></div>
 </div>
+
 <script type="module" src="main.js"></script>
-</body>
-<!-- Powered by egui: https://github.com/emilk/egui/ -->
-</html>
+<script type="module">import init from '/four-bar-ui.js';init('/four-bar-ui_bg.wasm');</script>
+
+
+
+</body><!-- Powered by egui: https://github.com/emilk/egui/ --></html>
