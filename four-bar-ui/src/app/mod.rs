@@ -40,6 +40,14 @@ pub struct App {
 
 impl App {
     pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Box<Self> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            extern "C" {
+                fn loading_finished();
+            }
+            loading_finished();
+        }
         let mut font_data = BTreeMap::new();
         let mut families = Vec::new();
         for &(name, font) in FONT {

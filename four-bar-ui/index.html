@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<!-- Disable zooming: -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <head>
-    <meta content="text/html; charset=utf-8" http-equiv="Content-Type"/>
-    <!-- Disable zooming: -->
-    <meta content="width=device-width, initial-scale=1.0, user-scalable=no" name="viewport">
     <title>Four-bar</title>
-    <link rel="icon" href="./favicon.png">
+    <base data-trunk-public-url />
+    <link data-trunk rel="icon" href="assets/favicon.png">
     <style>
         html {
             /* Remove touch delay: */
@@ -31,6 +32,8 @@
             overflow: hidden;
             margin: 0 !important;
             padding: 0 !important;
+            height: 100%;
+            width: 100%;
         }
 
         /* Position canvas in center-top: */
@@ -90,12 +93,14 @@
 </head>
 <body>
 <!-- The WASM code will resize this canvas to cover the entire screen -->
-<canvas id="main_canvas"></canvas>
+<canvas id="app"></canvas>
 <div class="centered" id="loading-text">
     <p style="font-size: 16px">Loading…</p>
     <div class="lds-dual-ring"></div>
 </div>
+<link data-trunk rel="copy-file" href="assets/main.js" />
 <script type="module" src="main.js"></script>
+<link data-trunk rel="rust" data-wasm-opt="2" />
 </body>
 <!-- Powered by egui: https://github.com/emilk/egui/ -->
 </html>

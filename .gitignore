@@ -1,8 +1,6 @@
 /.idea/
 /target/
-/docs/*
-!/docs/index.html
-!/docs/main.js
+dist/
 Cargo.lock
 *.svg
 *.ron

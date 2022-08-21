@@ -52,12 +52,10 @@ cargo run -- --help
 Run those scripts from the repository:
 
 ```bash
-./setup_web.sh
-./build_web.sh
-# Start local server at 127.0.0.1:8080
-./start_web.sh
+cargo install trunk
+cd four-bar-ui
+trunk serve
+trunk build --release
 ```
 
-The application is deployed in the `docs` directory (entire files).
-
-Windows platform also has the `*.bat` files corresponding to the same names.
+The application is deployed in the `dist` directory (entire files).

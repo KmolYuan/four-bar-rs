@@ -1,6 +1,5 @@
-import * as wasm from "./pkg/four_bar_ui.js";
-
 // Utility functions
+window.loading_finished = () => document.getElementById("loading-text").remove();
 window.open_file = (ext, done, multiple) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -19,14 +18,3 @@ window.save_file = (s, path) => {
     a.href = URL.createObjectURL(new Blob([s], {type: "application/octet-stream"}));
     a.click();
 };
-
-// Startup WebAssembly
-wasm.default().then(() => {
-    wasm.start("main_canvas");
-    document.getElementById("loading-text").remove();
-}).catch(err => {
-    document.getElementById("loading-text").innerHTML = `
-    <p>An error occurred during loading:</p>
-    <p style="font-family: Courier New, Ubuntu Mono, monospace">${err}</p>
-    <p style="font-size: 14px">Make sure you use a modern browser with WebGL and WASM enabled.</p>`;
-});

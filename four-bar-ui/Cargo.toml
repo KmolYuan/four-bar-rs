@@ -10,9 +10,6 @@ repository = "https://github.com/KmolYuan/four-bar-rs"
 keywords = ["mechanism", "simulation", "optimization"]
 categories = ["algorithms"]
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 eframe = { version = "0.19", default-features = false, features = ["persistence", "glow", "dark-light"] }
 four-bar = { version = "2", path = "../four-bar", features = ["serde", "plot"] }
@@ -33,6 +30,7 @@ instant = { version = "0.1", features = ["stdweb"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1"
+tracing-wasm = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 # windows here!

@@ -25,7 +25,7 @@ jobs:
             artifact_name: target/release/four-bar
           - os: ubuntu-latest
             asset_name: four-bar-wasm-unknown
-            artifact_name: docs/
+            artifact_name: dist/
           - os: macos-latest
             asset_name: four-bar-macos-amd64
             artifact_name: target/release/four-bar
@@ -47,10 +47,15 @@ jobs:
           sudo apt install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
       - if: matrix.asset_name == 'four-bar-wasm-unknown'
         name: WASM Build
-        run: ./setup_web.sh && ./build_web.sh
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install trunk
+          trunk build --release --filehash=false --dist=dist four-bar-ui/index.html
       - if: matrix.asset_name != 'four-bar-wasm-unknown'
         name: Native Build
-        run: cargo clippy -- -D warnings && cargo build --release
+        run: |
+          cargo clippy -- -D warnings
+          cargo build --release
       - name: Pack
         uses: vimtor/action-zip@v1
         with:
