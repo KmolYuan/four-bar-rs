@@ -602,9 +602,17 @@ impl Projects {
         self.list[self.curr].0.read().unwrap().fb.clone()
     }
 
-    pub fn current_curve(&self, n: usize) -> Vec<[f64; 2]> {
-        let proj = self.list[self.curr].0.read().unwrap();
-        curve::get_valid_part(&Mechanism::new(&proj.fb).curve(0., TAU, n))
+    pub fn current_curve(&self) -> Vec<[f64; 2]> {
+        self.list[self.curr]
+            .0
+            .read()
+            .unwrap()
+            .cache
+            .curves
+            .iter()
+            .map(|[_, _, c]| c)
+            .copied()
+            .collect()
     }
 
     pub fn plot(&mut self, ui: &mut plot::PlotUi, n: usize) {

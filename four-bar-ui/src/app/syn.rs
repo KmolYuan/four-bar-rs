@@ -5,15 +5,12 @@ use super::{
     widgets::unit,
 };
 use eframe::egui::*;
-use four_bar::{curve, mh, syn};
+use four_bar::{mh, syn};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
     Arc, RwLock,
 };
-
-const ERR_DES: &str = "This error is calculated with point by point strategy.\n\
-    Increase resolution for more accurate calculations.";
 
 fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
     if let Ok(curve) = parse_csv(s) {
@@ -227,9 +224,9 @@ impl Synthesis {
             });
             keep
         });
+        #[cfg(target_arch = "wasm32")]
+        let _ = ui.label("WARNING: Web platform will freeze UI when start solving!");
         ui.horizontal(|ui| {
-            #[cfg(target_arch = "wasm32")]
-            let _ = ui.label("Web platform will freeze UI when start solving!");
             let enabled = !self.config.syn.target.is_empty();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
                 self.start_syn(linkage.queue());
@@ -240,36 +237,19 @@ impl Synthesis {
         ui.heading("Projects");
         ui.label("Results from the coupler trajectories.");
         if linkage.projects.select(ui, false) {
-            self.with_current_proj(ui, linkage);
+            if ui.button("💾 Save Comparison").clicked() {
+                let curve = linkage.current_curve();
+                let fb = linkage.current_four_bar();
+                io::save_curve_ask(&self.config.syn.target, &curve, fb, "comparison.svg");
+            }
+            if ui.button("🗐 Copy Coupler Curve").clicked() {
+                self.config.syn.target = linkage.current_curve();
+                *self.config.curve_str.write().unwrap() =
+                    dump_csv(&self.config.syn.target).unwrap();
+            }
         }
         self.convergence_plot(ui);
         self.target_curve_editor(ui);
-    }
-
-    fn with_current_proj(&mut self, ui: &mut Ui, linkage: &Linkages) {
-        let curve = linkage.current_curve();
-        if ui.button("💾 Save Comparison").clicked() {
-            let fb = linkage.current_four_bar();
-            io::save_curve_ask(&self.config.syn.target, &curve, fb, "comparison.svg");
-        }
-        if ui.button("🗐 Copy Coupler Curve").clicked() {
-            self.config.syn.target = curve.clone();
-            *self.config.curve_str.write().unwrap() = dump_csv(&self.config.syn.target).unwrap();
-        }
-        let target = &self.config.syn.target;
-        if !curve.is_empty() {
-            let c = curve::crunode(&curve);
-            ui.label(format!("Crunodes of current curve: {}", c));
-        }
-        if !target.is_empty() {
-            let c = curve::crunode(target);
-            ui.label(format!("Crunodes of target curve: {}", c));
-        }
-        if !target.is_empty() && !curve.is_empty() {
-            let geo_err = curve::geo_err(target, &curve);
-            ui.label(format!("Target mean error: {:.06}", geo_err))
-                .on_hover_text(ERR_DES);
-        }
     }
 
     fn convergence_plot(&mut self, ui: &mut Ui) {

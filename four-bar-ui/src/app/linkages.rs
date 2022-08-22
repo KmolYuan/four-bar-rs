@@ -65,7 +65,7 @@ impl Linkages {
     }
 
     pub fn current_curve(&self) -> Vec<[f64; 2]> {
-        self.projects.current_curve(self.config.res)
+        self.projects.current_curve()
     }
 
     #[allow(unused)]
