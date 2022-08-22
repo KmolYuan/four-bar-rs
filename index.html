@@ -3,8 +3,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <title>Four-bar</title>
-    <base href="/">
-    <link rel="icon" href="/favicon.png">
+    <base href="/four-bar-ui/">
+    <link rel="icon" href="/four-bar-ui/favicon.png">
     <style>
         html {
             /* Remove touch delay: */
@@ -89,8 +89,8 @@
         }
     </style>
 
-<link rel="preload" href="/four-bar-ui_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="/four-bar-ui.js"></head>
+<link rel="preload" href="/four-bar-ui/four-bar-ui_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="/four-bar-ui/four-bar-ui.js"></head>
 <body>
 <!-- The WASM code will resize this canvas to cover the entire screen -->
 <canvas id="app"></canvas>
@@ -100,7 +100,7 @@
 </div>
 
 <script type="module" src="main.js"></script>
-<script type="module">import init from '/four-bar-ui.js';init('/four-bar-ui_bg.wasm');</script>
+<script type="module">import init from '/four-bar-ui/four-bar-ui.js';init('/four-bar-ui/four-bar-ui_bg.wasm');</script>
 
 
 
