@@ -25,7 +25,7 @@ jobs:
             artifact_name: target/release/four-bar-ui
           - os: ubuntu-latest
             asset_name: four-bar-wasm-unknown
-            artifact_name: dist/
+            artifact_name: four-bar-ui/dist/
           - os: macos-latest
             asset_name: four-bar-macos-amd64
             artifact_name: target/release/four-bar-ui
@@ -50,7 +50,7 @@ jobs:
         run: |
           rustup target add wasm32-unknown-unknown
           cargo install trunk
-          trunk build --release --filehash=false --dist=dist four-bar-ui/index.html
+          trunk build --release --filehash=false four-bar-ui/index.html
       - if: matrix.asset_name != 'four-bar-wasm-unknown'
         name: Native Build
         run: |
