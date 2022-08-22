@@ -47,10 +47,13 @@ jobs:
           sudo apt install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
       - if: matrix.asset_name == 'four-bar-wasm-unknown'
         name: WASM Build
+        working-directory: four-bar-ui
         run: |
           rustup target add wasm32-unknown-unknown
           cargo install trunk
-          trunk build --release --filehash=false four-bar-ui/index.html
+          trunk build --release --filehash=false
+          # For GH-Pages
+          trunk build --release --filehash=false --public-url=/four-bar-rs/ --dist=docs
       - if: matrix.asset_name != 'four-bar-wasm-unknown'
         name: Native Build
         run: |
@@ -79,5 +82,5 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@releases/v4
         with:
           token: ${{ secrets.PUBLISH_TOKEN }}
-          folder: ${{ matrix.artifact_name }}
+          folder: four-bar-ui/docs
           clean: true
