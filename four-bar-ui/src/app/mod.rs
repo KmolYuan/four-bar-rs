@@ -171,7 +171,7 @@ impl eframe::App for App {
         } else {
             self.pc_view(ctx);
         }
-        self.linkage.event(ctx);
+        self.linkage.poll(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

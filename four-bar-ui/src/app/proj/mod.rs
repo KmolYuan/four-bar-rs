@@ -64,18 +64,23 @@ fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
     }
 }
 
-fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], symbol: &str, use_rad: bool) {
-    for i in 0..=2 {
-        let values = if use_rad {
-            values.iter().map(|(x, y)| [*x, y[i]]).collect::<Vec<_>>()
+fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], sym: &str, use_rad: bool) {
+    let mut v2 = Vec::with_capacity(values.len());
+    let mut v3 = Vec::with_capacity(values.len());
+    let mut v4 = Vec::with_capacity(values.len());
+    for &(x, [y2, y3, y4]) in values {
+        let [x, y2, y3, y4] = if use_rad {
+            [x, y2, y3, y4]
         } else {
-            values
-                .iter()
-                .map(|(x, y)| [x.to_degrees(), y[i].to_degrees()])
-                .collect()
+            [x, y2, y3, y4].map(f64::to_degrees)
         };
-        ui.line(plot::Line::new(values).name(format!("{}{}", symbol, i + 2)));
+        v2.push([x, y2]);
+        v3.push([x, y3]);
+        v4.push([x, y4]);
     }
+    ui.line(plot::Line::new(v2).name(format!("{sym}2")));
+    ui.line(plot::Line::new(v3).name(format!("{sym}3")));
+    ui.line(plot::Line::new(v4).name(format!("{sym}4")));
 }
 
 fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Response {
@@ -529,10 +534,6 @@ impl Queue {
     pub fn push(&self, path: Option<String>, fb: FourBar) {
         self.0.write().unwrap().push(Project::new(path, fb));
     }
-
-    fn push_default(&self) {
-        self.0.write().unwrap().push(Project::default());
-    }
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -570,26 +571,20 @@ impl Projects {
         self.queue.clone()
     }
 
-    pub fn event(&mut self, ctx: &Context, n: usize) {
+    pub fn poll(&mut self, ctx: &Context, n: usize) {
         #[cfg(not(target_arch = "wasm32"))]
         for file in ctx.input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
                 self.pre_open(path);
             }
         }
-        if !self.queue.0.read().unwrap().is_empty() {
-            let iter = self
-                .queue
-                .0
-                .write()
-                .unwrap()
-                .drain(..)
-                .map(|proj| {
-                    proj.cache(n);
-                    proj
-                })
-                .collect::<Vec<_>>();
-            self.list.extend(iter);
+        let len = self.queue.0.read().unwrap().len();
+        if len > 0 {
+            self.list.reserve(len);
+            while let Some(proj) = self.queue.0.write().unwrap().pop() {
+                proj.cache(n);
+                self.list.push(proj);
+            }
             self.curr = self.len() - 1;
             ctx.request_repaint();
         }
@@ -606,7 +601,7 @@ impl Projects {
                 });
             }
             if ui.button("🗋 New").clicked() {
-                self.queue.push_default();
+                self.queue.0.write().unwrap().push(Project::default());
             }
         });
         if self.select(ui, true) {

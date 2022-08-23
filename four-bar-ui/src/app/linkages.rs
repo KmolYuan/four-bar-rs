@@ -71,8 +71,8 @@ impl Linkages {
         self.projects.current_curve()
     }
 
-    pub fn event(&mut self, ctx: &Context) {
-        self.projects.event(ctx, self.config.res);
+    pub fn poll(&mut self, ctx: &Context) {
+        self.projects.poll(ctx, self.config.res);
     }
 
     pub fn queue(&self) -> Queue {
