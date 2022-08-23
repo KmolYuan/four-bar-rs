@@ -27,7 +27,7 @@ fn pan_panel(ui: &mut Ui, f: impl FnOnce(&mut Ui)) {
     ScrollArea::vertical().show(ui, f);
 }
 
-#[derive(Default, Deserialize, Serialize, PartialEq)]
+#[derive(Default, PartialEq)]
 enum Panel {
     #[default]
     Linkages,
@@ -125,17 +125,13 @@ impl App {
         ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
             .on_hover_text("Focus on Canvas");
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
-            let style = ui.style().clone();
-            if let Some(v) = style.visuals.light_dark_small_toggle_button(ui) {
-                ui.ctx().set_visuals(v);
-            }
-            if ui.small_button("💁").on_hover_text("Welcome").clicked() {
+            if ui.small_button("❓").on_hover_text("Welcome").clicked() {
                 self.welcome_off = !self.welcome_off;
             }
         });
     }
 
-    fn canvas(&mut self, ui: &mut Ui) {
+    fn canvas(&self, ui: &mut Ui) {
         plot::Plot::new("canvas")
             .data_aspect(1.)
             .legend(Default::default())

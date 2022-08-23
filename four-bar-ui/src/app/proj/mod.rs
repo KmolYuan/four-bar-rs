@@ -355,6 +355,9 @@ impl ProjInner {
         if ui.button("⚽ Dynamics").clicked() {
             self.angle_open = !self.angle_open;
         }
+        if self.cache.changed {
+            self.cache(n);
+        }
     }
 
     fn cache(&mut self, n: usize) {
@@ -405,12 +408,9 @@ impl ProjInner {
             .collect();
     }
 
-    fn plot(&mut self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
+    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize) {
         if self.hide {
             return;
-        }
-        if self.cache.changed {
-            self.cache(n);
         }
         let is_main = i == id;
         draw_link(ui, &[self.cache.joints[0], self.cache.joints[2]], is_main);
@@ -494,8 +494,8 @@ impl Project {
         self.0.write().unwrap().show(ui, pivot, interval, n);
     }
 
-    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize, n: usize) {
-        self.0.write().unwrap().plot(ui, i, id, n);
+    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize) {
+        self.0.read().unwrap().plot(ui, i, id);
     }
 }
 
@@ -556,6 +556,10 @@ impl Projects {
                 self.open(path);
             }
         }
+        if !self.queue.0.read().unwrap().is_empty() {
+            self.list.append(&mut *self.queue.0.write().unwrap());
+            self.curr = self.len() - 1;
+        }
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
@@ -615,13 +619,9 @@ impl Projects {
             .collect()
     }
 
-    pub fn plot(&mut self, ui: &mut plot::PlotUi, n: usize) {
-        if !self.queue.0.read().unwrap().is_empty() {
-            self.list.append(&mut *self.queue.0.write().unwrap());
-            self.curr = self.len() - 1;
-        }
+    pub fn plot(&self, ui: &mut plot::PlotUi) {
         for (i, proj) in self.list.iter().enumerate() {
-            proj.plot(ui, i, self.curr, n);
+            proj.plot(ui, i, self.curr);
         }
     }
 }

@@ -41,6 +41,9 @@ impl Linkages {
         });
         link(ui, "Drag interval: ", &mut self.config.interval, 0.01);
         unit(ui, "Curve resolution: ", &mut self.config.res, 1);
+        let mut vis = ui.visuals().clone();
+        vis.light_dark_radio_buttons(ui);
+        ui.ctx().set_visuals(vis);
         ui.separator();
         ui.heading("Control Tips");
         ui.label("Pan move: Left-drag / Drag");
@@ -49,8 +52,8 @@ impl Linkages {
         ui.label("Reset: Right-click / Double-click");
     }
 
-    pub fn plot(&mut self, ui: &mut plot::PlotUi) {
-        self.projects.plot(ui, self.config.res);
+    pub fn plot(&self, ui: &mut plot::PlotUi) {
+        self.projects.plot(ui);
     }
 
     pub fn open_proj(&mut self, files: Vec<String>) {
