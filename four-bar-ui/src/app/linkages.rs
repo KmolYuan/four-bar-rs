@@ -56,10 +56,10 @@ impl Linkages {
         self.projects.plot(ui);
     }
 
-    pub fn open_proj(&mut self, files: Vec<String>) {
-        self.projects.iter().for_each(Project::re_open);
+    pub fn pre_open_proj(&mut self, files: Vec<String>) {
+        self.projects.iter().for_each(Project::pre_open);
         for file in files {
-            self.projects.open(file);
+            self.projects.pre_open(file);
         }
     }
 
@@ -71,7 +71,10 @@ impl Linkages {
         self.projects.current_curve()
     }
 
-    #[allow(unused)]
+    pub fn event(&mut self, ctx: &Context) {
+        self.projects.event(ctx, self.config.res);
+    }
+
     pub fn queue(&self) -> Queue {
         self.projects.queue()
     }

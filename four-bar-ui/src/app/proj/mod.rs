@@ -355,12 +355,16 @@ impl ProjInner {
         if ui.button("⚽ Dynamics").clicked() {
             self.angle_open = !self.angle_open;
         }
+        self.cache(n);
+    }
+
+    pub fn cache(&mut self, n: usize) {
         if self.cache.changed {
-            self.cache(n);
+            self.cache_inner(n);
         }
     }
 
-    fn cache(&mut self, n: usize) {
+    fn cache_inner(&mut self, n: usize) {
         // Recalculation
         self.cache.changed = false;
         let m = Mechanism::new(&self.fb);
@@ -462,7 +466,7 @@ impl Project {
         }
     }
 
-    pub fn re_open(&self) {
+    pub fn pre_open(&self) {
         let mut proj = self.0.write().unwrap();
         if let ProjName::Path(path) = &proj.path {
             if let Some(fb) = pre_open(path) {
@@ -473,7 +477,7 @@ impl Project {
         }
     }
 
-    pub fn name(&self) -> String {
+    fn name(&self) -> String {
         self.0.read().unwrap().path.name()
     }
 
@@ -497,6 +501,25 @@ impl Project {
     fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize) {
         self.0.read().unwrap().plot(ui, i, id);
     }
+
+    fn clone_four_bar(&self) -> FourBar {
+        self.0.read().unwrap().fb.clone()
+    }
+
+    fn clone_curve(&self) -> Vec<[f64; 2]> {
+        self.0
+            .read()
+            .unwrap()
+            .cache
+            .curves
+            .iter()
+            .map(|[.., c]| *c)
+            .collect()
+    }
+
+    fn cache(&self, n: usize) {
+        self.0.write().unwrap().cache(n);
+    }
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -505,6 +528,10 @@ pub struct Queue(Arc<RwLock<Vec<Project>>>);
 impl Queue {
     pub fn push(&self, path: Option<String>, fb: FourBar) {
         self.0.write().unwrap().push(Project::new(path, fb));
+    }
+
+    fn push_default(&self) {
+        self.0.write().unwrap().push(Project::default());
     }
 }
 
@@ -527,17 +554,11 @@ impl Projects {
                 None => false,
             }),
         } {
-            self.list.push(Project::new(path, fb));
-            self.curr = self.len() - 1;
+            self.queue.push(path, fb);
         }
     }
 
-    pub fn push_default(&mut self) {
-        self.list.push(Project::default());
-        self.curr = self.len() - 1;
-    }
-
-    pub fn open(&mut self, file: impl AsRef<Path>) {
+    pub fn pre_open(&mut self, file: impl AsRef<Path>) {
         let path = file.as_ref().to_str().unwrap().to_string();
         if let Some(fb) = pre_open(file) {
             self.push(Some(path), fb);
@@ -549,17 +570,32 @@ impl Projects {
         self.queue.clone()
     }
 
-    pub fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
+    pub fn event(&mut self, ctx: &Context, n: usize) {
         #[cfg(not(target_arch = "wasm32"))]
-        for file in ui.ctx().input().raw.dropped_files.iter() {
+        for file in ctx.input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
-                self.open(path);
+                self.pre_open(path);
             }
         }
         if !self.queue.0.read().unwrap().is_empty() {
-            self.list.append(&mut *self.queue.0.write().unwrap());
+            let iter = self
+                .queue
+                .0
+                .write()
+                .unwrap()
+                .drain(..)
+                .map(|proj| {
+                    proj.cache(n);
+                    proj
+                })
+                .collect::<Vec<_>>();
+            self.list.extend(iter);
             self.curr = self.len() - 1;
+            ctx.request_repaint();
         }
+    }
+
+    pub fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
@@ -570,7 +606,7 @@ impl Projects {
                 });
             }
             if ui.button("🗋 New").clicked() {
-                self.push_default();
+                self.queue.push_default();
             }
         });
         if self.select(ui, true) {
@@ -603,20 +639,11 @@ impl Projects {
     }
 
     pub fn current_four_bar(&self) -> FourBar {
-        self.list[self.curr].0.read().unwrap().fb.clone()
+        self.list[self.curr].clone_four_bar()
     }
 
     pub fn current_curve(&self) -> Vec<[f64; 2]> {
-        self.list[self.curr]
-            .0
-            .read()
-            .unwrap()
-            .cache
-            .curves
-            .iter()
-            .map(|[_, _, c]| c)
-            .copied()
-            .collect()
+        self.list[self.curr].clone_curve()
     }
 
     pub fn plot(&self, ui: &mut plot::PlotUi) {

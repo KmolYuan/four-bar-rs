@@ -86,7 +86,7 @@ impl App {
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
-        app.linkage.open_proj(files);
+        app.linkage.pre_open_proj(files);
         Box::new(app)
     }
 
@@ -171,6 +171,7 @@ impl eframe::App for App {
         } else {
             self.pc_view(ctx);
         }
+        self.linkage.event(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
