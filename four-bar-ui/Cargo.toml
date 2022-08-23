@@ -10,6 +10,10 @@ repository = "https://github.com/KmolYuan/four-bar-rs"
 keywords = ["mechanism", "simulation", "optimization"]
 categories = ["algorithms"]
 
+[[bin]]
+name = "four-bar"
+path = "src/main.rs"
+
 [dependencies]
 eframe = { version = "0.19", default-features = false, features = ["persistence", "glow", "dark-light"] }
 four-bar = { version = "2", path = "../four-bar", features = ["serde", "plot"] }
