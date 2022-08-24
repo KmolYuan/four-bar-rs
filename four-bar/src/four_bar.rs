@@ -21,22 +21,22 @@ fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
     fb
 }
 
-fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> Option<[f64; 2]> {
+fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
     let d_func = |l23: f64| (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
-    if l0 + l1 <= l2 + l3 && (l0 - l1).abs() >= (l2 - l3).abs() {
-        Some([0., TAU])
-    } else if l0 + l1 >= l2 + l3 && (l0 - l1).abs() >= (l2 - l3).abs() {
+    if l0 + l1 <= l2 + l3 {
+        if (l0 - l1).abs() >= (l2 - l3).abs() {
+            [0., TAU]
+        } else {
+            let d = d_func(l2 - l3);
+            [d.acos() + a, TAU - d.acos() + a]
+        }
+    } else if (l0 - l1).abs() >= (l2 - l3).abs() {
         let d = d_func(l2 + l3);
-        Some([-d.acos() + a, d.acos() + a])
-    } else if ((l0 + l1) - (l2 + l3)).abs() < f64::EPSILON {
+        [-d.acos() + a, d.acos() + a]
+    } else {
         let d1 = d_func(l2 - l3);
         let d2 = d_func(l2 + l3);
-        Some([d1.acos() + a, d2.acos() + a])
-    } else if l0 + l1 <= l2 + l3 && (l0 - l1).abs() <= (l2 - l3).abs() {
-        let d = d_func(l2 - l3);
-        Some([d.acos() + a, TAU - d.acos() + a])
-    } else {
-        None
+        [d1.acos() + a, d2.acos() + a]
     }
 }
 
@@ -272,7 +272,6 @@ impl NormFourBar {
     pub fn angle_bound(&self) -> Option<[f64; 2]> {
         self.is_valid()
             .then(|| angle_bound([self.l0(), 1., self.l2(), self.l3(), 0.]))
-            .flatten()
     }
 }
 
@@ -334,11 +333,10 @@ impl FourBar {
     }
 
     /// Transform a normalized four-bar linkage from a vector.
-    pub fn from_transform(mut norm: NormFourBar, geo: Geo2Info) -> Self {
+    pub fn from_transform(norm: NormFourBar, geo: Geo2Info) -> Self {
         let [p0x, p0y] = geo.center;
-        norm *= geo.scale;
         let v = [p0x, p0y, geo.rot, geo.scale];
-        Self { v, norm }
+        Self { v, norm: norm * geo.scale }
     }
 
     impl_parm_method! {
@@ -396,7 +394,6 @@ impl FourBar {
     pub fn angle_bound(&self) -> Option<[f64; 2]> {
         self.is_valid()
             .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
-            .flatten()
     }
 }
 
