@@ -13,8 +13,8 @@ mod widgets;
 
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
 const FONT: &[(&str, &[u8])] = &[
-    ("Noto", include_bytes!("../../assets/GoNotoCurrent.ttf")),
-    ("emoji", include_bytes!("../../assets/emoji-icon-font.ttf")),
+    ("Noto", include_bytes!("../assets/GoNotoCurrent.ttf")),
+    ("emoji", include_bytes!("../assets/emoji-icon-font.ttf")),
 ];
 
 fn side_panel(ctx: &Context, f: impl FnOnce(&mut Ui)) {
