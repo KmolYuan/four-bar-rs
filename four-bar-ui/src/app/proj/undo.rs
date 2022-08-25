@@ -7,7 +7,6 @@ pub trait Delta: Sized {
     fn change(&self, target: &mut Self::State);
 }
 
-#[derive(Debug)]
 enum Field {
     P0x,
     P0y,
@@ -20,7 +19,6 @@ enum Field {
     G,
 }
 
-#[derive(Debug)]
 pub struct FourBarDelta(Field, f64);
 
 impl Delta for FourBarDelta {
@@ -53,7 +51,6 @@ impl Delta for FourBarDelta {
     }
 }
 
-#[derive(Debug)]
 pub struct Undo<D: Delta> {
     undo: Vec<D>,
     redo: Vec<D>,
@@ -61,13 +58,13 @@ pub struct Undo<D: Delta> {
     time: f64,
 }
 
-impl<S: Delta + std::fmt::Debug> Default for Undo<S> {
+impl<D: Delta> Default for Undo<D> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<D: Delta + std::fmt::Debug> Undo<D> {
+impl<D: Delta> Undo<D> {
     pub fn new() -> Self {
         Self {
             undo: Vec::new(),

@@ -114,8 +114,8 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
             }
             res1 | res2
         })
+        .inner
     })
-    .inner
     .inner
 }
 
