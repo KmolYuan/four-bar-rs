@@ -22,21 +22,27 @@ fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
 }
 
 fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
-    let d_func = |l23: f64| (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
-    if l0 + l1 <= l2 + l3 {
-        if (l0 - l1).abs() >= (l2 - l3).abs() {
-            [0., TAU]
-        } else {
-            let d = d_func(l2 - l3);
+    match (l0 + l1 <= l2 + l3, (l0 - l1).abs() >= (l2 - l3).abs()) {
+        (true, true) => [0., TAU],
+        (true, false) => {
+            let l23 = l2 - l3;
+            let d = (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
             [d.acos() + a, TAU - d.acos() + a]
         }
-    } else if (l0 - l1).abs() >= (l2 - l3).abs() {
-        let d = d_func(l2 + l3);
-        [-d.acos() + a, d.acos() + a]
-    } else {
-        let d1 = d_func(l2 - l3);
-        let d2 = d_func(l2 + l3);
-        [d1.acos() + a, d2.acos() + a]
+        (false, true) => {
+            let l23 = l2 + l3;
+            let d = (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
+            [-d.acos() + a, d.acos() + a]
+        }
+        (false, false) => {
+            let up = l0 * l0 + l1 * l1;
+            let down = 2. * l0 * l1;
+            let l23 = l2 - l3;
+            let d1 = (up - l23 * l23) / down;
+            let l23 = l2 + l3;
+            let d2 = (up - l23 * l23) / down;
+            [d1.acos() + a, d2.acos() + a]
+        }
     }
 }
 
