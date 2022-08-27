@@ -5,14 +5,6 @@
 use crate::{FourBar, Mechanism};
 use std::f64::consts::PI;
 
-#[inline(always)]
-fn boxed_iter<'a, I>(iter: I) -> Box<dyn Iterator<Item = &'a [f64; 2]> + 'a>
-where
-    I: Iterator<Item = &'a [f64; 2]> + 'a,
-{
-    Box::new(iter)
-}
-
 /// Get curve from four-bar linkage.
 pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> {
     let fb = fb.into();
@@ -139,47 +131,27 @@ pub fn close_rev(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
     curve
 }
 
-/// Geometry error between two curves.
+/// Geometry error between two close curves.
 ///
-/// The given curve must longer than target curve.
+/// The curves must have the same length.
 pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
-    let end = curve.len();
     debug_assert!(!target.is_empty());
-    debug_assert!(target.len() < end);
+    debug_assert_eq!(target.len(), curve.len());
     // Find the starting point (correlation)
-    let (index, basic_err) = curve
+    let [tx, ty] = &target[0];
+    let i = curve
         .iter()
         .enumerate()
-        .map(|(i, [x, y])| (i, (target[0][0] - x).hypot(target[0][1] - y)))
+        .map(|(i, [x, y])| (i, (tx - x).hypot(ty - y)))
         .min_by(|(_, a), (_, b)| a.total_cmp(b))
+        .map(|(i, _)| i)
         .unwrap();
-    let iter = boxed_iter(curve.iter().cycle().skip(index).take(end));
-    let rev = boxed_iter(curve.iter().rev().cycle().skip(end - index).take(end));
-    let err = [iter, rev]
-        .into_iter()
-        .map(|mut iter| {
-            let target = &target[1..];
-            let mut geo_err = 0.;
-            let mut left = &curve[index];
-            for [tx, ty] in target {
-                let [x, y] = left;
-                let mut last_d = (tx - x).hypot(ty - y);
-                for c @ [x, y] in &mut iter {
-                    let d = (tx - x).hypot(ty - y);
-                    if d < last_d {
-                        last_d = d;
-                    } else {
-                        left = c;
-                        break;
-                    }
-                }
-                geo_err += last_d;
-            }
-            geo_err
-        })
-        .min_by(|a, b| a.total_cmp(b))
-        .unwrap();
-    (basic_err + err) / target.len() as f64
+    // Error
+    target
+        .iter()
+        .zip(curve.iter().cycle().skip(i))
+        .map(|([x1, y1], [x2, y2])| (x1 - x2).hypot(y1 - y2))
+        .sum()
 }
 
 /// Count the crunodes of the curve.
