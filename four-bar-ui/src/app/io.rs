@@ -147,8 +147,12 @@ pub fn save_history_ask(history: &[f64], name: &str) {
 pub fn save_curve_ask(target: &[[f64; 2]], curve: &[[f64; 2]], fb: FourBar, name: &str) {
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));
-    let title = format!("Comparison (Error: {:.04})", curve::geo_err(target, curve));
     let curves = [("Target", target), ("Optimized", curve)];
-    plot::curve(svg, &title, &curves, fb).unwrap();
+    if target.len() == curve.len() {
+        let title = format!("Comparison (Error: {:.04})", curve::geo_err(target, curve));
+        plot::curve(svg, &title, &curves, fb).unwrap();
+    } else {
+        plot::curve(svg, "Comparison", &curves, fb).unwrap();
+    }
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }
