@@ -84,9 +84,14 @@ where
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             chart.draw_series(LineSeries::new(line.iter().map(|&[x, y]| (x, y)), BLACK))?;
         }
-        let iter = joints.iter().map(|&[x, y]| (x, y));
-        let style = BLACK.stroke_width(0).filled();
-        chart.draw_series(LineSeries::new(iter, style).point_size(5))?;
+        let grounded = joints[..2].iter().map(|&[x, y]| {
+            EmptyElement::at((x, y)) + TriangleMarker::new((0, 10), 10, BLACK.filled())
+        });
+        chart.draw_series(grounded)?;
+        let joints = joints
+            .iter()
+            .map(|&[x, y]| Circle::new((x, y), 5, BLACK.filled()));
+        chart.draw_series(joints)?;
     }
     if curves.iter().filter(|(_, c)| !c.is_empty()).count() > 1 {
         chart
@@ -99,7 +104,7 @@ where
     Ok(())
 }
 
-/// Get the bounding box of the data, ignore the labels.
+/// Get the 1:1 bounding box of the data, ignore the labels.
 pub fn bounding_box<'a>(pts: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4] {
     let [mut x_min, mut x_max] = [&f64::INFINITY, &-f64::INFINITY];
     let [mut y_min, mut y_max] = [&f64::INFINITY, &-f64::INFINITY];
