@@ -2,8 +2,10 @@
 #![warn(missing_docs)]
 
 use four_bar::{efd::Efd2, mh::utility::prelude::*, Mechanism, NormFourBar};
-use ndarray_npy::{WriteNpyError, WriteNpyExt as _};
-use std::{f64::consts::TAU, sync::Mutex};
+use std::{
+    io::{Read, Seek, Write},
+    sync::Mutex,
+};
 
 /// Option type.
 pub struct Opt {
@@ -38,7 +40,7 @@ impl CodeBook {
                     rng.float(1e-4..10.),
                     rng.float(1e-4..10.),
                     rng.float(1e-4..10.),
-                    rng.float(0.0..TAU),
+                    rng.float(0.0..std::f64::consts::TAU),
                 ];
                 [false, true].into_par_iter().for_each(|inv| {
                     let fb = NormFourBar::from_vec(v, inv).to_close_curve();
@@ -70,13 +72,19 @@ impl CodeBook {
         Self { fb, efd }
     }
 
-    /// Write codebook to NPY files.
-    pub fn write<W1, W2>(&self, fb_w: W1, efd_w: W2) -> Result<(), WriteNpyError>
-    where
-        W1: std::io::Write,
-        W2: std::io::Write,
-    {
-        self.fb.write_npy(fb_w)?;
-        self.efd.write_npy(efd_w)
+    /// Read codebook from NPZ file.
+    pub fn read(r: impl Read + Seek) -> Result<Self, ndarray_npy::ReadNpzError> {
+        let mut r = ndarray_npy::NpzReader::new(r)?;
+        let fb = r.by_name("fb")?;
+        let efd = r.by_name("efd")?;
+        Ok(Self { fb, efd })
+    }
+
+    /// Write codebook to NPZ file.
+    pub fn write(&self, w: impl Write + Seek) -> Result<(), ndarray_npy::WriteNpzError> {
+        let mut w = ndarray_npy::NpzWriter::new(w);
+        w.add_array("fb", &self.fb)?;
+        w.add_array("efd", &self.efd)?;
+        w.finish().map(|_| ())
     }
 }
