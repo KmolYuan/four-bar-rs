@@ -5,15 +5,25 @@ use four_bar::{efd::Efd2, mh::utility::prelude::*, Mechanism, NormFourBar};
 use ndarray_npy::{WriteNpyError, WriteNpyExt as _};
 use std::{f64::consts::TAU, sync::Mutex};
 
-/// Generate a codebook for close curve mechanism.
-pub fn gen_codebook(
-    fb_w: impl std::io::Write,
-    efd_w: impl std::io::Write,
-    n: usize,
-    res: usize,
-    harmonic: usize,
-    open: bool,
-) -> Result<(), WriteNpyError> {
+/// Option type.
+pub struct Opt {
+    /// Number of the dataset
+    pub n: usize,
+    /// Curve resolution
+    pub res: usize,
+    /// Number of EFD harmonics
+    pub harmonic: usize,
+    /// Is open curve?
+    pub open: bool,
+}
+
+/// Generate and write a codebook for close curve mechanism.
+pub fn write<W1, W2>(fb_w: W1, efd_w: W2, opt: Opt) -> Result<(), WriteNpyError>
+where
+    W1: std::io::Write,
+    W2: std::io::Write,
+{
+    let Opt { n, res, harmonic, open } = opt;
     let rng = Rng::new(None);
     let fb_stack = Mutex::new(Vec::with_capacity(n));
     let stack = Mutex::new(Vec::with_capacity(n));
