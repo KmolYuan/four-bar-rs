@@ -88,12 +88,14 @@ where
         let style = BLACK.stroke_width(0).filled();
         chart.draw_series(LineSeries::new(iter, style).point_size(5))?;
     }
-    chart
-        .configure_series_labels()
-        .background_style(WHITE)
-        .border_style(BLACK)
-        .label_font(font())
-        .draw()?;
+    if curves.iter().filter(|(_, c)| !c.is_empty()).count() > 1 {
+        chart
+            .configure_series_labels()
+            .background_style(WHITE)
+            .border_style(BLACK)
+            .label_font(font())
+            .draw()?;
+    }
     Ok(())
 }
 
