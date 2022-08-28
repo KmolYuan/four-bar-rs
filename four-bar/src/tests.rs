@@ -8,22 +8,6 @@ fn test_anti_symmetry_extension() {
 
 #[test]
 #[cfg(feature = "plot")]
-fn test_plot_curve() {
-    let svg = plot::SVGBackend::new("test_curve.svg", (800, 600));
-    let curve = curve::from_four_bar(CLOSE_CRUNODE, 720).unwrap();
-    let curve = efd::Efd2::from_curve(&curve, None).generate(90);
-    plot::curve(svg, "Test Curve", &[("Target", &curve)], None).unwrap();
-}
-
-#[test]
-#[cfg(feature = "plot")]
-fn test_plot_history() {
-    let svg = plot::SVGBackend::new("test_history.svg", (800, 600));
-    plot::history(svg, &[1e3, 1e2, 1., 1e-2, 1e-3]).unwrap();
-}
-
-#[test]
-#[cfg(feature = "plot")]
 fn test_syn() {
     const N: usize = 90;
     const GEN: u64 = 50;
