@@ -3,5 +3,11 @@ name = "four-bar-codebook"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+indicatif = ["dep:indicatif"]
+
 [dependencies]
 four-bar = { version = "2", path = "../four-bar" }
+indicatif = { version = "0.17", optional = true }
+ndarray-npy = "0.8"

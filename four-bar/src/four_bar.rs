@@ -149,7 +149,8 @@ impl FourBarTy {
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Clone, PartialEq, Debug)]
 pub struct NormFourBar {
-    v: [f64; 5],
+    /// Vector representation
+    pub v: [f64; 5],
     inv: bool,
 }
 

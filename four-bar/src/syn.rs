@@ -44,12 +44,22 @@ pub enum Mode {
 impl Mode {
     /// Return true if the target curve is open.
     pub const fn is_target_open(&self) -> bool {
-        matches!(self, Self::Partial | Self::Open)
+        !self.is_target_close()
+    }
+
+    /// Return true if the target curve is open.
+    pub const fn is_target_close(&self) -> bool {
+        matches!(self, Self::Close)
     }
 
     /// Return true if the synthesis curve is open.
     pub const fn is_open(&self) -> bool {
         matches!(self, Self::Open)
+    }
+
+    /// Return true if the synthesis curve is close.
+    pub const fn is_close(&self) -> bool {
+        !self.is_open()
     }
 }
 
@@ -107,19 +117,12 @@ impl PathSyn {
         #[cfg(feature = "rayon")]
         use crate::mh::rayon::prelude::*;
         const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
-        let norm = NormFourBar::try_from(&xs[..5]).unwrap();
-        let norm = match self.mode {
-            Mode::Close | Mode::Partial => norm.to_close_curve(),
-            Mode::Open => norm.to_open_curve(),
+        let fb = NormFourBar::try_from(&xs[..5]).unwrap();
+        let fb = match self.mode {
+            Mode::Close | Mode::Partial => fb.to_close_curve(),
+            Mode::Open => fb.to_open_curve(),
         };
-        if !norm.is_valid() {
-            return INFEASIBLE;
-        } else if matches!(self.mode, Mode::Close | Mode::Partial) {
-            if norm.ty().is_open_curve() {
-                return INFEASIBLE;
-            }
-        } else if norm.ty().is_close_curve() {
-            // Mode::Open
+        if self.mode.is_open() != fb.ty().is_open_curve() {
             return INFEASIBLE;
         }
         let close_f = match self.mode {
@@ -127,27 +130,29 @@ impl PathSyn {
             Mode::Partial | Mode::Open => curve::close_rev,
         };
         let f = |[t1, t2]: [f64; 2]| {
-            let norm = &norm;
+            let fb = &fb;
             #[cfg(feature = "rayon")]
             let iter = [false, true].into_par_iter();
             #[cfg(not(feature = "rayon"))]
             let iter = [false, true].into_iter();
             iter.map(move |inv| {
-                let norm = norm.with_inv(inv);
-                let curve = Mechanism::new(&norm).curve(t1, t2, self.n);
-                (curve::get_valid_part(&curve), norm)
+                let fb = fb.with_inv(inv);
+                let curve = Mechanism::new(&fb).curve(t1, t2, self.n);
+                (curve::get_valid_part(&curve), fb)
             })
             .filter(|(curve, _)| curve.len() > 2)
-            .map(|(curve, norm)| {
+            .map(|(curve, fb)| {
                 let efd = Efd2::from_curve(&close_f(curve), Some(self.efd.harmonic()));
                 let fitness = efd.manhattan(&self.efd);
-                let four_bar = FourBar::from_transform(norm, efd.to(&self.efd));
+                let four_bar = FourBar::from_transform(fb, efd.to(&self.efd));
                 (fitness, four_bar)
             })
         };
         match self.mode {
-            Mode::Close => f([0., TAU])
-                .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+            Mode::Close | Mode::Open => fb
+                .angle_bound()
+                .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
+                .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
                 .unwrap_or(INFEASIBLE),
             Mode::Partial => {
                 #[cfg(feature = "rayon")]
@@ -160,11 +165,6 @@ impl PathSyn {
                     .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
                     .unwrap_or(INFEASIBLE)
             }
-            Mode::Open => norm
-                .angle_bound()
-                .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
-                .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
-                .unwrap_or(INFEASIBLE),
         }
     }
 }
