@@ -7,28 +7,16 @@ use std::{
     sync::Mutex,
 };
 
-/// Option type.
-pub struct Opt {
-    /// Number of the dataset
-    pub n: usize,
-    /// Curve resolution
-    pub res: usize,
-    /// Number of EFD harmonics
-    pub harmonic: usize,
-    /// Is open curve?
-    pub open: bool,
-}
-
 /// Codebook type.
 pub struct CodeBook {
+    open: Array0<bool>,
     fb: Array2<f64>,
     efd: Array3<f64>,
 }
 
 impl CodeBook {
-    /// Generate codebook data.
-    pub fn generate(opt: Opt) -> Self {
-        let Opt { n, res, harmonic, open } = opt;
+    /// Takes time to generate codebook data.
+    pub fn make(open: bool, n: usize, res: usize, harmonic: usize) -> Self {
         let rng = Rng::new(None);
         let fb_stack = Mutex::new(Vec::with_capacity(n));
         let efd_stack = Mutex::new(Vec::with_capacity(n));
@@ -69,20 +57,23 @@ impl CodeBook {
         let fb = ndarray::stack(Axis(0), &arrays).unwrap();
         let arrays = efd.iter().take(n).map(Array::view).collect::<Vec<_>>();
         let efd = ndarray::stack(Axis(0), &arrays).unwrap();
-        Self { fb, efd }
+        let open = arr0(open);
+        Self { open, fb, efd }
     }
 
     /// Read codebook from NPZ file.
     pub fn read(r: impl Read + Seek) -> Result<Self, ndarray_npy::ReadNpzError> {
         let mut r = ndarray_npy::NpzReader::new(r)?;
+        let open = r.by_name("open")?;
         let fb = r.by_name("fb")?;
         let efd = r.by_name("efd")?;
-        Ok(Self { fb, efd })
+        Ok(Self { open, fb, efd })
     }
 
     /// Write codebook to NPZ file.
     pub fn write(&self, w: impl Write + Seek) -> Result<(), ndarray_npy::WriteNpzError> {
         let mut w = ndarray_npy::NpzWriter::new(w);
+        w.add_array("open", &self.open)?;
         w.add_array("fb", &self.fb)?;
         w.add_array("efd", &self.efd)?;
         w.finish().map(|_| ())
