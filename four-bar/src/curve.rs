@@ -139,12 +139,11 @@ pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {
     debug_assert_eq!(target.len(), curve.len());
     // Find the starting point (correlation)
     let [tx, ty] = &target[0];
-    let i = curve
+    let (i, _) = curve
         .iter()
+        .map(|[x, y]| (tx - x).hypot(ty - y))
         .enumerate()
-        .map(|(i, [x, y])| (i, (tx - x).hypot(ty - y)))
         .min_by(|(_, a), (_, b)| a.total_cmp(b))
-        .map(|(i, _)| i)
         .unwrap();
     // Error
     target

@@ -125,11 +125,8 @@ impl CodeBook {
             .efd
             .axis_iter(Axis(0))
             .into_par_iter()
+            .map(|efd| target.manhattan(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
-            .map(|(i, efd)| {
-                let dis = target.manhattan(&Efd2::try_from_coeffs(efd.to_owned()).unwrap());
-                (i, dis)
-            })
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .unwrap();
         let view = self.fb.slice(s![i, ..]);
