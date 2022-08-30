@@ -144,8 +144,8 @@ impl PathSyn {
             .map(|(curve, fb)| {
                 let efd = Efd2::from_curve(&close_f(curve), Some(self.efd.harmonic()));
                 let fitness = efd.manhattan(&self.efd);
-                let four_bar = FourBar::from_transform(fb, efd.to(&self.efd));
-                (fitness, four_bar)
+                let fb = FourBar::from_transform(fb, efd.to(&self.efd));
+                (fitness, fb)
             })
         };
         match self.mode {

@@ -94,15 +94,46 @@ impl CodeBook {
         self.efd.len_of(Axis(1))
     }
 
-    /// Get the nearest four-bar linkage from a target curve.
-    pub fn fetch(&self, target: &[[f64; 2]]) -> Vec<FourBar> {
+    /// Get the n-nearest four-bar linkages from a target curve.
+    pub fn fetch(&self, target: &[[f64; 2]], n: usize) -> Vec<FourBar> {
+        if n == 1 {
+            return vec![self.fetch_1st(target)];
+        }
         let target = Efd2::from_curve(target, self.harmonic());
-        let _dis = self
+        let dis = self
             .efd
             .axis_iter(Axis(0))
             .into_par_iter()
             .map(|efd| target.manhattan(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .collect::<Vec<_>>();
-        todo!()
+        let mut ind = (0..self.size()).collect::<Vec<_>>();
+        ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
+        ind.into_iter()
+            .take(n)
+            .map(|i| {
+                let view = self.fb.slice(s![i, ..]);
+                let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
+                FourBar::from_transform(fb, target.geo().clone())
+            })
+            .collect()
+    }
+
+    /// Get the nearest four-bar linkage from a target curve.
+    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> FourBar {
+        let target = Efd2::from_curve(target, self.harmonic());
+        let (i, _) = self
+            .efd
+            .axis_iter(Axis(0))
+            .into_par_iter()
+            .enumerate()
+            .map(|(i, efd)| {
+                let dis = target.manhattan(&Efd2::try_from_coeffs(efd.to_owned()).unwrap());
+                (i, dis)
+            })
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .unwrap();
+        let view = self.fb.slice(s![i, ..]);
+        let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
+        FourBar::from_transform(fb, target.geo().clone())
     }
 }
