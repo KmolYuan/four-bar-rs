@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
-use four_bar::{efd::Efd2, mh::utility::prelude::*, Mechanism, NormFourBar};
+use four_bar::{efd::Efd2, mh::utility::prelude::*, FourBar, Mechanism, NormFourBar};
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
@@ -77,5 +77,32 @@ impl CodeBook {
         w.add_array("fb", &self.fb)?;
         w.add_array("efd", &self.efd)?;
         w.finish().map(|_| ())
+    }
+
+    /// Return true if the codebook saves open curves.
+    pub fn is_open(&self) -> bool {
+        *self.open.first().unwrap()
+    }
+
+    /// Total size.
+    pub fn size(&self) -> usize {
+        self.fb.nrows()
+    }
+
+    /// Number of the harmonics.
+    pub fn harmonic(&self) -> usize {
+        self.efd.len_of(Axis(1))
+    }
+
+    /// Get the nearest four-bar linkage from a target curve.
+    pub fn fetch(&self, target: &[[f64; 2]]) -> Vec<FourBar> {
+        let target = Efd2::from_curve(target, self.harmonic());
+        let _dis = self
+            .efd
+            .axis_iter(Axis(0))
+            .into_par_iter()
+            .map(|efd| target.manhattan(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
+            .collect::<Vec<_>>();
+        todo!()
     }
 }
