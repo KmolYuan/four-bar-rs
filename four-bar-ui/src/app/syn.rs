@@ -225,7 +225,7 @@ impl Synthesis {
             keep
         });
         #[cfg(target_arch = "wasm32")]
-        let _ = ui.label("WARNING: Web platform will freeze UI when start solving!");
+        ui.label("WARNING: Web platform will freeze UI when start solving!");
         ui.horizontal(|ui| {
             let enabled = !self.config.syn.target.is_empty();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {

@@ -20,6 +20,8 @@ impl CodeBook {
         let rng = Rng::new(None);
         let fb_stack = Mutex::new(Vec::with_capacity(n));
         let efd_stack = Mutex::new(Vec::with_capacity(n));
+        #[cfg(feature = "indicatif")]
+        let pb = indicatif::ProgressBar::new(n as u64);
         loop {
             let len = efd_stack.lock().unwrap().len();
             (0..(n - len) / 2).into_par_iter().for_each(|_| {
@@ -44,6 +46,8 @@ impl CodeBook {
                         let efd = Efd2::from_curve(&curve, harmonic);
                         fb_stack.lock().unwrap().push(arr1(&fb.v));
                         efd_stack.lock().unwrap().push(efd.unwrap());
+                        #[cfg(feature = "indicatif")]
+                        pb.inc(1);
                     }
                 })
             });
@@ -51,6 +55,8 @@ impl CodeBook {
                 break;
             }
         }
+        #[cfg(feature = "indicatif")]
+        pb.finish();
         let fb = fb_stack.into_inner().unwrap();
         let efd = efd_stack.into_inner().unwrap();
         let arrays = fb.iter().take(n).map(Array::view).collect::<Vec<_>>();
