@@ -49,7 +49,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(ctx: &eframe::CreationContext, files: Vec<String>) -> Box<Self> {
+    pub fn new(ctx: &eframe::CreationContext, files: Vec<std::path::PathBuf>) -> Box<Self> {
         #[cfg(target_arch = "wasm32")]
         {
             #[wasm_bindgen::prelude::wasm_bindgen]

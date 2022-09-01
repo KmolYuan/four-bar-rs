@@ -56,7 +56,7 @@ impl Linkages {
         self.projects.plot(ui);
     }
 
-    pub fn pre_open_proj(&mut self, files: Vec<String>) {
+    pub fn pre_open_proj(&mut self, files: Vec<std::path::PathBuf>) {
         self.projects.iter().for_each(Project::pre_open);
         for file in files {
             self.projects.pre_open(file);
