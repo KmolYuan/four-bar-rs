@@ -33,27 +33,24 @@ enum Cmd {
 
 #[derive(clap::Args, Clone)]
 struct Syn {
-    /// Number of the points in curve production
-    #[clap(long, default_value_t = 90)]
+    /// Number of the points (resolution) in curve production
+    #[clap(short, long = "res", default_value_t = 90)]
     n: usize,
     /// Number of generation
-    #[clap(long, default_value_t = 50)]
+    #[clap(short, long, default_value_t = 50)]
     gen: u64,
     /// Number of population
-    #[clap(long, default_value_t = 400)]
+    #[clap(short, long, default_value_t = 400)]
     pop: usize,
-    #[clap(long, value_enum, default_value_t)]
+    /// Mode
+    #[clap(short, long, value_enum, default_value_t = ModeOpt::Close)]
     mode: ModeOpt,
 }
 
-#[derive(clap::ValueEnum, Default, Clone)]
+#[derive(clap::ValueEnum, Clone)]
 enum ModeOpt {
-    /// Close path matching
-    #[default]
     Close,
-    /// Use close path to match open path
     Partial,
-    /// Open path matching
     Open,
 }
 
@@ -127,7 +124,6 @@ fn syn_cli_inner(file: PathBuf, syn: Syn) -> Result<(), Box<dyn std::error::Erro
         .ok_or("invalid path encoding")?
         .to_string();
     let Syn { n, gen, pop, mode } = syn;
-    let mode = mode.into();
     let target = target.as_slice();
     let t0 = std::time::Instant::now();
     let pb = indicatif::ProgressBar::new(gen);
@@ -136,7 +132,7 @@ fn syn_cli_inner(file: PathBuf, syn: Syn) -> Result<(), Box<dyn std::error::Erro
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(pop)
         .record(|ctx| ctx.best_f)
-        .solve(PathSyn::from_curve(target, None, n, mode))?;
+        .solve(PathSyn::from_curve(target, None, n, mode.into()))?;
     pb.finish();
     println!("Finish at: {:?}", std::time::Instant::now() - t0);
     let his_filename = format!("{title}_history.svg");
