@@ -1,6 +1,7 @@
 mod app;
 #[cfg(not(target_arch = "wasm32"))]
 mod cli;
+mod csv;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {

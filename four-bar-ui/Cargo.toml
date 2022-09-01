@@ -25,6 +25,7 @@ csv = "1"
 # native here!
 four-bar = { version = "2", path = "../four-bar", features = ["rayon"] }
 clap = { version = "3", features = ["derive"] }
+indicatif = "0.17"
 image = "0.24"
 rfd = "0.10"
 

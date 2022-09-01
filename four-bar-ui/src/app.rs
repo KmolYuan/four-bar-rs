@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod atomic;
-mod csv;
 mod io;
 mod linkages;
 mod proj;

@@ -1,9 +1,8 @@
 use super::{
-    csv::dump_csv,
     io,
     widgets::{angle, link, unit},
 };
-use crate::ext;
+use crate::{csv::dump_csv, ext};
 use eframe::egui::*;
 use four_bar::{curve, FourBar, Mechanism};
 use serde::{Deserialize, Serialize};
