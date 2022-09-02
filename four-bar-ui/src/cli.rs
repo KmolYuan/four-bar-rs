@@ -4,7 +4,8 @@ use four_bar::{
     syn::{Mode, PathSyn},
     FourBar, Mechanism,
 };
-use std::path::PathBuf;
+use indicatif::{style::ProgressStyle, MultiProgress, ProgressBar};
+use std::{error::Error, path::PathBuf, time::Instant};
 
 #[derive(Parser)]
 #[clap(name = "four-bar", version, author, about)]
@@ -22,10 +23,13 @@ enum Cmd {
         /// Open file path
         files: Vec<PathBuf>,
     },
-    /// Synthesis without GUI
+    /// Synthesis function without GUI
     Syn {
-        /// Target file paths
+        /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
         files: Vec<PathBuf>,
+        /// Disable parallel for all task
+        #[clap(long)]
+        no_parallel: bool,
         #[clap(flatten)]
         syn: Syn,
     },
@@ -42,26 +46,6 @@ struct Syn {
     /// Number of population
     #[clap(short, long, default_value_t = 400)]
     pop: usize,
-    /// Mode
-    #[clap(short, long, value_enum, default_value_t = ModeOpt::Close)]
-    mode: ModeOpt,
-}
-
-#[derive(clap::ValueEnum, Clone)]
-enum ModeOpt {
-    Close,
-    Partial,
-    Open,
-}
-
-impl From<ModeOpt> for Mode {
-    fn from(m: ModeOpt) -> Self {
-        match m {
-            ModeOpt::Close => Self::Close,
-            ModeOpt::Partial => Self::Partial,
-            ModeOpt::Open => Self::Open,
-        }
-    }
 }
 
 impl Entry {
@@ -70,7 +54,7 @@ impl Entry {
         match entry.cmd {
             None => native(entry.files),
             Some(Cmd::Ui { files }) => native(files),
-            Some(Cmd::Syn { files, syn }) => syn_cli(files, syn),
+            Some(Cmd::Syn { files, no_parallel, syn }) => syn_cli(files, no_parallel, syn),
         }
     }
 }
@@ -98,43 +82,57 @@ fn native(files: Vec<PathBuf>) {
     )
 }
 
-fn syn_cli(files: Vec<PathBuf>, syn: Syn) {
-    for file in files {
-        println!("============");
-        println!("File: \"{}\"", file.display());
-        if let Err(e) = syn_cli_inner(file, syn.clone()) {
-            println!("Error: \"{e}\"");
+fn syn_cli(files: Vec<PathBuf>, no_parallel: bool, syn: Syn) {
+    let mpb = MultiProgress::new();
+    let run = |file: PathBuf| {
+        let pb = mpb.add(ProgressBar::new(syn.gen));
+        const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} | {msg}";
+        pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
+        if let Err(e) = syn_cli_inner(&pb, file, syn.clone()) {
+            pb.finish_with_message(format!("Error: \"{e}\""));
         }
+    };
+    if no_parallel {
+        files.into_iter().for_each(run);
+    } else {
+        use mh::rayon::prelude::*;
+        files.into_par_iter().for_each(run);
     }
 }
 
-fn syn_cli_inner(file: PathBuf, syn: Syn) -> Result<(), Box<dyn std::error::Error>> {
-    let target = if file.ends_with(".ron") {
-        let fb = ron::from_str::<FourBar>(&std::fs::read_to_string(&file)?)?;
-        curve::from_four_bar(fb, syn.n).ok_or("invalid linkage")?
-    } else if file.ends_with(".csv") {
-        crate::csv::parse_csv::<[f64; 2]>(&std::fs::read_to_string(&file)?)?
-    } else {
-        return Err("unsupported format".into());
+fn syn_cli_inner(pb: &ProgressBar, file: PathBuf, syn: Syn) -> Result<(), Box<dyn Error>> {
+    let target = match file.extension().and_then(std::ffi::OsStr::to_str) {
+        Some("ron") => {
+            let fb = ron::from_str::<FourBar>(&std::fs::read_to_string(&file)?)?;
+            curve::from_four_bar(fb, syn.n).ok_or("invalid linkage")?
+        }
+        Some("csv" | "txt") => crate::csv::parse_csv::<[f64; 2]>(&std::fs::read_to_string(&file)?)?,
+        _ => return Err("unsupported format".into()),
     };
-    let title = file
-        .file_stem()
-        .ok_or("no filename")?
-        .to_str()
-        .ok_or("invalid path encoding")?
-        .to_string();
-    let Syn { n, gen, pop, mode } = syn;
+    let (title, mode) = match file.file_stem().and_then(std::ffi::OsStr::to_str) {
+        Some(title) => {
+            let mode = match title.rsplit('.').next().ok_or("unsupported mode")? {
+                "close" => Mode::Close,
+                "partial" => Mode::Partial,
+                "open" => Mode::Open,
+                _ => return Err("unsupported mode".into()),
+            };
+            (title, mode)
+        }
+        _ => return Err("no filename".into()),
+    };
+    pb.set_prefix(title.to_string());
+    let Syn { n, gen, pop } = syn;
     let target = target.as_slice();
-    let t0 = std::time::Instant::now();
-    let pb = indicatif::ProgressBar::new(gen);
+    let t0 = Instant::now();
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(pop)
         .record(|ctx| ctx.best_f)
-        .solve(PathSyn::from_curve(target, None, n, mode.into()))?;
+        .solve(PathSyn::from_curve(target, None, n, mode))?;
     pb.finish();
-    println!("Finish at: {:?}", std::time::Instant::now() - t0);
+    let spent_time = Instant::now() - t0;
     let his_filename = format!("{title}_history.svg");
     let svg = plot::SVGBackend::new(&his_filename, (800, 600));
     plot::history(svg, s.report())?;
@@ -142,8 +140,6 @@ fn syn_cli_inner(file: PathBuf, syn: Syn) -> Result<(), Box<dyn std::error::Erro
     std::fs::write(format!("{title}_result.ron"), ron::to_string(&ans)?)?;
     let [t1, t2] = ans.angle_bound().expect("solved error");
     let curve = curve::get_valid_part(&Mechanism::new(&ans).curve(t1, t2, n));
-    println!("harmonic: {}", s.func().harmonic());
-    println!("seed: {}", s.seed());
     let filename = format!("{title}_linkage.svg");
     let curves = [("Target", target), ("Optimized", &curve)];
     let svg = plot::SVGBackend::new(&filename, (800, 800));
@@ -151,5 +147,7 @@ fn syn_cli_inner(file: PathBuf, syn: Syn) -> Result<(), Box<dyn std::error::Erro
     let filename = format!("{title}_result.svg");
     let svg = plot::SVGBackend::new(&filename, (800, 800));
     plot::curve(svg, "Comparison", &curves, None)?;
+    let harmonic = s.func().harmonic();
+    pb.set_message(format!("spent: {spent_time:?} | harmonic: {harmonic}"));
     Ok(())
 }
