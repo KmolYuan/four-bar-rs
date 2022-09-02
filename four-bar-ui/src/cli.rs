@@ -89,7 +89,7 @@ fn syn_cli(files: Vec<PathBuf>, no_parallel: bool, syn: Syn) {
         const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} | {msg}";
         pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
         if let Err(e) = syn_cli_inner(&pb, file, syn.clone()) {
-            pb.finish_with_message(format!("Error: \"{e}\""));
+            pb.finish_with_message(e.to_string());
         }
     };
     if no_parallel {
@@ -131,7 +131,6 @@ fn syn_cli_inner(pb: &ProgressBar, file: PathBuf, syn: Syn) -> Result<(), Box<dy
         .pop_num(pop)
         .record(|ctx| ctx.best_f)
         .solve(PathSyn::from_curve(target, None, n, mode))?;
-    pb.finish();
     let spent_time = Instant::now() - t0;
     let his_filename = format!("{title}_history.svg");
     let svg = plot::SVGBackend::new(&his_filename, (800, 600));
@@ -148,6 +147,6 @@ fn syn_cli_inner(pb: &ProgressBar, file: PathBuf, syn: Syn) -> Result<(), Box<dy
     let svg = plot::SVGBackend::new(&filename, (800, 800));
     plot::curve(svg, "Comparison", &curves, None)?;
     let harmonic = s.func().harmonic();
-    pb.set_message(format!("spent: {spent_time:?} | harmonic: {harmonic}"));
+    pb.finish_with_message(format!("spent: {spent_time:?} | harmonic: {harmonic}"));
     Ok(())
 }
