@@ -2,6 +2,7 @@ use super::{io, linkages::Linkages, widgets::unit};
 use crate::csv::{dump_csv, parse_csv};
 use eframe::egui::*;
 use four_bar::{mh, syn};
+use instant::Instant;
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -40,10 +41,6 @@ where
     S: mh::Setting,
     S::Algorithm: mh::Algorithm<syn::PathSyn>,
 {
-    #[cfg(target_arch = "wasm32")]
-    use instant::Instant;
-    #[cfg(not(target_arch = "wasm32"))]
-    use std::time::Instant;
     let start_time = Instant::now();
     four_bar::mh::Solver::build(setting)
         .pop_num(config.pop)
