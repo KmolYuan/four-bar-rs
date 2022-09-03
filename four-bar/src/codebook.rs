@@ -1,7 +1,5 @@
-#![doc = include_str!("../README.md")]
-#![warn(missing_docs)]
-
-use four_bar::{efd::Efd2, mh::utility::prelude::*, FourBar, Mechanism, NormFourBar};
+//! Create a codebook database for four-bar linkages.
+use super::{efd::Efd2, mh::utility::prelude::*, FourBar, Mechanism, NormFourBar};
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
@@ -17,11 +15,17 @@ pub struct CodeBook {
 impl CodeBook {
     /// Takes time to generate codebook data.
     pub fn make(open: bool, n: usize, res: usize, harmonic: usize) -> Self {
+        Self::make_with(open, n, res, harmonic, |_| ())
+    }
+
+    /// Takes time to generate codebook data with a callback function.
+    pub fn make_with<C>(open: bool, n: usize, res: usize, harmonic: usize, callback: C) -> Self
+    where
+        C: Fn(usize) + Sync + Send,
+    {
         let rng = Rng::new(None);
         let fb_stack = Mutex::new(Vec::with_capacity(n));
         let efd_stack = Mutex::new(Vec::with_capacity(n));
-        #[cfg(feature = "indicatif")]
-        let pb = indicatif::ProgressBar::new(n as u64);
         loop {
             let len = efd_stack.lock().unwrap().len();
             (0..(n - len) / 2).into_par_iter().for_each(|_| {
@@ -44,10 +48,10 @@ impl CodeBook {
                     if let Some([start, end]) = fb.angle_bound() {
                         let curve = Mechanism::new(&fb).curve(start, end, res);
                         let efd = Efd2::from_curve(&curve, harmonic);
-                        fb_stack.lock().unwrap().push(arr1(&fb.v));
+                        let mut stack = fb_stack.lock().unwrap();
+                        stack.push(arr1(&fb.v));
                         efd_stack.lock().unwrap().push(efd.unwrap());
-                        #[cfg(feature = "indicatif")]
-                        pb.inc(1);
+                        callback(stack.len());
                     }
                 })
             });
@@ -55,8 +59,6 @@ impl CodeBook {
                 break;
             }
         }
-        #[cfg(feature = "indicatif")]
-        pb.finish();
         let fb = fb_stack.into_inner().unwrap();
         let efd = efd_stack.into_inner().unwrap();
         let arrays = fb.iter().take(n).map(Array::view).collect::<Vec<_>>();

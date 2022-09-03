@@ -12,12 +12,14 @@ categories = ["algorithms"]
 
 [features]
 default = []
-serde = ["dep:serde"]
-rayon = ["metaheuristics-nature/rayon"]
 plot = ["plotters"]
+serde = ["dep:serde"]
+codebook = ["ndarray-npy"]
+rayon = ["metaheuristics-nature/rayon"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
+ndarray-npy = { version = "0.8", optional = true }
 plotters = { version = "0.3", optional = true }
 metaheuristics-nature = "2"
 efd = "0.15"

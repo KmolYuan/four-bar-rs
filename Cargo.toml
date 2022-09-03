@@ -1,2 +1,2 @@
 [workspace]
-members = ["four-bar", "four-bar-codebook", "four-bar-ui"]
+members = ["four-bar", "four-bar-ui"]
