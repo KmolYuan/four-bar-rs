@@ -5,7 +5,12 @@ use four_bar::{
     FourBar, Mechanism,
 };
 use indicatif::{style::ProgressStyle, MultiProgress, ProgressBar};
-use std::{error::Error, path::PathBuf, time::Instant};
+use std::{
+    error::Error,
+    fmt::Formatter,
+    path::{Path, PathBuf},
+    time::Instant,
+};
 
 #[derive(Parser)]
 #[clap(name = "four-bar", version, author, about)]
@@ -52,14 +57,37 @@ impl Entry {
     pub fn parse() {
         let entry = <Self as Parser>::parse_from(wild::args());
         match entry.cmd {
-            None => native(entry.files),
-            Some(Cmd::Ui { files }) => native(files),
-            Some(Cmd::Syn { files, no_parallel, syn }) => syn_cli(files, no_parallel, syn),
+            None => start_native(entry.files),
+            Some(Cmd::Ui { files }) => start_native(files),
+            Some(Cmd::Syn { files, no_parallel, syn }) => start_syn(files, no_parallel, syn),
         }
     }
 }
 
-fn native(files: Vec<PathBuf>) {
+enum SynErr {
+    // Unsupported format
+    Format,
+    // Reading file error
+    Io,
+    // Serialization error
+    Ser,
+    // Invalid linkage
+    Linkage,
+}
+
+impl std::fmt::Display for SynErr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Format => "unsupported format",
+            Self::Io => "reading file error",
+            Self::Ser => "serialization error",
+            Self::Linkage => "invalid linkage",
+        };
+        f.write_str(s)
+    }
+}
+
+fn start_native(files: Vec<PathBuf>) {
     use image::ImageFormat;
     let opt = {
         const ICON: &[u8] = include_bytes!("../assets/favicon.png");
@@ -82,50 +110,86 @@ fn native(files: Vec<PathBuf>) {
     )
 }
 
-fn syn_cli(files: Vec<PathBuf>, no_parallel: bool, syn: Syn) {
+fn start_syn(files: Vec<PathBuf>, no_parallel: bool, syn: Syn) {
     let mpb = MultiProgress::new();
-    let run = |file: PathBuf| {
-        let pb = mpb.add(ProgressBar::new(syn.gen));
-        const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} | {msg}";
-        pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
-        if let Err(e) = syn_cli_inner(&pb, file, syn.clone()) {
-            pb.finish_with_message(e.to_string());
-        }
-    };
+    let run = |file: PathBuf| do_syn(&mpb, file, syn.clone());
+    let t0 = Instant::now();
     if no_parallel {
         files.into_iter().for_each(run);
     } else {
         use mh::rayon::prelude::*;
         files.into_par_iter().for_each(run);
     }
+    mpb.println(format!("Total spent: {:?}", Instant::now() - t0))
+        .unwrap();
 }
 
-fn syn_cli_inner(pb: &ProgressBar, file: PathBuf, syn: Syn) -> Result<(), Box<dyn Error>> {
-    let file = file.canonicalize()?;
-    let target = match file.extension().and_then(std::ffi::OsStr::to_str) {
-        Some("ron") => {
-            let fb = ron::from_str::<FourBar>(&std::fs::read_to_string(&file)?)?;
-            curve::from_four_bar(fb, syn.n).ok_or("invalid linkage")?
+fn do_syn(mpb: &MultiProgress, file: PathBuf, syn: Syn) {
+    let file = file.canonicalize().unwrap();
+    let (target, title, mode) = match syn_info(&file, syn.n) {
+        Ok(v) => v,
+        Err(e) => {
+            if !matches!(e, SynErr::Format) {
+                let title = file.to_str().unwrap().to_string();
+                mpb.println(format!("[{title}] {e}")).unwrap();
+            }
+            return;
         }
-        Some("csv" | "txt") => crate::csv::parse_csv::<[f64; 2]>(&std::fs::read_to_string(&file)?)?,
-        _ => return Err("unsupported format".into()),
     };
-    let (title, mode) = match file.file_stem().and_then(std::ffi::OsStr::to_str) {
-        Some(title) => {
-            let mode = match title.rsplit('.').next().ok_or("unsupported mode")? {
-                "close" => Mode::Close,
-                "partial" => Mode::Partial,
-                "open" => Mode::Open,
-                _ => return Err("unsupported mode".into()),
-            };
-            (title, mode)
-        }
-        _ => return Err("invalid filename".into()),
-    };
-    let root = file.parent().unwrap();
+    let pb = mpb.add(ProgressBar::new(syn.gen));
+    const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} {msg}";
+    pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(title.to_string());
+    let root = file.parent().unwrap();
+    if let Err(e) = do_syn_inner(&pb, title, &target, root, mode, syn) {
+        pb.finish_with_message(format!("| error: {e}"));
+    }
+}
+
+fn syn_info(path: &Path, n: usize) -> Result<(Vec<[f64; 2]>, &str, Mode), SynErr> {
+    let target = path
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .ok_or(SynErr::Format)
+        .and_then(|s| match s {
+            "ron" => {
+                let fb = std::fs::read_to_string(path)
+                    .map_err(|_| SynErr::Io)
+                    .and_then(|s| ron::from_str::<FourBar>(&s).map_err(|_| SynErr::Ser))?;
+                curve::from_four_bar(fb, n).ok_or(SynErr::Linkage)
+            }
+            "csv" | "txt" => std::fs::read_to_string(path)
+                .map_err(|_| SynErr::Io)
+                .and_then(|s| crate::csv::parse_csv(&s).map_err(|_| SynErr::Ser)),
+            _ => Err(SynErr::Format),
+        })?;
+    path.file_stem()
+        .and_then(std::ffi::OsStr::to_str)
+        .ok_or(SynErr::Format)
+        .and_then(|title| {
+            let mode = title
+                .rsplit('.')
+                .next()
+                .and_then(|s| match s {
+                    "close" => Some(Mode::Close),
+                    "partial" => Some(Mode::Partial),
+                    "open" => Some(Mode::Open),
+                    _ => None,
+                })
+                .ok_or(SynErr::Format)?;
+            Ok((target, title, mode))
+        })
+}
+
+fn do_syn_inner(
+    pb: &ProgressBar,
+    title: &str,
+    target: &[[f64; 2]],
+    root: &Path,
+    mode: Mode,
+    syn: Syn,
+) -> Result<(), Box<dyn Error>> {
     let Syn { n, gen, pop } = syn;
-    let target = target.as_slice();
     let t0 = Instant::now();
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
@@ -158,6 +222,6 @@ fn syn_cli_inner(pb: &ProgressBar, file: PathBuf, syn: Syn) -> Result<(), Box<dy
         plot::curve(svg, "Comparison", &curves, None)?;
     }
     let harmonic = s.func().harmonic();
-    pb.finish_with_message(format!("spent: {spent_time:?} | harmonic: {harmonic}"));
+    pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
     Ok(())
 }
