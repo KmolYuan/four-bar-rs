@@ -29,6 +29,8 @@ enum Cmd {
         #[clap(flatten)]
         syn: Syn,
     },
+    /// Generate codebook
+    Codebook(Codebook),
 }
 
 #[derive(clap::Args, Clone)]
@@ -44,6 +46,24 @@ struct Syn {
     pop: usize,
 }
 
+#[derive(clap::Args)]
+struct Codebook {
+    /// Output path of the codebook (in NPY format)
+    file: PathBuf,
+    /// Generate for open curve
+    #[clap(long)]
+    open: bool,
+    /// Number of data
+    #[clap(short, default_value_t = 102400)]
+    n: usize,
+    /// Number of the points (resolution) in curve production
+    #[clap(long, default_value_t = 720)]
+    res: usize,
+    /// Number of harmonic
+    #[clap(long, default_value_t = 360)]
+    harmonic: usize,
+}
+
 impl Entry {
     pub fn parse() {
         let entry = <Self as Parser>::parse_from(wild::args());
@@ -51,6 +71,7 @@ impl Entry {
             None => native(entry.files),
             Some(Cmd::Ui { files }) => native(files),
             Some(Cmd::Syn { files, no_parallel, syn }) => syn::syn(files, no_parallel, syn),
+            Some(Cmd::Codebook(cb)) => codebook(cb),
         }
     }
 }
@@ -76,4 +97,20 @@ fn native(files: Vec<PathBuf>) {
         opt,
         Box::new(|ctx| crate::app::App::new(ctx, files)),
     )
+}
+
+fn codebook(cb: Codebook) {
+    let Codebook { mut file, open, n, res, harmonic } = cb;
+    let ext = file.extension().and_then(std::ffi::OsStr::to_str);
+    if !matches!(ext, Some("npy")) {
+        file.set_extension("npy");
+    }
+    println!("Generate to: {}", file.display());
+    println!("open={open}, n={n}, res={res}, harmonic={harmonic}");
+    let pb = indicatif::ProgressBar::new(n as u64);
+    four_bar::codebook::CodeBook::make_with(open, n, res, harmonic, |n| pb.set_position(n as u64))
+        .write(std::fs::File::create(file).unwrap())
+        .unwrap();
+    pb.finish_and_clear();
+    println!("Done");
 }

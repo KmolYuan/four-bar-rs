@@ -2,6 +2,7 @@
 /target/
 dist/
 Cargo.lock
+*.npy
 *.svg
 *.ron
 !*.close.ron
