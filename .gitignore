@@ -4,3 +4,6 @@ dist/
 Cargo.lock
 *.svg
 *.ron
+!*.close.ron
+!*.partial.ron
+!*.open.ron
