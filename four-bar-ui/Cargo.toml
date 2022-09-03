@@ -28,6 +28,7 @@ indicatif = { version = "0.17", features = ["improved_unicode"] }
 clap = { version = "3", features = ["derive"] }
 image = "0.24"
 rfd = "0.10"
+wild = "2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # wasm here!

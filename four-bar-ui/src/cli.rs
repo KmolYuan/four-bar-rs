@@ -50,7 +50,7 @@ struct Syn {
 
 impl Entry {
     pub fn parse() {
-        let entry = <Self as Parser>::parse();
+        let entry = <Self as Parser>::parse_from(wild::args());
         match entry.cmd {
             None => native(entry.files),
             Some(Cmd::Ui { files }) => native(files),
