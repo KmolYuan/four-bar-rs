@@ -80,7 +80,7 @@ impl CodeBook {
 
     /// Write codebook to NPZ file.
     pub fn write(&self, w: impl Write + Seek) -> Result<(), ndarray_npy::WriteNpzError> {
-        let mut w = ndarray_npy::NpzWriter::new(w);
+        let mut w = ndarray_npy::NpzWriter::new_compressed(w);
         w.add_array("open", &self.open)?;
         w.add_array("fb", &self.fb)?;
         w.add_array("efd", &self.efd)?;
