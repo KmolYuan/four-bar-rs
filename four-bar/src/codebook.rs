@@ -6,13 +6,13 @@ use std::{
 };
 
 /// Codebook type.
-pub struct CodeBook {
+pub struct Codebook {
     open: Array0<bool>,
     fb: Array2<f64>,
     efd: Array3<f64>,
 }
 
-impl CodeBook {
+impl Codebook {
     /// Takes time to generate codebook data.
     pub fn make(open: bool, n: usize, res: usize, harmonic: usize) -> Self {
         Self::make_with(open, n, res, harmonic, |_| ())
@@ -103,7 +103,7 @@ impl CodeBook {
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
-    pub fn fetch(&self, target: &[[f64; 2]], n: usize) -> Vec<FourBar> {
+    pub fn fetch(&self, target: &[[f64; 2]], n: usize) -> Vec<(f64, FourBar)> {
         if n == 1 {
             return vec![self.fetch_1st(target)];
         }
@@ -121,15 +121,15 @@ impl CodeBook {
             .map(|i| {
                 let view = self.fb.slice(s![i, ..]);
                 let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-                FourBar::from_transform(fb, target.geo().clone())
+                (dis[i], FourBar::from_transform(fb, target.geo().clone()))
             })
             .collect()
     }
 
     /// Get the nearest four-bar linkage from a target curve.
-    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> FourBar {
+    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> (f64, FourBar) {
         let target = Efd2::from_curve(target, self.harmonic());
-        let (i, _) = self
+        let (i, err) = self
             .efd
             .axis_iter(Axis(0))
             .into_par_iter()
@@ -139,6 +139,6 @@ impl CodeBook {
             .unwrap();
         let view = self.fb.slice(s![i, ..]);
         let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-        FourBar::from_transform(fb, target.geo().clone())
+        (err, FourBar::from_transform(fb, target.geo().clone()))
     }
 }

@@ -1,5 +1,6 @@
 use super::Syn;
 use four_bar::{
+    codebook::Codebook,
     curve, mh, plot,
     syn::{Mode, PathSyn},
     FourBar, Mechanism,
@@ -8,7 +9,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use instant::Instant;
 use std::path::{Path, PathBuf};
 
-type AnyResult = Result<(), Box<dyn std::error::Error>>;
+type AnyResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 enum SynErr {
     // Unsupported format
@@ -39,9 +40,13 @@ struct Info<'a> {
     mode: Mode,
 }
 
-pub(super) fn syn(files: Vec<PathBuf>, no_parallel: bool, syn: Syn) {
+pub(super) fn syn(files: Vec<PathBuf>, no_parallel: bool, syn: Syn, cb: Vec<PathBuf>) {
     let mpb = MultiProgress::new();
-    let run = |file: PathBuf| syn_do(&mpb, file, syn.clone());
+    if !cb.is_empty() {
+        mpb.println("Loading codebook database...").unwrap();
+    }
+    let cb = load_codebook(cb).expect("Load codebook failed!");
+    let run = |file: PathBuf| run(&mpb, file, syn.clone(), &cb);
     let t0 = Instant::now();
     if no_parallel {
         files.into_iter().for_each(run);
@@ -53,9 +58,17 @@ pub(super) fn syn(files: Vec<PathBuf>, no_parallel: bool, syn: Syn) {
         .unwrap();
 }
 
-fn syn_do(mpb: &MultiProgress, file: PathBuf, syn: Syn) {
+fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Vec<Codebook>> {
+    let mut v = Vec::with_capacity(cb.len());
+    for path in cb {
+        v.push(Codebook::read(std::fs::File::open(path)?)?);
+    }
+    Ok(v)
+}
+
+fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
     let file = file.canonicalize().unwrap();
-    let info = match syn_info(&file, syn.n) {
+    let info = match info(&file, syn.n) {
         Ok(info) => info,
         Err(e) => {
             if !matches!(e, SynErr::Format) {
@@ -70,12 +83,23 @@ fn syn_do(mpb: &MultiProgress, file: PathBuf, syn: Syn) {
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(info.title.to_string());
     let root = file.parent().unwrap();
-    if let Err(e) = syn_inner(&pb, info, root, syn) {
+    // Codebook synthesis
+    let res = if let Some((_, ans)) = cb
+        .iter()
+        .filter(|cb| cb.is_open() == info.mode.is_open())
+        .map(|cb| cb.fetch_1st(&info.target))
+        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+    {
+        draw_ans(root, info.title, &info.target, ans, syn.n)
+    } else {
+        inner(&pb, info, root, syn)
+    };
+    if let Err(e) = res {
         pb.finish_with_message(format!("| error: {e}"));
     }
 }
 
-fn syn_info(path: &Path, n: usize) -> Result<Info<'_>, SynErr> {
+fn info(path: &Path, n: usize) -> Result<Info<'_>, SynErr> {
     let target = path
         .extension()
         .and_then(std::ffi::OsStr::to_str)
@@ -110,7 +134,7 @@ fn syn_info(path: &Path, n: usize) -> Result<Info<'_>, SynErr> {
         })
 }
 
-fn syn_inner(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
+fn inner(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
     let Info { target, title, mode } = info;
     let Syn { n, gen, pop } = syn;
     let target = target.as_slice();
@@ -122,12 +146,19 @@ fn syn_inner(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
         .record(|ctx| ctx.best_f)
         .solve(PathSyn::from_curve(target, None, n, mode))?;
     let spent_time = Instant::now() - t0;
-    let ans = s.result();
     {
         let path = root.join(format!("{title}_history.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 600));
         plot::history(svg, s.report())?;
     }
+    let ans = s.result();
+    draw_ans(root, title, target, ans, n)?;
+    let harmonic = s.func().harmonic();
+    pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
+    Ok(())
+}
+
+fn draw_ans(root: &Path, title: &str, target: &[[f64; 2]], ans: FourBar, n: usize) -> AnyResult {
     {
         let path = root.join(format!("{title}_result.ron"));
         std::fs::write(path, ron::to_string(&ans)?)?;
@@ -145,7 +176,5 @@ fn syn_inner(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
         let svg = plot::SVGBackend::new(&path, (800, 800));
         plot::curve(svg, "Comparison", &curves, None)?;
     }
-    let harmonic = s.func().harmonic();
-    pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
     Ok(())
 }

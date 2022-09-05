@@ -28,6 +28,9 @@ enum Cmd {
         no_parallel: bool,
         #[clap(flatten)]
         syn: Syn,
+        /// Provide a pre-generated codebook database
+        #[clap(long, alias = "codebook", action = clap::ArgAction::Append)]
+        cb: Vec<PathBuf>,
     },
     /// Generate codebook
     Codebook(Codebook),
@@ -70,7 +73,7 @@ impl Entry {
         match entry.cmd {
             None => native(entry.files),
             Some(Cmd::Ui { files }) => native(files),
-            Some(Cmd::Syn { files, no_parallel, syn }) => syn::syn(files, no_parallel, syn),
+            Some(Cmd::Syn { files, no_parallel, syn, cb }) => syn::syn(files, no_parallel, syn, cb),
             Some(Cmd::Codebook(cb)) => codebook(cb),
         }
     }
@@ -108,7 +111,7 @@ fn codebook(cb: Codebook) {
     println!("Generate to: {}", file.display());
     println!("open={open}, n={n}, res={res}, harmonic={harmonic}");
     let pb = indicatif::ProgressBar::new(n as u64);
-    four_bar::codebook::CodeBook::make_with(open, n, res, harmonic, |n| pb.set_position(n as u64))
+    four_bar::codebook::Codebook::make_with(open, n, res, harmonic, |n| pb.set_position(n as u64))
         .write(std::fs::File::create(file).unwrap())
         .unwrap();
     pb.finish_and_clear();
