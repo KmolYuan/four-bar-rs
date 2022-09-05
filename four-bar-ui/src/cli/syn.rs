@@ -92,6 +92,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
     {
         draw_ans(root, info.title, &info.target, ans, syn.n)
     } else {
+        // Optimization synthesis
         inner(&pb, info, root, syn)
     };
     if let Err(e) = res {
