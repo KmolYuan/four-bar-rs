@@ -7,7 +7,7 @@ use std::{
 
 /// Codebook type.
 pub struct Codebook {
-    open: Array0<bool>,
+    open: bool,
     fb: Array2<f64>,
     efd: Array3<f64>,
 }
@@ -65,14 +65,13 @@ impl Codebook {
         let fb = ndarray::stack(Axis(0), &arrays).unwrap();
         let arrays = efd.iter().take(n).map(Array::view).collect::<Vec<_>>();
         let efd = ndarray::stack(Axis(0), &arrays).unwrap();
-        let open = arr0(open);
         Self { open, fb, efd }
     }
 
     /// Read codebook from NPZ file.
     pub fn read(r: impl Read + Seek) -> Result<Self, ndarray_npy::ReadNpzError> {
         let mut r = ndarray_npy::NpzReader::new(r)?;
-        let open = r.by_name("open")?;
+        let open = r.by_name::<ndarray::OwnedRepr<_>, _>("open")?[()];
         let fb = r.by_name("fb")?;
         let efd = r.by_name("efd")?;
         Ok(Self { open, fb, efd })
@@ -81,7 +80,7 @@ impl Codebook {
     /// Write codebook to NPZ file.
     pub fn write(&self, w: impl Write + Seek) -> Result<(), ndarray_npy::WriteNpzError> {
         let mut w = ndarray_npy::NpzWriter::new_compressed(w);
-        w.add_array("open", &self.open)?;
+        w.add_array("open", &arr0(self.open))?;
         w.add_array("fb", &self.fb)?;
         w.add_array("efd", &self.efd)?;
         w.finish().map(|_| ())
@@ -89,7 +88,7 @@ impl Codebook {
 
     /// Return true if the codebook saves open curves.
     pub fn is_open(&self) -> bool {
-        *self.open.first().unwrap()
+        self.open
     }
 
     /// Total size.

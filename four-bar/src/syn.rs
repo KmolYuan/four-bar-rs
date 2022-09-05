@@ -61,6 +61,11 @@ impl Mode {
     pub const fn is_close(&self) -> bool {
         !self.is_open()
     }
+
+    /// Compare with an open/close curve boolean flag.
+    pub const fn eq_bool(&self, is_open: bool) -> bool {
+        matches!((self, is_open), (Self::Open, true) | (Self::Close, false))
+    }
 }
 
 /// Path generation task of planar four-bar linkage.

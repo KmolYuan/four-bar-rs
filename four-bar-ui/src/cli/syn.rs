@@ -59,11 +59,9 @@ pub(super) fn syn(files: Vec<PathBuf>, no_parallel: bool, syn: Syn, cb: Vec<Path
 }
 
 fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Vec<Codebook>> {
-    let mut v = Vec::with_capacity(cb.len());
-    for path in cb {
-        v.push(Codebook::read(std::fs::File::open(path)?)?);
-    }
-    Ok(v)
+    cb.into_iter()
+        .map(|path| Ok(Codebook::read(std::fs::File::open(path)?)?))
+        .collect()
 }
 
 fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
@@ -86,7 +84,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
     // Codebook synthesis
     let res = if let Some((_, ans)) = cb
         .iter()
-        .filter(|cb| cb.is_open() == info.mode.is_open())
+        .filter(|cb| info.mode.eq_bool(cb.is_open()))
         .map(|cb| cb.fetch_1st(&info.target))
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
     {
