@@ -100,7 +100,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
     }
 }
 
-fn info(path: &Path, n: usize) -> Result<Info<'_>, SynErr> {
+fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
     let target = path
         .extension()
         .and_then(std::ffi::OsStr::to_str)
