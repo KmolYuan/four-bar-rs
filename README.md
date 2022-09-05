@@ -18,7 +18,7 @@ Powered by <https://github.com/emilk/egui>.
 
 In Linux, `libxcb` and `libgtk-3` are required. (most desktops are already provided)
 
-In Windows, since the builds are set in Visual Studio, the [support of Visual C++](https://docs.microsoft.com/zh-TW/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
+In Windows, since the builds are set in Visual Studio, the [support of Visual C++](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
 
 Download: <https://github.com/KmolYuan/four-bar-rs/releases/latest>
 
