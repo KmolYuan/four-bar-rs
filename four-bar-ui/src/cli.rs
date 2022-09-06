@@ -94,7 +94,9 @@ fn native(files: Vec<PathBuf>) {
         }
     };
     #[cfg(windows)]
-    let _ = unsafe { winapi::um::wincon::FreeConsole() };
+    unsafe {
+        winapi::um::wincon::FreeConsole();
+    }
     eframe::run_native(
         "Four-bar",
         opt,
