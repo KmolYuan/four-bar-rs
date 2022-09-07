@@ -1,4 +1,5 @@
-//! Four🍀bar is a simulator, a synthesizing tool for four-bar linkage mechanism.
+//! Four🍀bar is a simulator, a synthesizing tool for four-bar linkage
+//! mechanism.
 //!
 //! <https://en.wikipedia.org/wiki/Four-bar_linkage>
 //!
