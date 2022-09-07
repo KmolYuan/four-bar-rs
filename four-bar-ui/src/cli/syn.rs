@@ -81,17 +81,10 @@ fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(info.title.to_string());
     let root = file.parent().unwrap();
-    // Codebook synthesis
-    let res = if let Some((_, ans)) = cb
-        .iter()
-        .filter(|cb| info.mode.eq_bool(cb.is_open()))
-        .map(|cb| cb.fetch_1st(&info.target))
-        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-    {
+    let res = if let Some(ans) = codebook(cb, &info, syn.pop) {
         draw_ans(root, info.title, &info.target, ans, syn.n)
     } else {
-        // Optimization synthesis
-        inner(&pb, info, root, syn)
+        optimize(&pb, info, root, syn)
     };
     if let Err(e) = res {
         pb.finish_with_message(format!("| error: {e}"));
@@ -133,7 +126,16 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
         })
 }
 
-fn inner(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
+fn codebook(cb: &[Codebook], info: &Info, n: usize) -> Option<FourBar> {
+    use four_bar::mh::rayon::prelude::*;
+    cb.into_par_iter()
+        .filter(|cb| info.mode.eq_bool(cb.is_open()))
+        .flat_map(|cb| cb.fetch(&info.target, n))
+        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+        .map(|(_, fb)| fb)
+}
+
+fn optimize(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
     let Info { target, title, mode } = info;
     let Syn { n, gen, pop } = syn;
     let target = target.as_slice();
