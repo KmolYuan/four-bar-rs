@@ -290,11 +290,12 @@ impl ProjInner {
         fn get_curve(pivot: &Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
             let m = Mechanism::new(fb);
             let curve = m.curve_all(0., TAU, n);
-            curve::get_valid_part(&match pivot {
+            let curve = match pivot {
                 Pivot::Driver => curve.into_iter().map(|[c, _, _]| c).collect::<Vec<_>>(),
                 Pivot::Follower => curve.into_iter().map(|[_, c, _]| c).collect::<Vec<_>>(),
                 Pivot::Coupler => curve.into_iter().map(|[_, _, c]| c).collect::<Vec<_>>(),
-            })
+            };
+            curve::get_valid_part(&curve)
         }
         ui.heading("Curve");
         ui.horizontal(|ui| {
@@ -529,7 +530,7 @@ impl Project {
             .cache
             .curves
             .iter()
-            .map(|[.., c]| *c)
+            .map(|[_, _, c]| *c)
             .collect()
     }
 

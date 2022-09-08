@@ -1,7 +1,7 @@
 use super::{io, linkages::Linkages, widgets::unit};
 use crate::csv::{dump_csv, parse_csv};
 use eframe::egui::*;
-use four_bar::{mh, syn};
+use four_bar::{curve, efd, mh, syn};
 use instant::Instant;
 use serde::{Deserialize, Serialize};
 use std::sync::{
@@ -80,6 +80,14 @@ struct UiConfig {
 impl PartialEq for UiConfig {
     fn eq(&self, other: &Self) -> bool {
         self.syn == other.syn && *self.curve_str.read().unwrap() == *other.curve_str.read().unwrap()
+    }
+}
+
+impl UiConfig {
+    fn refresh_target(&mut self) {
+        if let Some(curve) = parse_curve(&self.curve_str.read().unwrap()) {
+            self.syn.target = curve;
+        }
     }
 }
 
@@ -185,9 +193,7 @@ impl Synthesis {
                 self.csv_open = !self.csv_open;
             }
             if ui.button("⟳ Refresh").clicked() {
-                if let Some(curve) = parse_curve(&self.config.curve_str.read().unwrap()) {
-                    self.config.syn.target = curve;
-                }
+                self.config.refresh_target();
             }
         });
         ui.separator();
@@ -298,14 +304,23 @@ impl Synthesis {
                     if ui.button("🔀 To CSV").clicked() {
                         write_curve_str(&curve_str, |c| dump_csv(&c).unwrap());
                     }
-                    if ui.button("🔀 To tuple array").clicked() {
+                    if ui.button("🔀 To array of tuple").clicked() {
                         write_curve_str(&curve_str, ron_pretty);
                     }
-                    if ui.button("🔀 To nested array").clicked() {
+                    if ui.button("🔀 To array of array").clicked() {
                         write_curve_str(&curve_str, |c| {
                             let c = c.into_iter().map(Vec::from).collect::<Vec<_>>();
                             ron_pretty(c)
                         });
+                    }
+                    if ui.button("🔀 Re-describe").clicked() {
+                        write_curve_str(&curve_str, |c| {
+                            let c = curve::close_line(c);
+                            let mut c = efd::Efd2::from_curve(&c, None).generate(c.len());
+                            c.pop();
+                            dump_csv(&c).unwrap()
+                        });
+                        self.config.refresh_target();
                     }
                 });
                 ui.label("Past curve data here:");
