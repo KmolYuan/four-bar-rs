@@ -144,7 +144,10 @@ pub fn save_history_ask(history: &[f64], name: &str) {
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }
 
-pub fn save_curve_ask(target: &[[f64; 2]], curve: &[[f64; 2]], fb: plot::FourBarOpt, name: &str) {
+pub fn save_curve_ask<F>(target: &[[f64; 2]], curve: &[[f64; 2]], fb: F, name: &str)
+where
+    F: Into<plot::FourBarOpt>,
+{
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));
     let curves = [("Target", target), ("Optimized", curve)];

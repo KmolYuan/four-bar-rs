@@ -287,8 +287,7 @@ impl ProjInner {
     }
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
-        let fb = &mut self.fb;
-        let get_curve = |pivot: &Pivot| {
+        fn get_curve(pivot: &Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
             let m = Mechanism::new(fb);
             let curve = m.curve_all(0., TAU, n);
             curve::get_valid_part(&match pivot {
@@ -296,7 +295,7 @@ impl ProjInner {
                 Pivot::Follower => curve.into_iter().map(|[_, c, _]| c).collect::<Vec<_>>(),
                 Pivot::Coupler => curve.into_iter().map(|[_, _, c]| c).collect::<Vec<_>>(),
             })
-        };
+        }
         ui.heading("Curve");
         ui.horizontal(|ui| {
             ComboBox::from_label("")
@@ -307,39 +306,44 @@ impl ProjInner {
                     ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
                 });
             if ui.small_button("💾").on_hover_text("Save").clicked() {
-                io::save_csv_ask(&get_curve(pivot));
+                io::save_csv_ask(&get_curve(pivot, &self.fb, n));
             }
             if ui.button("🗐").on_hover_text("Copy").clicked() {
-                ui.output().copied_text = dump_csv(&get_curve(pivot)).unwrap();
+                ui.output().copied_text = dump_csv(&get_curve(pivot, &self.fb, n)).unwrap();
             }
         });
         ui.separator();
         ui.horizontal(|ui| {
             ui.heading("Offset");
             if ui
-                .add_enabled(!fb.is_aligned(), Button::new("Reset"))
+                .add_enabled(!self.fb.is_aligned(), Button::new("Reset"))
+                .on_hover_text("Reset the translation and rotation offset")
                 .clicked()
             {
-                fb.align();
+                self.fb.align();
+                self.cache.changed = true;
+            }
+            if ui
+                .button("Normalize")
+                .on_hover_text("Remove offset, then scale by the driver link")
+                .clicked()
+            {
+                self.fb.normalize();
                 self.cache.changed = true;
             }
         });
-        if ui.button("Normalize").clicked() {
-            fb.normalize();
-            self.cache.changed = true;
-        }
-        let mut res = unit(ui, "X Offset: ", fb.p0x_mut(), interval)
-            | unit(ui, "Y Offset: ", fb.p0y_mut(), interval)
-            | angle(ui, "Rotation: ", fb.a_mut(), "");
+        let mut res = unit(ui, "X Offset: ", self.fb.p0x_mut(), interval)
+            | unit(ui, "Y Offset: ", self.fb.p0y_mut(), interval)
+            | angle(ui, "Rotation: ", self.fb.a_mut(), "");
         ui.separator();
         ui.heading("Parameters");
-        res |= link(ui, "Ground: ", fb.l0_mut(), interval)
-            | link(ui, "Driver: ", fb.l1_mut(), interval)
-            | link(ui, "Coupler: ", fb.l2_mut(), interval)
-            | link(ui, "Follower: ", fb.l3_mut(), interval)
-            | link(ui, "Extended: ", fb.l4_mut(), interval)
-            | angle(ui, "Angle: ", fb.g_mut(), "")
-            | ui.checkbox(fb.inv_mut(), "Invert follower and coupler");
+        res |= link(ui, "Ground: ", self.fb.l0_mut(), interval)
+            | link(ui, "Driver: ", self.fb.l1_mut(), interval)
+            | link(ui, "Coupler: ", self.fb.l2_mut(), interval)
+            | link(ui, "Follower: ", self.fb.l3_mut(), interval)
+            | link(ui, "Extended: ", self.fb.l4_mut(), interval)
+            | angle(ui, "Angle: ", self.fb.g_mut(), "")
+            | ui.checkbox(self.fb.inv_mut(), "Invert follower and coupler");
         ui.separator();
         ui.horizontal(|ui| {
             ui.heading("Angle");
@@ -358,6 +362,12 @@ impl ProjInner {
         self.cache.changed |= res.changed();
         if ui.button("⚽ Dynamics").clicked() {
             self.angle_open = !self.angle_open;
+        }
+        ui.separator();
+        ui.heading("Figure");
+        if ui.button("💾 Save Linkage Figure").clicked() {
+            let curve = get_curve(&Pivot::Coupler, &self.fb, n);
+            io::save_curve_ask(&[], &curve, self.fb.clone(), "fig.svg");
         }
         self.cache(n);
     }

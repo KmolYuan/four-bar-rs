@@ -204,10 +204,14 @@ impl Synthesis {
                         task.start.store(false, Ordering::Relaxed);
                     }
                 } else {
-                    if ui.small_button("🗑").clicked() {
+                    if ui.small_button("🗑").on_hover_text("Delete").clicked() {
                         keep = false;
                     }
-                    if ui.small_button("💾").on_hover_text("Save").clicked() {
+                    if ui
+                        .small_button("💾")
+                        .on_hover_text("Save history plot")
+                        .clicked()
+                    {
                         io::save_history_ask(&task.conv.read().unwrap(), "history.svg");
                     }
                 }
@@ -230,10 +234,10 @@ impl Synthesis {
         ui.heading("Projects");
         ui.label("Results from the coupler trajectories.");
         if linkage.projects.select(ui, false) {
-            if ui.button("💾 Save Comparison").clicked() {
+            if ui.button("💾 Save Comparison Figure").clicked() {
                 let curve = linkage.current_curve();
                 let fb = linkage.four_bar_state();
-                io::save_curve_ask(&self.config.syn.target, &curve, fb, "comparison.svg");
+                io::save_curve_ask(&self.config.syn.target, &curve, fb, "fb.svg");
             }
             if ui.button("🗐 Copy Coupler Curve").clicked() {
                 self.config.syn.target = linkage.current_curve();
