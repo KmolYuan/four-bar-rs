@@ -506,8 +506,10 @@ impl Project {
         self.0.read().unwrap().plot(ui, i, id);
     }
 
-    fn clone_four_bar(&self) -> FourBar {
-        self.0.read().unwrap().fb.clone()
+    fn four_bar_state(&self) -> four_bar::plot::FourBarOpt {
+        let proj = self.0.read().unwrap();
+        let fb = proj.fb.clone();
+        four_bar::plot::FourBarOpt::from(fb).angle(proj.angles.theta2)
     }
 
     fn clone_curve(&self) -> Vec<[f64; 2]> {
@@ -632,8 +634,8 @@ impl Projects {
         !self.is_empty()
     }
 
-    pub fn current_four_bar(&self) -> FourBar {
-        self.list[self.curr].clone_four_bar()
+    pub fn four_bar_state(&self) -> four_bar::plot::FourBarOpt {
+        self.list[self.curr].four_bar_state()
     }
 
     pub fn current_curve(&self) -> Vec<[f64; 2]> {

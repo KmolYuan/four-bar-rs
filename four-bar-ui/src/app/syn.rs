@@ -232,7 +232,7 @@ impl Synthesis {
         if linkage.projects.select(ui, false) {
             if ui.button("💾 Save Comparison").clicked() {
                 let curve = linkage.current_curve();
-                let fb = linkage.current_four_bar();
+                let fb = linkage.four_bar_state();
                 io::save_curve_ask(&self.config.syn.target, &curve, fb, "comparison.svg");
             }
             if ui.button("🗐 Copy Coupler Curve").clicked() {

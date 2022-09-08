@@ -45,20 +45,58 @@ where
     Ok(())
 }
 
+/// Drawing option of four-bar linkage and its input angle.
+#[derive(Default)]
+pub struct FourBarOpt {
+    fb: Option<FourBar>,
+    angle: Option<f64>,
+}
+
+impl From<Option<Self>> for FourBarOpt {
+    fn from(opt: Option<Self>) -> Self {
+        opt.unwrap_or_default()
+    }
+}
+
+impl<F: Into<FourBar>> From<F> for FourBarOpt {
+    fn from(fb: F) -> Self {
+        let fb = Some(fb.into());
+        Self { fb, angle: None }
+    }
+}
+
+impl FourBarOpt {
+    /// Builder method for setting input angle value.
+    ///
+    /// If the angle value is not in the range of [`FourBar::angle_bound()`],
+    /// the actual angle will be the midpoint.
+    pub fn angle(self, angle: f64) -> Self {
+        Self { angle: angle.into(), ..self }
+    }
+
+    fn joints(self) -> Option<[[f64; 2]; 5]> {
+        let Self { fb, angle } = self;
+        let fb = fb?;
+        let [start, end] = fb.angle_bound().expect("invalid linkage");
+        let angle = match angle {
+            Some(angle) if (start..end).contains(&angle) => angle,
+            _ => (start + end) * 0.5,
+        };
+        let mut joints = [[0.; 2]; 5];
+        Mechanism::new(&fb).apply(angle, [0, 1, 2, 3, 4], &mut joints);
+        Some(joints)
+    }
+}
+
 /// Plot 2D curve.
 pub fn curve<B, F>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])], fb: F) -> PResult<(), B>
 where
     B: DrawingBackend,
-    F: Into<Option<FourBar>>,
+    F: Into<FourBarOpt>,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let joints = fb.into().map(|fb| {
-        let [start, end] = fb.angle_bound().expect("invalid linkage");
-        let mut joints = [[0.; 2]; 5];
-        Mechanism::new(&fb).apply((start + end) * 0.5, [0, 1, 2, 3, 4], &mut joints);
-        joints
-    });
+    let joints = fb.into().joints();
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
     let mut chart = ChartBuilder::on(&root)
