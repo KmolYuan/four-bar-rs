@@ -118,7 +118,7 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
     .inner
 }
 
-#[derive(Default, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Default, Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]
 pub enum Pivot {
     Driver,
     Follower,
@@ -287,7 +287,7 @@ impl ProjInner {
     }
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
-        fn get_curve(pivot: &Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
+        fn get_curve(pivot: Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
             let m = Mechanism::new(fb);
             let curve = m.curve_all(0., TAU, n);
             let curve = match pivot {
@@ -307,10 +307,10 @@ impl ProjInner {
                     ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
                 });
             if ui.small_button("💾").on_hover_text("Save").clicked() {
-                io::save_csv_ask(&get_curve(pivot, &self.fb, n));
+                io::save_csv_ask(&get_curve(*pivot, &self.fb, n));
             }
             if ui.button("🗐").on_hover_text("Copy").clicked() {
-                ui.output().copied_text = dump_csv(&get_curve(pivot, &self.fb, n)).unwrap();
+                ui.output().copied_text = dump_csv(&get_curve(*pivot, &self.fb, n)).unwrap();
             }
         });
         ui.separator();
@@ -367,8 +367,9 @@ impl ProjInner {
         ui.separator();
         ui.heading("Figure");
         if ui.button("💾 Save Linkage Figure").clicked() {
-            let curve = get_curve(&Pivot::Coupler, &self.fb, n);
-            io::save_curve_ask(&[], &curve, self.fb.clone(), "fig.svg");
+            let curve = get_curve(Pivot::Coupler, &self.fb, n);
+            let fb = four_bar::plot::FourBarOpt::from(self.fb.clone()).angle(self.angles.theta2);
+            io::save_curve_ask(&[], &curve, fb, "fig.svg");
         }
         self.cache(n);
     }
