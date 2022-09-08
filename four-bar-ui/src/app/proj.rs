@@ -368,7 +368,7 @@ impl ProjInner {
         ui.heading("Figure");
         if ui.button("💾 Save Linkage Figure").clicked() {
             let curve = get_curve(Pivot::Coupler, &self.fb, n);
-            let fb = four_bar::plot::FourBarOpt::from(self.fb.clone()).angle(self.angles.theta2);
+            let fb = four_bar::plot::FbOpt::new(self.fb.clone(), self.angles.theta2);
             io::save_curve_ask(&[], &curve, fb, "fig.svg");
         }
         self.cache(n);
@@ -518,10 +518,10 @@ impl Project {
         self.0.read().unwrap().plot(ui, i, id);
     }
 
-    fn four_bar_state(&self) -> four_bar::plot::FourBarOpt {
+    fn four_bar_state(&self) -> four_bar::plot::FbOpt {
         let proj = self.0.read().unwrap();
         let fb = proj.fb.clone();
-        four_bar::plot::FourBarOpt::from(fb).angle(proj.angles.theta2)
+        four_bar::plot::FbOpt::new(fb, proj.angles.theta2)
     }
 
     fn clone_curve(&self) -> Vec<[f64; 2]> {
@@ -646,7 +646,7 @@ impl Projects {
         !self.is_empty()
     }
 
-    pub fn four_bar_state(&self) -> four_bar::plot::FourBarOpt {
+    pub fn four_bar_state(&self) -> four_bar::plot::FbOpt {
         self.list[self.curr].four_bar_state()
     }
 

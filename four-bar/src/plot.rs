@@ -47,31 +47,34 @@ where
 
 /// Drawing option of four-bar linkage and its input angle.
 #[derive(Default)]
-pub struct FourBarOpt {
+pub struct FbOpt {
     fb: Option<FourBar>,
     angle: Option<f64>,
 }
 
-impl From<Option<Self>> for FourBarOpt {
+impl From<Option<Self>> for FbOpt {
     fn from(opt: Option<Self>) -> Self {
         opt.unwrap_or_default()
     }
 }
 
-impl<F: Into<FourBar>> From<F> for FourBarOpt {
+impl<F: Into<FourBar>> From<F> for FbOpt {
     fn from(fb: F) -> Self {
         let fb = Some(fb.into());
         Self { fb, angle: None }
     }
 }
 
-impl FourBarOpt {
-    /// Builder method for setting input angle value.
+impl FbOpt {
+    /// Create with a linkage and its input angle.
     ///
     /// If the angle value is not in the range of [`FourBar::angle_bound()`],
     /// the actual angle will be the midpoint.
-    pub fn angle(self, angle: f64) -> Self {
-        Self { angle: angle.into(), ..self }
+    pub fn new<F>(fb: F, angle: f64) -> Self
+    where
+        F: Into<FourBar>,
+    {
+        Self { angle: angle.into(), ..Self::from(fb) }
     }
 
     fn joints(self) -> Option<[[f64; 2]; 5]> {
@@ -92,7 +95,7 @@ impl FourBarOpt {
 pub fn curve<B, F>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])], fb: F) -> PResult<(), B>
 where
     B: DrawingBackend,
-    F: Into<FourBarOpt>,
+    F: Into<FbOpt>,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;

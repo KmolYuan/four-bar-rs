@@ -62,7 +62,7 @@ impl Linkages {
         }
     }
 
-    pub fn four_bar_state(&self) -> four_bar::plot::FourBarOpt {
+    pub fn four_bar_state(&self) -> four_bar::plot::FbOpt {
         self.projects.four_bar_state()
     }
 
