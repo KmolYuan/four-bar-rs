@@ -1,7 +1,7 @@
 use super::{io, linkages::Linkages, widgets::unit};
 use crate::csv::{dump_csv, parse_csv};
 use eframe::egui::*;
-use four_bar::{curve, efd, mh, syn};
+use four_bar::{efd, mh, syn};
 use instant::Instant;
 use serde::{Deserialize, Serialize};
 use std::sync::{
@@ -315,7 +315,7 @@ impl Synthesis {
                     }
                     if ui.button("🔀 Re-describe").clicked() {
                         write_curve_str(&curve_str, |c| {
-                            let c = curve::close_line(c);
+                            let c = self.config.syn.mode.regularize(c);
                             let mut c = efd::Efd2::from_curve(&c, None).generate(c.len());
                             c.pop();
                             dump_csv(&c).unwrap()

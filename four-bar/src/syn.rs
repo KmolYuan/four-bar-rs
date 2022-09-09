@@ -66,6 +66,15 @@ impl Mode {
     pub const fn eq_bool(&self, is_open: bool) -> bool {
         matches!((self, is_open), (Self::Open, true) | (Self::Close, false))
     }
+
+    /// Regularize path with the mode.
+    pub fn regularize(&self, curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+        match self {
+            Self::Close if curve::is_closed(&curve) => curve,
+            Self::Close => curve::close_line(curve),
+            Self::Partial | Self::Open => curve::close_rev(curve),
+        }
+    }
 }
 
 /// Path generation task of planar four-bar linkage.
@@ -89,12 +98,7 @@ impl PathSyn {
         let curve = curve::get_valid_part(curve);
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
-        let curve = match mode {
-            Mode::Close if curve::is_closed(&curve) => curve,
-            Mode::Close => curve::close_line(curve),
-            Mode::Partial | Mode::Open => curve::close_rev(curve),
-        };
-        let efd = Efd2::from_curve(&curve, harmonic);
+        let efd = Efd2::from_curve(&mode.regularize(curve), harmonic);
         Self::from_efd(efd, n, mode)
     }
 
@@ -130,10 +134,6 @@ impl PathSyn {
         if self.mode.is_open() != fb.ty().is_open_curve() {
             return INFEASIBLE;
         }
-        let close_f = match self.mode {
-            Mode::Close => curve::close_line,
-            Mode::Partial | Mode::Open => curve::close_rev,
-        };
         let f = |[t1, t2]: [f64; 2]| {
             let fb = &fb;
             #[cfg(feature = "rayon")]
@@ -147,7 +147,7 @@ impl PathSyn {
             })
             .filter(|(curve, _)| curve.len() > 2)
             .map(|(curve, fb)| {
-                let efd = Efd2::from_curve(&close_f(curve), Some(self.efd.harmonic()));
+                let efd = Efd2::from_curve(&self.mode.regularize(curve), Some(self.efd.harmonic()));
                 let fitness = efd.manhattan(&self.efd);
                 let fb = FourBar::from_transform(fb, efd.to(&self.efd));
                 (fitness, fb)
