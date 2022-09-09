@@ -295,7 +295,7 @@ impl ProjInner {
                 Pivot::Follower => curve.into_iter().map(|[_, c, _]| c).collect::<Vec<_>>(),
                 Pivot::Coupler => curve.into_iter().map(|[_, _, c]| c).collect::<Vec<_>>(),
             };
-            curve::get_valid_part(&curve)
+            curve::get_valid_part(curve)
         }
         ui.heading("Curve");
         ui.horizontal(|ui| {

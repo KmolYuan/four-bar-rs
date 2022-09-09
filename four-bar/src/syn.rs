@@ -143,7 +143,7 @@ impl PathSyn {
             iter.map(move |inv| {
                 let fb = fb.with_inv(inv);
                 let curve = Mechanism::new(&fb).curve(t1, t2, self.n);
-                (curve::get_valid_part(&curve), fb)
+                (curve::get_valid_part(curve), fb)
             })
             .filter(|(curve, _)| curve.len() > 2)
             .map(|(curve, fb)| {

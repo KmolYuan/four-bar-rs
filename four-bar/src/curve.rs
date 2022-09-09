@@ -5,11 +5,13 @@
 use crate::{FourBar, Mechanism};
 use std::f64::consts::PI;
 
+type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
+
 /// Get curve from four-bar linkage.
 pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> {
     let fb = fb.into();
     fb.angle_bound()
-        .map(|[t1, t2]| get_valid_part(&Mechanism::new(&fb).curve(t1, t2, n)))
+        .map(|[t1, t2]| get_valid_part(Mechanism::new(&fb).curve(t1, t2, n)))
 }
 
 /// Check if a curve is closed. (first point and end point are close)
@@ -20,7 +22,11 @@ pub fn is_closed(curve: &[[f64; 2]]) -> bool {
 }
 
 /// Input a curve, split out the longest finite parts to a continuous curve.
-pub fn get_valid_part(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+pub fn get_valid_part<'a, C>(curve: C) -> Vec<[f64; 2]>
+where
+    C: Into<CowCurve<'a>>,
+{
+    let curve = curve.into();
     let mut iter = curve.iter();
     let mut last = Vec::new();
     while iter.len() > 0 {
@@ -39,7 +45,11 @@ pub fn get_valid_part(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
 /// Close the open curve with a line.
 ///
 /// Panic with empty curve.
-pub fn close_line(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+pub fn close_line<'a, C>(curve: C) -> Vec<[f64; 2]>
+where
+    C: Into<CowCurve<'a>>,
+{
+    let mut curve = curve.into().into_owned();
     curve.push(curve[0]);
     curve
 }
@@ -47,7 +57,11 @@ pub fn close_line(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 /// Close the open curve with a symmetry part.
 ///
 /// Panic with empty curve.
-pub fn close_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+pub fn close_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
+where
+    C: Into<CowCurve<'a>>,
+{
+    let mut curve = curve.into().into_owned();
     let first = &curve[0];
     let end = &curve[curve.len() - 1];
     let curve2 = curve
@@ -74,7 +88,11 @@ pub fn close_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 /// Close the open curve with an anti-symmetry part.
 ///
 /// Panic with empty curve.
-pub fn close_anti_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+pub fn close_anti_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
+where
+    C: Into<CowCurve<'a>>,
+{
+    let mut curve = curve.into().into_owned();
     let [ox, oy] = {
         let first = &curve[0];
         let end = &curve[curve.len() - 1];
@@ -96,7 +114,11 @@ pub fn close_anti_symmetric(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
 /// Close the open curve with anti-symmetric extension function.
 ///
 /// Panic with empty curve.
-pub fn close_anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
+pub fn close_anti_sym_ext<'a, C>(curve: C) -> Vec<[f64; 2]>
+where
+    C: Into<CowCurve<'a>>,
+{
+    let curve = curve.into().into_owned();
     let n = curve.len() - 1;
     let [x0, y0] = curve[0];
     let [xn, yn] = curve[n];
@@ -125,7 +147,11 @@ pub fn close_anti_sym_ext(curve: &[[f64; 2]]) -> Vec<[f64; 2]> {
 /// Close the open curve with its direction-inverted part.
 ///
 /// Panic with empty curve.
-pub fn close_rev(mut curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+pub fn close_rev<'a, C>(curve: C) -> Vec<[f64; 2]>
+where
+    C: Into<CowCurve<'a>>,
+{
+    let mut curve = curve.into().into_owned();
     let curve2 = curve.iter().rev().skip(1).copied().collect::<Vec<_>>();
     curve.extend(curve2);
     curve
