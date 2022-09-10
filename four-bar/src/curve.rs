@@ -1,9 +1,9 @@
-//! Curve (trajectory) operation.
+//! Curve (trajectory) operation functions.
 //!
-//! Curves are typed with `&[[f64; 2]]`, allow containing `NaN`s.
+//! The input curve can be both a owned type `Vec<[f64; 2]>` or a pointer type
+//! `&[[f64; 2]]` since the generic are copy-on-write (COW) compatible.
 
 use crate::{FourBar, Mechanism};
-use std::f64::consts::PI;
 
 type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
@@ -14,7 +14,7 @@ pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> 
         .map(|[t1, t2]| get_valid_part(Mechanism::new(&fb).curve(t1, t2, n)))
 }
 
-/// Check if a curve is closed. (first point and end point are close)
+/// Check if a curve's first and end points are very close.
 pub fn is_closed(curve: &[[f64; 2]]) -> bool {
     let first = curve[0];
     let end = curve[curve.len() - 1];
@@ -102,6 +102,7 @@ where
         .iter()
         .take(curve.len() - 1)
         .map(|[x, y]| {
+            use std::f64::consts::PI;
             let x = ox + PI.cos() * (x - ox) - PI.sin() * (y - oy);
             let y = oy + PI.sin() * (x - ox) + PI.cos() * (y - oy);
             [x, y]

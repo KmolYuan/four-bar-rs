@@ -70,7 +70,7 @@ impl Mode {
     /// Regularize path with the mode.
     pub fn regularize(&self, curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
         match self {
-            Self::Close if curve::is_closed(&curve) => curve,
+            _ if curve::is_closed(&curve) => curve,
             Self::Close => curve::close_line(curve),
             Self::Partial | Self::Open => curve::close_rev(curve),
         }
