@@ -366,7 +366,8 @@ impl ProjInner {
         }
         ui.separator();
         ui.heading("Figure");
-        if ui.button("💾 Save Linkage Figure").clicked() {
+        ui.label("Plot linkage and its coupler curve.");
+        if ui.button("💾 Save Linkage").clicked() {
             let curve = get_curve(Pivot::Coupler, &self.fb, n);
             let fb = four_bar::plot::FbOpt::new(self.fb.clone(), self.angles.theta2);
             io::save_curve_ask(&[], &curve, fb, "fig.svg");

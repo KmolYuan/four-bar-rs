@@ -68,6 +68,7 @@ pub struct Synthesis {
     tasks: Vec<Task>,
     csv_open: bool,
     conv_open: bool,
+    plot_linkage: bool,
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -238,13 +239,17 @@ impl Synthesis {
         });
         ui.separator();
         ui.heading("Projects");
-        ui.label("Results from the coupler trajectories.");
+        ui.label("Compare results from a project's coupler curve.");
         if linkage.projects.select(ui, false) {
-            if ui.button("💾 Save Comparison Figure").clicked() {
-                let curve = linkage.current_curve();
-                let fb = linkage.four_bar_state();
-                io::save_curve_ask(&self.config.syn.target, &curve, fb, "fb.svg");
-            }
+            ui.horizontal(|ui| {
+                if ui.button("💾 Save Comparison").clicked() {
+                    let target = &self.config.syn.target;
+                    let curve = linkage.current_curve();
+                    let fb = self.plot_linkage.then(|| linkage.four_bar_state());
+                    io::save_curve_ask(target, &curve, fb, "fb.svg");
+                }
+                ui.checkbox(&mut self.plot_linkage, "With linkage");
+            });
             if ui.button("🗐 Copy Coupler Curve").clicked() {
                 self.config.syn.target = linkage.current_curve();
                 *self.config.curve_str.write().unwrap() =
