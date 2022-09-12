@@ -151,7 +151,7 @@ where
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));
     let curves = [("Target", target), ("Optimized", curve)];
-    if target.len() == curve.len() {
+    if !target.is_empty() && target.len() == curve.len() {
         let title = format!("Comparison (Error: {:.04})", curve::geo_err(target, curve));
         plot::curve(svg, &title, &curves, fb).unwrap();
     } else {
