@@ -5,7 +5,7 @@ use four_bar::{efd, mh, syn};
 use instant::Instant;
 use serde::{Deserialize, Serialize};
 use std::sync::{
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
     Arc, RwLock,
 };
 
@@ -21,13 +21,6 @@ fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
         Some(curve)
     } else {
         None
-    }
-}
-
-fn write_curve_str(s: &RwLock<String>, f: impl FnOnce(Vec<[f64; 2]>) -> String) {
-    let curve = parse_curve(&s.read().unwrap());
-    if let Some(curve) = curve {
-        *s.write().unwrap() = f(curve);
     }
 }
 
@@ -76,6 +69,8 @@ pub struct Synthesis {
 struct UiConfig {
     syn: SynConfig,
     curve_str: Arc<RwLock<String>>,
+    #[serde(skip)]
+    changed: Arc<AtomicU8>,
 }
 
 impl PartialEq for UiConfig {
@@ -85,9 +80,22 @@ impl PartialEq for UiConfig {
 }
 
 impl UiConfig {
-    fn refresh_target(&mut self) {
-        if let Some(curve) = parse_curve(&self.curve_str.read().unwrap()) {
-            self.syn.target = curve;
+    const TICK: u8 = 30;
+
+    fn poll_target(&mut self) {
+        if self.changed.load(Ordering::Relaxed) >= Self::TICK {
+            if let Some(curve) = parse_curve(&self.curve_str.read().unwrap()) {
+                self.syn.target = curve;
+            }
+            self.changed.store(0, Ordering::Relaxed);
+        }
+        self.changed.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn write_curve_str(&self, f: impl FnOnce(Vec<[f64; 2]>) -> String) {
+        let curve = parse_curve(&self.curve_str.read().unwrap());
+        if let Some(curve) = curve {
+            *self.curve_str.write().unwrap() = f(curve);
         }
     }
 }
@@ -189,14 +197,9 @@ impl Synthesis {
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
         unit(ui, "Population: ", &mut self.config.syn.pop, 1);
         ui.label("Edit target curve then click refresh button to update the task.");
-        ui.horizontal(|ui| {
-            if ui.button("🛠 Target Curve").clicked() {
-                self.csv_open = !self.csv_open;
-            }
-            if ui.button("⟳ Refresh").clicked() {
-                self.config.refresh_target();
-            }
-        });
+        if ui.button("🛠 Target Curve").clicked() {
+            self.csv_open = !self.csv_open;
+        }
         ui.separator();
         ui.heading("Optimization");
         if ui.button("📉 Convergence Plot").clicked() {
@@ -287,17 +290,20 @@ impl Synthesis {
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
                 ui.label("Support CSV or RON array only.");
-                let curve_str = self.config.curve_str.clone();
                 ui.horizontal(|ui| {
                     if ui.button("🖴 Open Curves").clicked() {
-                        let curve_csv = curve_str.clone();
-                        io::open_csv_single(move |_, s| *curve_csv.write().unwrap() = s);
+                        let curve_csv = self.config.curve_str.clone();
+                        let changed = self.config.changed.clone();
+                        io::open_csv_single(move |_, s| {
+                            *curve_csv.write().unwrap() = s;
+                            changed.store(UiConfig::TICK, Ordering::Relaxed);
+                        });
                     }
                     if ui.button("💾 Save CSV").clicked() {
                         io::save_csv_ask(&self.config.syn.target);
                     }
                     if ui.button("🗑 Clear").clicked() {
-                        curve_str.write().unwrap().clear();
+                        self.config.curve_str.write().unwrap().clear();
                     }
                 });
                 let mode = &mut self.config.syn.mode;
@@ -307,35 +313,37 @@ impl Synthesis {
                 ui.label("Transform:");
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("🔀 To CSV").clicked() {
-                        write_curve_str(&curve_str, |c| dump_csv(&c).unwrap());
+                        self.config.write_curve_str(|c| dump_csv(&c).unwrap());
                     }
                     if ui.button("🔀 To array of tuple").clicked() {
-                        write_curve_str(&curve_str, ron_pretty);
+                        self.config.write_curve_str(ron_pretty);
                     }
                     if ui.button("🔀 To array of array").clicked() {
-                        write_curve_str(&curve_str, |c| {
+                        self.config.write_curve_str(|c| {
                             let c = c.into_iter().map(Vec::from).collect::<Vec<_>>();
                             ron_pretty(c)
                         });
                     }
                     if ui.button("🔀 Re-describe").clicked() {
-                        write_curve_str(&curve_str, |c| {
+                        self.config.write_curve_str(|c| {
                             let c = self.config.syn.mode.regularize(c);
                             let mut c = efd::Efd2::from_curve(&c, None).generate(c.len());
                             c.pop();
                             dump_csv(&c).unwrap()
                         });
-                        self.config.refresh_target();
                     }
                 });
+                ui.separator();
                 ui.label("Past curve data here:");
                 ScrollArea::both().show(ui, |ui| {
-                    let mut s = curve_str.write().unwrap();
+                    let mut s = self.config.curve_str.write().unwrap();
                     let w = TextEdit::multiline(&mut *s)
                         .code_editor()
                         .desired_width(f32::INFINITY);
                     ui.add(w);
                 });
+                self.config.poll_target();
+                ui.ctx().request_repaint();
             });
     }
 
