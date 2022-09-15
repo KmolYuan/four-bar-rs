@@ -84,7 +84,7 @@ impl PartialEq for UiConfig {
 impl UiConfig {
     const TICK: u8 = 30;
 
-    fn init(&mut self) {
+    fn init_poll(&mut self) {
         let curve_str = self.curve_str.read().unwrap();
         if self.syn.target.is_empty() && !curve_str.is_empty() {
             if let Some(curve) = parse_curve(&curve_str) {
@@ -303,7 +303,7 @@ impl Synthesis {
     }
 
     fn target_curve_editor(&mut self, ui: &mut Ui) {
-        self.config.init();
+        self.config.init_poll();
         Window::new("🛠 Target Curve")
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
