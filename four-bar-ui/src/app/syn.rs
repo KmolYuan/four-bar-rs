@@ -94,7 +94,7 @@ impl UiConfig {
         }
     }
 
-    fn poll_target(&mut self) {
+    fn poll(&mut self) {
         if self.changed.load(Ordering::Relaxed) >= Self::TICK {
             if let Some(curve) = parse_curve(&self.curve_str.read().unwrap()) {
                 self.efd_h = efd::fourier_power_nyq(&curve);
@@ -358,7 +358,7 @@ impl Synthesis {
                         .desired_width(f32::INFINITY);
                     ui.add(w);
                 });
-                self.config.poll_target();
+                self.config.poll();
                 ui.ctx().request_repaint();
             });
     }
