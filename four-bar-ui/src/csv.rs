@@ -21,6 +21,6 @@ where
     S: Serialize + Clone + 'a,
 {
     let mut w = Writer::from_writer(Vec::new());
-    c.into().iter().try_for_each(|s| w.serialize(s.clone()))?;
+    w.serialize(c.into())?;
     Ok(String::from_utf8(w.into_inner()?)?)
 }

@@ -25,8 +25,8 @@ fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
 }
 
 #[inline]
-fn ron_pretty(s: impl Serialize) -> String {
-    ron::ser::to_string_pretty(&s, Default::default()).unwrap()
+fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
+    ron::ser::to_string_pretty(s, Default::default()).unwrap()
 }
 
 fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
@@ -111,11 +111,8 @@ impl UiConfig {
         self.syn.target = target;
     }
 
-    fn write_curve_str(&self, f: impl FnOnce(Vec<[f64; 2]>) -> String) {
-        let curve = parse_curve(&self.curve_str.read().unwrap());
-        if let Some(curve) = curve {
-            *self.curve_str.write().unwrap() = f(curve);
-        }
+    fn write_curve_str(&self, f: impl FnOnce(&[[f64; 2]]) -> String) {
+        *self.curve_str.write().unwrap() = f(&self.syn.target);
     }
 }
 
@@ -338,8 +335,8 @@ impl Synthesis {
                     }
                     if ui.button("🔀 To array of array").clicked() {
                         self.config.write_curve_str(|c| {
-                            let c = c.into_iter().map(Vec::from).collect::<Vec<_>>();
-                            ron_pretty(c)
+                            let c = c.iter().copied().map(Vec::from).collect::<Vec<_>>();
+                            ron_pretty(&c)
                         });
                     }
                     let btn = format!("🔀 Re-describe ({})", self.config.efd_h);
