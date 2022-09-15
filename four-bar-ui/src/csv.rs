@@ -15,13 +15,12 @@ where
 }
 
 /// Dump CSV to string.
-pub fn dump_csv<S>(arr: &[S]) -> Result<String, Box<dyn Error>>
+pub fn dump_csv<'a, C, S>(c: C) -> Result<String, Box<dyn Error>>
 where
-    S: Serialize + Clone,
+    C: Into<std::borrow::Cow<'a, [S]>>,
+    S: Serialize + Clone + 'a,
 {
     let mut w = Writer::from_writer(Vec::new());
-    for s in arr {
-        w.serialize(s.clone())?;
-    }
+    c.into().iter().try_for_each(|s| w.serialize(s.clone()))?;
     Ok(String::from_utf8(w.into_inner()?)?)
 }

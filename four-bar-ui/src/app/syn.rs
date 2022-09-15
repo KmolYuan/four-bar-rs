@@ -1,7 +1,7 @@
 use super::{io, linkages::Linkages, widgets::unit};
 use crate::csv::{dump_csv, parse_csv};
 use eframe::egui::*;
-use four_bar::{efd, mh, syn};
+use four_bar::{curve, efd, mh, syn};
 use instant::Instant;
 use serde::{Deserialize, Serialize};
 use std::sync::{
@@ -71,6 +71,8 @@ struct UiConfig {
     curve_str: Arc<RwLock<String>>,
     #[serde(skip)]
     changed: Arc<AtomicU8>,
+    #[serde(skip)]
+    efd_h: usize,
 }
 
 impl PartialEq for UiConfig {
@@ -82,9 +84,20 @@ impl PartialEq for UiConfig {
 impl UiConfig {
     const TICK: u8 = 30;
 
+    fn init(&mut self) {
+        let curve_str = self.curve_str.read().unwrap();
+        if self.syn.target.is_empty() && !curve_str.is_empty() {
+            if let Some(curve) = parse_curve(&curve_str) {
+                self.efd_h = efd::fourier_power_nyq(&curve);
+                self.syn.target = curve;
+            }
+        }
+    }
+
     fn poll_target(&mut self) {
         if self.changed.load(Ordering::Relaxed) >= Self::TICK {
             if let Some(curve) = parse_curve(&self.curve_str.read().unwrap()) {
+                self.efd_h = efd::fourier_power_nyq(&curve);
                 self.syn.target = curve;
             }
             self.changed.store(0, Ordering::Relaxed);
@@ -255,6 +268,7 @@ impl Synthesis {
             });
             if ui.button("🗐 Copy Coupler Curve").clicked() {
                 self.config.syn.target = linkage.current_curve();
+                self.config.efd_h = efd::fourier_power_nyq(&self.config.syn.target);
                 *self.config.curve_str.write().unwrap() =
                     dump_csv(&self.config.syn.target).unwrap();
             }
@@ -286,6 +300,7 @@ impl Synthesis {
     }
 
     fn target_curve_editor(&mut self, ui: &mut Ui) {
+        self.config.init();
         Window::new("🛠 Target Curve")
             .open(&mut self.csv_open)
             .show(ui.ctx(), |ui| {
@@ -313,7 +328,7 @@ impl Synthesis {
                 ui.label("Transform:");
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("🔀 To CSV").clicked() {
-                        self.config.write_curve_str(|c| dump_csv(&c).unwrap());
+                        self.config.write_curve_str(|c| dump_csv(c).unwrap());
                     }
                     if ui.button("🔀 To array of tuple").clicked() {
                         self.config.write_curve_str(ron_pretty);
@@ -324,12 +339,13 @@ impl Synthesis {
                             ron_pretty(c)
                         });
                     }
-                    if ui.button("🔀 Re-describe").clicked() {
+                    let btn = format!("🔀 Re-describe ({})", self.config.efd_h);
+                    if ui.button(btn).clicked() {
                         self.config.write_curve_str(|c| {
                             let c = self.config.syn.mode.regularize(c);
-                            let mut c = efd::Efd2::from_curve(&c, None).generate(c.len());
-                            c.pop();
-                            dump_csv(&c).unwrap()
+                            let len = c.len();
+                            let efd = efd::Efd2::from_curve(c, self.config.efd_h);
+                            dump_csv(curve::remove_last(efd.generate(len))).unwrap()
                         });
                     }
                 });

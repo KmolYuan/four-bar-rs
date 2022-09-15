@@ -310,7 +310,7 @@ impl ProjInner {
                 io::save_csv_ask(&get_curve(*pivot, &self.fb, n));
             }
             if ui.button("🗐").on_hover_text("Copy").clicked() {
-                ui.output().copied_text = dump_csv(&get_curve(*pivot, &self.fb, n)).unwrap();
+                ui.output().copied_text = dump_csv(get_curve(*pivot, &self.fb, n)).unwrap();
             }
         });
         ui.separator();

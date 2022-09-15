@@ -47,7 +47,7 @@ impl Codebook {
                     }
                     if let Some([start, end]) = fb.angle_bound() {
                         let curve = Mechanism::new(&fb).curve(start, end, res);
-                        let efd = Efd2::from_curve(&curve, harmonic);
+                        let efd = Efd2::from_curve(curve, harmonic);
                         let mut stack = fb_stack.lock().unwrap();
                         stack.push(arr1(&fb.v));
                         efd_stack.lock().unwrap().push(efd.unwrap());

@@ -40,6 +40,18 @@ where
     last
 }
 
+/// Remove the last point.
+///
+/// This function allows empty curve.
+pub fn remove_last<'a, C>(curve: C) -> Vec<[f64; 2]>
+where
+    C: Into<CowCurve<'a>>,
+{
+    let mut curve = curve.into().into_owned();
+    curve.pop();
+    curve
+}
+
 /// Close the open curve with a line.
 ///
 /// Panic with empty curve.

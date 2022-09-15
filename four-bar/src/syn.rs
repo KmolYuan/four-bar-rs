@@ -11,10 +11,10 @@
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(syn::PathSyn::from_curve(&curve, None, n, syn::Mode::Close))
+//!     .solve(syn::PathSyn::from_curve(curve, None, n, syn::Mode::Close))
 //!     .unwrap();
 //! ```
-use crate::{curve, efd::Efd2, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
+use crate::{curve, efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
 use std::f64::consts::{FRAC_PI_8, TAU};
 
 // π/16
@@ -68,9 +68,13 @@ impl Mode {
     }
 
     /// Regularize path with the mode.
-    pub fn regularize(&self, curve: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+    pub fn regularize<'a, C>(&self, curve: C) -> Vec<[f64; 2]>
+    where
+        C: Into<efd::CowCurve<'a>>,
+    {
+        let curve = curve.into();
         match self {
-            _ if curve::is_closed(&curve) => curve,
+            _ if curve::is_closed(&curve) => curve.into_owned(),
             Self::Close => curve::close_line(curve),
             Self::Partial | Self::Open => curve::close_rev(curve),
         }
@@ -80,7 +84,7 @@ impl Mode {
 /// Path generation task of planar four-bar linkage.
 pub struct PathSyn {
     /// Target coefficient
-    pub efd: Efd2,
+    pub efd: efd::Efd2,
     // How many points need to be generated / compared
     n: usize,
     mode: Mode,
@@ -91,14 +95,15 @@ impl PathSyn {
     ///
     /// Panic if target curve is not long enough,
     /// or `n` is not longer than target curve.
-    pub fn from_curve<H>(curve: &[[f64; 2]], harmonic: H, n: usize, mode: Mode) -> Self
+    pub fn from_curve<'a, C, H>(curve: C, harmonic: H, n: usize, mode: Mode) -> Self
     where
+        C: Into<efd::CowCurve<'a>>,
         H: Into<Option<usize>>,
     {
         let curve = curve::get_valid_part(curve);
         assert!(curve.len() > 2, "target curve is not long enough");
         assert!(n > curve.len() - 1, "n must longer than target curve");
-        let efd = Efd2::from_curve(&mode.regularize(curve), harmonic);
+        let efd = efd::Efd2::from_curve(mode.regularize(curve), harmonic);
         Self::from_efd(efd, n, mode)
     }
 
@@ -108,11 +113,11 @@ impl PathSyn {
         F: Into<FourBar>,
         H: Into<Option<usize>>,
     {
-        curve::from_four_bar(fb, n).map(|curve| Self::from_curve(&curve, harmonic, n, mode))
+        curve::from_four_bar(fb, n).map(|curve| Self::from_curve(curve, harmonic, n, mode))
     }
 
     /// Create a new task from target EFD coefficients.
-    pub fn from_efd(efd: Efd2, n: usize, mode: Mode) -> Self {
+    pub fn from_efd(efd: efd::Efd2, n: usize, mode: Mode) -> Self {
         Self { efd, n, mode }
     }
 
@@ -147,7 +152,7 @@ impl PathSyn {
             })
             .filter(|(curve, _)| curve.len() > 2)
             .map(|(curve, fb)| {
-                let efd = Efd2::from_curve(&self.mode.regularize(curve), Some(self.efd.harmonic()));
+                let efd = efd::Efd2::from_curve(self.mode.regularize(curve), self.efd.harmonic());
                 let fitness = efd.manhattan(&self.efd);
                 let fb = FourBar::from_transform(fb, efd.to(&self.efd));
                 (fitness, fb)

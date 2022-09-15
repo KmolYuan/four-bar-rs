@@ -116,9 +116,15 @@ where
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
-        chart
-            .draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &color))?
-            .label(label)
+        let anno = if i % 2 == 1 {
+            chart.draw_series(curve.iter().map(|&[x, y]| Circle::new((x, y), 5, &color)))?
+        } else {
+            let series = curve
+                .iter()
+                .map(|&[x, y]| TriangleMarker::new((x, y), 5, &color));
+            chart.draw_series(series)?
+        };
+        anno.label(label)
             .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
     }
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {

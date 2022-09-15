@@ -22,7 +22,7 @@ serde = { version = "1", features = ["derive"], optional = true }
 ndarray-npy = { version = "0.8", optional = true }
 plotters = { version = "0.3", optional = true }
 metaheuristics-nature = "2"
-efd = "0.16"
+efd = "0.17"
 
 [dev-dependencies]
 indicatif = "0.17"
