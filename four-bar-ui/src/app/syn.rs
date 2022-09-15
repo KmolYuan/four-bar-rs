@@ -105,6 +105,12 @@ impl UiConfig {
         self.changed.fetch_add(1, Ordering::Relaxed);
     }
 
+    fn set_target(&mut self, target: Vec<[f64; 2]>) {
+        *self.curve_str.write().unwrap() = dump_csv(&target).unwrap();
+        self.efd_h = efd::fourier_power_nyq(&target);
+        self.syn.target = target;
+    }
+
     fn write_curve_str(&self, f: impl FnOnce(Vec<[f64; 2]>) -> String) {
         let curve = parse_curve(&self.curve_str.read().unwrap());
         if let Some(curve) = curve {
@@ -267,10 +273,7 @@ impl Synthesis {
                 ui.checkbox(&mut self.plot_linkage, "With linkage");
             });
             if ui.button("🗐 Copy Coupler Curve").clicked() {
-                self.config.syn.target = linkage.current_curve();
-                self.config.efd_h = efd::fourier_power_nyq(&self.config.syn.target);
-                *self.config.curve_str.write().unwrap() =
-                    dump_csv(&self.config.syn.target).unwrap();
+                self.config.set_target(linkage.current_curve());
             }
         }
         self.convergence_plot(ui);
