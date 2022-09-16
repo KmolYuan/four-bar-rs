@@ -2,7 +2,6 @@ use super::{io, linkages::Linkages, widgets::unit};
 use crate::csv::{dump_csv, parse_csv};
 use eframe::egui::*;
 use four_bar::{curve, efd, mh, syn};
-use instant::Instant;
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -34,6 +33,10 @@ where
     S: mh::Setting,
     S::Algorithm: mh::Algorithm<syn::PathSyn>,
 {
+    #[cfg(target_arch = "wasm32")]
+    use instant::Instant;
+    #[cfg(not(target_arch = "wasm32"))]
+    use std::time::Instant;
     let start_time = Instant::now();
     four_bar::mh::Solver::build(setting)
         .pop_num(config.pop)
@@ -259,7 +262,7 @@ impl Synthesis {
         ui.separator();
         ui.heading("Projects");
         ui.label("Compare results from a project's coupler curve.");
-        if linkage.projects.select(ui, false) {
+        if linkage.select(ui, false) {
             ui.horizontal(|ui| {
                 if ui.button("💾 Save Comparison").clicked() {
                     let target = &self.config.syn.target;
@@ -291,9 +294,9 @@ impl Synthesis {
                             let conv = task.conv.read().unwrap();
                             let pts1 = plot::PlotPoints::from_ys_f64(&conv);
                             let pts2 = plot::PlotPoints::from_ys_f64(&conv);
-                            let name = format!("Best Fitness {}", i + 1);
+                            let name = format!("Task {}", i + 1);
                             ui.line(plot::Line::new(pts1).fill(-1.5).name(&name));
-                            ui.points(plot::Points::new(pts2).name(&name).stems(0.));
+                            ui.points(plot::Points::new(pts2).name(name).stems(0.));
                         }
                     });
             });

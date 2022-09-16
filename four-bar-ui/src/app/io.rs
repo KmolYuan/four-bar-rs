@@ -2,15 +2,8 @@ use self::impl_io::*;
 use crate::csv::dump_csv;
 use four_bar::{curve, plot, FourBar};
 
-#[macro_export]
-macro_rules! ext {
-    () => {
-        "ron"
-    };
-}
-
 const FMT: &str = "Rusty Object Notation (RON)";
-const EXT: &[&str] = &[ext!()];
+const EXT: &[&str] = &["ron"];
 const CSV_FMT: &str = "Delimiter-Separated Values (CSV)";
 const CSV_EXT: &[&str] = &["csv", "txt"];
 const SVG_FMT: &str = "Scalable Vector Graphics (SVG)";

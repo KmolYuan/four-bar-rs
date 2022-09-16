@@ -2,7 +2,7 @@ use super::{
     io,
     widgets::{angle, link, unit},
 };
-use crate::{csv::dump_csv, ext};
+use crate::csv::dump_csv;
 use eframe::egui::*;
 use four_bar::{curve, FourBar, Mechanism};
 use serde::{Deserialize, Serialize};
@@ -32,10 +32,10 @@ fn pre_open<F>(_file: F) -> Option<FourBar> {
 }
 
 fn with_ext(name: &str) -> String {
-    if name.ends_with(concat![".", ext!()]) {
+    if name.ends_with(".ron") {
         name.to_string()
     } else {
-        name.to_string() + concat![".", ext!()]
+        name.to_string() + ".ron"
     }
 }
 
@@ -149,7 +149,7 @@ impl ProjName {
         match self {
             Self::Path(path) => filename(path),
             Self::Named(name) => with_ext(name),
-            Self::Untitled => concat!["untitled.", ext!()].to_string(),
+            Self::Untitled => "untitled.ron".to_string(),
         }
     }
 }
@@ -539,6 +539,10 @@ impl Project {
     fn cache(&self, n: usize) {
         self.0.write().unwrap().cache(n);
     }
+
+    fn request_cache(&self) {
+        self.0.write().unwrap().cache.changed = true;
+    }
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -653,6 +657,10 @@ impl Projects {
 
     pub fn current_curve(&self) -> Vec<[f64; 2]> {
         self.list[self.curr].clone_curve()
+    }
+
+    pub fn request_cache(&self) {
+        self.list[self.curr].request_cache();
     }
 
     pub fn plot(&self, ui: &mut plot::PlotUi) {

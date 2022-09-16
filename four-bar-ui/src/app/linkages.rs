@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct Linkages {
     config: Config,
-    pub projects: Projects,
+    projs: Projects,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -29,8 +29,7 @@ impl Default for Config {
 impl Linkages {
     pub fn show(&mut self, ui: &mut Ui) {
         ui.heading("Linkages");
-        self.projects
-            .show(ui, self.config.interval, self.config.res);
+        self.projs.show(ui, self.config.interval, self.config.res);
     }
 
     pub fn option(&mut self, ui: &mut Ui) {
@@ -39,7 +38,9 @@ impl Linkages {
             reset_button(ui, &mut self.config);
         });
         link(ui, "Drag interval: ", &mut self.config.interval, 0.01);
-        unit(ui, "Curve resolution: ", &mut self.config.res, 1);
+        if unit(ui, "Curve resolution: ", &mut self.config.res, 1).changed() {
+            self.projs.request_cache();
+        }
         let mut vis = ui.visuals().clone();
         vis.light_dark_radio_buttons(ui);
         ui.ctx().set_visuals(vis);
@@ -52,29 +53,31 @@ impl Linkages {
     }
 
     pub fn plot(&self, ui: &mut plot::PlotUi) {
-        self.projects.plot(ui);
+        self.projs.plot(ui);
     }
 
     pub fn pre_open_proj(&mut self, files: Vec<std::path::PathBuf>) {
-        self.projects.iter().for_each(Project::pre_open);
-        for file in files {
-            self.projects.pre_open(file);
-        }
+        self.projs.iter().for_each(Project::pre_open);
+        files.into_iter().for_each(|file| self.projs.pre_open(file));
     }
 
     pub fn four_bar_state(&self) -> four_bar::plot::FbOpt {
-        self.projects.four_bar_state()
+        self.projs.four_bar_state()
     }
 
     pub fn current_curve(&self) -> Vec<[f64; 2]> {
-        self.projects.current_curve()
+        self.projs.current_curve()
     }
 
     pub fn poll(&mut self, ctx: &Context) {
-        self.projects.poll(ctx, self.config.res);
+        self.projs.poll(ctx, self.config.res);
     }
 
     pub fn queue(&self) -> Queue {
-        self.projects.queue()
+        self.projs.queue()
+    }
+
+    pub fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
+        self.projs.select(ui, show_btn)
     }
 }

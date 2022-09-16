@@ -6,8 +6,10 @@ use four_bar::{
     FourBar, Mechanism,
 };
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use instant::Instant;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    time::Instant,
+};
 
 type AnyResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
