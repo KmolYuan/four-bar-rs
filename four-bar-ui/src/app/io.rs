@@ -97,21 +97,21 @@ mod impl_io {
     }
 }
 
-pub fn open_ron<C>(done: C)
+pub(crate) fn open_ron<C>(done: C)
 where
     C: Fn(String, String) + 'static,
 {
     open(FMT, EXT, done)
 }
 
-pub fn open_csv_single<C>(done: C)
+pub(crate) fn open_csv_single<C>(done: C)
 where
     C: Fn(String, String) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, done)
 }
 
-pub fn save_csv_ask<S>(curve: &[S])
+pub(crate) fn save_csv_ask<S>(curve: &[S])
 where
     S: serde::Serialize + Clone,
 {
@@ -119,25 +119,25 @@ where
     save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ())
 }
 
-pub fn save_ron_ask<C>(fb: &FourBar, name: &str, done: C)
+pub(crate) fn save_ron_ask<C>(fb: &FourBar, name: &str, done: C)
 where
     C: FnOnce(String) + 'static,
 {
     save_ask(&ron::to_string(fb).unwrap(), name, FMT, EXT, done)
 }
 
-pub fn save_ron(fb: &FourBar, path: &str) {
+pub(crate) fn save_ron(fb: &FourBar, path: &str) {
     save(&ron::to_string(fb).unwrap(), path)
 }
 
-pub fn save_history_ask(history: &[f64], name: &str) {
+pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 600));
     plot::history(svg, history).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }
 
-pub fn save_curve_ask<F>(target: &[[f64; 2]], curve: &[[f64; 2]], fb: F, name: &str)
+pub(crate) fn save_curve_ask<F>(target: &[[f64; 2]], curve: &[[f64; 2]], fb: F, name: &str)
 where
     F: Into<plot::FbOpt>,
 {

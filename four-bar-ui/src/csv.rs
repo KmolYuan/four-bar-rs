@@ -3,7 +3,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, io::Cursor};
 
 /// Parse CSV from string.
-pub fn parse_csv<D>(s: &str) -> Result<Vec<D>, CsvError>
+pub(crate) fn parse_csv<D>(s: &str) -> Result<Vec<D>, CsvError>
 where
     D: DeserializeOwned,
 {
@@ -15,7 +15,7 @@ where
 }
 
 /// Dump CSV to string.
-pub fn dump_csv<'a, C, S>(c: C) -> Result<String, Box<dyn Error>>
+pub(crate) fn dump_csv<'a, C, S>(c: C) -> Result<String, Box<dyn Error>>
 where
     C: Into<std::borrow::Cow<'a, [S]>>,
     S: Serialize + Clone + 'a,

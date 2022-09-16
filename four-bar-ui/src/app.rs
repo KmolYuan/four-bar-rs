@@ -38,7 +38,7 @@ enum Panel {
 /// Main app state.
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
-pub struct App {
+pub(crate) struct App {
     welcome_off: bool,
     started: bool,
     linkage: Linkages,
@@ -48,7 +48,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(ctx: &eframe::CreationContext, files: Vec<std::path::PathBuf>) -> Box<Self> {
+    pub(crate) fn new(ctx: &eframe::CreationContext, files: Vec<std::path::PathBuf>) -> Box<Self> {
         #[cfg(target_arch = "wasm32")]
         {
             #[wasm_bindgen::prelude::wasm_bindgen]

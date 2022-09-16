@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// Linkage data.
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
-pub struct Linkages {
+pub(crate) struct Linkages {
     config: Config,
     projs: Projects,
 }
@@ -27,12 +27,12 @@ impl Default for Config {
 }
 
 impl Linkages {
-    pub fn show(&mut self, ui: &mut Ui) {
+    pub(crate) fn show(&mut self, ui: &mut Ui) {
         ui.heading("Linkages");
         self.projs.show(ui, self.config.interval, self.config.res);
     }
 
-    pub fn option(&mut self, ui: &mut Ui) {
+    pub(crate) fn option(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.heading("Options");
             reset_button(ui, &mut self.config);
@@ -52,32 +52,32 @@ impl Linkages {
         ui.label("Reset: Right-click / Double-click");
     }
 
-    pub fn plot(&self, ui: &mut plot::PlotUi) {
+    pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
         self.projs.plot(ui);
     }
 
-    pub fn pre_open_proj(&mut self, files: Vec<std::path::PathBuf>) {
+    pub(crate) fn pre_open_proj(&mut self, files: Vec<std::path::PathBuf>) {
         self.projs.iter().for_each(Project::pre_open);
         files.into_iter().for_each(|file| self.projs.pre_open(file));
     }
 
-    pub fn four_bar_state(&self) -> four_bar::plot::FbOpt {
+    pub(crate) fn four_bar_state(&self) -> four_bar::plot::FbOpt {
         self.projs.four_bar_state()
     }
 
-    pub fn current_curve(&self) -> Vec<[f64; 2]> {
+    pub(crate) fn current_curve(&self) -> Vec<[f64; 2]> {
         self.projs.current_curve()
     }
 
-    pub fn poll(&mut self, ctx: &Context) {
+    pub(crate) fn poll(&mut self, ctx: &Context) {
         self.projs.poll(ctx, self.config.res);
     }
 
-    pub fn queue(&self) -> Queue {
+    pub(crate) fn queue(&self) -> Queue {
         self.projs.queue()
     }
 
-    pub fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
+    pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
         self.projs.select(ui, show_btn)
     }
 }

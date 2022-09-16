@@ -59,7 +59,7 @@ where
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
-pub struct Synthesis {
+pub(crate) struct Synthesis {
     config: UiConfig,
     tasks: Vec<Task>,
     csv_open: bool,
@@ -184,7 +184,7 @@ struct Task {
 }
 
 impl Synthesis {
-    pub fn show(&mut self, ui: &mut Ui, linkage: &mut Linkages) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, linkage: &mut Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.config);
@@ -366,7 +366,7 @@ impl Synthesis {
             });
     }
 
-    pub fn plot(&self, ui: &mut plot::PlotUi) {
+    pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
         if !self.config.syn.target.is_empty() {
             let line = plot::Line::new(self.config.syn.target.clone())
                 .name("Synthesis target")

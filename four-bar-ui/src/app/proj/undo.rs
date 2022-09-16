@@ -1,6 +1,6 @@
 use four_bar::FourBar;
 
-pub trait Delta: Sized {
+pub(crate) trait Delta: Sized {
     type State: Clone;
 
     fn delta(a: &Self::State, b: &Self::State) -> Option<Self>;
@@ -19,7 +19,7 @@ enum Field {
     G,
 }
 
-pub struct FourBarDelta(Field, f64);
+pub(crate) struct FourBarDelta(Field, f64);
 
 impl Delta for FourBarDelta {
     type State = FourBar;
@@ -51,7 +51,7 @@ impl Delta for FourBarDelta {
     }
 }
 
-pub struct Undo<D: Delta> {
+pub(crate) struct Undo<D: Delta> {
     undo: Vec<D>,
     redo: Vec<D>,
     base: Option<D::State>,
@@ -65,7 +65,7 @@ impl<D: Delta> Default for Undo<D> {
 }
 
 impl<D: Delta> Undo<D> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             undo: Vec::new(),
             redo: Vec::new(),
@@ -74,15 +74,15 @@ impl<D: Delta> Undo<D> {
         }
     }
 
-    pub fn is_able_undo(&self) -> bool {
+    pub(crate) fn is_able_undo(&self) -> bool {
         !self.undo.is_empty()
     }
 
-    pub fn is_able_redo(&self) -> bool {
+    pub(crate) fn is_able_redo(&self) -> bool {
         !self.redo.is_empty()
     }
 
-    pub fn fetch(&mut self, time: f64, state: &D::State) {
+    pub(crate) fn fetch(&mut self, time: f64, state: &D::State) {
         if let Some(base) = &self.base {
             if let Some(delta) = D::delta(base, state) {
                 if time - self.time < 5. && !self.undo.is_empty() {
@@ -99,11 +99,11 @@ impl<D: Delta> Undo<D> {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         *self = Self::new();
     }
 
-    pub fn undo(&mut self, state: &mut D::State) {
+    pub(crate) fn undo(&mut self, state: &mut D::State) {
         let base = self.base.as_mut().unwrap();
         *base = state.clone();
         self.undo.pop().unwrap().change(state);
@@ -111,7 +111,7 @@ impl<D: Delta> Undo<D> {
         *base = state.clone();
     }
 
-    pub fn redo(&mut self, state: &mut D::State) {
+    pub(crate) fn redo(&mut self, state: &mut D::State) {
         let base = self.base.as_mut().unwrap();
         *base = state.clone();
         self.redo.pop().unwrap().change(state);

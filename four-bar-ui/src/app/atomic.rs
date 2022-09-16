@@ -3,14 +3,14 @@ use std::sync::{atomic::*, Arc};
 
 macro_rules! impl_serde {
     ($(fn $ty:ty => ($func_ser:ident, $func_de:ident))+) => {$(
-        pub fn $func_ser<S>(atom: &Arc<$ty>, serializer: S) -> Result<S::Ok, S::Error>
+        pub(crate) fn $func_ser<S>(atom: &Arc<$ty>, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
         {
             atom.load(Ordering::Relaxed).serialize(serializer)
         }
 
-        pub fn $func_de<'a, D>(deserializer: D) -> Result<Arc<$ty>, D::Error>
+        pub(crate) fn $func_de<'a, D>(deserializer: D) -> Result<Arc<$ty>, D::Error>
         where
             D: Deserializer<'a>,
         {

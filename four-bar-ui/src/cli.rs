@@ -5,7 +5,7 @@ mod syn;
 
 #[derive(Parser)]
 #[clap(name = "four-bar", version, author, about)]
-pub struct Entry {
+pub(crate) struct Entry {
     /// Open file path
     files: Vec<PathBuf>,
     #[clap(subcommand)]
@@ -68,7 +68,7 @@ struct Codebook {
 }
 
 impl Entry {
-    pub fn parse() {
+    pub(crate) fn parse() {
         let entry = <Self as Parser>::parse_from(wild::args());
         match entry.cmd {
             None => native(entry.files),

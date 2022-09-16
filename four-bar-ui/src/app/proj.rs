@@ -119,7 +119,7 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
 }
 
 #[derive(Default, Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]
-pub enum Pivot {
+pub(crate) enum Pivot {
     Driver,
     Follower,
     #[default]
@@ -375,7 +375,7 @@ impl ProjInner {
         self.cache(n);
     }
 
-    pub fn cache(&mut self, n: usize) {
+    pub(crate) fn cache(&mut self, n: usize) {
         if self.cache.changed {
             self.cache_inner(n);
         }
@@ -460,7 +460,7 @@ impl ProjInner {
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub struct Project(Arc<RwLock<ProjInner>>);
+pub(crate) struct Project(Arc<RwLock<ProjInner>>);
 
 impl Project {
     fn new(path: Option<String>, fb: FourBar) -> Self {
@@ -476,14 +476,14 @@ impl Project {
         self.0.write().unwrap().path = ProjName::Path(path);
     }
 
-    pub fn path(&self) -> Option<String> {
+    pub(crate) fn path(&self) -> Option<String> {
         match &self.0.read().unwrap().path {
             ProjName::Path(path) => Some(path.clone()),
             _ => None,
         }
     }
 
-    pub fn pre_open(&self) {
+    pub(crate) fn pre_open(&self) {
         let mut proj = self.0.write().unwrap();
         if let ProjName::Path(path) = &proj.path {
             if let Some(fb) = pre_open(path) {
@@ -546,17 +546,17 @@ impl Project {
 }
 
 #[derive(Default, Deserialize, Serialize, Clone)]
-pub struct Queue(Arc<RwLock<Vec<Project>>>);
+pub(crate) struct Queue(Arc<RwLock<Vec<Project>>>);
 
 impl Queue {
-    pub fn push(&self, path: Option<String>, fb: FourBar) {
+    pub(crate) fn push(&self, path: Option<String>, fb: FourBar) {
         self.0.write().unwrap().push(Project::new(path, fb));
     }
 }
 
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
-pub struct Projects {
+pub(crate) struct Projects {
     list: Vec<Project>,
     queue: Queue,
     pivot: Pivot,
@@ -564,7 +564,7 @@ pub struct Projects {
 }
 
 impl Projects {
-    pub fn push(&mut self, path: Option<String>, fb: FourBar) {
+    pub(crate) fn push(&mut self, path: Option<String>, fb: FourBar) {
         // Prevent opening duplicate project
         if match &path {
             None => true,
@@ -577,7 +577,7 @@ impl Projects {
         }
     }
 
-    pub fn pre_open(&mut self, file: impl AsRef<Path>) {
+    pub(crate) fn pre_open(&mut self, file: impl AsRef<Path>) {
         let path = file.as_ref().to_str().unwrap().to_string();
         if let Some(fb) = pre_open(file) {
             self.push(Some(path), fb);
@@ -585,11 +585,11 @@ impl Projects {
         }
     }
 
-    pub fn queue(&self) -> Queue {
+    pub(crate) fn queue(&self) -> Queue {
         self.queue.clone()
     }
 
-    pub fn poll(&mut self, ctx: &Context, n: usize) {
+    pub(crate) fn poll(&mut self, ctx: &Context, n: usize) {
         #[cfg(not(target_arch = "wasm32"))]
         for file in ctx.input().raw.dropped_files.iter() {
             if let Some(path) = &file.path {
@@ -608,7 +608,7 @@ impl Projects {
         }
     }
 
-    pub fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
@@ -630,7 +630,7 @@ impl Projects {
         }
     }
 
-    pub fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
+    pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
         if !self.is_empty() {
             ui.horizontal(|ui| {
                 ComboBox::from_label("")
@@ -651,19 +651,19 @@ impl Projects {
         !self.is_empty()
     }
 
-    pub fn four_bar_state(&self) -> four_bar::plot::FbOpt {
+    pub(crate) fn four_bar_state(&self) -> four_bar::plot::FbOpt {
         self.list[self.curr].four_bar_state()
     }
 
-    pub fn current_curve(&self) -> Vec<[f64; 2]> {
+    pub(crate) fn current_curve(&self) -> Vec<[f64; 2]> {
         self.list[self.curr].clone_curve()
     }
 
-    pub fn request_cache(&self) {
+    pub(crate) fn request_cache(&self) {
         self.list[self.curr].request_cache();
     }
 
-    pub fn plot(&self, ui: &mut plot::PlotUi) {
+    pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
         for (i, proj) in self.list.iter().enumerate() {
             proj.plot(ui, i, self.curr);
         }
