@@ -14,9 +14,11 @@ pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> 
 
 /// Check if a curve's first and end points are very close.
 pub fn is_closed(curve: &[[f64; 2]]) -> bool {
-    let first = curve[0];
-    let end = curve[curve.len() - 1];
-    (first[0] - end[0]).abs() < f64::EPSILON && (first[1] - end[1]).abs() < f64::EPSILON
+    if let (Some([x1, y1]), Some([x2, y2])) = (curve.first(), curve.last()) {
+        (x1 - x2).abs() < f64::EPSILON && (y1 - y2).abs() < f64::EPSILON
+    } else {
+        false
+    }
 }
 
 /// Input a curve, split out the longest finite parts to a continuous curve.

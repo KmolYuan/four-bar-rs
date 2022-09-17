@@ -8,6 +8,8 @@ use std::sync::{
     Arc, RwLock,
 };
 
+mod painting;
+
 fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
     if let Ok(curve) = parse_csv(s) {
         // CSV
@@ -67,15 +69,18 @@ pub(crate) struct Synthesis {
     plot_linkage: bool,
 }
 
-#[derive(Default, Deserialize, Serialize, Clone)]
+#[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 struct UiConfig {
+    painting: painting::Painting,
     syn: SynConfig,
     curve_str: Arc<RwLock<String>>,
     #[serde(skip)]
     changed: Arc<AtomicU8>,
     #[serde(skip)]
     efd_h: usize,
+    #[serde(skip)]
+    paint_input: bool,
 }
 
 impl PartialEq for UiConfig {
@@ -116,6 +121,73 @@ impl UiConfig {
 
     fn write_curve_str(&self, f: impl FnOnce(&[[f64; 2]]) -> String) {
         *self.curve_str.write().unwrap() = f(&self.syn.target);
+    }
+
+    fn ui(&mut self, ui: &mut Ui) {
+        ui.label("Support CSV or RON array only.");
+        ui.horizontal(|ui| {
+            if ui.button("🖴 Open Curves").clicked() {
+                let curve_csv = self.curve_str.clone();
+                let changed = self.changed.clone();
+                io::open_csv_single(move |_, s| {
+                    *curve_csv.write().unwrap() = s;
+                    changed.store(UiConfig::TICK, Ordering::Relaxed);
+                });
+            }
+            if ui.button("💾 Save CSV").clicked() {
+                io::save_csv_ask(&self.syn.target);
+            }
+            if ui.button("🗑 Clear").clicked() {
+                self.curve_str.write().unwrap().clear();
+            }
+        });
+        let mode = &mut self.syn.mode;
+        ui.radio_value(mode, syn::Mode::Close, "Close path matching");
+        ui.radio_value(mode, syn::Mode::Partial, "Close path match open path");
+        ui.radio_value(mode, syn::Mode::Open, "Open path matching");
+        ui.label("Transform:");
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("🔀 To CSV").clicked() {
+                self.write_curve_str(|c| dump_csv(c).unwrap());
+            }
+            if ui.button("🔀 To array of tuple").clicked() {
+                self.write_curve_str(ron_pretty);
+            }
+            if ui.button("🔀 To array of array").clicked() {
+                self.write_curve_str(|c| {
+                    let c = c.iter().copied().map(Vec::from).collect::<Vec<_>>();
+                    ron_pretty(&c)
+                });
+            }
+            let btn = format!("🔀 Re-describe ({})", self.efd_h);
+            if ui.button(btn).clicked() {
+                self.write_curve_str(|c| {
+                    let c = self.syn.mode.regularize(c);
+                    let len = c.len();
+                    let efd = efd::Efd2::from_curve(c, self.efd_h);
+                    dump_csv(curve::remove_last(efd.generate(len))).unwrap()
+                });
+            }
+        });
+        ui.separator();
+        ui.radio_value(&mut self.paint_input, false, "Input with text");
+        ui.radio_value(&mut self.paint_input, true, "Input with painting");
+        if !self.paint_input {
+            ui.label("Past curve data here:");
+            ScrollArea::both().show(ui, |ui| {
+                let mut s = self.curve_str.write().unwrap();
+                let w = TextEdit::multiline(&mut *s)
+                    .code_editor()
+                    .desired_width(f32::INFINITY);
+                ui.add(w);
+            });
+            self.poll();
+        } else if self.painting.ui(ui, &mut self.syn.target).changed() {
+            self.efd_h = efd::fourier_power_nyq(&self.syn.target);
+            *self.curve_str.write().unwrap() = dump_csv(&self.syn.target).unwrap();
+        }
+        self.changed.fetch_add(1, Ordering::Relaxed);
+        ui.ctx().request_repaint();
     }
 }
 
@@ -306,64 +378,8 @@ impl Synthesis {
         self.config.init_poll();
         Window::new("🛠 Target Curve")
             .open(&mut self.csv_open)
-            .show(ui.ctx(), |ui| {
-                ui.label("Support CSV or RON array only.");
-                ui.horizontal(|ui| {
-                    if ui.button("🖴 Open Curves").clicked() {
-                        let curve_csv = self.config.curve_str.clone();
-                        let changed = self.config.changed.clone();
-                        io::open_csv_single(move |_, s| {
-                            *curve_csv.write().unwrap() = s;
-                            changed.store(UiConfig::TICK, Ordering::Relaxed);
-                        });
-                    }
-                    if ui.button("💾 Save CSV").clicked() {
-                        io::save_csv_ask(&self.config.syn.target);
-                    }
-                    if ui.button("🗑 Clear").clicked() {
-                        self.config.curve_str.write().unwrap().clear();
-                    }
-                });
-                let mode = &mut self.config.syn.mode;
-                ui.radio_value(mode, syn::Mode::Close, "Close path matching");
-                ui.radio_value(mode, syn::Mode::Partial, "Close path match open path");
-                ui.radio_value(mode, syn::Mode::Open, "Open path matching");
-                ui.label("Transform:");
-                ui.horizontal_wrapped(|ui| {
-                    if ui.button("🔀 To CSV").clicked() {
-                        self.config.write_curve_str(|c| dump_csv(c).unwrap());
-                    }
-                    if ui.button("🔀 To array of tuple").clicked() {
-                        self.config.write_curve_str(ron_pretty);
-                    }
-                    if ui.button("🔀 To array of array").clicked() {
-                        self.config.write_curve_str(|c| {
-                            let c = c.iter().copied().map(Vec::from).collect::<Vec<_>>();
-                            ron_pretty(&c)
-                        });
-                    }
-                    let btn = format!("🔀 Re-describe ({})", self.config.efd_h);
-                    if ui.button(btn).clicked() {
-                        self.config.write_curve_str(|c| {
-                            let c = self.config.syn.mode.regularize(c);
-                            let len = c.len();
-                            let efd = efd::Efd2::from_curve(c, self.config.efd_h);
-                            dump_csv(curve::remove_last(efd.generate(len))).unwrap()
-                        });
-                    }
-                });
-                ui.separator();
-                ui.label("Past curve data here:");
-                ScrollArea::both().show(ui, |ui| {
-                    let mut s = self.config.curve_str.write().unwrap();
-                    let w = TextEdit::multiline(&mut *s)
-                        .code_editor()
-                        .desired_width(f32::INFINITY);
-                    ui.add(w);
-                });
-                self.config.poll();
-                ui.ctx().request_repaint();
-            });
+            .vscroll(false)
+            .show(ui.ctx(), |ui| self.config.ui(ui));
     }
 
     pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
