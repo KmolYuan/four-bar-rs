@@ -27,23 +27,31 @@ impl Painting {
         let (mut res, painter) =
             ui.allocate_painter(ui.available_size_before_wrap(), Sense::drag());
         let to_screen = {
-            let points = line
-                .iter()
-                .map(|&[x, y]| Pos2::new(x as f32, -y as f32))
-                .collect::<Vec<_>>();
-            let from = Rect::from_points(&points);
-            emath::RectTransform::from_to(from, res.rect)
+            let rect = &res.rect;
+            let use_w = rect.width() < rect.height();
+            let from = if !line.is_empty() {
+                let points = line
+                    .iter()
+                    .map(|&[x, y]| Pos2::new(x as f32, -y as f32))
+                    .collect::<Vec<_>>();
+                let rect = Rect::from_points(&points);
+                let w = if use_w { rect.width() } else { rect.height() };
+                Rect::from_center_size(rect.center(), Vec2::new(w, w))
+            } else {
+                Rect::from_center_size(Pos2::ZERO, Vec2::new(2., 2.))
+            };
+            let w = if use_w { rect.width() } else { rect.height() };
+            let to = Rect::from_center_size(rect.center(), Vec2::new(w, w));
+            emath::RectTransform::from_to(from, to)
         };
-        let from_screen = to_screen.inverse();
         if let Some(pointer_pos) = res.interact_pointer_pos() {
+            let from_screen = to_screen.inverse();
             let Pos2 { x, y } = from_screen * pointer_pos;
             let c = [x as f64, -y as f64];
             if line.last() != Some(&c) {
                 line.push(c);
                 res.mark_changed();
             }
-        } else if !line.is_empty() {
-            res.mark_changed();
         }
         if line.len() >= 2 {
             let points = line
