@@ -101,9 +101,9 @@ impl PathSyn {
         H: Into<Option<usize>>,
     {
         let curve = curve::get_valid_part(curve);
-        assert!(curve.len() > 2, "target curve is not long enough");
-        assert!(n > curve.len() - 1, "n must longer than target curve");
-        let efd = efd::Efd2::from_curve(mode.regularize(curve), harmonic);
+        assert!(curve.len() > 1, "target curve is not long enough");
+        assert!(n >= curve.len(), "n must longer than target curve");
+        let efd = efd::Efd2::from_curve(mode.regularize(curve), harmonic).unwrap();
         Self::from_efd(efd, n, mode)
     }
 
@@ -150,9 +150,10 @@ impl PathSyn {
                 let curve = Mechanism::new(&fb).curve(t1, t2, self.n);
                 (curve::get_valid_part(curve), fb)
             })
-            .filter(|(curve, _)| curve.len() > 2)
+            .filter(|(curve, _)| curve.len() > 1)
             .map(|(curve, fb)| {
-                let efd = efd::Efd2::from_curve(self.mode.regularize(curve), self.efd.harmonic());
+                let efd = efd::Efd2::from_curve(self.mode.regularize(curve), self.efd.harmonic())
+                    .unwrap();
                 let fitness = efd.manhattan(&self.efd);
                 let fb = FourBar::from_transform(fb, efd.to(&self.efd));
                 (fitness, fb)

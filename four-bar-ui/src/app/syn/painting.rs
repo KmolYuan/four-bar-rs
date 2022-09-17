@@ -29,16 +29,19 @@ impl Painting {
         let to_screen = {
             let rect = &res.rect;
             let use_w = rect.width() < rect.height();
-            let from = if !line.is_empty() {
+            let min_rect = Rect::from_center_size(Pos2::ZERO, Vec2::new(100., 100.));
+            let from = {
                 let points = line
                     .iter()
                     .map(|&[x, y]| Pos2::new(x as f32, -y as f32))
                     .collect::<Vec<_>>();
                 let rect = Rect::from_points(&points);
-                let w = if use_w { rect.width() } else { rect.height() };
-                Rect::from_center_size(rect.center(), Vec2::new(w, w))
-            } else {
-                Rect::from_center_size(Pos2::ZERO, Vec2::new(2., 2.))
+                if rect.contains_rect(min_rect) {
+                    let w = if use_w { rect.width() } else { rect.height() };
+                    Rect::from_center_size(rect.center(), Vec2::new(w, w))
+                } else {
+                    min_rect
+                }
             };
             let w = if use_w { rect.width() } else { rect.height() };
             let to = Rect::from_center_size(rect.center(), Vec2::new(w, w));
@@ -53,7 +56,7 @@ impl Painting {
                 res.mark_changed();
             }
         }
-        if line.len() >= 2 {
+        if line.len() > 1 {
             let points = line
                 .iter()
                 .map(|&[x, y]| to_screen * Pos2::new(x as f32, -y as f32))

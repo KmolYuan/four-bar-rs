@@ -78,7 +78,7 @@ struct UiConfig {
     #[serde(skip)]
     changed: Arc<AtomicU8>,
     #[serde(skip)]
-    efd_h: usize,
+    efd_h: Option<usize>,
     #[serde(skip)]
     paint_input: bool,
 }
@@ -159,14 +159,15 @@ impl UiConfig {
                     ron_pretty(&c)
                 });
             }
-            let btn = format!("🔀 Re-describe ({})", self.efd_h);
-            if ui.button(btn).clicked() {
-                self.write_curve_str(|c| {
-                    let c = self.syn.mode.regularize(c);
-                    let len = c.len();
-                    let efd = efd::Efd2::from_curve(c, self.efd_h);
-                    dump_csv(curve::remove_last(efd.generate(len))).unwrap()
-                });
+            if let Some(h) = self.efd_h {
+                if ui.button(format!("🔀 Re-describe ({})", h)).clicked() {
+                    self.write_curve_str(|c| {
+                        let c = self.syn.mode.regularize(c);
+                        let len = c.len();
+                        let efd = efd::Efd2::from_curve(c, h).unwrap();
+                        dump_csv(curve::remove_last(efd.generate(len))).unwrap()
+                    });
+                }
             }
         });
         ui.separator();
@@ -181,11 +182,11 @@ impl UiConfig {
                     .desired_width(f32::INFINITY);
                 ui.add(w);
             });
-            self.poll();
         } else if self.painting.ui(ui, &mut self.syn.target).changed() {
             self.efd_h = efd::fourier_power_nyq(&self.syn.target);
             *self.curve_str.write().unwrap() = dump_csv(&self.syn.target).unwrap();
         }
+        self.poll();
         self.changed.fetch_add(1, Ordering::Relaxed);
         ui.ctx().request_repaint();
     }
