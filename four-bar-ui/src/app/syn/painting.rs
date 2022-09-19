@@ -36,7 +36,7 @@ impl Painting {
                     .map(|&[x, y]| Pos2::new(x as f32, -y as f32))
                     .collect::<Vec<_>>();
                 let rect = Rect::from_points(&points);
-                if rect.contains_rect(min_rect) {
+                if rect.is_finite() && !min_rect.contains_rect(rect) {
                     let w = if use_w { rect.width() } else { rect.height() };
                     Rect::from_center_size(rect.center(), Vec2::new(w, w))
                 } else {
