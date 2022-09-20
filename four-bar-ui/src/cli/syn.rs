@@ -49,15 +49,12 @@ pub(super) fn syn(files: Vec<PathBuf>, no_parallel: bool, syn: Syn, cb: Vec<Path
     }
     let cb = load_codebook(cb).expect("Load codebook failed!");
     let run = |file: PathBuf| run(&mpb, file, syn.clone(), &cb);
-    let t0 = Instant::now();
     if no_parallel {
         files.into_iter().for_each(run);
     } else {
         use mh::rayon::prelude::*;
         files.into_par_iter().for_each(run);
     }
-    mpb.println(format!("Total spent: {:?}", Instant::now() - t0))
-        .unwrap();
 }
 
 fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Vec<Codebook>> {
@@ -68,17 +65,20 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Vec<Codebook>> {
 
 fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
     let file = file.canonicalize().unwrap();
+    let pb = mpb.add(ProgressBar::new(syn.gen));
     let info = match info(&file, syn.n) {
         Ok(info) => info,
         Err(e) => {
             if !matches!(e, SynErr::Format) {
                 let title = file.to_str().unwrap().to_string();
-                mpb.println(format!("[{title}] {e}")).unwrap();
+                const STYLE: &str = "[{prefix}] {msg}";
+                pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
+                pb.set_prefix(title);
+                pb.set_message(e.to_string());
             }
             return;
         }
     };
-    let pb = mpb.add(ProgressBar::new(syn.gen));
     const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} {msg}";
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(info.title.to_string());
