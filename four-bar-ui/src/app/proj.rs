@@ -568,10 +568,10 @@ impl Projects {
         // Prevent opening duplicate project
         if match &path {
             None => true,
-            Some(path) => !self.list.iter().any(|p| match p.path() {
-                Some(path_old) => path_old == *path,
-                None => false,
-            }),
+            Some(path) => !self
+                .list
+                .iter()
+                .any(|p| matches!(p.path(), Some(path_old) if &path_old == path)),
         } {
             self.queue.push(path, fb);
         }
