@@ -1,17 +1,19 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 //!
 //! ```
-//! use four_bar::{mh, syn};
+//! use four_bar::{efd, mh, syn};
 //!
 //! # let curve = [[0., 0.], [1., 0.], [2., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
 //! # let n = 3;
+//! let mode = syn::Mode::Close;
+//! let efd = efd::Efd2::from_curve_gate(mode.regularize(curve), 0.9999).unwrap();
 //! let s = mh::Solver::build(mh::Rga::default())
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(syn::PathSyn::from_curve(curve, None, n, syn::Mode::Close))
+//!     .solve(syn::PathSyn::from(efd).resolution(n).mode(mode))
 //!     .unwrap();
 //! ```
 use crate::{curve, efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
@@ -85,40 +87,35 @@ impl Mode {
 pub struct PathSyn {
     /// Target coefficient
     pub efd: efd::Efd2,
-    // How many points need to be generated / compared
+    // How many points need to be generated or compared
     n: usize,
     mode: Mode,
 }
 
+impl From<efd::Efd2> for PathSyn {
+    fn from(efd: efd::Efd2) -> Self {
+        Self::from_efd(efd)
+    }
+}
+
 impl PathSyn {
-    /// Create a new task.
-    ///
-    /// Panic if target curve is not long enough,
-    /// or `n` is not longer than target curve.
-    pub fn from_curve<'a, C, H>(curve: C, harmonic: H, n: usize, mode: Mode) -> Self
-    where
-        C: Into<efd::CowCurve<'a>>,
-        H: Into<Option<usize>>,
-    {
-        let curve = curve::get_valid_part(curve);
-        assert!(curve.len() > 1, "target curve is not long enough");
-        assert!(n >= curve.len(), "n must longer than target curve");
-        let efd = efd::Efd2::from_curve(mode.regularize(curve), harmonic).unwrap();
-        Self::from_efd(efd, n, mode)
-    }
-
-    /// Create a new task using a four-bar linkage as the target curve.
-    pub fn from_four_bar<F, H>(fb: F, harmonic: H, n: usize, mode: Mode) -> Option<Self>
-    where
-        F: Into<FourBar>,
-        H: Into<Option<usize>>,
-    {
-        curve::from_four_bar(fb, n).map(|curve| Self::from_curve(curve, harmonic, n, mode))
-    }
-
     /// Create a new task from target EFD coefficients.
-    pub fn from_efd(efd: efd::Efd2, n: usize, mode: Mode) -> Self {
-        Self { efd, n, mode }
+    ///
+    /// Please use threshold or harmonic to create the EFD object. The curve
+    /// must preprocess with [`Mode::regularize()`] method before turned into
+    /// EFD.
+    pub fn from_efd(efd: efd::Efd2) -> Self {
+        Self { efd, n: 720, mode: Mode::Close }
+    }
+
+    /// Set the resolution during synthesis.
+    pub fn resolution(self, n: usize) -> Self {
+        Self { n, ..self }
+    }
+
+    /// Set the task mode during synthesis.
+    pub fn mode(self, mode: Mode) -> Self {
+        Self { mode, ..self }
     }
 
     /// The harmonic used of target EFD.
@@ -152,8 +149,8 @@ impl PathSyn {
             })
             .filter(|(curve, _)| curve.len() > 1)
             .map(|(curve, fb)| {
-                let efd = efd::Efd2::from_curve(self.mode.regularize(curve), self.efd.harmonic())
-                    .unwrap();
+                let curve = self.mode.regularize(curve);
+                let efd = efd::Efd2::from_curve_harmonic(curve, self.efd.harmonic()).unwrap();
                 let fitness = efd.manhattan(&self.efd);
                 let fb = FourBar::from_transform(fb, efd.to(&self.efd));
                 (fitness, fb)

@@ -63,7 +63,7 @@ struct Codebook {
     #[clap(long, default_value_t = 720)]
     res: usize,
     /// Number of harmonic
-    #[clap(long, default_value_t = 360)]
+    #[clap(long, default_value_t = 20)]
     harmonic: usize,
 }
 

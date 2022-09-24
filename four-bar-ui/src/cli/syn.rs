@@ -1,7 +1,7 @@
 use super::Syn;
 use four_bar::{
     codebook::Codebook,
-    curve, mh, plot,
+    curve, efd, mh, plot,
     syn::{Mode, PathSyn},
     FourBar, Mechanism,
 };
@@ -141,13 +141,14 @@ fn optimize(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
     let Info { target, title, mode } = info;
     let Syn { n, gen, pop } = syn;
     let target = target.as_slice();
+    let efd = efd::Efd2::from_curve_gate(mode.regularize(target), 0.9999).unwrap();
     let t0 = Instant::now();
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)
         .callback(|ctx| pb.set_position(ctx.gen))
         .pop_num(pop)
         .record(|ctx| ctx.best_f)
-        .solve(PathSyn::from_curve(target, None, n, mode))?;
+        .solve(PathSyn::from(efd).resolution(n).mode(mode))?;
     let spent_time = Instant::now() - t0;
     {
         let path = root.join(format!("{title}_history.svg"));

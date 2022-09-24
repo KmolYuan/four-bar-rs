@@ -47,7 +47,7 @@ impl Codebook {
                     }
                     if let Some([start, end]) = fb.angle_bound() {
                         let curve = Mechanism::new(&fb).curve(start, end, res);
-                        let efd = Efd2::from_curve(curve, harmonic).unwrap();
+                        let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
                         let mut stack = fb_stack.lock().unwrap();
                         stack.push(arr1(&fb.v));
                         efd_stack.lock().unwrap().push(efd.unwrap());
@@ -106,7 +106,7 @@ impl Codebook {
         if n == 1 {
             return vec![self.fetch_1st(target)];
         }
-        let target = Efd2::from_curve(target, self.harmonic()).unwrap();
+        let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
         let dis = self
             .efd
             .axis_iter(Axis(0))
@@ -127,7 +127,7 @@ impl Codebook {
 
     /// Get the nearest four-bar linkage from a target curve.
     pub fn fetch_1st(&self, target: &[[f64; 2]]) -> (f64, FourBar) {
-        let target = Efd2::from_curve(target, self.harmonic()).unwrap();
+        let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
         let (i, err) = self
             .efd
             .axis_iter(Axis(0))
