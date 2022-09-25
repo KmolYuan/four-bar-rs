@@ -8,7 +8,7 @@
 //! # let pop = 2;
 //! # let n = 3;
 //! let mode = syn::Mode::Close;
-//! let efd = efd::Efd2::from_curve_gate(mode.regularize(curve), 0.9999).unwrap();
+//! let efd = efd::Efd2::from_curve_gate(mode.regularize(curve), None).unwrap();
 //! let s = mh::Solver::build(mh::Rga::default())
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)

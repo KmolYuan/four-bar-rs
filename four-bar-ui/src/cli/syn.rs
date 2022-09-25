@@ -141,7 +141,7 @@ fn optimize(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
     let Info { target, title, mode } = info;
     let Syn { n, gen, pop } = syn;
     let target = target.as_slice();
-    let efd = efd::Efd2::from_curve_gate(mode.regularize(target), 0.9999).unwrap();
+    let efd = efd::Efd2::from_curve_gate(mode.regularize(target), None).unwrap();
     let t0 = Instant::now();
     let s = mh::Solver::build(mh::De::default())
         .task(|ctx| ctx.gen == gen)

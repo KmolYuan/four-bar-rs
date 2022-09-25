@@ -40,7 +40,7 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     use std::time::Instant;
     let start_time = Instant::now();
-    let efd = efd::Efd2::from_curve_gate(config.mode.regularize(&config.target), 0.9999).unwrap();
+    let efd = efd::Efd2::from_curve_gate(config.mode.regularize(&config.target), None).unwrap();
     four_bar::mh::Solver::build(setting)
         .pop_num(config.pop)
         .task(|ctx| ctx.gen == config.gen || !task.start.load(Ordering::Relaxed))
