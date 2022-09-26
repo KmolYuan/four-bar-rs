@@ -14,13 +14,13 @@ categories = ["algorithms"]
 default = []
 plot = ["plotters"]
 serde = ["dep:serde"]
-codebook = ["ndarray-npy"]
+codebook = ["ndarray-npy", "rayon"]
 rayon = ["metaheuristics-nature/rayon"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 ndarray-npy = { version = "0.8", optional = true }
-plotters = { version = "0.3", optional = true }
+plotters = { version = "0.3", default-features = false, features = ["svg_backend", "all_series", "all_elements"], optional = true }
 metaheuristics-nature = "2"
 efd = "0.19"
 

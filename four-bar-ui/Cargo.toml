@@ -14,6 +14,10 @@ categories = ["algorithms"]
 name = "four-bar"
 path = "src/main.rs"
 
+[features]
+default = ["native"]
+native = ["four-bar/codebook"]
+
 [dependencies]
 eframe = { version = "0.19", default-features = false, features = ["persistence", "glow", "dark-light"] }
 four-bar = { version = "2", path = "../four-bar", features = ["serde", "plot"] }
@@ -23,7 +27,6 @@ csv = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
-four-bar = { version = "2", path = "../four-bar", features = ["rayon", "codebook"] }
 indicatif = { version = "0.17", features = ["improved_unicode"] }
 clap = { version = "3", features = ["derive"] }
 image = "0.24"
