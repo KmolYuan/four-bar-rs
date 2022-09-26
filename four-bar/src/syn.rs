@@ -55,18 +55,13 @@ impl Mode {
     }
 
     /// Return true if the synthesis curve is open.
-    pub const fn is_open(&self) -> bool {
+    pub const fn is_result_open(&self) -> bool {
         matches!(self, Self::Open)
     }
 
     /// Return true if the synthesis curve is close.
-    pub const fn is_close(&self) -> bool {
-        !self.is_open()
-    }
-
-    /// Compare with an open/close curve boolean flag.
-    pub const fn eq_bool(&self, is_open: bool) -> bool {
-        matches!((self, is_open), (Self::Open, true) | (Self::Close, false))
+    pub const fn is_result_close(&self) -> bool {
+        !self.is_result_open()
     }
 
     /// Regularize path with the mode.
@@ -133,7 +128,7 @@ impl PathSyn {
             Mode::Close | Mode::Partial => fb.to_close_curve(),
             Mode::Open => fb.to_open_curve(),
         };
-        if self.mode.is_open() != fb.ty().is_open_curve() {
+        if self.mode.is_result_open() != fb.ty().is_open_curve() {
             return INFEASIBLE;
         }
         let f = |[t1, t2]: [f64; 2]| {
