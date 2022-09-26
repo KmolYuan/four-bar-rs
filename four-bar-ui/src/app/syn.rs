@@ -164,6 +164,9 @@ impl UiConfig {
                         dump_csv(curve::remove_last(efd.generate(len))).unwrap()
                     });
                 }
+                if ui.button("🔀 Reverse").clicked() {
+                    self.write_curve_str(|c| dump_csv(c.iter().rev().collect::<Vec<_>>()).unwrap());
+                }
             }
         });
         ui.separator();
