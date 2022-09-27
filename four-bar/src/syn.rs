@@ -7,13 +7,14 @@
 //! # let gen = 0;
 //! # let pop = 2;
 //! # let n = 3;
-//! let mode = syn::Mode::Close;
-//! let efd = efd::Efd2::from_curve_gate(mode.regularize(curve), None).unwrap();
+//! let func = syn::PathSyn::from_curve_gate(curve, None, mode)
+//!     .expect("invalid curve")
+//!     .resolution(n);
 //! let s = mh::Solver::build(mh::Rga::default())
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
 //!     .record(|ctx| ctx.best_f)
-//!     .solve(syn::PathSyn::from(efd).resolution(n).mode(mode))
+//!     .solve(func)
 //!     .unwrap();
 //! ```
 use crate::{curve, efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
@@ -82,35 +83,54 @@ impl Mode {
 pub struct PathSyn {
     /// Target coefficient
     pub efd: efd::Efd2,
+    mode: Mode,
     // How many points need to be generated or compared
     n: usize,
-    mode: Mode,
-}
-
-impl From<efd::Efd2> for PathSyn {
-    fn from(efd: efd::Efd2) -> Self {
-        Self::from_efd(efd)
-    }
 }
 
 impl PathSyn {
+    /// Create a new task from target curve and harmonic number.
+    ///
+    /// Return none if harmonic is zero or the curve is less than 1.
+    ///
+    /// Please do not change mode since the regularization is called in this
+    /// constructor method.
+    pub fn from_curve_harmonic<'a, C>(curve: C, harmonic: usize, mode: Mode) -> Option<Self>
+    where
+        C: Into<efd::CowCurve<'a>>,
+    {
+        efd::Efd2::from_curve_harmonic(mode.regularize(curve), harmonic)
+            .map(|efd| Self::from_efd(efd, mode))
+    }
+
+    /// Create a new task from target curve and Fourier power gate.
+    ///
+    /// Return none if the curve length is less than 1.
+    ///
+    /// Please do not change mode since the regularization is called in this
+    /// constructor method.
+    pub fn from_curve_gate<'a, C, T>(curve: C, threshold: T, mode: Mode) -> Option<Self>
+    where
+        C: Into<efd::CowCurve<'a>>,
+        T: Into<Option<f64>>,
+    {
+        efd::Efd2::from_curve_gate(mode.regularize(curve), threshold)
+            .map(|efd| Self::from_efd(efd, mode))
+    }
+
     /// Create a new task from target EFD coefficients.
     ///
     /// Please use threshold or harmonic to create the EFD object. The curve
     /// must preprocess with [`Mode::regularize()`] method before turned into
     /// EFD.
-    pub fn from_efd(efd: efd::Efd2) -> Self {
-        Self { efd, n: 720, mode: Mode::Close }
+    pub fn from_efd(efd: efd::Efd2, mode: Mode) -> Self {
+        Self { efd, mode, n: 720 }
     }
 
     /// Set the resolution during synthesis.
     pub fn resolution(self, n: usize) -> Self {
+        assert!(n > 0);
         Self { n, ..self }
-    }
-
-    /// Set the task mode during synthesis.
-    pub fn mode(self, mode: Mode) -> Self {
-        Self { mode, ..self }
     }
 
     /// The harmonic used of target EFD.
