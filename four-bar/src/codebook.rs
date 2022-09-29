@@ -120,7 +120,7 @@ impl Codebook {
             .map(|i| {
                 let view = self.fb.slice(s![i, ..]);
                 let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-                (dis[i], FourBar::from_transform(fb, target.geo().clone()))
+                (dis[i], FourBar::from_transform(fb, target.as_geo().clone()))
             })
             .collect()
     }
@@ -138,6 +138,6 @@ impl Codebook {
             .unwrap();
         let view = self.fb.slice(s![i, ..]);
         let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-        (err, FourBar::from_transform(fb, target.geo().clone()))
+        (err, FourBar::from_transform(fb, target.as_geo().clone()))
     }
 }
