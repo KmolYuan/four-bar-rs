@@ -16,7 +16,7 @@ macro_rules! impl_parm_method {
     )+};
 }
 
-macro_rules! impl_curve_iter {
+macro_rules! impl_curve_method {
     ($self:ident, $v:expr, $norm:expr) => {
         /// Return the position of the input angle.
         pub fn pos(&$self, theta: f64) -> [[f64; 2]; 5] {
@@ -332,7 +332,7 @@ impl NormFourBar {
             .then(|| angle_bound([self.l0(), 1., self.l2(), self.l3(), 0.]))
     }
 
-    impl_curve_iter!(self, &[0., 0., 0., 1.], self);
+    impl_curve_method!(self, &[0., 0., 0., 1.], self);
 }
 
 /// Four-bar linkage with offset.
@@ -456,7 +456,7 @@ impl FourBar {
             .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
     }
 
-    impl_curve_iter!(self, &self.v, &self.norm);
+    impl_curve_method!(self, &self.v, &self.norm);
 }
 
 impl std::ops::Deref for FourBar {
