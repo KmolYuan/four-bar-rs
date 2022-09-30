@@ -13,6 +13,6 @@ fn main() {
         winres::WindowsResource::new()
             .set_icon(ico_path.to_str().unwrap())
             .compile()
-            .unwrap();
+            .unwrap_or_default();
     }
 }
