@@ -24,10 +24,6 @@ plotters = { version = "0.3", default-features = false, features = ["svg_backend
 metaheuristics-nature = "2"
 efd = "0.20"
 
-[dev-dependencies]
-indicatif = "0.17"
-ron = "0.8"
-
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
