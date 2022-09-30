@@ -24,12 +24,7 @@ macro_rules! impl_curve_method {
         }
 
         /// Generator for curves in single thread.
-        pub fn curves(
-            &$self,
-            start: f64,
-            end: f64,
-            n: usize,
-        ) -> Vec<[[f64; 2]; 3]> {
+        pub fn curves(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
             #[cfg(feature = "rayon")]
             use crate::mh::rayon::prelude::*;
             let interval = (end - start) / n as f64;
@@ -45,12 +40,7 @@ macro_rules! impl_curve_method {
         }
 
         /// Generator for coupler curve in single thread.
-        pub fn curve(
-            &$self,
-            start: f64,
-            end: f64,
-            n: usize,
-        ) -> Vec<[f64; 2]> {
+        pub fn curve(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
             #[cfg(feature = "rayon")]
             use crate::mh::rayon::prelude::*;
             let interval = (end - start) / n as f64;
