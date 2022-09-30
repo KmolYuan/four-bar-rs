@@ -19,7 +19,7 @@ macro_rules! impl_parm_method {
 macro_rules! impl_curve_iter {
     ($self:ident, $v:expr, $norm:expr) => {
         /// Generator for curves in single thread.
-        pub fn curves_vec(
+        pub fn curves(
             &$self,
             start: f64,
             end: f64,
@@ -39,7 +39,7 @@ macro_rules! impl_curve_iter {
         }
 
         /// Generator for coupler curve in single thread.
-        pub fn curve_vec(
+        pub fn curve(
             &$self,
             start: f64,
             end: f64,
