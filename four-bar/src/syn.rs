@@ -17,7 +17,7 @@
 //!     .solve(func)
 //!     .unwrap();
 //! ```
-use crate::{curve, efd, mh::ObjFunc, FourBar, Mechanism, NormFourBar};
+use crate::{curve, efd, mh::ObjFunc, FourBar, NormFourBar};
 use std::f64::consts::{FRAC_PI_8, TAU};
 
 // π/16
@@ -159,7 +159,7 @@ impl PathSyn {
             let iter = [false, true].into_iter();
             iter.map(move |inv| {
                 let fb = fb.with_inv(inv);
-                let curve = Mechanism::new(&fb).curve(t1, t2, self.n);
+                let curve = fb.curve(t1, t2, self.n);
                 (curve::get_valid_part(curve), fb)
             })
             .filter(|(curve, _)| curve.len() > 1)

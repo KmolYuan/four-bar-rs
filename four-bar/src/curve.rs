@@ -3,13 +3,13 @@
 //! The input curve can be both a owned type `Vec<[f64; 2]>` or a pointer type
 //! `&[[f64; 2]]` since the generic are copy-on-write (COW) compatible.
 
-use crate::{efd::CowCurve, FourBar, Mechanism};
+use crate::{efd::CowCurve, FourBar};
 
 /// Get curve from four-bar linkage.
 pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> {
     let fb = fb.into();
     fb.angle_bound()
-        .map(|[t1, t2]| get_valid_part(Mechanism::new(&fb).curve(t1, t2, n)))
+        .map(|[t1, t2]| get_valid_part(fb.curve(t1, t2, n)))
 }
 
 /// Check if a curve's first and end points are very close.

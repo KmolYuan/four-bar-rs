@@ -4,7 +4,7 @@ use super::{
 };
 use crate::csv::dump_csv;
 use eframe::egui::*;
-use four_bar::{curve, FourBar, Mechanism};
+use four_bar::{curve, FourBar};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,
@@ -288,12 +288,11 @@ impl ProjInner {
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
         fn get_curve(pivot: Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
-            let m = Mechanism::new(fb);
-            let curve = m.curve_all(0., TAU, n);
+            let curve = fb.curves(0., TAU, n).into_iter();
             let curve = match pivot {
-                Pivot::Driver => curve.into_iter().map(|[c, _, _]| c).collect::<Vec<_>>(),
-                Pivot::Follower => curve.into_iter().map(|[_, c, _]| c).collect::<Vec<_>>(),
-                Pivot::Coupler => curve.into_iter().map(|[_, _, c]| c).collect::<Vec<_>>(),
+                Pivot::Driver => curve.map(|[c, _, _]| c).collect::<Vec<_>>(),
+                Pivot::Follower => curve.map(|[_, c, _]| c).collect::<Vec<_>>(),
+                Pivot::Coupler => curve.map(|[_, _, c]| c).collect::<Vec<_>>(),
             };
             curve::get_valid_part(curve)
         }
@@ -384,10 +383,9 @@ impl ProjInner {
     fn cache_inner(&mut self, n: usize) {
         // Recalculation
         self.cache.changed = false;
-        let m = Mechanism::new(&self.fb);
-        m.apply(self.angles.theta2, [0, 1, 2, 3, 4], &mut self.cache.joints);
+        self.cache.joints = self.fb.pos(self.angles.theta2);
         self.cache.curves = if let Some([start, _]) = self.fb.angle_bound() {
-            m.curve_all(start, start + TAU, n)
+            self.fb.curves(start, start + TAU, n)
         } else {
             Default::default()
         };

@@ -1,6 +1,6 @@
 //! The functions used to plot the curve and synthesis result.
 
-use crate::{curve, FourBar, Mechanism};
+use crate::{curve, FourBar};
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
@@ -85,9 +85,7 @@ impl FbOpt {
             Some(angle) if (start..end).contains(&angle) => angle,
             _ => (start + end) * 0.5,
         };
-        let mut joints = [[0.; 2]; 5];
-        Mechanism::new(&fb).apply(angle, [0, 1, 2, 3, 4], &mut joints);
-        Some(joints)
+        Some(fb.pos(angle))
     }
 }
 

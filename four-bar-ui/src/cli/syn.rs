@@ -3,7 +3,7 @@ use four_bar::{
     codebook::Codebook,
     curve, mh, plot,
     syn::{Mode, PathSyn},
-    FourBar, Mechanism,
+    FourBar,
 };
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
@@ -169,7 +169,7 @@ fn draw_ans(root: &Path, title: &str, target: &[[f64; 2]], ans: FourBar, n: usiz
         std::fs::write(path, ron::to_string(&ans)?)?;
     }
     let [t1, t2] = ans.angle_bound().expect("solved error");
-    let curve = curve::get_valid_part(Mechanism::new(&ans).curve(t1, t2, n));
+    let curve = curve::get_valid_part(ans.curve(t1, t2, n));
     let curves = [("Target", target), ("Optimized", &curve)];
     {
         let path = root.join(format!("{title}_linkage.svg"));

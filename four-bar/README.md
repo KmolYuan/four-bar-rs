@@ -5,12 +5,11 @@
 Four-bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
 ```rust
-use four_bar::{FourBar, Mechanism};
+use four_bar::FourBar;
+use std::f64::consts::TAU;
 
-// A four-bar mechanism example
-let m = Mechanism::new(FourBar::example());
 // Get the trajectory of the coupler point
-let path = m.curve(0., 360);
+let path = FourBar::example().curve(0., TAU, 360);
 ```
 
 The synthesis function let you synthesize a four-bar mechanism by fitting target curve.

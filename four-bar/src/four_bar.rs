@@ -1,4 +1,4 @@
-use crate::{efd::Geo2Info, Formula, Linkage, Mechanism};
+use crate::efd::Geo2Info;
 use std::{
     array::TryFromSliceError,
     f64::consts::{FRAC_PI_6, TAU},
@@ -18,6 +18,11 @@ macro_rules! impl_parm_method {
 
 macro_rules! impl_curve_iter {
     ($self:ident, $v:expr, $norm:expr) => {
+        /// Return the position of the input angle.
+        pub fn pos(&$self, theta: f64) -> [[f64; 2]; 5] {
+            curve_interval($v, $norm, theta)
+        }
+
         /// Generator for curves in single thread.
         pub fn curves(
             &$self,
@@ -35,6 +40,7 @@ macro_rules! impl_curve_iter {
             iter
                 .map(move |n| start + n as f64 * interval)
                 .map(|theta| curve_interval($v, $norm, theta))
+                .map(|[.., j2, j3, j4]| [j2, j3, j4])
                 .collect()
         }
 
@@ -531,88 +537,6 @@ impl DivAssign<f64> for FourBar {
     }
 }
 
-impl Linkage for NormFourBar {
-    type Joint = [[f64; 2]; 5];
-
-    fn allocate(&self) -> (Self::Joint, Vec<Formula>) {
-        let Self { v: [l0, l2, l3, l4, g], inv } = self;
-        let joints = [[0., 0.], [*l0, 0.], [0., 0.], [0., 0.], [0., 0.]];
-        let mut fs = Vec::with_capacity(3);
-        fs.push(Formula::Pla(0, 1., 0., 2));
-        if (l0 - l2).abs() < f64::EPSILON && (1. - l3).abs() < f64::EPSILON {
-            // Special case
-            fs.push(Formula::Ppp(0, 2, 1, 3));
-        } else {
-            fs.push(Formula::Pllp(2, *l2, *l3, 1, *inv, 3));
-        }
-        fs.push(Formula::Plap(2, *l4, *g, 3, 4));
-        (joints, fs)
-    }
-
-    fn apply<L, const N: usize>(
-        m: &Mechanism<L>,
-        angle: f64,
-        joint: [usize; N],
-        ans: &mut [[f64; 2]; N],
-    ) where
-        L: Linkage<Joint = Self::Joint>,
-    {
-        let mut joints = m.joints;
-        let mut formulas = m.fs.clone();
-        match formulas.first_mut() {
-            Some(Formula::Pla(_, _, ref mut a, _)) => *a = angle,
-            _ => panic!("invalid four-bar"),
-        }
-        formulas.into_iter().for_each(|f| f.apply(&mut joints));
-        if joints[4][0].is_nan() || joints[4][1].is_nan() {
-            *ans = [[f64::NAN; 2]; N];
-        } else {
-            ans.iter_mut()
-                .zip(joint)
-                .for_each(|(ans, j)| *ans = joints[j]);
-        }
-    }
-}
-
-impl Linkage for FourBar {
-    type Joint = [[f64; 2]; 5];
-
-    fn allocate(&self) -> (Self::Joint, Vec<Formula>) {
-        let Self {
-            v: [p0x, p0y, a, l1],
-            norm: NormFourBar { v: [l0, l2, l3, l4, g], inv },
-        } = self;
-        let joints = [
-            [*p0x, *p0y],
-            [p0x + l0 * a.cos(), p0y + l0 * a.sin()],
-            [0., 0.],
-            [0., 0.],
-            [0., 0.],
-        ];
-        let mut fs = Vec::with_capacity(3);
-        fs.push(Formula::Pla(0, *l1, 0., 2));
-        if (l0 - l2).abs() < f64::EPSILON && (l1 - l3).abs() < f64::EPSILON {
-            // Special case
-            fs.push(Formula::Ppp(0, 2, 1, 3));
-        } else {
-            fs.push(Formula::Pllp(2, *l2, *l3, 1, *inv, 3));
-        }
-        fs.push(Formula::Plap(2, *l4, *g, 3, 4));
-        (joints, fs)
-    }
-
-    fn apply<L, const N: usize>(
-        m: &Mechanism<L>,
-        angle: f64,
-        joint: [usize; N],
-        ans: &mut [[f64; 2]; N],
-    ) where
-        L: Linkage<Joint = Self::Joint>,
-    {
-        <NormFourBar as Linkage>::apply(m, angle, joint, ans)
-    }
-}
-
 fn angle([x, y]: [f64; 2], d: f64, a: f64) -> [f64; 2] {
     [x + d * a.cos(), y + d * a.sin()]
 }
@@ -648,7 +572,7 @@ fn parallel([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], [x3, y3]: [f64; 2]) -> [f64;
     [x3 + d * a.cos(), y3 + d * a.sin()]
 }
 
-fn curve_interval(v: &[f64; 4], norm: &NormFourBar, theta: f64) -> [[f64; 2]; 3] {
+fn curve_interval(v: &[f64; 4], norm: &NormFourBar, theta: f64) -> [[f64; 2]; 5] {
     let [p0x, p0y, a, l1] = v;
     let NormFourBar { v: [l0, l2, l3, l4, g], inv } = norm;
     let j0 = [*p0x, *p0y];
@@ -661,5 +585,5 @@ fn curve_interval(v: &[f64; 4], norm: &NormFourBar, theta: f64) -> [[f64; 2]; 3]
         circle2(j2, j1, *l2, *l3, *inv)
     };
     let j4 = angle_with(j2, j3, *l4, *g);
-    [j2, j3, j4]
+    [j0, j1, j2, j3, j4]
 }

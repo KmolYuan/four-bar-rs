@@ -1,5 +1,5 @@
 //! Create a codebook database for four-bar linkages.
-use super::{efd::Efd2, mh::utility::prelude::*, FourBar, Mechanism, NormFourBar};
+use super::{efd::Efd2, mh::utility::prelude::*, FourBar, NormFourBar};
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
@@ -46,7 +46,7 @@ impl Codebook {
                         return;
                     }
                     if let Some([start, end]) = fb.angle_bound() {
-                        let curve = Mechanism::new(&fb).curve(start, end, res);
+                        let curve = fb.curve(start, end, res);
                         let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
                         let mut stack = fb_stack.lock().unwrap();
                         stack.push(arr1(&fb.v));
