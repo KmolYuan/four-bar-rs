@@ -16,6 +16,51 @@ macro_rules! impl_parm_method {
     )+};
 }
 
+macro_rules! impl_curve_iter {
+    ($self:ident, $v:expr, $norm:expr) => {
+        /// Generator for curves in single thread.
+        pub fn curves_vec(
+            &$self,
+            start: f64,
+            end: f64,
+            n: usize,
+        ) -> Vec<[[f64; 2]; 3]> {
+            #[cfg(feature = "rayon")]
+            use crate::mh::rayon::prelude::*;
+            let interval = (end - start) / n as f64;
+            #[cfg(feature = "rayon")]
+            let iter = (0..n).into_par_iter();
+            #[cfg(not(feature = "rayon"))]
+            let iter = 0..n;
+            iter
+                .map(move |n| start + n as f64 * interval)
+                .map(|theta| curve_interval($v, $norm, theta))
+                .collect()
+        }
+
+        /// Generator for coupler curve in single thread.
+        pub fn curve_vec(
+            &$self,
+            start: f64,
+            end: f64,
+            n: usize,
+        ) -> Vec<[f64; 2]> {
+            #[cfg(feature = "rayon")]
+            use crate::mh::rayon::prelude::*;
+            let interval = (end - start) / n as f64;
+            #[cfg(feature = "rayon")]
+            let iter = (0..n).into_par_iter();
+            #[cfg(not(feature = "rayon"))]
+            let iter = 0..n;
+            iter
+                .map(move |n| start + n as f64 * interval)
+                .map(|theta| curve_interval($v, $norm, theta))
+                .map(|[.., c]| c)
+                .collect()
+        }
+    };
+}
+
 fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
     fb.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
     fb
@@ -280,6 +325,8 @@ impl NormFourBar {
         self.is_valid()
             .then(|| angle_bound([self.l0(), 1., self.l2(), self.l3(), 0.]))
     }
+
+    impl_curve_iter!(self, &[0., 0., 0., 1.], self);
 }
 
 /// Four-bar linkage with offset.
@@ -402,6 +449,8 @@ impl FourBar {
         self.is_valid()
             .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
     }
+
+    impl_curve_iter!(self, &self.v, &self.norm);
 }
 
 impl std::ops::Deref for FourBar {
@@ -562,4 +611,55 @@ impl Linkage for FourBar {
     {
         <NormFourBar as Linkage>::apply(m, angle, joint, ans)
     }
+}
+
+fn angle([x, y]: [f64; 2], d: f64, a: f64) -> [f64; 2] {
+    [x + d * a.cos(), y + d * a.sin()]
+}
+
+fn angle_with([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d: f64, a: f64) -> [f64; 2] {
+    let a = (y2 - y1).atan2(x2 - x1) + a;
+    [x1 + d * a.cos(), y1 + d * a.sin()]
+}
+
+fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d1: f64, d2: f64, inv: bool) -> [f64; 2] {
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    let d = dx.hypot(dy);
+    if d > d1 + d2 || d < (d1 - d2).abs() || (d < f64::EPSILON && (d1 - d2).abs() < f64::EPSILON) {
+        return [f64::NAN, f64::NAN];
+    }
+    let a = 0.5 * (d1 * d1 - d2 * d2 + d * d) / d;
+    let h = (d1 * d1 - a * a).sqrt();
+    let xm = x1 + a * dx / d;
+    let ym = y1 + a * dy / d;
+    if inv {
+        [xm + h * dy / d, ym - h * dx / d]
+    } else {
+        [xm - h * dy / d, ym + h * dx / d]
+    }
+}
+
+fn parallel([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], [x3, y3]: [f64; 2]) -> [f64; 2] {
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    let d = dx.hypot(dy);
+    let a = dy.atan2(dx);
+    [x3 + d * a.cos(), y3 + d * a.sin()]
+}
+
+fn curve_interval(v: &[f64; 4], norm: &NormFourBar, theta: f64) -> [[f64; 2]; 3] {
+    let [p0x, p0y, a, l1] = v;
+    let NormFourBar { v: [l0, l2, l3, l4, g], inv } = norm;
+    let j0 = [*p0x, *p0y];
+    let j1 = [p0x + l0 * a.cos(), p0y + l0 * a.sin()];
+    let j2 = angle(j0, *l1, theta);
+    let j3 = if (l0 - l2).abs() < f64::EPSILON && (1. - l3).abs() < f64::EPSILON {
+        // Special case
+        parallel(j0, j2, j1)
+    } else {
+        circle2(j2, j1, *l2, *l3, *inv)
+    };
+    let j4 = angle_with(j2, j3, *l4, *g);
+    [j2, j3, j4]
 }
