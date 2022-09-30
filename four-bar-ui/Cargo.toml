@@ -19,11 +19,15 @@ default = ["native"]
 native = ["four-bar/codebook", "four-bar/rayon"]
 
 [dependencies]
-eframe = { version = "0.19", default-features = false, features = ["persistence", "glow", "dark-light"] }
 four-bar = { version = "2", path = "../four-bar", features = ["serde", "plot"] }
 serde = { version = "1", features = ["derive"] }
 ron = "0.8"
 csv = "1"
+
+[dependencies.eframe]
+version = "0.19"
+default-features = false
+features = ["persistence", "glow", "dark-light"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
