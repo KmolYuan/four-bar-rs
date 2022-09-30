@@ -14,7 +14,7 @@ categories = ["algorithms"]
 default = []
 plot = ["plotters"]
 serde = ["dep:serde"]
-codebook = ["ndarray-npy", "rayon"]
+codebook = ["ndarray-npy"]
 rayon = ["metaheuristics-nature/rayon"]
 
 [dependencies]

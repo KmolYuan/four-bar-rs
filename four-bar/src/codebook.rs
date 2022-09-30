@@ -28,7 +28,11 @@ impl Codebook {
         let efd_stack = Mutex::new(Vec::with_capacity(n));
         loop {
             let len = efd_stack.lock().unwrap().len();
-            (0..(n - len) / 2).into_par_iter().for_each(|_| {
+            #[cfg(feature = "rayon")]
+            let iter = (0..(n - len) / 2).into_par_iter();
+            #[cfg(not(feature = "rayon"))]
+            let iter = 0..(n - len) / 2;
+            iter.for_each(|_| {
                 let v = [
                     rng.float(1e-4..10.),
                     rng.float(1e-4..10.),

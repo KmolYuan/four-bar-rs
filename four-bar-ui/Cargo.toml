@@ -16,7 +16,7 @@ path = "src/main.rs"
 
 [features]
 default = ["native"]
-native = ["four-bar/codebook"]
+native = ["four-bar/codebook", "four-bar/rayon"]
 
 [dependencies]
 eframe = { version = "0.19", default-features = false, features = ["persistence", "glow", "dark-light"] }
