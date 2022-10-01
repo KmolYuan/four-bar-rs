@@ -63,7 +63,6 @@ jobs:
         uses: vimtor/action-zip@v1
         with:
           files: ${{ matrix.artifact_name }}
-          recursive: false
           dest: ${{ matrix.asset_name }}.zip
       - name: Upload artifact
         uses: actions/upload-artifact@v2
