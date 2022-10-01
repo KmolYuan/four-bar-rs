@@ -7,7 +7,7 @@
 //! # let gen = 0;
 //! # let pop = 2;
 //! # let n = 3;
-//! let func = syn::PathSyn::from_curve_gate(curve, None, mode)
+//! let func = syn::PathSyn::from_curve_gate(curve, None, syn::Mode::Close)
 //!     .expect("invalid curve")
 //!     .resolution(n);
 //! let s = mh::Solver::build(mh::Rga::default())
