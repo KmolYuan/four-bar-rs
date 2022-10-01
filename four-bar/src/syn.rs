@@ -20,6 +20,8 @@
 use crate::{curve, efd, mh::ObjFunc, FourBar, NormFourBar};
 use std::f64::consts::{FRAC_PI_8, TAU};
 
+type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
+
 // π/16
 const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
 const BOUND: [[f64; 2]; 7] = [
@@ -68,7 +70,7 @@ impl Mode {
     /// Regularize path with the mode.
     pub fn regularize<'a, C>(&self, curve: C) -> Vec<[f64; 2]>
     where
-        C: Into<efd::CowCurve<'a>>,
+        C: Into<CowCurve<'a>>,
     {
         let curve = curve.into();
         match self {
@@ -97,7 +99,7 @@ impl PathSyn {
     /// constructor method.
     pub fn from_curve_harmonic<'a, C>(curve: C, harmonic: usize, mode: Mode) -> Option<Self>
     where
-        C: Into<efd::CowCurve<'a>>,
+        C: Into<CowCurve<'a>>,
     {
         efd::Efd2::from_curve_harmonic(mode.regularize(curve), harmonic)
             .map(|efd| Self::from_efd(efd, mode))
@@ -111,7 +113,7 @@ impl PathSyn {
     /// constructor method.
     pub fn from_curve_gate<'a, C, T>(curve: C, threshold: T, mode: Mode) -> Option<Self>
     where
-        C: Into<efd::CowCurve<'a>>,
+        C: Into<CowCurve<'a>>,
         T: Into<Option<f64>>,
     {
         efd::Efd2::from_curve_gate(mode.regularize(curve), threshold)

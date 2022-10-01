@@ -3,7 +3,9 @@
 //! The input curve can be both a owned type `Vec<[f64; 2]>` or a pointer type
 //! `&[[f64; 2]]` since the generic are copy-on-write (COW) compatible.
 
-use crate::{efd::CowCurve, FourBar};
+use crate::FourBar;
+
+type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
 /// Get curve from four-bar linkage.
 pub fn from_four_bar(fb: impl Into<FourBar>, n: usize) -> Option<Vec<[f64; 2]>> {
