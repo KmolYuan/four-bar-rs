@@ -1,6 +1,6 @@
 [package]
 name = "four-bar-ui"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 description = "Four🍀bar GUI is a simulator, a synthesizing tool for four-bar linkage mechanism."
