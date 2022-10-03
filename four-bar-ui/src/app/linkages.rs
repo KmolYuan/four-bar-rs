@@ -1,5 +1,5 @@
 use super::{
-    proj::{Project, Projects, Queue},
+    proj::{Project, Projects},
     widgets::{link, unit},
 };
 use eframe::egui::*;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub(crate) struct Linkages {
     config: Config,
-    projs: Projects,
+    pub(crate) projs: Projects,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -59,25 +59,12 @@ impl Linkages {
     pub(crate) fn pre_open_proj(&mut self, files: Vec<std::path::PathBuf>) {
         self.projs.iter().for_each(Project::pre_open);
         files.into_iter().for_each(|file| self.projs.pre_open(file));
-    }
-
-    pub(crate) fn four_bar_state(&self) -> four_bar::plot::FbOpt {
-        self.projs.four_bar_state()
-    }
-
-    pub(crate) fn current_curve(&self) -> Vec<[f64; 2]> {
-        self.projs.current_curve()
+        if self.projs.is_empty() {
+            self.projs.push_example();
+        }
     }
 
     pub(crate) fn poll(&mut self, ctx: &Context) {
         self.projs.poll(ctx, self.config.res);
-    }
-
-    pub(crate) fn queue(&self) -> Queue {
-        self.projs.queue()
-    }
-
-    pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
-        self.projs.select(ui, show_btn)
     }
 }

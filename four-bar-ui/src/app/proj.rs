@@ -575,6 +575,10 @@ impl Projects {
         }
     }
 
+    pub(crate) fn push_example(&self) {
+        self.queue.0.write().unwrap().push(Project::default());
+    }
+
     pub(crate) fn pre_open(&mut self, file: impl AsRef<Path>) {
         let path = file.as_ref().to_str().unwrap().to_string();
         if let Some(fb) = pre_open(file) {
@@ -617,7 +621,7 @@ impl Projects {
                 });
             }
             if ui.button("🗋 New").clicked() {
-                self.queue.0.write().unwrap().push(Project::default());
+                self.push_example();
             }
         });
         if self.select(ui, true) {

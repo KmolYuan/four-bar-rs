@@ -327,25 +327,25 @@ impl Synthesis {
         ui.horizontal(|ui| {
             let enabled = !self.config.syn.target.is_empty();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
-                self.start_syn(linkage.queue());
+                self.start_syn(linkage.projs.queue());
             }
             ui.add(ProgressBar::new(0.).show_percentage());
         });
         ui.separator();
         ui.heading("Projects");
         ui.label("Compare results from a project's coupler curve.");
-        if linkage.select(ui, false) {
+        if linkage.projs.select(ui, false) {
             ui.horizontal(|ui| {
                 if ui.button("💾 Save Comparison").clicked() {
                     let target = &self.config.syn.target;
-                    let curve = linkage.current_curve();
-                    let fb = self.plot_linkage.then(|| linkage.four_bar_state());
+                    let curve = linkage.projs.current_curve();
+                    let fb = self.plot_linkage.then(|| linkage.projs.four_bar_state());
                     io::save_curve_ask(target, &curve, fb, "fb.svg");
                 }
                 ui.checkbox(&mut self.plot_linkage, "With linkage");
             });
             if ui.button("🗐 Copy Coupler Curve").clicked() {
-                self.config.set_target(linkage.current_curve());
+                self.config.set_target(linkage.projs.current_curve());
             }
         }
         self.convergence_plot(ui);
