@@ -145,11 +145,13 @@ where
     let opt = opt.into();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));
     let curves = [("Target", target), ("Optimized", curve)];
-    if !target.is_empty() && target.len() == curve.len() {
-        let title = format!("Comparison (Error: {:.04})", curve::geo_err(target, curve));
-        plot::plot2d(svg, &curves, opt.title(&title)).unwrap();
-    } else {
-        plot::plot2d(svg, &curves, opt.title("Comparison")).unwrap();
+    match (!target.is_empty(), target.len() == curve.len()) {
+        (true, true) => {
+            let title = format!("Comparison (Error: {:.04})", curve::geo_err(target, curve));
+            plot::plot2d(svg, &curves, opt.title(&title)).unwrap();
+        }
+        (true, false) => plot::plot2d(svg, &curves, opt.title("Comparison")).unwrap(),
+        _ => plot::plot2d(svg, &curves, opt).unwrap(),
     }
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }
