@@ -9,38 +9,43 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Linkages {
-    config: Config,
+    pub(crate) cfg: Cfg,
     pub(crate) projs: Projects,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
 #[serde(default)]
-struct Config {
-    interval: f64,
-    res: usize,
+pub(crate) struct Cfg {
+    // interval
+    pub(crate) int: f64,
+    // resolution
+    pub(crate) res: usize,
+    // use dots in curve
+    pub(crate) use_dot: bool,
 }
 
-impl Default for Config {
+impl Default for Cfg {
     fn default() -> Self {
-        Self { interval: 1., res: 360 }
+        Self { int: 1., res: 360, use_dot: false }
     }
 }
 
 impl Linkages {
     pub(crate) fn show(&mut self, ui: &mut Ui) {
         ui.heading("Linkages");
-        self.projs.show(ui, self.config.interval, self.config.res);
+        self.projs.show(ui, &self.cfg);
     }
 
     pub(crate) fn option(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.heading("Options");
-            reset_button(ui, &mut self.config);
+            reset_button(ui, &mut self.cfg);
         });
-        link(ui, "Drag interval: ", &mut self.config.interval, 0.01);
-        if unit(ui, "Curve resolution: ", &mut self.config.res, 1).changed() {
+        link(ui, "Drag interval: ", &mut self.cfg.int, 0.01);
+        if unit(ui, "Curve resolution: ", &mut self.cfg.res, 1).changed() {
             self.projs.request_cache();
         }
+        ui.checkbox(&mut self.cfg.use_dot, "Use dot curve in plots");
         let mut vis = ui.visuals().clone();
         vis.light_dark_radio_buttons(ui);
         ui.ctx().set_visuals(vis);
@@ -65,6 +70,6 @@ impl Linkages {
     }
 
     pub(crate) fn poll(&mut self, ctx: &Context) {
-        self.projs.poll(ctx, self.config.res);
+        self.projs.poll(ctx, self.cfg.res);
     }
 }

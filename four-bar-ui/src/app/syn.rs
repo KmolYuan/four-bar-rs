@@ -339,7 +339,9 @@ impl Synthesis {
                 if ui.button("💾 Save Comparison").clicked() {
                     let target = &self.config.syn.target;
                     let curve = linkage.projs.current_curve();
-                    let opt = self.plot_linkage.then(|| linkage.projs.four_bar_state());
+                    let opt = self
+                        .plot_linkage
+                        .then(|| linkage.projs.four_bar_state().use_dot(linkage.cfg.use_dot));
                     io::save_curve_ask(target, &curve, opt, "fb.svg");
                 }
                 ui.checkbox(&mut self.plot_linkage, "With linkage");

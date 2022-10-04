@@ -211,7 +211,7 @@ impl Default for ProjInner {
 }
 
 impl ProjInner {
-    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
         ui.horizontal(|ui| match &mut self.path {
             ProjName::Path(path) => {
                 let filename = filename(path);
@@ -251,7 +251,7 @@ impl ProjInner {
                 self.undo.clear();
             }
         });
-        ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot, interval, n));
+        ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot, cfg));
         Window::new("⚽ Dynamics")
             .open(&mut self.angle_open)
             .vscroll(true)
@@ -286,7 +286,7 @@ impl ProjInner {
         self.undo.fetch(ui.ctx().input().time, &self.fb);
     }
 
-    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
+    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
         fn get_curve(pivot: Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
             let curve = fb.curves(0., TAU, n).into_iter();
             let curve = match pivot {
@@ -306,10 +306,10 @@ impl ProjInner {
                     ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
                 });
             if ui.small_button("💾").on_hover_text("Save").clicked() {
-                io::save_csv_ask(&get_curve(*pivot, &self.fb, n));
+                io::save_csv_ask(&get_curve(*pivot, &self.fb, cfg.res));
             }
             if ui.button("🗐").on_hover_text("Copy").clicked() {
-                ui.output().copied_text = dump_csv(get_curve(*pivot, &self.fb, n)).unwrap();
+                ui.output().copied_text = dump_csv(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
             }
         });
         ui.separator();
@@ -332,16 +332,16 @@ impl ProjInner {
                 self.cache.changed = true;
             }
         });
-        let mut res = unit(ui, "X Offset: ", self.fb.p0x_mut(), interval)
-            | unit(ui, "Y Offset: ", self.fb.p0y_mut(), interval)
+        let mut res = unit(ui, "X Offset: ", self.fb.p0x_mut(), cfg.int)
+            | unit(ui, "Y Offset: ", self.fb.p0y_mut(), cfg.int)
             | angle(ui, "Rotation: ", self.fb.a_mut(), "");
         ui.separator();
         ui.heading("Parameters");
-        res |= link(ui, "Ground: ", self.fb.l0_mut(), interval)
-            | link(ui, "Driver: ", self.fb.l1_mut(), interval)
-            | link(ui, "Coupler: ", self.fb.l2_mut(), interval)
-            | link(ui, "Follower: ", self.fb.l3_mut(), interval)
-            | link(ui, "Extended: ", self.fb.l4_mut(), interval)
+        res |= link(ui, "Ground: ", self.fb.l0_mut(), cfg.int)
+            | link(ui, "Driver: ", self.fb.l1_mut(), cfg.int)
+            | link(ui, "Coupler: ", self.fb.l2_mut(), cfg.int)
+            | link(ui, "Follower: ", self.fb.l3_mut(), cfg.int)
+            | link(ui, "Extended: ", self.fb.l4_mut(), cfg.int)
             | angle(ui, "Angle: ", self.fb.g_mut(), "")
             | ui.checkbox(self.fb.inv_mut(), "Invert follower and coupler");
         ui.separator();
@@ -367,13 +367,14 @@ impl ProjInner {
         ui.heading("Figure");
         ui.label("Plot linkage and its coupler curve.");
         if ui.button("💾 Save Linkage").clicked() {
-            let curve = get_curve(Pivot::Coupler, &self.fb, n);
+            let curve = get_curve(Pivot::Coupler, &self.fb, cfg.res);
             let opt = four_bar::plot::Opt::new()
                 .fb(self.fb.clone())
-                .angle(self.angles.theta2);
+                .angle(self.angles.theta2)
+                .use_dot(cfg.use_dot);
             io::save_curve_ask(&[], &curve, opt, "fig.svg");
         }
-        self.cache(n);
+        self.cache(cfg.res);
     }
 
     pub(crate) fn cache(&mut self, n: usize) {
@@ -511,8 +512,8 @@ impl Project {
         }
     }
 
-    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, interval: f64, n: usize) {
-        self.0.write().unwrap().show(ui, pivot, interval, n);
+    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
+        self.0.write().unwrap().show(ui, pivot, cfg);
     }
 
     fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize) {
@@ -613,7 +614,7 @@ impl Projects {
         }
     }
 
-    pub(crate) fn show(&mut self, ui: &mut Ui, interval: f64, n: usize) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, cfg: &super::Cfg) {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
                 let queue = self.queue();
@@ -628,7 +629,7 @@ impl Projects {
             }
         });
         if self.select(ui, true) {
-            self.list[self.curr].show(ui, &mut self.pivot, interval, n);
+            self.list[self.curr].show(ui, &mut self.pivot, cfg);
         } else {
             ui.heading("No project here!");
             ui.label("Please open or create a project.");

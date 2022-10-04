@@ -91,8 +91,8 @@ impl<'a> Opt<'a> {
     }
 
     /// Use dot in the curves.
-    pub fn use_dot(self) -> Self {
-        Self { use_dot: true, ..self }
+    pub fn use_dot(self, use_dot: bool) -> Self {
+        Self { use_dot, ..self }
     }
 
     fn joints(&self) -> Option<[[f64; 2]; 5]> {
