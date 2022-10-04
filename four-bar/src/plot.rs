@@ -47,61 +47,92 @@ where
 
 /// Drawing option of four-bar linkage and its input angle.
 #[derive(Default)]
-pub struct FbOpt {
+pub struct Opt<'a> {
     fb: Option<FourBar>,
     angle: Option<f64>,
+    title: Option<&'a str>,
+    use_dot: bool,
 }
 
-impl From<Option<Self>> for FbOpt {
+impl From<Option<Self>> for Opt<'_> {
     fn from(opt: Option<Self>) -> Self {
         opt.unwrap_or_default()
     }
 }
 
-impl<F: Into<FourBar>> From<F> for FbOpt {
+impl<F: Into<FourBar>> From<F> for Opt<'_> {
     fn from(fb: F) -> Self {
-        let fb = Some(fb.into());
-        Self { fb, angle: None }
+        Self { fb: Some(fb.into()), ..Self::default() }
     }
 }
 
-impl FbOpt {
-    /// Create with a linkage and its input angle.
+impl<'a> Opt<'a> {
+    /// Create a default option, enables nothing.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the linkage.
+    pub fn fb(self, fb: impl Into<FourBar>) -> Self {
+        Self { fb: Some(fb.into()), ..self }
+    }
+
+    /// Set the input angle of the linkage.
     ///
     /// If the angle value is not in the range of [`FourBar::angle_bound()`],
     /// the actual angle will be the midpoint.
-    pub fn new<F>(fb: F, angle: f64) -> Self
-    where
-        F: Into<FourBar>,
-    {
-        Self { angle: angle.into(), ..Self::from(fb) }
+    pub fn angle(self, angle: f64) -> Self {
+        Self { angle: angle.into(), ..self }
     }
 
-    fn joints(self) -> Option<[[f64; 2]; 5]> {
-        let Self { fb, angle } = self;
-        let fb = fb?;
+    /// Set the title.
+    pub fn title(self, s: &'a str) -> Self {
+        Self { title: Some(s), ..self }
+    }
+
+    /// Use dot in the curves.
+    pub fn use_dot(self) -> Self {
+        Self { use_dot: true, ..self }
+    }
+
+    fn joints(&self) -> Option<[[f64; 2]; 5]> {
+        let fb = self.fb.as_ref()?;
         let [start, end] = fb.angle_bound().expect("invalid linkage");
-        let angle = match angle {
+        let angle = match self.angle {
             Some(angle) if (start..end).contains(&angle) => angle,
-            _ => (start + end) * 0.5,
+            _ => start + (end - start) * 0.25,
         };
         Some(fb.pos(angle))
     }
 }
 
 /// Plot 2D curve.
-pub fn curve<B, F>(backend: B, title: &str, curves: &[(&str, &[[f64; 2]])], fb: F) -> PResult<(), B>
+#[deprecated = "please use `plot2d()` instead"]
+pub fn curve<B, F>(backend: B, title: &str, curve: &[(&str, &[[f64; 2]])], fb: F) -> PResult<(), B>
 where
     B: DrawingBackend,
-    F: Into<FbOpt>,
+    F: Into<FourBar>,
+{
+    plot2d(backend, curve, Opt::new().fb(fb).title(title))
+}
+
+/// Plot 2D curves and linkages.
+pub fn plot2d<'a, B, O>(backend: B, curves: &[(&str, &[[f64; 2]])], opt: O) -> PResult<(), B>
+where
+    B: DrawingBackend,
+    O: Into<Opt<'a>>,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let joints = fb.into().joints();
+    let opt = opt.into();
+    let joints = opt.joints();
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
-    let mut chart = ChartBuilder::on(&root)
-        .caption(title, font())
+    let mut chart = ChartBuilder::on(&root);
+    if let Some(title) = opt.title {
+        chart.caption(title, font());
+    }
+    let mut chart = chart
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .margin((8).percent())
@@ -114,13 +145,17 @@ where
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
-        let anno = if i % 2 == 1 {
-            chart.draw_series(curve.iter().map(|&[x, y]| Circle::new((x, y), 5, &color)))?
+        let anno = if opt.use_dot {
+            if i % 2 == 1 {
+                chart.draw_series(curve.iter().map(|&[x, y]| Circle::new((x, y), 5, &color)))?
+            } else {
+                let series = curve
+                    .iter()
+                    .map(|&[x, y]| TriangleMarker::new((x, y), 5, &color));
+                chart.draw_series(series)?
+            }
         } else {
-            let series = curve
-                .iter()
-                .map(|&[x, y]| TriangleMarker::new((x, y), 5, &color));
-            chart.draw_series(series)?
+            chart.draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &color))?
         };
         anno.label(label)
             .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));

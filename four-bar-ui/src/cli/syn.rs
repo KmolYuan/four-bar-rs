@@ -174,12 +174,12 @@ fn draw_ans(root: &Path, title: &str, target: &[[f64; 2]], ans: FourBar, n: usiz
     {
         let path = root.join(format!("{title}_linkage.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
-        plot::curve(svg, "Linkage", &curves, ans)?;
+        plot::plot2d(svg, &curves, plot::Opt::new().fb(ans).title("Linkage"))?;
     }
     {
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
-        plot::curve(svg, "Comparison", &curves, None)?;
+        plot::plot2d(svg, &curves, plot::Opt::new().title("Comparison"))?;
     }
     Ok(())
 }

@@ -137,18 +137,19 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }
 
-pub(crate) fn save_curve_ask<F>(target: &[[f64; 2]], curve: &[[f64; 2]], fb: F, name: &str)
+pub(crate) fn save_curve_ask<'a, O>(target: &[[f64; 2]], curve: &[[f64; 2]], opt: O, name: &str)
 where
-    F: Into<plot::FbOpt>,
+    O: Into<plot::Opt<'a>>,
 {
     let mut buf = String::new();
+    let opt = opt.into();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));
     let curves = [("Target", target), ("Optimized", curve)];
     if !target.is_empty() && target.len() == curve.len() {
         let title = format!("Comparison (Error: {:.04})", curve::geo_err(target, curve));
-        plot::curve(svg, &title, &curves, fb).unwrap();
+        plot::plot2d(svg, &curves, opt.title(&title)).unwrap();
     } else {
-        plot::curve(svg, "Comparison", &curves, fb).unwrap();
+        plot::plot2d(svg, &curves, opt.title("Comparison")).unwrap();
     }
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
 }
