@@ -566,9 +566,9 @@ fn curve_interval(v: &[f64; 4], norm: &NormFourBar, theta: f64) -> [[f64; 2]; 5]
     let [p0x, p0y, a, l1] = v;
     let NormFourBar { v: [l0, l2, l3, l4, g], inv } = norm;
     let j0 = [*p0x, *p0y];
-    let j1 = [p0x + l0 * a.cos(), p0y + l0 * a.sin()];
+    let j1 = angle(j0, *l0, *a);
     let j2 = angle(j0, *l1, theta);
-    let j3 = if (l0 - l2).abs() < f64::EPSILON && (1. - l3).abs() < f64::EPSILON {
+    let j3 = if (l0 - l2).abs() < f64::EPSILON && (l1 - l3).abs() < f64::EPSILON {
         // Special case
         parallel(j0, j2, j1)
     } else {
