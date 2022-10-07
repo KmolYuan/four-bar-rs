@@ -115,7 +115,7 @@ impl Codebook {
             .efd
             .axis_iter(Axis(0))
             .into_par_iter()
-            .map(|efd| target.manhattan(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
+            .map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .collect::<Vec<_>>();
         let mut ind = (0..self.size()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
@@ -124,7 +124,7 @@ impl Codebook {
             .map(|i| {
                 let view = self.fb.slice(s![i, ..]);
                 let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-                (dis[i], FourBar::from_transform(fb, target.as_geo().clone()))
+                (dis[i], FourBar::from_transform(fb, &target))
             })
             .collect()
     }
@@ -136,12 +136,12 @@ impl Codebook {
             .efd
             .axis_iter(Axis(0))
             .into_par_iter()
-            .map(|efd| target.manhattan(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
+            .map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .unwrap();
         let view = self.fb.slice(s![i, ..]);
         let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-        (err, FourBar::from_transform(fb, target.as_geo().clone()))
+        (err, FourBar::from_transform(fb, &target))
     }
 }

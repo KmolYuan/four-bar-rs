@@ -17,7 +17,7 @@ pub use crate::four_bar::*;
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
-pub use metaheuristics_nature as mh;
+pub extern crate metaheuristics_nature as mh;
 
 #[cfg(feature = "codebook")]
 pub mod codebook;

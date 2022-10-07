@@ -143,7 +143,7 @@ impl PathSyn {
     fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
         // Only parallelize here!!
         #[cfg(feature = "rayon")]
-        use crate::mh::rayon::prelude::*;
+        use mh::rayon::prelude::*;
         const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
         let fb = NormFourBar::try_from(&xs[..5]).unwrap();
         let fb = match self.mode {
@@ -168,8 +168,8 @@ impl PathSyn {
             .map(|(curve, fb)| {
                 let curve = self.mode.regularize(curve);
                 let efd = efd::Efd2::from_curve_harmonic(curve, self.efd.harmonic()).unwrap();
-                let fb = FourBar::from_transform(fb, efd.to(&self.efd));
-                (efd.manhattan(&self.efd), fb)
+                let fb = FourBar::from_transform(fb, &efd.to(&self.efd));
+                (efd.l1_norm(&self.efd), fb)
             })
         };
         match self.mode {

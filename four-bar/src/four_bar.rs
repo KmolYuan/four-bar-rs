@@ -1,4 +1,3 @@
-use crate::efd::Geo2Info;
 use std::{
     array::TryFromSliceError,
     f64::consts::{FRAC_PI_6, TAU},
@@ -26,7 +25,7 @@ macro_rules! impl_curve_method {
         /// Generator for curves in single thread.
         pub fn curves(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
             #[cfg(feature = "rayon")]
-            use crate::mh::rayon::prelude::*;
+            use mh::rayon::prelude::*;
             let interval = (end - start) / n as f64;
             #[cfg(feature = "rayon")]
             let iter = (0..n).into_par_iter();
@@ -42,7 +41,7 @@ macro_rules! impl_curve_method {
         /// Generator for coupler curve in single thread.
         pub fn curve(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
             #[cfg(feature = "rayon")]
-            use crate::mh::rayon::prelude::*;
+            use mh::rayon::prelude::*;
             let interval = (end - start) / n as f64;
             #[cfg(feature = "rayon")]
             let iter = (0..n).into_par_iter();
@@ -383,10 +382,10 @@ impl FourBar {
     }
 
     /// Transform a normalized four-bar linkage from a vector.
-    pub fn from_transform(norm: NormFourBar, geo: Geo2Info) -> Self {
-        let [p0x, p0y] = geo.center;
-        let v = [p0x, p0y, geo.rot, geo.scale];
-        Self { v, norm: norm * geo.scale }
+    pub fn from_transform(norm: NormFourBar, trans: &efd::Transform2) -> Self {
+        let [p0x, p0y] = trans.center;
+        let v = [p0x, p0y, trans.rot, trans.scale];
+        Self { v, norm: norm * trans.scale }
     }
 
     impl_parm_method! {
