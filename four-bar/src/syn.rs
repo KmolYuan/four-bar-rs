@@ -3,7 +3,7 @@
 //! ```
 //! use four_bar::{efd, mh, syn};
 //!
-//! # let curve = [[0., 0.], [1., 0.], [2., 0.]];
+//! # let curve = vec![[0., 0.], [1., 0.], [2., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
 //! # let n = 3;
