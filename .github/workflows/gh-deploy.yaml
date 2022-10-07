@@ -58,6 +58,7 @@ jobs:
         name: Native Build
         run: |
           cargo clippy -- -D warnings
+          cargo test -p four-bar
           cargo build --release
       - name: Pack
         uses: vimtor/action-zip@v1
