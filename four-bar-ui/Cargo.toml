@@ -1,6 +1,6 @@
 [package]
 name = "four-bar-ui"
-version = "2.0.1"
+version = "3.0.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 description = "Four🍀bar GUI is a simulator, a synthesizing tool for four-bar linkage mechanism."
@@ -19,7 +19,7 @@ default = ["native"]
 native = ["four-bar/codebook", "four-bar/rayon"]
 
 [dependencies]
-four-bar = { version = "2", path = "../four-bar", features = ["serde", "plot"] }
+four-bar = { version = "3", path = "../four-bar", features = ["serde", "plot"] }
 serde = { version = "1", features = ["derive"] }
 ron = "0.8"
 csv = "1"
