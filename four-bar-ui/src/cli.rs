@@ -6,7 +6,7 @@ mod syn;
 #[derive(Parser)]
 #[clap(name = "four-bar", version, author, about)]
 pub(crate) struct Entry {
-    /// Open file path
+    /// Default to startup GUI then open file paths
     files: Vec<PathBuf>,
     #[clap(subcommand)]
     cmd: Option<Cmd>,
