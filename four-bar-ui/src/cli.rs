@@ -20,25 +20,28 @@ enum Cmd {
         files: Vec<PathBuf>,
     },
     /// Synthesis function without GUI
-    Syn {
-        /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
-        files: Vec<PathBuf>,
-        /// Disable parallel for all task
-        #[clap(long)]
-        no_parallel: bool,
-        #[clap(flatten)]
-        syn: Syn,
-        /// Provide a pre-generated codebook database
-        #[clap(long, alias = "codebook", action = clap::ArgAction::Append)]
-        cb: Vec<PathBuf>,
-    },
+    Syn(Syn),
     /// Generate codebook
     #[clap(alias = "cb")]
     Codebook(Codebook),
 }
 
-#[derive(clap::Args, Clone)]
+#[derive(clap::Args)]
 struct Syn {
+    /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
+    files: Vec<PathBuf>,
+    /// Disable parallel for all task
+    #[clap(long)]
+    no_parallel: bool,
+    #[clap(flatten)]
+    cfg: SynCfg,
+    /// Provide a pre-generated codebook database
+    #[clap(long, alias = "cb", action = clap::ArgAction::Append)]
+    codebook: Vec<PathBuf>,
+}
+
+#[derive(clap::Args)]
+struct SynCfg {
     /// Number of the points (resolution) in curve production
     #[clap(short, long = "res", default_value_t = 90)]
     n: usize,
@@ -74,7 +77,7 @@ impl Entry {
         match entry.cmd {
             None => native(entry.files),
             Some(Cmd::Ui { files }) => native(files),
-            Some(Cmd::Syn { files, no_parallel, syn, cb }) => syn::syn(files, no_parallel, syn, cb),
+            Some(Cmd::Syn(syn)) => syn::syn(syn),
             Some(Cmd::Codebook(cb)) => codebook(cb),
         }
     }
@@ -98,11 +101,8 @@ fn native(files: Vec<PathBuf>) {
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
-    eframe::run_native(
-        "Four-bar",
-        opt,
-        Box::new(|ctx| crate::app::App::new(ctx, files)),
-    )
+    use crate::app::App;
+    eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files)))
 }
 
 fn codebook(cb: Codebook) {

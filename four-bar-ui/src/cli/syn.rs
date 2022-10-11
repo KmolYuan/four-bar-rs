@@ -1,4 +1,4 @@
-use super::Syn;
+use super::{Syn, SynCfg};
 use four_bar::{
     codebook::Codebook,
     curve, mh, plot,
@@ -42,13 +42,14 @@ struct Info<'a> {
     mode: Mode,
 }
 
-pub(super) fn syn(files: Vec<PathBuf>, no_parallel: bool, syn: Syn, cb: Vec<PathBuf>) {
+pub(super) fn syn(syn: Syn) {
+    let Syn { files, no_parallel, cfg, codebook } = syn;
     let mpb = MultiProgress::new();
-    if !cb.is_empty() {
+    if !codebook.is_empty() {
         mpb.println("Loading codebook database...").unwrap();
     }
-    let cb = load_codebook(cb).expect("Load codebook failed!");
-    let run = |file: PathBuf| run(&mpb, file, syn.clone(), &cb);
+    let cb = load_codebook(codebook).expect("Load codebook failed!");
+    let run = |file: PathBuf| run(&mpb, file, &cfg, &cb);
     if no_parallel {
         files.into_iter().for_each(run);
     } else {
@@ -63,10 +64,10 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Vec<Codebook>> {
         .collect()
 }
 
-fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
+fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &[Codebook]) {
     let file = file.canonicalize().unwrap();
-    let pb = mpb.add(ProgressBar::new(syn.gen));
-    let info = match info(&file, syn.n) {
+    let pb = mpb.add(ProgressBar::new(cfg.gen));
+    let info = match info(&file, cfg.n) {
         Ok(info) => info,
         Err(e) => {
             if !matches!(e, SynErr::Format) {
@@ -83,10 +84,10 @@ fn run(mpb: &MultiProgress, file: PathBuf, syn: Syn, cb: &[Codebook]) {
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(info.title.to_string());
     let root = file.parent().unwrap();
-    let res = if let Some(ans) = codebook(cb, &info, syn.pop) {
-        draw_ans(root, info.title, &info.target, ans, syn.n)
+    let res = if let Some(ans) = codebook(cb, &info, cfg.pop) {
+        draw_ans(root, info.title, &info.target, ans, cfg.n)
     } else {
-        optimize(&pb, info, root, syn)
+        optimize(&pb, info, root, cfg)
     };
     if let Err(e) = res {
         pb.finish_with_message(format!("| error: {e}"));
@@ -137,17 +138,16 @@ fn codebook(cb: &[Codebook], info: &Info, n: usize) -> Option<FourBar> {
         .map(|(_, fb)| fb)
 }
 
-fn optimize(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
+fn optimize(pb: &ProgressBar, info: Info, root: &Path, cfg: &SynCfg) -> AnyResult {
     let Info { target, title, mode } = info;
-    let Syn { n, gen, pop } = syn;
     let t0 = Instant::now();
     let func = PathSyn::from_curve_gate(&target, None, mode)
         .ok_or("invalid target")?
-        .resolution(n);
+        .resolution(cfg.n);
     let s = mh::Solver::build(mh::De::default())
-        .task(|ctx| ctx.gen == gen)
+        .task(|ctx| ctx.gen == cfg.gen)
         .callback(|ctx| pb.set_position(ctx.gen))
-        .pop_num(pop)
+        .pop_num(cfg.pop)
         .record(|ctx| ctx.best_f)
         .solve(func)?;
     let spent_time = Instant::now() - t0;
@@ -157,7 +157,7 @@ fn optimize(pb: &ProgressBar, info: Info, root: &Path, syn: Syn) -> AnyResult {
         plot::history(svg, s.report())?;
     }
     let ans = s.result();
-    draw_ans(root, title, &target, ans, n)?;
+    draw_ans(root, title, &target, ans, cfg.n)?;
     let harmonic = s.func().harmonic();
     pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
     Ok(())
