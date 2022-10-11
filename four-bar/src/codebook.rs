@@ -1,15 +1,26 @@
 //! Create a codebook database for four-bar linkages.
 use super::{efd::Efd2, mh::utility::prelude::*, FourBar, NormFourBar};
+use crate::syn::Mode;
+use efd::Transform;
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
 };
 
+fn stack<D>(stack: Mutex<Vec<Array<f64, D>>>, n: usize) -> Array<f64, D::Larger>
+where
+    D: Dimension,
+{
+    let stack = stack.into_inner().unwrap();
+    let arrays = stack.iter().take(n).map(Array::view).collect::<Vec<_>>();
+    ndarray::stack(Axis(0), &arrays).unwrap()
+}
+
 /// Codebook type.
 pub struct Codebook {
-    open: bool,
     fb: Array2<f64>,
     efd: Array3<f64>,
+    trans: Array2<f64>,
 }
 
 impl Codebook {
@@ -26,6 +37,7 @@ impl Codebook {
         let rng = Rng::new(None);
         let fb_stack = Mutex::new(Vec::with_capacity(n));
         let efd_stack = Mutex::new(Vec::with_capacity(n));
+        let trans_stack = Mutex::new(Vec::with_capacity(n));
         loop {
             let len = efd_stack.lock().unwrap().len();
             #[cfg(feature = "rayon")]
@@ -50,12 +62,19 @@ impl Codebook {
                         return;
                     }
                     if let Some([start, end]) = fb.angle_bound() {
-                        let curve = fb.curve(start, end, res);
+                        let mode = if open { Mode::Open } else { Mode::Close };
+                        let curve = mode.regularize(fb.curve(start, end, res));
                         let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
-                        let mut stack = fb_stack.lock().unwrap();
-                        stack.push(arr1(&fb.v));
-                        efd_stack.lock().unwrap().push(efd.unwrap());
-                        callback(stack.len());
+                        efd_stack.lock().unwrap().push(efd.coeffs().to_owned());
+                        {
+                            let trans = arr1(&[efd.rot, efd.scale, efd.center[0], efd.center[1]]);
+                            trans_stack.lock().unwrap().push(trans);
+                        }
+                        {
+                            let mut stack = fb_stack.lock().unwrap();
+                            stack.push(arr1(&fb.v));
+                            callback(stack.len());
+                        }
                     }
                 })
             });
@@ -63,36 +82,28 @@ impl Codebook {
                 break;
             }
         }
-        let fb = fb_stack.into_inner().unwrap();
-        let efd = efd_stack.into_inner().unwrap();
-        let arrays = fb.iter().take(n).map(Array::view).collect::<Vec<_>>();
-        let fb = ndarray::stack(Axis(0), &arrays).unwrap();
-        let arrays = efd.iter().take(n).map(Array::view).collect::<Vec<_>>();
-        let efd = ndarray::stack(Axis(0), &arrays).unwrap();
-        Self { open, fb, efd }
+        let fb = stack(fb_stack, n);
+        let efd = stack(efd_stack, n);
+        let trans = stack(trans_stack, n);
+        Self { fb, efd, trans }
     }
 
     /// Read codebook from NPZ file.
     pub fn read(r: impl Read + Seek) -> Result<Self, ndarray_npy::ReadNpzError> {
         let mut r = ndarray_npy::NpzReader::new(r)?;
-        let open = r.by_name::<ndarray::OwnedRepr<_>, _>("open")?[()];
         let fb = r.by_name("fb")?;
         let efd = r.by_name("efd")?;
-        Ok(Self { open, fb, efd })
+        let trans = r.by_name("trans")?;
+        Ok(Self { fb, efd, trans })
     }
 
     /// Write codebook to NPZ file.
     pub fn write(&self, w: impl Write + Seek) -> Result<(), ndarray_npy::WriteNpzError> {
         let mut w = ndarray_npy::NpzWriter::new_compressed(w);
-        w.add_array("open", &arr0(self.open))?;
         w.add_array("fb", &self.fb)?;
         w.add_array("efd", &self.efd)?;
+        w.add_array("trans", &self.trans)?;
         w.finish().map(|_| ())
-    }
-
-    /// Return true if the codebook saves open curves.
-    pub fn is_open(&self) -> bool {
-        self.open
     }
 
     /// Total size.
@@ -124,7 +135,11 @@ impl Codebook {
             .map(|i| {
                 let view = self.fb.slice(s![i, ..]);
                 let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-                (dis[i], FourBar::from_transform(fb, &target))
+                let trans = {
+                    let t = self.trans.slice(s![i, ..]);
+                    Transform { rot: t[0], scale: t[1], center: [t[2], t[3]] }
+                };
+                (dis[i], FourBar::from_transform(fb, &trans.to(&target)))
             })
             .collect()
     }

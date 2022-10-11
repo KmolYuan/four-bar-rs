@@ -129,11 +129,11 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
         })
 }
 
-fn codebook(cb: &[Codebook], info: &Info, n: usize) -> Option<FourBar> {
+fn codebook(cb: &[Codebook], info: &Info, _n: usize) -> Option<FourBar> {
     use four_bar::mh::rayon::prelude::*;
+    // TODO: use `n`
     cb.into_par_iter()
-        .filter(|cb| info.mode.is_target_open() == cb.is_open())
-        .flat_map(|cb| cb.fetch(&info.target, n))
+        .map(|cb| cb.fetch_1st(&info.target))
         .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
         .map(|(_, fb)| fb)
 }
