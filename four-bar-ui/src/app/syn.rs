@@ -41,7 +41,7 @@ where
     use std::time::Instant;
     let start_time = Instant::now();
     let SynConfig { method: _, gen, pop, mode, target } = config;
-    four_bar::mh::Solver::build(setting)
+    let (_, fb) = four_bar::mh::Solver::build(setting)
         .pop_num(pop)
         .task(|ctx| ctx.gen == gen || !task.start.load(Ordering::Relaxed))
         .callback(|ctx| {
@@ -52,7 +52,8 @@ where
         })
         .solve(syn::PathSyn::from_curve_gate(target, None, mode).unwrap())
         .unwrap()
-        .result()
+        .result();
+    fb
 }
 
 #[derive(Deserialize, Serialize, Default)]

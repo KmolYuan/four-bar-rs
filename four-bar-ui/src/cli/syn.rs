@@ -156,7 +156,7 @@ fn optimize(pb: &ProgressBar, info: Info, root: &Path, cfg: &SynCfg) -> AnyResul
         let svg = plot::SVGBackend::new(&path, (800, 600));
         plot::history(svg, s.report())?;
     }
-    let ans = s.result();
+    let (_, ans) = s.result();
     draw_ans(root, title, &target, ans, cfg.n)?;
     let harmonic = s.func().harmonic();
     pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));

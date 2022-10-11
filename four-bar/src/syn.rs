@@ -17,7 +17,7 @@
 //!     .solve(func)
 //!     .unwrap();
 //! ```
-use crate::{curve, efd, mh::ObjFunc, FourBar, NormFourBar};
+use crate::{curve, efd, mh, FourBar, NormFourBar};
 use std::f64::consts::{FRAC_PI_8, TAU};
 
 type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
@@ -139,8 +139,24 @@ impl PathSyn {
     pub fn harmonic(&self) -> usize {
         self.efd.harmonic()
     }
+}
 
-    fn domain_search(&self, xs: &[f64]) -> (f64, FourBar) {
+impl mh::Bounded for PathSyn {
+    #[inline]
+    fn bound(&self) -> &[[f64; 2]] {
+        if matches!(self.mode, Mode::Partial) {
+            &BOUND
+        } else {
+            &BOUND[..5]
+        }
+    }
+}
+
+impl mh::ObjFactory for PathSyn {
+    type Product = (f64, FourBar);
+    type Eval = f64;
+
+    fn produce(&self, xs: &[f64]) -> Self::Product {
         // Only parallelize here!!
         #[cfg(feature = "rayon")]
         use mh::rayon::prelude::*;
@@ -191,26 +207,8 @@ impl PathSyn {
             }
         }
     }
-}
 
-impl ObjFunc for PathSyn {
-    type Result = FourBar;
-    type Fitness = f64;
-
-    fn fitness(&self, xs: &[f64], _: f64) -> Self::Fitness {
-        self.domain_search(xs).0
-    }
-
-    fn result(&self, xs: &[f64]) -> Self::Result {
-        self.domain_search(xs).1
-    }
-
-    #[inline]
-    fn bound(&self) -> &[[f64; 2]] {
-        if matches!(self.mode, Mode::Partial) {
-            &BOUND
-        } else {
-            &BOUND[..5]
-        }
+    fn evaluate(&self, (f, _): Self::Product) -> Self::Eval {
+        f
     }
 }
