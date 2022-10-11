@@ -33,6 +33,7 @@ enum Cmd {
         cb: Vec<PathBuf>,
     },
     /// Generate codebook
+    #[clap(alias = "cb")]
     Codebook(Codebook),
 }
 
