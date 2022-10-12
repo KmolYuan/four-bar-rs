@@ -115,7 +115,7 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
         .and_then(std::ffi::OsStr::to_str)
         .ok_or(SynErr::Format)
         .and_then(|title| {
-            let mode = title
+            title
                 .rsplit('.')
                 .next()
                 .and_then(|s| match s {
@@ -124,8 +124,11 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
                     "open" => Some(Mode::Open),
                     _ => None,
                 })
-                .ok_or(SynErr::Format)?;
-            Ok(Info { target, title, mode })
+                .map(|mode| {
+                    let target = mode.regularize(target);
+                    Info { target, title, mode }
+                })
+                .ok_or(SynErr::Format)
         })
 }
 

@@ -1,7 +1,7 @@
 //! Create a codebook database for four-bar linkages.
 use super::{efd::Efd2, mh::utility::prelude::*, FourBar, NormFourBar};
-use crate::syn::Mode;
-use efd::Transform;
+use crate::{curve, syn::Mode};
+use efd::Transform2;
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
@@ -61,9 +61,12 @@ impl Codebook {
                     if open != fb.ty().is_open_curve() {
                         return;
                     }
-                    if let Some([start, end]) = fb.angle_bound() {
+                    if let Some(curve) = fb
+                        .angle_bound()
+                        .map(|[t1, t2]| curve::get_valid_part(fb.curve(t1, t2, res)))
+                    {
                         let mode = if open { Mode::Open } else { Mode::Close };
-                        let curve = mode.regularize(fb.curve(start, end, res));
+                        let curve = mode.regularize(curve);
                         let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
                         efd_stack.lock().unwrap().push(efd.coeffs().to_owned());
                         {
@@ -132,15 +135,7 @@ impl Codebook {
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
             .take(n)
-            .map(|i| {
-                let view = self.fb.slice(s![i, ..]);
-                let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-                let trans = {
-                    let t = self.trans.slice(s![i, ..]);
-                    Transform { rot: t[0], scale: t[1], center: [t[2], t[3]] }
-                };
-                (dis[i], FourBar::from_transform(fb, &trans.to(&target)))
-            })
+            .map(|i| (dis[i], self.pick(i, &target)))
             .collect()
     }
 
@@ -155,8 +150,16 @@ impl Codebook {
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .unwrap();
+        (err, self.pick(i, &target))
+    }
+
+    fn pick(&self, i: usize, target: &Transform2) -> FourBar {
         let view = self.fb.slice(s![i, ..]);
         let fb = NormFourBar::try_from(view.as_slice().unwrap()).unwrap();
-        (err, FourBar::from_transform(fb, &target))
+        let trans = {
+            let t = self.trans.slice(s![i, ..]);
+            Transform2 { rot: t[0], scale: t[1], center: [t[2], t[3]] }
+        };
+        FourBar::from_transform(fb, &trans.to(target))
     }
 }
