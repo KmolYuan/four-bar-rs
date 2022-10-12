@@ -53,13 +53,13 @@ pub(super) fn syn(syn: Syn) {
     }
 }
 
-fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Vec<Codebook>> {
+fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
     cb.into_iter()
         .map(|path| Ok(Codebook::read(std::fs::File::open(path)?)?))
         .collect()
 }
 
-fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &[Codebook]) {
+fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     let file = file.canonicalize().unwrap();
     let pb = mpb.add(ProgressBar::new(cfg.gen));
     let info = match info(&file, cfg.n) {
@@ -79,7 +79,8 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &[Codebook]) {
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(info.title.to_string());
     let root = file.parent().unwrap();
-    let res = if let Some(ans) = codebook(cb, &info, cfg.pop) {
+    // TODO: use optimization after codebook
+    let res = if let Some((_, ans)) = cb.fetch_1st(&info.target) {
         draw_ans(root, info.title, &info.target, ans, cfg.n)
     } else {
         optimize(&pb, info, root, cfg)
@@ -125,15 +126,6 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
                 })
                 .ok_or(SynErr::Format)
         })
-}
-
-fn codebook(cb: &[Codebook], info: &Info, _n: usize) -> Option<FourBar> {
-    use four_bar::mh::rayon::prelude::*;
-    // TODO: use `n`
-    cb.into_par_iter()
-        .map(|cb| cb.fetch_1st(&info.target))
-        .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-        .map(|(_, fb)| fb)
 }
 
 fn optimize(pb: &ProgressBar, info: Info, root: &Path, cfg: &SynCfg) -> AnyResult {

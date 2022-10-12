@@ -23,6 +23,16 @@ pub struct Codebook {
     trans: Array2<f64>,
 }
 
+impl Default for Codebook {
+    fn default() -> Self {
+        Self {
+            fb: Array2::zeros([0, 5]),
+            efd: Array3::zeros([0, 0, 4]),
+            trans: Array2::zeros([0, 4]),
+        }
+    }
+}
+
 impl Codebook {
     /// Takes time to generate codebook data.
     pub fn make(open: bool, n: usize, res: usize, harmonic: usize) -> Self {
@@ -119,7 +129,7 @@ impl Codebook {
     /// Get the n-nearest four-bar linkages from a target curve.
     pub fn fetch(&self, target: &[[f64; 2]], n: usize) -> Vec<(f64, FourBar)> {
         if n == 1 {
-            return vec![self.fetch_1st(target)];
+            return self.fetch_1st(target).into_iter().collect();
         }
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
         let dis = self
@@ -137,17 +147,15 @@ impl Codebook {
     }
 
     /// Get the nearest four-bar linkage from a target curve.
-    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> (f64, FourBar) {
+    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> Option<(f64, FourBar)> {
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
-        let (i, err) = self
-            .efd
+        self.efd
             .axis_iter(Axis(0))
             .into_par_iter()
             .map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .unwrap();
-        (err, self.pick(i, &target))
+            .map(|(i, err)| (err, self.pick(i, &target)))
     }
 
     fn pick(&self, i: usize, target: &Transform2) -> FourBar {
@@ -158,5 +166,22 @@ impl Codebook {
             Transform2 { rot: t[0], scale: t[1], center: [t[2], t[3]] }
         };
         FourBar::from_transform(fb, &trans.to(target))
+    }
+
+    /// Merge two data to one codebook.
+    pub fn merge(&self, rhs: &Self) -> Self {
+        Self {
+            fb: ndarray::concatenate![Axis(0), self.fb, rhs.fb],
+            efd: ndarray::concatenate![Axis(0), self.efd, rhs.efd],
+            trans: ndarray::concatenate![Axis(0), self.trans, rhs.trans],
+        }
+    }
+}
+
+impl FromIterator<Codebook> for Codebook {
+    fn from_iter<T: IntoIterator<Item = Codebook>>(iter: T) -> Self {
+        iter.into_iter()
+            .reduce(|a, b| a.merge(&b))
+            .unwrap_or_default()
     }
 }
