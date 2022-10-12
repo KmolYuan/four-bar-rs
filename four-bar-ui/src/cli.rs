@@ -51,6 +51,9 @@ struct SynCfg {
     /// Number of population
     #[clap(short, long, default_value_t = 400)]
     pop: usize,
+    /// If codebook is enabled, the fetch number
+    #[clap(short, default_value_t = 20)]
+    k: usize,
 }
 
 #[derive(clap::Args)]

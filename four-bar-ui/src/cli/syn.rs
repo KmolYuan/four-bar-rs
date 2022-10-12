@@ -62,7 +62,7 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
 fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     let file = file.canonicalize().unwrap();
     let pb = mpb.add(ProgressBar::new(cfg.gen));
-    let info = match info(&file, cfg.n) {
+    let Info { target, title, mode } = match info(&file, cfg.n) {
         Ok(info) => info,
         Err(e) => {
             if !matches!(e, SynErr::Format) {
@@ -77,15 +77,43 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     };
     const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} {msg}";
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
-    pb.set_prefix(info.title.to_string());
-    let root = file.parent().unwrap();
-    // TODO: use optimization after codebook
-    let res = if let Some((_, ans)) = cb.fetch_1st(&info.target) {
-        draw_ans(root, info.title, &info.target, ans, cfg.n)
+    pb.set_prefix(title.to_string());
+    let mut s = mh::Solver::build(mh::De::default());
+    if let Some(candi) = matches!(mode, syn::Mode::Close | syn::Mode::Open)
+        .then(|| cb.fetch(&target, cfg.k))
+        .filter(|candi| !candi.is_empty())
+    {
+        let pool = candi.iter().map(|(_, fb)| fb.v).collect::<Vec<_>>();
+        let fitness = candi.iter().map(|(f, _)| *f).collect();
+        s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
+        s = s.pop_num(cfg.k);
     } else {
-        optimize(&pb, info, root, cfg)
+        s = s.pop_num(cfg.pop);
+    }
+    let f = || -> AnyResult {
+        let t0 = Instant::now();
+        let func = syn::PathSyn::from_curve_gate(&target, None, mode)
+            .ok_or("invalid target")?
+            .resolution(cfg.n);
+        let s = s
+            .task(|ctx| ctx.gen == cfg.gen)
+            .callback(|ctx| pb.set_position(ctx.gen))
+            .record(|ctx| ctx.best_f)
+            .solve(func)?;
+        let spent_time = Instant::now() - t0;
+        let root = file.parent().unwrap();
+        {
+            let path = root.join(format!("{title}_history.svg"));
+            let svg = plot::SVGBackend::new(&path, (800, 600));
+            plot::history(svg, s.report())?;
+        }
+        let (_, ans) = s.result();
+        draw_ans(root, title, &target, ans, cfg.n)?;
+        let harmonic = s.func().harmonic();
+        pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
+        Ok(())
     };
-    if let Err(e) = res {
+    if let Err(e) = f() {
         pb.finish_with_message(format!("| error: {e}"));
     }
 }
@@ -126,31 +154,6 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
                 })
                 .ok_or(SynErr::Format)
         })
-}
-
-fn optimize(pb: &ProgressBar, info: Info, root: &Path, cfg: &SynCfg) -> AnyResult {
-    let Info { target, title, mode } = info;
-    let t0 = Instant::now();
-    let func = syn::PathSyn::from_curve_gate(&target, None, mode)
-        .ok_or("invalid target")?
-        .resolution(cfg.n);
-    let s = mh::Solver::build(mh::De::default())
-        .task(|ctx| ctx.gen == cfg.gen)
-        .callback(|ctx| pb.set_position(ctx.gen))
-        .pop_num(cfg.pop)
-        .record(|ctx| ctx.best_f)
-        .solve(func)?;
-    let spent_time = Instant::now() - t0;
-    {
-        let path = root.join(format!("{title}_history.svg"));
-        let svg = plot::SVGBackend::new(&path, (800, 600));
-        plot::history(svg, s.report())?;
-    }
-    let (_, ans) = s.result();
-    draw_ans(root, title, &target, ans, cfg.n)?;
-    let harmonic = s.func().harmonic();
-    pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
-    Ok(())
 }
 
 fn draw_ans(root: &Path, title: &str, target: &[[f64; 2]], ans: FourBar, n: usize) -> AnyResult {
