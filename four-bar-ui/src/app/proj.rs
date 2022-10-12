@@ -4,7 +4,7 @@ use super::{
 };
 use crate::csv::dump_csv;
 use eframe::egui::*;
-use four_bar::{curve, FourBar};
+use four_bar::FourBar;
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,
@@ -288,13 +288,12 @@ impl ProjInner {
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
         fn get_curve(pivot: Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
-            let curve = fb.curves(0., TAU, n).into_iter();
-            let curve = match pivot {
+            let curve = fb.curves(n).unwrap_or_default().into_iter();
+            match pivot {
                 Pivot::Driver => curve.map(|[c, _, _]| c).collect::<Vec<_>>(),
                 Pivot::Follower => curve.map(|[_, c, _]| c).collect::<Vec<_>>(),
                 Pivot::Coupler => curve.map(|[_, _, c]| c).collect::<Vec<_>>(),
-            };
-            curve::get_valid_part(curve)
+            }
         }
         ui.heading("Curve");
         ui.horizontal(|ui| {
@@ -387,11 +386,7 @@ impl ProjInner {
         // Recalculation
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angles.theta2);
-        self.cache.curves = if let Some([start, _]) = self.fb.angle_bound() {
-            self.fb.curves(start, start + TAU, n)
-        } else {
-            Default::default()
-        };
+        self.cache.curves = self.fb.curves(n).unwrap_or_default();
         let step = TAU / n as f64;
         self.cache.dynamics = self
             .cache

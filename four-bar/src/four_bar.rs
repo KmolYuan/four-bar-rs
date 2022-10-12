@@ -22,36 +22,54 @@ macro_rules! impl_curve_method {
             curve_interval($v, $norm, theta)
         }
 
-        /// Generator for curves in single thread.
-        pub fn curves(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
-            #[cfg(feature = "rayon")]
-            use mh::rayon::prelude::*;
+        /// Generator for curves in specified angle.
+        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
             let interval = (end - start) / n as f64;
-            #[cfg(feature = "rayon")]
-            let iter = (0..n).into_par_iter();
-            #[cfg(not(feature = "rayon"))]
-            let iter = 0..n;
-            iter
+            let mut iter = (0..n)
                 .map(move |n| start + n as f64 * interval)
                 .map(|theta| curve_interval($v, $norm, theta))
-                .map(|[.., j2, j3, j4]| [j2, j3, j4])
-                .collect()
+                .map(|[.., j2, j3, j4]| [j2, j3, j4]);
+            let mut last = Vec::new();
+            while iter.len() > 0 {
+                let v = iter
+                    .by_ref()
+                    .take_while(|c| c.iter().flatten().all(|x| x.is_finite()))
+                    .collect::<Vec<_>>();
+                if v.len() > last.len() {
+                    last = v;
+                }
+            }
+            last
         }
 
-        /// Generator for coupler curve in single thread.
-        pub fn curve(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
-            #[cfg(feature = "rayon")]
-            use mh::rayon::prelude::*;
+        /// Generator for coupler curve in specified angle.
+        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
             let interval = (end - start) / n as f64;
-            #[cfg(feature = "rayon")]
-            let iter = (0..n).into_par_iter();
-            #[cfg(not(feature = "rayon"))]
-            let iter = 0..n;
-            iter
+            let mut iter = (0..n)
                 .map(move |n| start + n as f64 * interval)
                 .map(|theta| curve_interval($v, $norm, theta))
-                .map(|[.., c]| c)
-                .collect()
+                .map(|[.., c]| c);
+            let mut last = Vec::new();
+            while iter.len() > 0 {
+                let v = iter
+                    .by_ref()
+                    .take_while(|c| c.iter().all(|x| x.is_finite()))
+                    .collect::<Vec<_>>();
+                if v.len() > last.len() {
+                    last = v;
+                }
+            }
+            last
+        }
+
+        /// Generator for curves.
+        pub fn curves(&$self, n: usize) -> Option<Vec<[[f64; 2]; 3]>> {
+            $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, n))
+        }
+
+        /// Generator for coupler curve.
+        pub fn curve(&$self, n: usize) -> Option<Vec<[f64; 2]>> {
+            $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, n))
         }
     };
 }

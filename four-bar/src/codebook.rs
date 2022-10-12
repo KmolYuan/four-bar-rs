@@ -1,7 +1,7 @@
 //! Create a codebook database for four-bar linkages.
-use super::{efd::Efd2, mh::utility::prelude::*, FourBar, NormFourBar};
-use crate::{curve, syn::Mode};
-use efd::Transform2;
+use super::{syn::Mode, FourBar, NormFourBar};
+use efd::{Efd2, Transform2};
+use mh::utility::prelude::*;
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
@@ -61,10 +61,7 @@ impl Codebook {
                     if open != fb.ty().is_open_curve() {
                         return;
                     }
-                    if let Some(curve) = fb
-                        .angle_bound()
-                        .map(|[t1, t2]| curve::get_valid_part(fb.curve(t1, t2, res)))
-                    {
+                    if let Some(curve) = fb.curve(res) {
                         let mode = if open { Mode::Open } else { Mode::Close };
                         let curve = mode.regularize(curve);
                         let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();

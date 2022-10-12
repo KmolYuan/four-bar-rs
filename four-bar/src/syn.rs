@@ -177,8 +177,8 @@ impl mh::ObjFactory for PathSyn {
             let iter = [false, true].into_iter();
             iter.map(move |inv| {
                 let fb = fb.with_inv(inv);
-                let curve = fb.curve(t1, t2, self.n);
-                (curve::get_valid_part(curve), fb)
+                let curve = fb.curve_in(t1, t2, self.n);
+                (curve, fb)
             })
             .filter(|(curve, _)| curve.len() > 1)
             .map(|(curve, fb)| {

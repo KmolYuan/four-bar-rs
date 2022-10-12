@@ -1,10 +1,5 @@
 use super::{Syn, SynCfg};
-use four_bar::{
-    codebook::Codebook,
-    curve, mh, plot,
-    syn::{Mode, PathSyn},
-    FourBar,
-};
+use four_bar::{codebook::Codebook, mh, plot, syn, FourBar};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     path::{Path, PathBuf},
@@ -39,7 +34,7 @@ impl std::fmt::Display for SynErr {
 struct Info<'a> {
     target: Vec<[f64; 2]>,
     title: &'a str,
-    mode: Mode,
+    mode: syn::Mode,
 }
 
 pub(super) fn syn(syn: Syn) {
@@ -104,7 +99,7 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
                 let fb = std::fs::read_to_string(path)
                     .map_err(|_| SynErr::Io)
                     .and_then(|s| ron::from_str::<FourBar>(&s).map_err(|_| SynErr::Ser))?;
-                curve::from_four_bar(fb, n).ok_or(SynErr::Linkage)
+                fb.curve(n).ok_or(SynErr::Linkage)
             }
             "csv" | "txt" => std::fs::read_to_string(path)
                 .map_err(|_| SynErr::Io)
@@ -119,9 +114,9 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
                 .rsplit('.')
                 .next()
                 .and_then(|s| match s {
-                    "close" => Some(Mode::Close),
-                    "partial" => Some(Mode::Partial),
-                    "open" => Some(Mode::Open),
+                    "close" => Some(syn::Mode::Close),
+                    "partial" => Some(syn::Mode::Partial),
+                    "open" => Some(syn::Mode::Open),
                     _ => None,
                 })
                 .map(|mode| {
@@ -144,7 +139,7 @@ fn codebook(cb: &[Codebook], info: &Info, _n: usize) -> Option<FourBar> {
 fn optimize(pb: &ProgressBar, info: Info, root: &Path, cfg: &SynCfg) -> AnyResult {
     let Info { target, title, mode } = info;
     let t0 = Instant::now();
-    let func = PathSyn::from_curve_gate(&target, None, mode)
+    let func = syn::PathSyn::from_curve_gate(&target, None, mode)
         .ok_or("invalid target")?
         .resolution(cfg.n);
     let s = mh::Solver::build(mh::De::default())
@@ -171,8 +166,7 @@ fn draw_ans(root: &Path, title: &str, target: &[[f64; 2]], ans: FourBar, n: usiz
         let path = root.join(format!("{title}_result.ron"));
         std::fs::write(path, ron::to_string(&ans)?)?;
     }
-    let [t1, t2] = ans.angle_bound().expect("solved error");
-    let curve = curve::get_valid_part(ans.curve(t1, t2, n));
+    let curve = ans.curve(n).expect("solved error");
     let curves = [("Target", target), ("Optimized", &curve)];
     {
         let path = root.join(format!("{title}_linkage.svg"));
