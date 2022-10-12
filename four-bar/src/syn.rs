@@ -24,7 +24,8 @@ type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
 // π/16
 const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
-const BOUND: [[f64; 2]; 7] = [
+/// Boundary of the objective variables.
+pub const BOUND: [[f64; 2]; 7] = [
     [1e-4, 10.],
     [1e-4, 10.],
     [1e-4, 10.],
@@ -184,7 +185,7 @@ impl mh::ObjFactory for PathSyn {
             .map(|(curve, fb)| {
                 let curve = self.mode.regularize(curve);
                 let efd = efd::Efd2::from_curve_harmonic(curve, self.efd.harmonic()).unwrap();
-                let fb = FourBar::from_transform(fb, &efd.to(&self.efd));
+                let fb = FourBar::from_trans(fb, &efd.to(&self.efd));
                 (efd.l1_norm(&self.efd), fb)
             })
         };
