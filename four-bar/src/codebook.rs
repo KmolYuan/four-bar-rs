@@ -103,20 +103,25 @@ impl Codebook {
     /// Read codebook from NPZ file.
     pub fn read(r: impl Read + Seek) -> Result<Self, ndarray_npy::ReadNpzError> {
         let mut r = ndarray_npy::NpzReader::new(r)?;
-        let fb = r.by_name("fb")?;
-        let inv = r.by_name("inv")?;
-        let efd = r.by_name("efd")?;
-        let trans = r.by_name("trans")?;
-        Ok(Self { fb, inv, efd, trans })
+        macro_rules! impl_read {
+            ($r:ident, $($field:ident),+) => {{
+                $(let $field = $r.by_name(stringify!($field))?;)+
+                Ok(Self { $($field),+ })
+            }};
+        }
+        impl_read!(r, fb, inv, efd, trans)
     }
 
     /// Write codebook to NPZ file.
     pub fn write(&self, w: impl Write + Seek) -> Result<(), ndarray_npy::WriteNpzError> {
         let mut w = ndarray_npy::NpzWriter::new_compressed(w);
-        w.add_array("fb", &self.fb)?;
-        w.add_array("inv", &self.inv)?;
-        w.add_array("efd", &self.efd)?;
-        w.add_array("trans", &self.trans)?;
+        macro_rules! impl_write {
+            ($w:ident, $($field:ident),+) => {
+                let Self { $($field),+ } = self;
+                $($w.add_array(stringify!($field), $field)?;)+
+            };
+        }
+        impl_write!(w, fb, inv, efd, trans);
         w.finish().map(|_| ())
     }
 
