@@ -68,26 +68,23 @@ impl Codebook {
                     .collect::<Vec<_>>();
                 [false, true].map(|inv| NormFourBar::try_from_slice(&v, inv).unwrap())
             })
-            .for_each(|fb| {
-                let fb = match open {
-                    false => fb.to_close_curve(),
-                    true => fb.to_open_curve(),
-                };
-                if open != fb.ty().is_open_curve() {
-                    return;
-                }
-                if let Some(curve) = fb.curve(res) {
-                    let mode = if open { Mode::Open } else { Mode::Close };
-                    let curve = mode.regularize(curve);
-                    let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
-                    efd_stack.lock().unwrap().push(efd.coeffs().to_owned());
-                    let trans = arr1(&[efd.rot, efd.scale, efd.center[0], efd.center[1]]);
-                    trans_stack.lock().unwrap().push(trans);
-                    let mut stack = fb_stack.lock().unwrap();
-                    stack.push(arr1(&fb.v));
-                    callback(stack.len());
-                    inv_stack.lock().unwrap().push(arr0(fb.inv()));
-                }
+            .map(|fb| match open {
+                false => fb.to_close_curve(),
+                true => fb.to_open_curve(),
+            })
+            .filter(|fb| open == fb.ty().is_open_curve())
+            .filter_map(|fb| fb.curve(res).map(|c| (c, fb)))
+            .for_each(|(curve, fb)| {
+                let mode = if open { Mode::Open } else { Mode::Close };
+                let curve = mode.regularize(curve);
+                let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
+                efd_stack.lock().unwrap().push(efd.coeffs().to_owned());
+                let trans = arr1(&[efd.rot, efd.scale, efd.center[0], efd.center[1]]);
+                trans_stack.lock().unwrap().push(trans);
+                let mut stack = fb_stack.lock().unwrap();
+                stack.push(arr1(&fb.v));
+                callback(stack.len());
+                inv_stack.lock().unwrap().push(arr0(fb.inv()));
             });
             if efd_stack.lock().unwrap().len() >= n {
                 break;
