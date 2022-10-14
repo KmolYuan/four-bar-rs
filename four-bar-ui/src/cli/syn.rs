@@ -80,10 +80,10 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     pb.set_prefix(title.to_string());
     let mut s = mh::Solver::build(mh::De::default());
     if let Some(candi) = matches!(mode, syn::Mode::Close | syn::Mode::Open)
-        .then(|| cb.fetch(&target, cfg.k))
+        .then(|| cb.fetch_raw(&target, cfg.k))
         .filter(|candi| !candi.is_empty())
     {
-        let pool = candi.iter().map(|(_, fb)| fb.v).collect::<Vec<_>>();
+        let pool = candi.iter().map(|(_, fb)| fb.vec()).collect::<Vec<_>>();
         let fitness = candi.iter().map(|(f, _)| *f).collect();
         s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
         s = s.pop_num(cfg.k);

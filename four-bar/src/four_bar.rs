@@ -208,7 +208,7 @@ impl FourBarTy {
 #[derive(Clone, PartialEq, Debug)]
 pub struct NormFourBar {
     /// Vector representation
-    pub v: [f64; 5],
+    v: [f64; 5],
     inv: bool,
 }
 
@@ -287,6 +287,11 @@ impl NormFourBar {
     /// Modify the value.
     pub fn inv_mut(&mut self) -> &mut bool {
         &mut self.inv
+    }
+
+    /// Get the vector representation of the normalized linkage.
+    pub fn vec(&self) -> [f64; 5] {
+        self.v
     }
 
     /// Return true if the linkage length is valid.

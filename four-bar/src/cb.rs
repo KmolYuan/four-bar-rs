@@ -82,7 +82,7 @@ impl Codebook {
                 let trans = arr1(&[efd.rot, efd.scale, efd.center[0], efd.center[1]]);
                 trans_stack.lock().unwrap().push(trans);
                 let mut stack = fb_stack.lock().unwrap();
-                stack.push(arr1(&fb.v));
+                stack.push(arr1(&fb.vec()));
                 callback(stack.len());
                 inv_stack.lock().unwrap().push(arr0(fb.inv()));
             });
@@ -134,8 +134,27 @@ impl Codebook {
 
     /// Get the n-nearest four-bar linkages from a target curve.
     pub fn fetch(&self, target: &[[f64; 2]], n: usize) -> Vec<(f64, FourBar)> {
+        self.fetch_inner(target, n, true)
+    }
+
+    /// Get the nearest four-bar linkage from a target curve.
+    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> Option<(f64, FourBar)> {
+        self.fetch_1st_inner(target, true)
+    }
+
+    /// Fetch without applying transformation.
+    pub fn fetch_raw(&self, target: &[[f64; 2]], n: usize) -> Vec<(f64, FourBar)> {
+        self.fetch_inner(target, n, false)
+    }
+
+    /// Fetch nearest without applying transformation.
+    pub fn fetch_1st_raw(&self, target: &[[f64; 2]]) -> Option<(f64, FourBar)> {
+        self.fetch_1st_inner(target, false)
+    }
+
+    fn fetch_inner(&self, target: &[[f64; 2]], n: usize, trans: bool) -> Vec<(f64, FourBar)> {
         if n == 1 {
-            return self.fetch_1st(target).into_iter().collect();
+            return self.fetch_1st_inner(target, trans).into_iter().collect();
         }
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
         let dis = self
@@ -148,12 +167,11 @@ impl Codebook {
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
             .take(n)
-            .map(|i| (dis[i], self.pick(i, &target)))
+            .map(|i| (dis[i], self.pick(i, &target, trans)))
             .collect()
     }
 
-    /// Get the nearest four-bar linkage from a target curve.
-    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> Option<(f64, FourBar)> {
+    fn fetch_1st_inner(&self, target: &[[f64; 2]], trans: bool) -> Option<(f64, FourBar)> {
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
         self.efd
             .axis_iter(Axis(0))
@@ -161,18 +179,22 @@ impl Codebook {
             .map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(i, err)| (err, self.pick(i, &target)))
+            .map(|(i, err)| (err, self.pick(i, &target, trans)))
     }
 
-    fn pick(&self, i: usize, target: &Transform2) -> FourBar {
+    fn pick(&self, i: usize, target: &Transform2, trans: bool) -> FourBar {
         let view = self.fb.slice(s![i, ..]);
         let inv = self.inv[i];
         let fb = NormFourBar::try_from_slice(view.as_slice().unwrap(), inv).unwrap();
-        let trans = {
-            let t = self.trans.slice(s![i, ..]);
-            Transform2 { rot: t[0], scale: t[1], center: [t[2], t[3]] }
-        };
-        FourBar::from_trans(fb, &trans.to(target))
+        if trans {
+            let trans = {
+                let t = self.trans.slice(s![i, ..]);
+                Transform2 { rot: t[0], scale: t[1], center: [t[2], t[3]] }
+            };
+            FourBar::from_trans(fb, &trans.to(target))
+        } else {
+            fb.into()
+        }
     }
 
     /// Merge two data to one codebook.
