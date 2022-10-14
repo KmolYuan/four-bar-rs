@@ -41,12 +41,12 @@ impl Default for Codebook {
 
 impl Codebook {
     /// Takes time to generate codebook data.
-    pub fn make(open: bool, n: usize, res: usize, harmonic: usize) -> Self {
-        Self::make_with(open, n, res, harmonic, |_| ())
+    pub fn make(is_open: bool, n: usize, res: usize, harmonic: usize) -> Self {
+        Self::make_with(is_open, n, res, harmonic, |_| ())
     }
 
     /// Takes time to generate codebook data with a callback function.
-    pub fn make_with<C>(open: bool, n: usize, res: usize, harmonic: usize, callback: C) -> Self
+    pub fn make_with<C>(is_open: bool, n: usize, res: usize, harmonic: usize, callback: C) -> Self
     where
         C: Fn(usize) + Sync + Send,
     {
@@ -68,14 +68,14 @@ impl Codebook {
                     .collect::<Vec<_>>();
                 [false, true].map(|inv| NormFourBar::try_from_slice(&v, inv).unwrap())
             })
-            .map(|fb| match open {
+            .map(|fb| match is_open {
                 false => fb.to_close_curve(),
                 true => fb.to_open_curve(),
             })
-            .filter(|fb| open == fb.ty().is_open_curve())
+            .filter(|fb| is_open == fb.ty().is_open_curve())
             .filter_map(|fb| fb.curve(res).map(|c| (c, fb)))
             .for_each(|(curve, fb)| {
-                let mode = if open { Mode::Open } else { Mode::Close };
+                let mode = if is_open { Mode::Open } else { Mode::Close };
                 let curve = mode.regularize(curve);
                 let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
                 efd_stack.lock().unwrap().push(efd.coeffs().to_owned());

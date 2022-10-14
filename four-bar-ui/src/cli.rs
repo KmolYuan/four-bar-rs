@@ -62,7 +62,7 @@ struct Codebook {
     file: PathBuf,
     /// Generate for open curve
     #[clap(long)]
-    open: bool,
+    is_open: bool,
     /// Number of data
     #[clap(short, default_value_t = 102400)]
     n: usize,
@@ -109,15 +109,15 @@ fn native(files: Vec<PathBuf>) {
 }
 
 fn codebook(cb: Codebook) {
-    let Codebook { mut file, open, n, res, harmonic } = cb;
+    let Codebook { mut file, is_open, n, res, harmonic } = cb;
     let ext = file.extension().and_then(std::ffi::OsStr::to_str);
     if !matches!(ext, Some("npy")) {
         file.set_extension("npy");
     }
     println!("Generate to: {}", file.display());
-    println!("open={open}, n={n}, res={res}, harmonic={harmonic}");
+    println!("open={is_open}, n={n}, res={res}, harmonic={harmonic}");
     let pb = indicatif::ProgressBar::new(n as u64);
-    four_bar::codebook::Codebook::make_with(open, n, res, harmonic, |n| pb.set_position(n as u64))
+    four_bar::cb::Codebook::make_with(is_open, n, res, harmonic, |n| pb.set_position(n as u64))
         .write(std::fs::File::create(file).unwrap())
         .unwrap();
     pb.finish_and_clear();

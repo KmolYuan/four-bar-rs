@@ -20,7 +20,7 @@ pub use efd;
 pub extern crate metaheuristics_nature as mh;
 
 #[cfg(feature = "codebook")]
-pub mod codebook;
+pub mod cb;
 pub mod curve;
 mod four_bar;
 #[cfg(feature = "plot")]

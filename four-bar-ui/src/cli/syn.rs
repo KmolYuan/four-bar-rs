@@ -1,5 +1,5 @@
 use super::{Syn, SynCfg};
-use four_bar::{codebook::Codebook, mh, plot, syn, FourBar};
+use four_bar::{cb::Codebook, mh, plot, syn, FourBar};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     path::{Path, PathBuf},
