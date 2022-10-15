@@ -5,11 +5,7 @@ window.open_file = (ext, done, multiple) => {
     input.type = "file";
     input.accept = ext;
     input.multiple = multiple;
-    input.onchange = () => [...input.files].forEach(file => {
-        const reader = new FileReader();
-        reader.onload = () => done(file.name, reader.result);
-        reader.readAsText(file);
-    });
+    input.onchange = () => [...input.files].forEach(f => f.text().then(t => done(f.name, t)));
     input.click();
 };
 window.save_file = (s, path) => {

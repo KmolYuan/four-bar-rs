@@ -19,10 +19,14 @@ default = ["native"]
 native = ["four-bar/codebook", "four-bar/rayon"]
 
 [dependencies]
-four-bar = { version = "3", path = "../four-bar", features = ["serde", "plot"] }
 serde = { version = "1", features = ["derive"] }
 ron = "0.8"
 csv = "1"
+
+[dependencies.four-bar]
+version = "3"
+path = "../four-bar"
+features = ["serde", "plot"]
 
 [dependencies.eframe]
 version = "0.19"
