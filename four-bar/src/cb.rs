@@ -211,31 +211,32 @@ impl Codebook {
     }
 
     /// Merge two data to one codebook.
-    pub fn merge(&self, rhs: &Self) -> Self {
+    pub fn merge(&self, rhs: &Self) -> Result<Self, ndarray::ShapeError> {
         let mut cb = self.clone();
-        cb.merge_inplace(rhs);
-        cb
+        cb.merge_inplace(rhs)?;
+        Ok(cb)
     }
 
     /// Merge two data to one codebook inplace.
-    pub fn merge_inplace(&mut self, rhs: &Self) {
+    pub fn merge_inplace(&mut self, rhs: &Self) -> Result<(), ndarray::ShapeError> {
         if self.is_empty() {
             self.clone_from(rhs);
         } else {
             macro_rules! merge {
                 ($($field:ident),+) => {$(
-                    self.$field = ndarray::concatenate![Axis(0), self.$field, rhs.$field];
+                    self.$field = ndarray::concatenate(Axis(0), &[self.$field.view(), rhs.$field.view()])?;
                 )+};
             }
             merge!(fb, inv, efd, trans);
         }
+        Ok(())
     }
 }
 
 impl FromIterator<Codebook> for Codebook {
     fn from_iter<T: IntoIterator<Item = Codebook>>(iter: T) -> Self {
         iter.into_iter()
-            .reduce(|a, b| a.merge(&b))
+            .reduce(|a, b| a.merge(&b).unwrap_or(a))
             .unwrap_or_default()
     }
 }

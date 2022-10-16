@@ -322,7 +322,10 @@ impl Synthesis {
             let cb = self.cb.clone();
             io::open_cb(move |a| {
                 let cb_new = Codebook::read(Cursor::new(a)).unwrap();
-                cb.write().unwrap().merge_inplace(&cb_new);
+                cb.write()
+                    .unwrap()
+                    .merge_inplace(&cb_new)
+                    .unwrap_or_default();
             })
         }
         ui.separator();
