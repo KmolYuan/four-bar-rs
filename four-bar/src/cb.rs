@@ -157,10 +157,11 @@ impl Codebook {
             return self.fetch_1st_inner(target, trans).into_iter().collect();
         }
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
-        let dis = self
-            .efd
-            .axis_iter(Axis(0))
-            .into_par_iter()
+        #[cfg(feature = "rayon")]
+        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
+        #[cfg(not(feature = "rayon"))]
+        let iter = self.efd.axis_iter(Axis(0));
+        let dis = iter
             .map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .collect::<Vec<_>>();
         let mut ind = (0..self.size()).collect::<Vec<_>>();
@@ -173,10 +174,11 @@ impl Codebook {
 
     fn fetch_1st_inner(&self, target: &[[f64; 2]], trans: bool) -> Option<(f64, FourBar)> {
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
-        self.efd
-            .axis_iter(Axis(0))
-            .into_par_iter()
-            .map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
+        #[cfg(feature = "rayon")]
+        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
+        #[cfg(not(feature = "rayon"))]
+        let iter = self.efd.axis_iter(Axis(0));
+        iter.map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(i, err)| (err, self.pick(i, &target, trans)))
