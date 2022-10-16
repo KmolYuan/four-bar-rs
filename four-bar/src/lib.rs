@@ -5,10 +5,9 @@
 //!
 //! ```
 //! use four_bar::FourBar;
-//! use std::f64::consts::TAU;
 //!
 //! // Get the trajectory of the coupler point
-//! let path = FourBar::example().curve(0., TAU, 360);
+//! let path = FourBar::example().curve(360).unwrap();
 //! ```
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
