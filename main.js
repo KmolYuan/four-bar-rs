@@ -13,7 +13,7 @@ window.open_bfile = (ext, done) => {
     input.type = "file";
     input.accept = ext;
     input.multiple = true;
-    input.onchange = () => [...input.files].forEach(f => f.arrayBuffer().then(a => done(f.name, new Uint8Array(a))));
+    input.onchange = () => [...input.files].forEach(f => f.arrayBuffer().then(a => done(new Uint8Array(a))));
     input.click();
 };
 window.save_file = (s, path) => {
