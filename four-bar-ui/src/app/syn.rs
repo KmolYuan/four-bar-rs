@@ -33,7 +33,7 @@ fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
     ron::ser::to_string_pretty(s, Default::default()).unwrap()
 }
 
-fn solve<S>(task: &Task, config: SynConfig, setting: S) -> four_bar::FourBar
+fn solve<S>(task: &Task, cb: &Codebook, config: SynConfig, setting: S) -> four_bar::FourBar
 where
     S: mh::Setting,
     S::Algorithm: mh::Algorithm<syn::PathSyn>,
@@ -44,8 +44,19 @@ where
     use std::time::Instant;
     let start_time = Instant::now();
     let SynConfig { method: _, gen, pop, mode, target } = config;
-    let (_, fb) = four_bar::mh::Solver::build(setting)
-        .pop_num(pop)
+    let mut s = four_bar::mh::Solver::build(setting);
+    if let Some(candi) = matches!(mode, syn::Mode::Close | syn::Mode::Open)
+        .then(|| cb.fetch_raw(&target, pop))
+        .filter(|candi| !candi.is_empty())
+    {
+        let pool = candi.iter().map(|(_, fb)| fb.vec()).collect::<Vec<_>>();
+        let fitness = candi.iter().map(|(f, _)| *f).collect();
+        s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
+        s = s.pop_num(candi.len());
+    } else {
+        s = s.pop_num(pop);
+    }
+    let (_, fb) = s
         .task(|ctx| ctx.gen == gen || !task.start.load(Ordering::Relaxed))
         .callback(|ctx| {
             task.conv.write().unwrap().push(ctx.best_f);
@@ -421,8 +432,6 @@ impl Synthesis {
         use four_bar::mh::methods::*;
         #[cfg(not(target_arch = "wasm32"))]
         use four_bar::mh::rayon::spawn;
-        #[cfg(target_arch = "wasm32")]
-        use wasm_bindgen_futures::spawn_local as spawn;
         let config = self.config.syn.clone();
         let task = Task {
             total_gen: config.gen,
@@ -430,19 +439,22 @@ impl Synthesis {
             ..Task::default()
         };
         self.tasks.push(task.clone());
+        let cb = self.cb.clone();
         let f = move || {
+            let cb = cb.read().unwrap();
             let fb = match config.method {
-                Method::De => solve(&task, config, De::default()),
-                Method::Fa => solve(&task, config, Fa::default()),
-                Method::Pso => solve(&task, config, Pso::default()),
-                Method::Rga => solve(&task, config, Rga::default()),
-                Method::Tlbo => solve(&task, config, Tlbo::default()),
+                Method::De => solve(&task, &cb, config, De::default()),
+                Method::Fa => solve(&task, &cb, config, Fa::default()),
+                Method::Pso => solve(&task, &cb, config, Pso::default()),
+                Method::Rga => solve(&task, &cb, config, Rga::default()),
+                Method::Tlbo => solve(&task, &cb, config, Tlbo::default()),
             };
             queue.push(None, fb);
             task.start.store(false, Ordering::Relaxed);
         };
-        #[cfg(target_arch = "wasm32")]
-        let f = async { f() };
+        #[cfg(not(target_arch = "wasm32"))]
         spawn(f);
+        #[cfg(target_arch = "wasm32")]
+        f(); // Block
     }
 }

@@ -86,7 +86,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
         let pool = candi.iter().map(|(_, fb)| fb.vec()).collect::<Vec<_>>();
         let fitness = candi.iter().map(|(f, _)| *f).collect();
         s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
-        s = s.pop_num(cfg.k);
+        s = s.pop_num(candi.len());
     } else {
         s = s.pop_num(cfg.pop);
     }
