@@ -6,6 +6,8 @@ const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
 const CSV_FMT: &str = "Delimiter-Separated Values (CSV)";
 const CSV_EXT: &[&str] = &["csv", "txt"];
+const CB_FMT: &str = "Numpy Array (NPY)";
+const CB_EXT: &[&str] = &["npy"];
 const SVG_FMT: &str = "Scalable Vector Graphics (SVG)";
 const SVG_EXT: &[&str] = &["svg"];
 
@@ -16,6 +18,7 @@ mod impl_io {
     #[wasm_bindgen]
     extern "C" {
         fn open_file(ext: &str, done: JsValue, multiple: bool);
+        fn open_bfile(ext: &str, done: JsValue);
         fn save_file(s: &str, path: &str);
     }
 
@@ -32,6 +35,14 @@ mod impl_io {
     {
         let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done)).into_js_value();
         open_file(&js_ext(ext), done, true);
+    }
+
+    pub(super) fn open_bin<C>(_fmt: &str, ext: &[&str], done: C)
+    where
+        C: Fn(Vec<u8>) + 'static,
+    {
+        let done = Closure::<dyn Fn(Vec<u8>)>::wrap(Box::new(done)).into_js_value();
+        open_bfile(&js_ext(ext), done);
     }
 
     pub(super) fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
@@ -64,6 +75,17 @@ mod impl_io {
             for path in paths {
                 let s = std::fs::read_to_string(&path).unwrap_or_default();
                 done(path.to_str().unwrap().to_string(), s);
+            }
+        }
+    }
+
+    pub(super) fn open_bin<C>(fmt: &str, ext: &[&str], done: C)
+    where
+        C: Fn(Vec<u8>) + 'static,
+    {
+        if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
+            for path in paths {
+                done(std::fs::read(&path).unwrap_or_default());
             }
         }
     }
@@ -109,6 +131,13 @@ where
     C: Fn(String, String) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, done)
+}
+
+pub(crate) fn open_cb<C>(done: C)
+where
+    C: Fn(Vec<u8>) + 'static,
+{
+    open_bin(CB_FMT, CB_EXT, done)
 }
 
 pub(crate) fn save_csv_ask<S>(curve: &[S])

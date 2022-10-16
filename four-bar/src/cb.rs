@@ -21,6 +21,7 @@ where
 }
 
 /// Codebook type.
+#[derive(Clone)]
 pub struct Codebook {
     fb: Array2<f64>,
     inv: Array1<bool>,
@@ -127,6 +128,16 @@ impl Codebook {
         self.fb.nrows()
     }
 
+    /// Clear the codebook.
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    /// Return whether the codebook has any data.
+    pub fn is_empty(&self) -> bool {
+        self.fb.is_empty()
+    }
+
     /// Number of the harmonics.
     pub fn harmonic(&self) -> usize {
         self.efd.len_of(Axis(1))
@@ -201,11 +212,22 @@ impl Codebook {
 
     /// Merge two data to one codebook.
     pub fn merge(&self, rhs: &Self) -> Self {
-        Self {
-            fb: ndarray::concatenate![Axis(0), self.fb, rhs.fb],
-            inv: ndarray::concatenate![Axis(0), self.inv, rhs.inv],
-            efd: ndarray::concatenate![Axis(0), self.efd, rhs.efd],
-            trans: ndarray::concatenate![Axis(0), self.trans, rhs.trans],
+        let mut cb = self.clone();
+        cb.merge_inplace(rhs);
+        cb
+    }
+
+    /// Merge two data to one codebook inplace.
+    pub fn merge_inplace(&mut self, rhs: &Self) {
+        if self.is_empty() {
+            self.clone_from(rhs);
+        } else {
+            macro_rules! merge {
+                ($($field:ident),+) => {$(
+                    self.$field = ndarray::concatenate![Axis(0), self.$field, rhs.$field];
+                )+};
+            }
+            merge!(fb, inv, efd, trans);
         }
     }
 }

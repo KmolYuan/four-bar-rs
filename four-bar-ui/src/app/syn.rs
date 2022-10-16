@@ -1,11 +1,14 @@
 use super::{io, linkages::Linkages, widgets::unit};
 use crate::csv::{dump_csv, parse_csv};
 use eframe::egui::*;
-use four_bar::{curve, efd, mh, syn};
+use four_bar::{cb::Codebook, curve, efd, mh, syn};
 use serde::{Deserialize, Serialize};
-use std::sync::{
-    atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-    Arc, RwLock,
+use std::{
+    io::Cursor,
+    sync::{
+        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
+        Arc, RwLock,
+    },
 };
 
 mod painting;
@@ -60,6 +63,8 @@ where
 #[serde(default)]
 pub(crate) struct Synthesis {
     config: UiConfig,
+    #[serde(skip)]
+    cb: Arc<RwLock<Codebook>>,
     tasks: Vec<Task>,
     csv_open: bool,
     conv_open: bool,
@@ -291,6 +296,23 @@ impl Synthesis {
         ui.label("Edit target curve then click refresh button to update the task.");
         if ui.button("🛠 Target Curve").clicked() {
             self.csv_open = !self.csv_open;
+        }
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.heading("Codebook");
+            if ui.button("Reset").clicked() {
+                self.cb.write().unwrap().clear();
+            }
+        });
+        ui.label("Use pre-searched dataset to increase the speed.");
+        let size = self.cb.read().unwrap().size();
+        ui.label(format!("Number of data: {size}"));
+        if ui.button("🖴 Open").clicked() {
+            let cb = self.cb.clone();
+            io::open_cb(move |a| {
+                let cb_new = Codebook::read(Cursor::new(a)).unwrap();
+                cb.write().unwrap().merge_inplace(&cb_new);
+            })
         }
         ui.separator();
         ui.heading("Optimization");
