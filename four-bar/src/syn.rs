@@ -92,15 +92,24 @@ pub struct PathSyn {
 }
 
 impl PathSyn {
+    /// Create a new task from target curve. The harmonic number is selected
+    /// automatically.
+    ///
+    /// Return none if harmonic is zero or the curve is less than 1.
+    pub fn from_curve<'a, C>(curve: C, mode: Mode) -> Option<Self>
+    where
+        C: Into<CowCurve<'a>>,
+    {
+        efd::Efd2::from_curve(mode.regularize(curve)).map(|efd| Self::from_efd(efd, mode))
+    }
+
     /// Create a new task from target curve and harmonic number.
     ///
     /// Return none if harmonic is zero or the curve is less than 1.
-    ///
-    /// Please do not change mode since the regularization is called in this
-    /// constructor method.
-    pub fn from_curve_harmonic<'a, C>(curve: C, harmonic: usize, mode: Mode) -> Option<Self>
+    pub fn from_curve_harmonic<'a, C, H>(curve: C, harmonic: H, mode: Mode) -> Option<Self>
     where
         C: Into<CowCurve<'a>>,
+        H: Into<Option<usize>>,
     {
         efd::Efd2::from_curve_harmonic(mode.regularize(curve), harmonic)
             .map(|efd| Self::from_efd(efd, mode))
@@ -109,9 +118,6 @@ impl PathSyn {
     /// Create a new task from target curve and Fourier power gate.
     ///
     /// Return none if the curve length is less than 1.
-    ///
-    /// Please do not change mode since the regularization is called in this
-    /// constructor method.
     pub fn from_curve_gate<'a, C, T>(curve: C, threshold: T, mode: Mode) -> Option<Self>
     where
         C: Into<CowCurve<'a>>,
