@@ -51,7 +51,8 @@ pub struct Opt<'a> {
     fb: Option<FourBar>,
     angle: Option<f64>,
     title: Option<&'a str>,
-    use_dot: bool,
+    dot: bool,
+    grid: bool,
 }
 
 impl From<Option<Self>> for Opt<'_> {
@@ -91,8 +92,13 @@ impl<'a> Opt<'a> {
     }
 
     /// Use dot in the curves.
-    pub fn use_dot(self, use_dot: bool) -> Self {
-        Self { use_dot, ..self }
+    pub fn use_dot(self, dot: bool) -> Self {
+        Self { dot, ..self }
+    }
+
+    /// Use grid in the plot.
+    pub fn use_grid(self, grid: bool) -> Self {
+        Self { grid, ..self }
     }
 
     fn joints(&self) -> Option<[[f64; 2]; 5]> {
@@ -137,15 +143,15 @@ where
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .margin((8).percent())
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart
-        .configure_mesh()
-        .x_label_style(font())
-        .y_label_style(font())
-        .draw()?;
+    let mut mesh = chart.configure_mesh();
+    if opt.grid {
+        mesh.disable_mesh();
+    }
+    mesh.x_label_style(font()).y_label_style(font()).draw()?;
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
-        let anno = if opt.use_dot {
+        let anno = if opt.dot {
             if i % 2 == 1 {
                 chart.draw_series(curve.iter().map(|&[x, y]| Circle::new((x, y), 5, &color)))?
             } else {

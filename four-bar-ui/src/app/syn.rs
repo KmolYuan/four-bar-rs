@@ -378,7 +378,7 @@ impl Synthesis {
                     let curve = linkage.projs.current_curve();
                     let opt = self
                         .plot_linkage
-                        .then(|| linkage.projs.four_bar_state().use_dot(linkage.cfg.use_dot));
+                        .then(|| linkage.projs.four_bar_state().use_dot(linkage.cfg.plot_dot));
                     io::save_curve_ask(target, &curve, opt, "fb.svg");
                 }
                 ui.checkbox(&mut self.plot_linkage, "With linkage");

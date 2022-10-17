@@ -370,7 +370,8 @@ impl ProjInner {
             let opt = four_bar::plot::Opt::new()
                 .fb(self.fb.clone())
                 .angle(self.angles.theta2)
-                .use_dot(cfg.use_dot);
+                .use_dot(cfg.plot_dot)
+                .use_grid(cfg.plot_grid);
             io::save_curve_ask(&[], &curve, opt, "fig.svg");
         }
         self.cache(cfg.res);
