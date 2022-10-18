@@ -144,7 +144,7 @@ where
         .margin((8).percent())
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
     let mut mesh = chart.configure_mesh();
-    if opt.grid {
+    if !opt.grid {
         mesh.disable_mesh();
     }
     mesh.x_label_style(font()).y_label_style(font()).draw()?;
