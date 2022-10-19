@@ -92,7 +92,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     }
     let f = || -> AnyResult {
         let t0 = Instant::now();
-        let func = syn::PathSyn::from_curve_gate(&target, None, mode)
+        let func = syn::PathSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
             .resolution(cfg.n);
         let s = s

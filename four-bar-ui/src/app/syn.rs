@@ -64,7 +64,7 @@ where
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
         })
-        .solve(syn::PathSyn::from_curve_gate(target, None, mode).unwrap())
+        .solve(syn::PathSyn::from_curve(target, mode).unwrap())
         .unwrap()
         .result();
     fb
