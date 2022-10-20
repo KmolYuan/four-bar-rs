@@ -95,6 +95,40 @@ where
     last
 }
 
+/// Circuit type with a defect notation.
+pub enum Defect<C> {
+    /// Defect-free curve
+    Free(Vec<C>),
+    /// Circuit defect curve
+    Circuit(Vec<C>),
+    /// Branch (Grashof) defect curve, or has dead point
+    Branch(Vec<C>),
+    /// Empty curve (Invalid linkage)
+    Empty,
+}
+
+impl<C> From<Defect<C>> for Option<Vec<C>> {
+    fn from(defect: Defect<C>) -> Self {
+        use Defect::*;
+        match defect {
+            Free(c) | Circuit(c) | Branch(c) => Some(c),
+            Empty => None,
+        }
+    }
+}
+
+impl<C> Defect<C> {
+    /// Return true if the circuit has defect.
+    pub fn has_defect(&self) -> bool {
+        matches!(self, Self::Free(_) | Self::Circuit(_) | Self::Branch(_))
+    }
+
+    /// Return true if the circuit is empty.
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::Empty)
+    }
+}
+
 /// Type of the four-bar linkage.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FourBarTy {
@@ -131,9 +165,9 @@ impl From<[f64; 4]> for FourBarTy {
         }
         let [s, p, q, l] = sort_link([l0, l1, l2, l3]);
         if s + l < p + q {
-            arms! { s => FourBarTy::GCCC, FourBarTy::GCRR, FourBarTy::GRCR, FourBarTy::GRRC }
+            arms! { s => Self::GCCC, Self::GCRR, Self::GRCR, Self::GRRC }
         } else {
-            arms! { l => FourBarTy::RRR1, FourBarTy::RRR2, FourBarTy::RRR3, FourBarTy::RRR4 }
+            arms! { l => Self::RRR1, Self::RRR2, Self::RRR3, Self::RRR4 }
         }
     }
 }
