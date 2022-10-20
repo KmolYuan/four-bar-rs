@@ -25,41 +25,21 @@ macro_rules! impl_curve_method {
         /// Generator for curves in specified angle.
         pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
             let interval = (end - start) / n as f64;
-            let mut iter = (0..n)
+            let iter = (0..n)
                 .map(move |n| start + n as f64 * interval)
-                .map(|theta| curve_interval($v, $norm, theta))
+                .map(|theta| $self.pos(theta))
                 .map(|[.., j2, j3, j4]| [j2, j3, j4]);
-            let mut last = Vec::new();
-            while iter.len() > 0 {
-                let v = iter
-                    .by_ref()
-                    .take_while(|c| c.iter().flatten().all(|x| x.is_finite()))
-                    .collect::<Vec<_>>();
-                if v.len() > last.len() {
-                    last = v;
-                }
-            }
-            last
+            valid_path(iter, |c| c.iter().flatten().all(|x| x.is_finite()))
         }
 
         /// Generator for coupler curve in specified angle.
         pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
             let interval = (end - start) / n as f64;
-            let mut iter = (0..n)
+            let iter = (0..n)
                 .map(move |n| start + n as f64 * interval)
-                .map(|theta| curve_interval($v, $norm, theta))
+                .map(|theta| $self.pos(theta))
                 .map(|[.., c]| c);
-            let mut last = Vec::new();
-            while iter.len() > 0 {
-                let v = iter
-                    .by_ref()
-                    .take_while(|c| c.iter().all(|x| x.is_finite()))
-                    .collect::<Vec<_>>();
-                if v.len() > last.len() {
-                    last = v;
-                }
-            }
-            last
+            valid_path(iter, |c| c.iter().all(|x| x.is_finite()))
         }
 
         /// Generator for curves.
@@ -102,6 +82,21 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
             [d1.acos() + a, d2.acos() + a]
         }
     }
+}
+
+fn valid_path<I, C>(mut iter: I, check: C) -> Vec<I::Item>
+where
+    I: ExactSizeIterator,
+    C: Fn(&I::Item) -> bool + Copy + 'static,
+{
+    let mut last = Vec::new();
+    while iter.len() > 0 {
+        let v = iter.by_ref().take_while(check).collect::<Vec<_>>();
+        if v.len() > last.len() {
+            last = v;
+        }
+    }
+    last
 }
 
 /// Type of the four-bar linkage.
