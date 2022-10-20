@@ -164,7 +164,9 @@ impl Codebook {
     }
 
     fn fetch_inner(&self, target: &[[f64; 2]], n: usize, trans: bool) -> Vec<(f64, FourBar)> {
-        if n == 1 {
+        if self.is_empty() {
+            return Vec::new();
+        } else if n == 1 {
             return self.fetch_1st_inner(target, trans).into_iter().collect();
         }
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
@@ -184,6 +186,9 @@ impl Codebook {
     }
 
     fn fetch_1st_inner(&self, target: &[[f64; 2]], trans: bool) -> Option<(f64, FourBar)> {
+        if self.is_empty() {
+            return None;
+        }
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();

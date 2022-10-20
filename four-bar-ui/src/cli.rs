@@ -33,11 +33,12 @@ struct Syn {
     /// Disable parallel for all task
     #[clap(long)]
     no_parallel: bool,
+    /// Provide pre-generated codebook databases, support join multiple paths
+    /// like "cb1.npy:cb2.npy" or "cb1.npy;cb2.npy" in multi-platform
+    #[clap(long)]
+    cb: Option<std::ffi::OsString>,
     #[clap(flatten)]
     cfg: SynCfg,
-    /// Provide a pre-generated codebook database
-    #[clap(long, alias = "cb", action = clap::ArgAction::Append)]
-    codebook: Vec<PathBuf>,
 }
 
 #[derive(clap::Args)]

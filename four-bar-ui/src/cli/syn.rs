@@ -38,12 +38,12 @@ struct Info<'a> {
 }
 
 pub(super) fn syn(syn: Syn) {
-    let Syn { files, no_parallel, cfg, codebook } = syn;
+    let Syn { files, no_parallel, cfg, cb } = syn;
+    let cb = cb
+        .map(|cb| std::env::split_paths(&cb).collect())
+        .unwrap_or_default();
+    let cb = load_codebook(cb).expect("Load codebook failed!");
     let mpb = MultiProgress::new();
-    if !codebook.is_empty() {
-        mpb.println("Loading codebook database...").unwrap();
-    }
-    let cb = load_codebook(codebook).expect("Load codebook failed!");
     let run = |file: PathBuf| run(&mpb, file, &cfg, &cb);
     if no_parallel {
         files.into_iter().for_each(run);
@@ -54,6 +54,9 @@ pub(super) fn syn(syn: Syn) {
 }
 
 fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
+    if !cb.is_empty() {
+        println!("Loading codebook database...");
+    }
     cb.into_iter()
         .map(|path| Ok(Codebook::read(std::fs::File::open(path)?)?))
         .collect()
@@ -92,7 +95,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     }
     let f = || -> AnyResult {
         let t0 = Instant::now();
-        let func = syn::PathSyn::from_curve_gate(&target, None, mode)
+        let func = syn::PathSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
             .resolution(cfg.n);
         let s = s

@@ -553,21 +553,23 @@ fn angle_with([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d: f64, a: f64) -> [f64; 2
     [x1 + d * a.cos(), y1 + d * a.sin()]
 }
 
-fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d1: f64, d2: f64, inv: bool) -> [f64; 2] {
+fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) -> [f64; 2] {
     let dx = x2 - x1;
     let dy = y2 - y1;
-    let d = dx.hypot(dy);
-    if d > d1 + d2 || d < (d1 - d2).abs() || (d < f64::EPSILON && (d1 - d2).abs() < f64::EPSILON) {
+    let r = dx.hypot(dy);
+    if r > r1 + r2 || r < (r1 - r2).abs() || (r < f64::EPSILON && (r1 - r2).abs() < f64::EPSILON) {
         return [f64::NAN, f64::NAN];
     }
-    let a = 0.5 * (d1 * d1 - d2 * d2 + d * d) / d;
-    let h = (d1 * d1 - a * a).sqrt();
-    let xm = x1 + a * dx / d;
-    let ym = y1 + a * dy / d;
+    let a = 0.5 * (r1 * r1 - r2 * r2 + r * r) / r;
+    let h = (r1 * r1 - a * a).sqrt();
+    let c = dx / r;
+    let s = dy / r;
+    let xm = x1 + a * c;
+    let ym = y1 + a * s;
     if inv {
-        [xm + h * dy / d, ym - h * dx / d]
+        [xm + h * s, ym - h * c]
     } else {
-        [xm - h * dy / d, ym + h * dx / d]
+        [xm - h * s, ym + h * c]
     }
 }
 
