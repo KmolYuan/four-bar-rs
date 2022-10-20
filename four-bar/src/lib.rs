@@ -12,7 +12,7 @@
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
-pub use crate::four_bar::*;
+pub use crate::{defect::*, four_bar::*};
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
@@ -21,6 +21,7 @@ pub extern crate metaheuristics_nature as mh;
 #[cfg(feature = "codebook")]
 pub mod cb;
 pub mod curve;
+mod defect;
 mod four_bar;
 #[cfg(feature = "plot")]
 pub mod plot;
