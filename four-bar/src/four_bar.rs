@@ -23,23 +23,23 @@ macro_rules! impl_curve_method {
         }
 
         /// Generator for curves in specified angle.
-        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
+        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> Defect<[[f64; 2]; 3]> {
             curve_in(start, end, n, |theta| $self.pos(theta), |[.., j2, j3, j4]| [j2, j3, j4])
         }
 
         /// Generator for coupler curve in specified angle.
-        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
+        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> Defect<[f64; 2]> {
             curve_in(start, end, n, |theta| $self.pos(theta), |[.., j4]| j4)
         }
 
         /// Generator for curves.
-        pub fn curves(&$self, n: usize) -> Option<Vec<[[f64; 2]; 3]>> {
-            $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, n))
+        pub fn curves(&$self, n: usize) -> Defect<[[f64; 2]; 3]> {
+            $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, n)).unwrap_or_default()
         }
 
         /// Generator for coupler curve.
-        pub fn curve(&$self, n: usize) -> Option<Vec<[f64; 2]>> {
-            $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, n))
+        pub fn curve(&$self, n: usize) -> Defect<[f64; 2]> {
+            $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, n)).unwrap_or_default()
         }
     };
 }
@@ -74,28 +74,30 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
     }
 }
 
-fn curve_in<F, M, B>(start: f64, end: f64, n: usize, f: F, map: M) -> Vec<B>
+fn curve_in<F, M, B>(start: f64, end: f64, n: usize, f: F, map: M) -> Defect<B>
 where
     F: Fn(f64) -> [[f64; 2]; 5],
     M: Fn([[f64; 2]; 5]) -> B + Copy,
 {
     let interval = (end - start) / n as f64;
     let mut iter = (0..n).map(move |n| start + n as f64 * interval).map(f);
-    let mut last = Vec::new();
+    let mut last = Defect::Empty;
     while iter.len() > 0 {
         let v = iter
             .by_ref()
             .take_while(|c| c.iter().flatten().all(|x| x.is_finite()))
             .map(map)
             .collect::<Vec<_>>();
+        // TODO: Detect defects here
         if v.len() > last.len() {
-            last = v;
+            last = Defect::Free(v);
         }
     }
     last
 }
 
 /// Circuit type with a defect notation.
+#[derive(Default)]
 pub enum Defect<C> {
     /// Defect-free curve
     Free(Vec<C>),
@@ -104,16 +106,13 @@ pub enum Defect<C> {
     /// Branch (Grashof) defect curve, or has dead point
     Branch(Vec<C>),
     /// Empty curve (Invalid linkage)
+    #[default]
     Empty,
 }
 
 impl<C> From<Defect<C>> for Option<Vec<C>> {
     fn from(defect: Defect<C>) -> Self {
-        use Defect::*;
-        match defect {
-            Free(c) | Circuit(c) | Branch(c) => Some(c),
-            Empty => None,
-        }
+        defect.into_option()
     }
 }
 
@@ -126,6 +125,32 @@ impl<C> Defect<C> {
     /// Return true if the circuit is empty.
     pub fn is_empty(&self) -> bool {
         matches!(self, Self::Empty)
+    }
+
+    /// Return the length of the circuit.
+    pub fn len(&self) -> usize {
+        use Defect::*;
+        match self {
+            Free(c) | Circuit(c) | Branch(c) => c.len(),
+            Empty => 0,
+        }
+    }
+
+    /// Turn into `Option` type.
+    pub fn into_option(self) -> Option<Vec<C>> {
+        use Defect::*;
+        match self {
+            Free(c) | Circuit(c) | Branch(c) => Some(c),
+            Empty => None,
+        }
+    }
+
+    /// Turn into `Option` type with `Free` filter.
+    pub fn into_option_free(self) -> Option<Vec<C>> {
+        match self {
+            Self::Free(c) => Some(c),
+            _ => None,
+        }
     }
 }
 

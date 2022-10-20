@@ -7,7 +7,7 @@
 //! use four_bar::FourBar;
 //!
 //! // Get the trajectory of the coupler point
-//! let path = FourBar::example().curve(360).unwrap();
+//! let path = FourBar::example().curve(360);
 //! ```
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]

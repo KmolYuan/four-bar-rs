@@ -131,7 +131,7 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
                 let fb = std::fs::read_to_string(path)
                     .map_err(|_| SynErr::Io)
                     .and_then(|s| ron::from_str::<FourBar>(&s).map_err(|_| SynErr::Ser))?;
-                fb.curve(n).ok_or(SynErr::Linkage)
+                fb.curve(n).into_option_free().ok_or(SynErr::Linkage)
             }
             "csv" | "txt" => std::fs::read_to_string(path)
                 .map_err(|_| SynErr::Io)
@@ -164,7 +164,7 @@ fn draw_ans(root: &Path, title: &str, target: &[[f64; 2]], ans: FourBar, n: usiz
         let path = root.join(format!("{title}_result.ron"));
         std::fs::write(path, ron::to_string(&ans)?)?;
     }
-    let curve = ans.curve(n).expect("solved error");
+    let curve = ans.curve(n).into_option_free().expect("solved error");
     let curves = [("Target", target), ("Optimized", &curve)];
     {
         let path = root.join(format!("{title}_linkage.svg"));

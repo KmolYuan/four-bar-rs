@@ -187,7 +187,7 @@ impl mh::ObjFactory for PathSyn {
                 let curve = fb.curve_in(t1, t2, self.n);
                 (curve, fb)
             })
-            .filter(|(curve, _)| curve.len() > 1)
+            .filter_map(|(c, fb)| c.into_option_free().map(|c| (c, fb)))
             .map(|(curve, fb)| {
                 let curve = self.mode.regularize(curve);
                 let efd = efd::Efd2::from_curve_harmonic(curve, self.efd.harmonic()).unwrap();

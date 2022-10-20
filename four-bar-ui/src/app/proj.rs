@@ -288,7 +288,7 @@ impl ProjInner {
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
         fn get_curve(pivot: Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
-            let curve = fb.curves(n).unwrap_or_default().into_iter();
+            let curve = fb.curves(n).into_option().unwrap_or_default().into_iter();
             match pivot {
                 Pivot::Driver => curve.map(|[c, _, _]| c).collect::<Vec<_>>(),
                 Pivot::Follower => curve.map(|[_, c, _]| c).collect::<Vec<_>>(),
@@ -387,7 +387,7 @@ impl ProjInner {
         // Recalculation
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angles.theta2);
-        self.cache.curves = self.fb.curves(n).unwrap_or_default();
+        self.cache.curves = self.fb.curves(n).into_option().unwrap_or_default();
         let step = TAU / n as f64;
         self.cache.dynamics = self
             .cache
