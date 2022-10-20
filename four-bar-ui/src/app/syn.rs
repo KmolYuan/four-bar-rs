@@ -45,7 +45,7 @@ where
     let start_time = Instant::now();
     let SynConfig { method: _, gen, pop, mode, target } = config;
     let mut s = four_bar::mh::Solver::build(setting);
-    if let Some(candi) = matches!(mode, syn::Mode::Close | syn::Mode::Open)
+    if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
         .then(|| cb.fetch_raw(&target, pop))
         .filter(|candi| !candi.is_empty())
     {
@@ -155,8 +155,8 @@ impl UiConfig {
             }
         });
         let mode = &mut self.syn.mode;
-        ui.radio_value(mode, syn::Mode::Close, "Close path matching");
-        ui.radio_value(mode, syn::Mode::Partial, "Close path match open path");
+        ui.radio_value(mode, syn::Mode::Closed, "Closed path matching");
+        ui.radio_value(mode, syn::Mode::Partial, "Closed path match open path");
         ui.radio_value(mode, syn::Mode::Open, "Open path matching");
         ui.label("Transform:");
         ui.horizontal_wrapped(|ui| {
@@ -247,7 +247,7 @@ impl Default for SynConfig {
             method: Method::default(),
             gen: 50,
             pop: 400,
-            mode: syn::Mode::Close,
+            mode: syn::Mode::Closed,
             target: Vec::new(),
         }
     }

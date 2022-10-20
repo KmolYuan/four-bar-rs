@@ -163,7 +163,7 @@ where
     curve
 }
 
-/// Geometry error between two close curves.
+/// Geometry error between two closed curves.
 ///
 /// The curves must have the same length.
 pub fn geo_err(target: &[[f64; 2]], curve: &[[f64; 2]]) -> f64 {

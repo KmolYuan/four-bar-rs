@@ -89,8 +89,10 @@ where
             .map(map)
             .collect::<Vec<_>>();
         // TODO: Detect defects here
-        if v.len() > last.len() {
-            last = Defect::Free(v);
+        if iter.len() == 0 {
+            last = Defect::Closed(v);
+        } else {
+            last = Defect::Open(v);
         }
     }
     last
@@ -100,9 +102,9 @@ where
 #[derive(Default)]
 pub enum Defect<C> {
     /// Defect-free curve
-    Free(Vec<C>),
+    Closed(Vec<C>),
     /// Circuit defect curve
-    Circuit(Vec<C>),
+    Open(Vec<C>),
     /// Branch (Grashof) defect curve, or has dead point
     Branch(Vec<C>),
     /// Empty curve (Invalid linkage)
@@ -110,16 +112,10 @@ pub enum Defect<C> {
     Empty,
 }
 
-impl<C> From<Defect<C>> for Option<Vec<C>> {
-    fn from(defect: Defect<C>) -> Self {
-        defect.into_option()
-    }
-}
-
 impl<C> Defect<C> {
     /// Return true if the circuit has defect.
     pub fn has_defect(&self) -> bool {
-        matches!(self, Self::Free(_) | Self::Circuit(_) | Self::Branch(_))
+        matches!(self, Self::Closed(_) | Self::Open(_) | Self::Branch(_))
     }
 
     /// Return true if the circuit is empty.
@@ -129,26 +125,48 @@ impl<C> Defect<C> {
 
     /// Return the length of the circuit.
     pub fn len(&self) -> usize {
-        use Defect::*;
         match self {
-            Free(c) | Circuit(c) | Branch(c) => c.len(),
-            Empty => 0,
+            Self::Closed(c) | Self::Open(c) | Self::Branch(c) => c.len(),
+            Self::Empty => 0,
         }
     }
 
-    /// Turn into `Option` type.
-    pub fn into_option(self) -> Option<Vec<C>> {
-        use Defect::*;
+    /// Turn into `Option` type with closed curve check.
+    ///
+    /// Allow only closed circuit.
+    pub fn to_closed(self) -> Option<Vec<C>> {
         match self {
-            Free(c) | Circuit(c) | Branch(c) => Some(c),
-            Empty => None,
+            Self::Closed(c) => Some(c),
+            _ => None,
         }
     }
 
-    /// Turn into `Option` type with `Free` filter.
-    pub fn into_option_free(self) -> Option<Vec<C>> {
+    /// Turn into `Option` type with open curve check.
+    ///
+    /// Allow only open circuit.
+    pub fn to_open(self) -> Option<Vec<C>> {
         match self {
-            Self::Free(c) => Some(c),
+            Self::Open(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    /// Turn into `Option` type with empty check.
+    ///
+    /// Allow any circuit.
+    pub fn to_circuit(self) -> Option<Vec<C>> {
+        match self {
+            Self::Closed(c) | Self::Open(c) | Self::Branch(c) => Some(c),
+            Self::Empty => None,
+        }
+    }
+
+    /// Turn into `Option` type with defect check.
+    ///
+    /// Allow closed and open circuit.
+    pub fn to_defect_free(self) -> Option<Vec<C>> {
+        match self {
+            Self::Closed(c) | Self::Open(c) => Some(c),
             _ => None,
         }
     }
@@ -242,13 +260,13 @@ impl FourBarTy {
     }
 
     /// Return true if the type has continuous motion.
-    pub const fn is_close_curve(&self) -> bool {
+    pub const fn is_closed_curve(&self) -> bool {
         matches!(self, Self::GCCC | Self::GCRR)
     }
 
     /// Return true if the type has non-continuous motion.
     pub const fn is_open_curve(&self) -> bool {
-        !self.is_close_curve()
+        !self.is_closed_curve()
     }
 }
 
@@ -360,7 +378,7 @@ impl NormFourBar {
     /// the linkage types with continuous motion.
     ///
     /// The result might be invalid.
-    pub fn to_close_curve(self) -> Self {
+    pub fn to_closed_curve(self) -> Self {
         let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
         if s + l < p + q && (s == 1. || s == self.l0()) {
             self

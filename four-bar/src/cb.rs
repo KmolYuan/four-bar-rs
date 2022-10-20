@@ -70,13 +70,13 @@ impl Codebook {
                 [false, true].map(|inv| NormFourBar::try_from_slice(&v, inv).unwrap())
             })
             .map(|fb| match is_open {
-                false => fb.to_close_curve(),
+                false => fb.to_closed_curve(),
                 true => fb.to_open_curve(),
             })
             .filter(|fb| is_open == fb.ty().is_open_curve())
-            .filter_map(|fb| fb.curve(res).into_option_free().map(|c| (c, fb)))
+            .filter_map(|fb| fb.curve(res).to_defect_free().map(|c| (c, fb)))
             .for_each(|(curve, fb)| {
-                let mode = if is_open { Mode::Open } else { Mode::Close };
+                let mode = if is_open { Mode::Open } else { Mode::Closed };
                 let curve = mode.regularize(curve);
                 let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
                 efd_stack.lock().unwrap().push(efd.coeffs().to_owned());

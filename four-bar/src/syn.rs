@@ -7,7 +7,7 @@
 //! # let gen = 0;
 //! # let pop = 2;
 //! # let n = 3;
-//! let func = syn::PathSyn::from_curve(curve, syn::Mode::Close)
+//! let func = syn::PathSyn::from_curve(curve, syn::Mode::Closed)
 //!     .expect("invalid curve")
 //!     .resolution(n);
 //! let s = mh::Solver::build(mh::Rga::default())
@@ -39,9 +39,9 @@ pub const BOUND: [[f64; 2]; 7] = [
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(PartialEq, Eq, Copy, Clone)]
 pub enum Mode {
-    /// Close path matching
-    Close,
-    /// Use close path to match open path
+    /// Closed path matching
+    Closed,
+    /// Use closed path to match open path
     Partial,
     /// Open path matching
     Open,
@@ -55,7 +55,7 @@ impl Mode {
 
     /// Return true if the target curve is open.
     pub const fn is_target_close(&self) -> bool {
-        matches!(self, Self::Close)
+        matches!(self, Self::Closed)
     }
 
     /// Return true if the synthesis curve is open.
@@ -64,7 +64,7 @@ impl Mode {
     }
 
     /// Return true if the synthesis curve is close.
-    pub const fn is_result_close(&self) -> bool {
+    pub const fn is_result_closed(&self) -> bool {
         !self.is_result_open()
     }
 
@@ -76,7 +76,7 @@ impl Mode {
         let curve = curve.into();
         match self {
             _ if curve::is_closed(&curve) => curve.into_owned(),
-            Self::Close => curve::close_line(curve),
+            Self::Closed => curve::close_line(curve),
             Self::Partial | Self::Open => curve::close_rev(curve),
         }
     }
@@ -170,7 +170,7 @@ impl mh::ObjFactory for PathSyn {
         const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
         let fb = NormFourBar::try_from(&xs[..5]).unwrap();
         let fb = match self.mode {
-            Mode::Close | Mode::Partial => fb.to_close_curve(),
+            Mode::Closed | Mode::Partial => fb.to_closed_curve(),
             Mode::Open => fb.to_open_curve(),
         };
         if self.mode.is_result_open() != fb.ty().is_open_curve() {
@@ -187,7 +187,7 @@ impl mh::ObjFactory for PathSyn {
                 let curve = fb.curve_in(t1, t2, self.n);
                 (curve, fb)
             })
-            .filter_map(|(c, fb)| c.into_option_free().map(|c| (c, fb)))
+            .filter_map(|(c, fb)| c.to_defect_free().map(|c| (c, fb)))
             .map(|(curve, fb)| {
                 let curve = self.mode.regularize(curve);
                 let efd = efd::Efd2::from_curve_harmonic(curve, self.efd.harmonic()).unwrap();
@@ -196,7 +196,7 @@ impl mh::ObjFactory for PathSyn {
             })
         };
         match self.mode {
-            Mode::Close | Mode::Open => fb
+            Mode::Closed | Mode::Open => fb
                 .angle_bound()
                 .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
                 .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
