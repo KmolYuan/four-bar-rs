@@ -1,4 +1,3 @@
-use crate::defect::*;
 use std::{
     array::TryFromSliceError,
     f64::consts::{FRAC_PI_6, TAU},
@@ -24,22 +23,22 @@ macro_rules! impl_shared_method {
         }
 
         /// Generator for curves in specified angle.
-        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> DefectGuard<[[f64; 2]; 3]> {
+        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
             curve_in(start, end, n, |theta| $self.pos(theta), |[.., j2, j3, j4]| [j2, j3, j4])
         }
 
         /// Generator for coupler curve in specified angle.
-        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> DefectGuard<[f64; 2]> {
+        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
             curve_in(start, end, n, |theta| $self.pos(theta), |[.., j4]| j4)
         }
 
         /// Generator for curves.
-        pub fn curves(&$self, n: usize) -> DefectGuard<[[f64; 2]; 3]> {
+        pub fn curves(&$self, n: usize) -> Vec<[[f64; 2]; 3]> {
             $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, n)).unwrap_or_default()
         }
 
         /// Generator for coupler curve.
-        pub fn curve(&$self, n: usize) -> DefectGuard<[f64; 2]> {
+        pub fn curve(&$self, n: usize) -> Vec<[f64; 2]> {
             $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, n)).unwrap_or_default()
         }
 
@@ -58,6 +57,18 @@ macro_rules! impl_shared_method {
             let mut v = [$self.l0(), $self.l1(), $self.l2(), $self.l3()];
             v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
             v[3] < v[..3].iter().sum()
+        }
+
+        /// Return true if the linkage has defect.
+        pub fn has_defect(&$self) -> bool {
+            $self.l0() + $self.l1() >= $self.l2() + $self.l3()
+                || ($self.l0() - $self.l1()).abs() <= ($self.l2() - $self.l3()).abs()
+        }
+
+        /// Return true if the linkage has closed curve.
+        pub fn has_closed_curve(&$self) -> bool {
+            $self.l0() + $self.l1() <= $self.l2() + $self.l3()
+                && ($self.l0() - $self.l1()).abs() >= ($self.l2() - $self.l3()).abs()
         }
 
         /// Return the type of this linkage.
@@ -105,32 +116,21 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
     }
 }
 
-fn curve_in<F, M, B>(start: f64, end: f64, n: usize, f: F, map: M) -> DefectGuard<B>
+fn curve_in<F, M, B>(start: f64, end: f64, n: usize, f: F, map: M) -> Vec<B>
 where
     F: Fn(f64) -> [[f64; 2]; 5],
     M: Fn([[f64; 2]; 5]) -> B + Copy,
 {
     let interval = (end - start) / n as f64;
     let mut iter = (0..n).map(move |n| start + n as f64 * interval).map(f);
-    let mut last = DefectGuard::Empty;
+    let mut last = Vec::new();
     while iter.len() > 0 {
-        let mut defect = false;
         let v = iter
             .by_ref()
-            .inspect(|[_, [x1, y1], [x2, y2], [x3, y3], _]| {
-                // Detect defects here
-                defect = ((y1 - y2) * (x1 - x3) - (y1 - y3) * (x1 - x2)).abs() < f64::EPSILON;
-            })
             .take_while(|c| c.iter().flatten().all(|x| x.is_finite()))
             .map(map)
             .collect::<Vec<_>>();
-        last = if defect {
-            DefectGuard::Defect(v)
-        } else if v.len() == n {
-            DefectGuard::Closed(v)
-        } else {
-            DefectGuard::Open(v)
-        };
+        last = v;
     }
     last
 }

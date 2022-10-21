@@ -74,7 +74,8 @@ impl Codebook {
                 true => fb.to_open_curve(),
             })
             .filter(|fb| is_open == fb.ty().is_open_curve())
-            .filter_map(|fb| fb.curve(res).to_defect_free().map(|c| (c, fb)))
+            .map(|fb| (fb.curve(res), fb))
+            .filter(|(c, _)| c.len() > 1)
             .for_each(|(curve, fb)| {
                 let mode = if is_open { Mode::Open } else { Mode::Closed };
                 let curve = mode.regularize(curve);

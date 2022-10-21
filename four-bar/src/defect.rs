@@ -5,8 +5,6 @@ pub enum DefectGuard<C> {
     Closed(Vec<C>),
     /// Circuit defect curve (Open curve)
     Open(Vec<C>),
-    /// Branch (Grashof) defect curve, or has dead point
-    Defect(Vec<C>),
     /// Empty curve (Invalid linkage)
     #[default]
     Empty,
@@ -23,11 +21,6 @@ impl<C> DefectGuard<C> {
         matches!(self, Self::Open(_))
     }
 
-    /// Return true if the circuit has branch defect or dead point.
-    pub fn has_defect(&self) -> bool {
-        matches!(self, Self::Defect(_))
-    }
-
     /// Return true if the circuit is empty.
     pub fn is_empty(&self) -> bool {
         matches!(self, Self::Empty)
@@ -36,7 +29,7 @@ impl<C> DefectGuard<C> {
     /// Return the length of the circuit.
     pub fn len(&self) -> usize {
         match self {
-            Self::Closed(c) | Self::Open(c) | Self::Defect(c) => c.len(),
+            Self::Closed(c) | Self::Open(c) => c.len(),
             Self::Empty => 0,
         }
     }
@@ -66,7 +59,7 @@ impl<C> DefectGuard<C> {
     /// Allow any circuit.
     pub fn to_circuit(self) -> Option<Vec<C>> {
         match self {
-            Self::Closed(c) | Self::Open(c) | Self::Defect(c) => Some(c),
+            Self::Closed(c) | Self::Open(c) => Some(c),
             Self::Empty => None,
         }
     }

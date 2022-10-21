@@ -176,6 +176,7 @@ struct Angles {
 struct Cache {
     changed: bool,
     defect: bool,
+    has_closed_curve: bool,
     joints: [[f64; 2]; 5],
     curves: Vec<[[f64; 2]; 3]>,
     dynamics: Vec<(f64, [[f64; 3]; 3])>,
@@ -239,6 +240,9 @@ impl ProjInner {
         if self.cache.defect {
             ui.label(RichText::new("This linkage has defect!").color(Color32::RED));
         }
+        if self.cache.has_closed_curve {
+            ui.label(RichText::new("This linkage has a closed curve.").color(Color32::GREEN));
+        }
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
             let enabled = self.undo.is_able_undo();
@@ -292,7 +296,7 @@ impl ProjInner {
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
         fn get_curve(pivot: Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
-            let curve = fb.curves(n).to_circuit().unwrap_or_default().into_iter();
+            let curve = fb.curves(n).into_iter();
             match pivot {
                 Pivot::Driver => curve.map(|[c, _, _]| c).collect::<Vec<_>>(),
                 Pivot::Follower => curve.map(|[_, c, _]| c).collect::<Vec<_>>(),
@@ -391,9 +395,9 @@ impl ProjInner {
         // Recalculation
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angles.theta2);
-        let curves = self.fb.curves(n);
-        self.cache.defect = self.fb.is_parallel() || curves.has_defect();
-        self.cache.curves = curves.to_circuit().unwrap_or_default();
+        self.cache.defect = self.fb.has_defect();
+        self.cache.has_closed_curve = self.fb.has_closed_curve();
+        self.cache.curves = self.fb.curves(n);
         let step = TAU / n as f64;
         self.cache.dynamics = self
             .cache
@@ -432,11 +436,11 @@ impl ProjInner {
             .collect();
     }
 
-    fn plot(&self, ui: &mut plot::PlotUi, i: usize, id: usize) {
+    fn plot(&self, ui: &mut plot::PlotUi, ind: usize, id: usize) {
         if self.hide {
             return;
         }
-        let is_main = i == id;
+        let is_main = ind == id;
         draw_link(ui, &[self.cache.joints[0], self.cache.joints[2]], is_main);
         draw_link(ui, &[self.cache.joints[1], self.cache.joints[3]], is_main);
         draw_link(ui, &self.cache.joints[2..], is_main);
@@ -449,15 +453,12 @@ impl ProjInner {
             .color(JOINT_COLOR);
         ui.points(float_j);
         ui.points(fixed_j);
-        for (i, name) in ["Crank pivot", "Follower pivot", "Coupler pivot"]
+        for (i, name) in ["Driver joint", "Follower joint", "Coupler joint"]
             .into_iter()
             .enumerate()
         {
             let iter = self.cache.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
-            let line = plot::Line::new(iter)
-                .name(format!("{}:{}", name, i))
-                .width(3.);
-            ui.line(line);
+            ui.line(plot::Line::new(iter).name(name).width(3.));
         }
     }
 }
