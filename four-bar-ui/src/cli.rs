@@ -55,6 +55,9 @@ struct SynCfg {
     /// If codebook is enabled, the fetch number
     #[clap(short, default_value_t = 20)]
     k: usize,
+    /// Plot and save the changes in each generation
+    #[clap(long)]
+    log: bool,
 }
 
 #[derive(clap::Args)]

@@ -12,16 +12,16 @@ fn font() -> TextStyle<'static> {
 }
 
 /// Plot the synthesis history.
-pub fn history<B>(backend: B, history: &[f64]) -> PResult<(), B>
+pub fn history<B, H>(backend: B, history: H) -> PResult<(), B>
 where
     B: DrawingBackend,
+    H: AsRef<[f64]>,
 {
+    let history = history.as_ref();
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let cap = format!(
-        "Convergence Plot (Best Fitness: {:.04})",
-        history.last().unwrap()
-    );
+    let best_f = history.last().unwrap();
+    let cap = format!("Convergence Plot (Best Fitness: {:.04})", best_f);
     let max_fitness = history
         .iter()
         .max_by(|a, b| a.partial_cmp(b).unwrap())

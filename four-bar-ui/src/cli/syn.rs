@@ -81,40 +81,53 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} {msg}";
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(title.to_string());
-    let mut s = mh::Solver::build(mh::De::default());
-    if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
-        .then(|| cb.fetch_raw(&target, cfg.k))
-        .filter(|candi| !candi.is_empty())
-    {
-        s = s.pop_num(candi.len());
-        let fitness = candi.iter().map(|(f, _)| *f).collect();
-        let pool = candi
-            .into_iter()
-            .map(|(_, fb)| fb.to_norm().vec())
-            .collect::<Vec<_>>();
-        s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
-    } else {
-        s = s.pop_num(cfg.pop);
-    }
     let f = || -> AnyResult {
-        let t0 = Instant::now();
         let func = syn::PathSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
             .resolution(cfg.n);
-        let mut report = Vec::with_capacity(cfg.gen as usize);
+        let mut s = mh::Solver::build(mh::De::default(), func);
+        if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
+            .then(|| cb.fetch_raw(&target, cfg.k))
+            .filter(|candi| !candi.is_empty())
+        {
+            s = s.pop_num(candi.len());
+            let fitness = candi.iter().map(|(f, _)| *f).collect();
+            let pool = candi
+                .into_iter()
+                .map(|(_, fb)| fb.to_norm().vec())
+                .collect::<Vec<_>>();
+            s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
+        } else {
+            s = s.pop_num(cfg.pop);
+        }
+        let t0 = Instant::now();
+        let root = file.parent().unwrap().join(title);
+        if root.is_dir() {
+            std::fs::remove_dir_all(&root)?;
+        }
+        std::fs::create_dir(&root)?;
+        let mut history = Vec::with_capacity(if cfg.log { cfg.gen as usize } else { 0 });
+        let mut history_fb = Vec::with_capacity(if cfg.log { cfg.gen as usize } else { 0 });
         let s = s
             .task(|ctx| ctx.gen == cfg.gen)
             .callback(|ctx| {
-                report.push(ctx.best_f);
+                if cfg.log {
+                    let (f, fb) = ctx.result();
+                    history_fb.push(fb);
+                    history.push(f);
+                }
                 pb.set_position(ctx.gen);
             })
-            .solve(func)?;
+            .solve()?;
         let spent_time = Instant::now() - t0;
-        let root = file.parent().unwrap();
-        {
+        if cfg.log {
+            history_fb
+                .into_iter()
+                .enumerate()
+                .try_for_each(|(i, ans)| draw_midway(i, &root, title, &target, ans, cfg.n))?;
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 600));
-            plot::history(svg, &report)?;
+            plot::history(svg, history)?;
         }
         let (_, ans) = s.result();
         draw_ans(root, title, &target, ans, cfg.n)?;
@@ -167,7 +180,28 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
         })
 }
 
-fn draw_ans(root: &Path, title: &str, target: &[[f64; 2]], ans: FourBar, n: usize) -> AnyResult {
+fn draw_midway(
+    i: usize,
+    root: &Path,
+    title: &str,
+    target: &[[f64; 2]],
+    ans: FourBar,
+    n: usize,
+) -> AnyResult {
+    let curve = Some(ans.curve(n))
+        .filter(|c| c.len() > 1)
+        .expect("solved error");
+    let curves = [("Target", target), ("Optimized", &curve)];
+    {
+        let path = root.join(format!("{title}_{i}_linkage.svg"));
+        let svg = plot::SVGBackend::new(&path, (800, 800));
+        let opt = plot::Opt::new().fb(ans).use_dot(true).title("Linkage");
+        plot::plot2d(svg, &curves, opt)?;
+    }
+    Ok(())
+}
+
+fn draw_ans(root: PathBuf, title: &str, target: &[[f64; 2]], ans: FourBar, n: usize) -> AnyResult {
     {
         let path = root.join(format!("{title}_result.ron"));
         std::fs::write(path, ron::to_string(&ans)?)?;

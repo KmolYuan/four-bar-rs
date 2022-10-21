@@ -44,7 +44,8 @@ where
     use std::time::Instant;
     let start_time = Instant::now();
     let SynConfig { method: _, gen, pop, mode, target } = config;
-    let mut s = four_bar::mh::Solver::build(setting);
+    let mut s =
+        four_bar::mh::Solver::build(setting, syn::PathSyn::from_curve(&target, mode).unwrap());
     if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
         .then(|| cb.fetch_raw(&target, pop))
         .filter(|candi| !candi.is_empty())
@@ -67,7 +68,7 @@ where
             let time = (Instant::now() - start_time).as_secs();
             task.time.store(time, Ordering::Relaxed);
         })
-        .solve(syn::PathSyn::from_curve(target, mode).unwrap())
+        .solve()
         .unwrap()
         .result();
     fb
