@@ -101,17 +101,20 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
         let func = syn::PathSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
             .resolution(cfg.n);
+        let mut report = Vec::with_capacity(cfg.gen as usize);
         let s = s
             .task(|ctx| ctx.gen == cfg.gen)
-            .callback(|ctx| pb.set_position(ctx.gen))
-            .record(|ctx| ctx.best_f)
+            .callback(|ctx| {
+                report.push(ctx.best_f);
+                pb.set_position(ctx.gen);
+            })
             .solve(func)?;
         let spent_time = Instant::now() - t0;
         let root = file.parent().unwrap();
         {
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 600));
-            plot::history(svg, s.report())?;
+            plot::history(svg, &report)?;
         }
         let (_, ans) = s.result();
         draw_ans(root, title, &target, ans, cfg.n)?;
