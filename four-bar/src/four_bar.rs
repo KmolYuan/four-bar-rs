@@ -1,7 +1,7 @@
 use crate::defect::*;
 use std::{
     array::TryFromSliceError,
-    f64::consts::{FRAC_PI_2, FRAC_PI_6, TAU},
+    f64::consts::{FRAC_PI_6, TAU},
     ops::{Div, DivAssign, Mul, MulAssign},
 };
 
@@ -16,7 +16,7 @@ macro_rules! impl_parm_method {
     )+};
 }
 
-macro_rules! impl_curve_method {
+macro_rules! impl_shared_method {
     ($self:ident, $v:expr, $norm:expr) => {
         /// Return the position of the input angle.
         pub fn pos(&$self, theta: f64) -> [[f64; 2]; 5] {
@@ -41,6 +41,36 @@ macro_rules! impl_curve_method {
         /// Generator for coupler curve.
         pub fn curve(&$self, n: usize) -> DefectGuard<[f64; 2]> {
             $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, n)).unwrap_or_default()
+        }
+
+        /// Return true if the linkage is parallel.
+        pub fn is_parallel(&$self) -> bool {
+            ($self.l0() - $self.l2()).abs() < f64::EPSILON && ($self.l1() - $self.l3()).abs() < f64::EPSILON
+        }
+
+        /// Return true if the linkage is diamond shape.
+        pub fn is_diamond(&$self) -> bool {
+            ($self.l0() - $self.l1()).abs() < f64::EPSILON && ($self.l2() - $self.l3()).abs() < f64::EPSILON
+        }
+
+        /// Return true if the linkage length is valid.
+        pub fn is_valid(&$self) -> bool {
+            let mut v = [$self.l0(), $self.l1(), $self.l2(), $self.l3()];
+            v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+            v[3] < v[..3].iter().sum()
+        }
+
+        /// Return the type of this linkage.
+        pub fn ty(&$self) -> FourBarTy {
+            FourBarTy::from($self)
+        }
+
+        /// Input angle bounds of the linkage.
+        ///
+        /// Return `None` if unsupported.
+        pub fn angle_bound(&self) -> Option<[f64; 2]> {
+            self.is_valid()
+                .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
         }
     };
 }
@@ -87,21 +117,20 @@ where
         let mut defect = false;
         let v = iter
             .by_ref()
-            .inspect(|[j0, _, j2, j3, _]| {
+            .inspect(|[_, [x1, y1], [x2, y2], [x3, y3], _]| {
                 // Detect defects here
-                let a = (j2[1] - j0[1]).atan2(j2[0] - j0[0]) - (j3[1] - j2[1]).atan2(j3[0] - j2[0]);
-                defect = a.rem_euclid(FRAC_PI_2).abs() < f64::EPSILON;
+                defect = ((y1 - y2) * (x1 - x3) - (y1 - y3) * (x1 - x2)).abs() < f64::EPSILON;
             })
             .take_while(|c| c.iter().flatten().all(|x| x.is_finite()))
             .map(map)
             .collect::<Vec<_>>();
-        if defect {
-            last = DefectGuard::Defect(v);
-        } else if iter.len() == 0 {
-            last = DefectGuard::Closed(v);
+        last = if defect {
+            DefectGuard::Defect(v)
+        } else if v.len() == n {
+            DefectGuard::Closed(v)
         } else {
-            last = DefectGuard::Open(v);
-        }
+            DefectGuard::Open(v)
+        };
     }
     last
 }
@@ -237,7 +266,7 @@ impl TryFrom<&[f64]> for NormFourBar {
 impl NormFourBar {
     /// Zeros data. (Default value)
     ///
-    /// This is a invalid linkage.
+    /// This is an invalid linkage.
     pub const ZERO: Self = Self::from_vec([0.; 5], false);
 
     /// Create a normalized four-bar linkage from a vector.
@@ -255,6 +284,13 @@ impl NormFourBar {
     /// Construct with `inv` option.
     pub const fn with_inv(&self, inv: bool) -> Self {
         Self { inv, ..*self }
+    }
+
+    /// Angle offset of the ground link. (immutable)
+    ///
+    /// Get the value.
+    pub const fn a(&self) -> f64 {
+        0.
     }
 
     /// Length of the driver link. (immutable)
@@ -296,25 +332,13 @@ impl NormFourBar {
         self.v
     }
 
-    /// Return true if the linkage length is valid.
-    pub fn is_valid(&self) -> bool {
-        let mut v = [self.l0(), 1., self.l2(), self.l3()];
-        v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        v[3] < v[..3].iter().sum()
-    }
-
-    /// Return the type of this linkage.
-    pub fn ty(&self) -> FourBarTy {
-        FourBarTy::from(self)
-    }
-
     /// Transform from any linkages to Grashof crank-rocker / double crank,
     /// the linkage types with continuous motion.
     ///
     /// The result might be invalid.
     pub fn to_closed_curve(self) -> Self {
-        let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
-        if s + l < p + q && (s == 1. || s == self.l0()) {
+        let [s, p, q, l] = sort_link([self.l0(), self.l1(), self.l2(), self.l3()]);
+        if s + l < p + q && (s == self.l1() || s == self.l0()) {
             self
         } else {
             let l1 = s;
@@ -328,8 +352,8 @@ impl NormFourBar {
     ///
     /// The result might be invalid.
     pub fn to_open_curve(self) -> Self {
-        let [s, p, q, l] = sort_link([self.l0(), 1., self.l2(), self.l3()]);
-        if s + l < p + q && l == 1. {
+        let [s, p, q, l] = sort_link([self.l0(), self.l1(), self.l2(), self.l3()]);
+        if s + l < p + q && l == self.l1() {
             self
         } else {
             let l1 = l;
@@ -338,15 +362,7 @@ impl NormFourBar {
         }
     }
 
-    /// Input angle bounds of the linkage.
-    ///
-    /// Return `None` if unsupported.
-    pub fn angle_bound(&self) -> Option<[f64; 2]> {
-        self.is_valid()
-            .then(|| angle_bound([self.l0(), 1., self.l2(), self.l3(), 0.]))
-    }
-
-    impl_curve_method!(self, &[0., 0., 0., 1.], self);
+    impl_shared_method!(self, &[0., 0., 0., self.l1()], self);
 }
 
 /// Four-bar linkage with offset.
@@ -373,7 +389,7 @@ impl From<NormFourBar> for FourBar {
 impl FourBar {
     /// Zeros data. (Default value)
     ///
-    /// This is a invalid linkage.
+    /// This is an invalid linkage.
     pub const ZERO: Self = Self::new([0.; 6], false);
 
     /// Create with linkage lengths.
@@ -429,21 +445,9 @@ impl FourBar {
         Self::new([90., 35., 70., 70., 45., FRAC_PI_6], false)
     }
 
-    /// Return true if the linkage length is valid.
-    pub fn is_valid(&self) -> bool {
-        let mut v = [self.l0(), self.l1(), self.l2(), self.l3()];
-        v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        v[3] < v[..3].iter().sum()
-    }
-
     /// Return true if the linkage has no offset and offset angle.
     pub fn is_aligned(&self) -> bool {
         self.p0x() == 0. && self.p0y() == 0. && self.a() == 0.
-    }
-
-    /// Return the type of this linkage.
-    pub fn ty(&self) -> FourBarTy {
-        FourBarTy::from(self)
     }
 
     /// Remove the origin offset and the offset angle.
@@ -462,15 +466,7 @@ impl FourBar {
         self.norm.clone() / self.l1()
     }
 
-    /// Input angle bounds of the linkage.
-    ///
-    /// Return `None` if unsupported.
-    pub fn angle_bound(&self) -> Option<[f64; 2]> {
-        self.is_valid()
-            .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
-    }
-
-    impl_curve_method!(self, &self.v, &self.norm);
+    impl_shared_method!(self, &self.v, &self.norm);
 }
 
 impl std::ops::Deref for FourBar {

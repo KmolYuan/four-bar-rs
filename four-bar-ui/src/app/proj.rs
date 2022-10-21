@@ -175,6 +175,7 @@ struct Angles {
 #[derive(Default)]
 struct Cache {
     changed: bool,
+    defect: bool,
     joints: [[f64; 2]; 5],
     curves: Vec<[[f64; 2]; 3]>,
     dynamics: Vec<(f64, [[f64; 3]; 3])>,
@@ -235,6 +236,9 @@ impl ProjInner {
         });
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
+        if self.cache.defect {
+            ui.label(RichText::new("This linkage has defect!").color(Color32::RED));
+        }
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
             let enabled = self.undo.is_able_undo();
@@ -387,7 +391,9 @@ impl ProjInner {
         // Recalculation
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angles.theta2);
-        self.cache.curves = self.fb.curves(n).to_circuit().unwrap_or_default();
+        let curves = self.fb.curves(n);
+        self.cache.defect = self.fb.is_parallel() || curves.has_defect();
+        self.cache.curves = curves.to_circuit().unwrap_or_default();
         let step = TAU / n as f64;
         self.cache.dynamics = self
             .cache
