@@ -1,7 +1,7 @@
 use crate::defect::*;
 use std::{
     array::TryFromSliceError,
-    f64::consts::{FRAC_PI_6, TAU},
+    f64::consts::{FRAC_PI_2, FRAC_PI_6, TAU},
     ops::{Div, DivAssign, Mul, MulAssign},
 };
 
@@ -24,22 +24,22 @@ macro_rules! impl_curve_method {
         }
 
         /// Generator for curves in specified angle.
-        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> Defect<[[f64; 2]; 3]> {
+        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> DefectGuard<[[f64; 2]; 3]> {
             curve_in(start, end, n, |theta| $self.pos(theta), |[.., j2, j3, j4]| [j2, j3, j4])
         }
 
         /// Generator for coupler curve in specified angle.
-        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> Defect<[f64; 2]> {
+        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> DefectGuard<[f64; 2]> {
             curve_in(start, end, n, |theta| $self.pos(theta), |[.., j4]| j4)
         }
 
         /// Generator for curves.
-        pub fn curves(&$self, n: usize) -> Defect<[[f64; 2]; 3]> {
+        pub fn curves(&$self, n: usize) -> DefectGuard<[[f64; 2]; 3]> {
             $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, n)).unwrap_or_default()
         }
 
         /// Generator for coupler curve.
-        pub fn curve(&$self, n: usize) -> Defect<[f64; 2]> {
+        pub fn curve(&$self, n: usize) -> DefectGuard<[f64; 2]> {
             $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, n)).unwrap_or_default()
         }
     };
@@ -75,25 +75,32 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
     }
 }
 
-fn curve_in<F, M, B>(start: f64, end: f64, n: usize, f: F, map: M) -> Defect<B>
+fn curve_in<F, M, B>(start: f64, end: f64, n: usize, f: F, map: M) -> DefectGuard<B>
 where
     F: Fn(f64) -> [[f64; 2]; 5],
     M: Fn([[f64; 2]; 5]) -> B + Copy,
 {
     let interval = (end - start) / n as f64;
     let mut iter = (0..n).map(move |n| start + n as f64 * interval).map(f);
-    let mut last = Defect::Empty;
+    let mut last = DefectGuard::Empty;
     while iter.len() > 0 {
+        let mut defect = false;
         let v = iter
             .by_ref()
+            .inspect(|[j0, _, j2, j3, _]| {
+                // Detect defects here
+                let a = (j2[1] - j0[1]).atan2(j2[0] - j0[0]) - (j3[1] - j2[1]).atan2(j3[0] - j2[0]);
+                defect = a.rem_euclid(FRAC_PI_2).abs() < f64::EPSILON;
+            })
             .take_while(|c| c.iter().flatten().all(|x| x.is_finite()))
             .map(map)
             .collect::<Vec<_>>();
-        // TODO: Detect defects here
-        if iter.len() == 0 {
-            last = Defect::Closed(v);
+        if defect {
+            last = DefectGuard::Defect(v);
+        } else if iter.len() == 0 {
+            last = DefectGuard::Closed(v);
         } else {
-            last = Defect::Open(v);
+            last = DefectGuard::Open(v);
         }
     }
     last

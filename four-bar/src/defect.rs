@@ -1,21 +1,31 @@
 /// Circuit type with a defect notation.
 #[derive(Default)]
-pub enum Defect<C> {
-    /// Defect-free curve
+pub enum DefectGuard<C> {
+    /// Defect-free curve (Closed curve)
     Closed(Vec<C>),
-    /// Circuit defect curve
+    /// Circuit defect curve (Open curve)
     Open(Vec<C>),
     /// Branch (Grashof) defect curve, or has dead point
-    Branch(Vec<C>),
+    Defect(Vec<C>),
     /// Empty curve (Invalid linkage)
     #[default]
     Empty,
 }
 
-impl<C> Defect<C> {
-    /// Return true if the circuit has defect.
+impl<C> DefectGuard<C> {
+    /// Return true if the circuit is closed curve.
+    pub fn is_closed(&self) -> bool {
+        matches!(self, Self::Closed(_))
+    }
+
+    /// Return true if the circuit is open curve.
+    pub fn is_open(&self) -> bool {
+        matches!(self, Self::Open(_))
+    }
+
+    /// Return true if the circuit has branch defect or dead point.
     pub fn has_defect(&self) -> bool {
-        matches!(self, Self::Closed(_) | Self::Open(_) | Self::Branch(_))
+        matches!(self, Self::Defect(_))
     }
 
     /// Return true if the circuit is empty.
@@ -26,7 +36,7 @@ impl<C> Defect<C> {
     /// Return the length of the circuit.
     pub fn len(&self) -> usize {
         match self {
-            Self::Closed(c) | Self::Open(c) | Self::Branch(c) => c.len(),
+            Self::Closed(c) | Self::Open(c) | Self::Defect(c) => c.len(),
             Self::Empty => 0,
         }
     }
@@ -56,7 +66,7 @@ impl<C> Defect<C> {
     /// Allow any circuit.
     pub fn to_circuit(self) -> Option<Vec<C>> {
         match self {
-            Self::Closed(c) | Self::Open(c) | Self::Branch(c) => Some(c),
+            Self::Closed(c) | Self::Open(c) | Self::Defect(c) => Some(c),
             Self::Empty => None,
         }
     }
