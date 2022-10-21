@@ -86,10 +86,13 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
         .then(|| cb.fetch_raw(&target, cfg.k))
         .filter(|candi| !candi.is_empty())
     {
-        let pool = candi.iter().map(|(_, fb)| fb.vec()).collect::<Vec<_>>();
-        let fitness = candi.iter().map(|(f, _)| *f).collect();
-        s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
         s = s.pop_num(candi.len());
+        let fitness = candi.iter().map(|(f, _)| *f).collect();
+        let pool = candi
+            .into_iter()
+            .map(|(_, fb)| fb.to_norm().vec())
+            .collect::<Vec<_>>();
+        s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
     } else {
         s = s.pop_num(cfg.pop);
     }

@@ -6,13 +6,13 @@ use std::{
 };
 
 macro_rules! impl_parm_method {
-    ($(#[doc = $doc:literal] fn $name:ident, $name_mut:ident => $ind:literal)+) => {$(
+    ($(#[doc = $doc:literal] fn $name:ident $(,$name_mut:ident)? ($self:ident) -> $ty:ty {$expr:expr})+) => {$(
         #[doc = concat![$doc, "\n\nGet the value."]]
         #[inline]
-        pub const fn $name(&self) -> f64 { self.v[$ind] }
-        #[doc = concat![$doc, "\n\nModify the value."]]
+        pub const fn $name(&$self) -> $ty { $expr }
+        $(#[doc = concat![$doc, "\n\nModify the value."]]
         #[inline]
-        pub fn $name_mut(&mut self) -> &mut f64 { &mut self.v[$ind] }
+        pub fn $name_mut(&mut $self) -> &mut $ty { &mut $expr })?
     )+};
 }
 
@@ -286,45 +286,27 @@ impl NormFourBar {
         Self { inv, ..*self }
     }
 
-    /// Angle offset of the ground link. (immutable)
-    ///
-    /// Get the value.
-    pub const fn a(&self) -> f64 {
-        0.
-    }
-
-    /// Length of the driver link. (immutable)
-    ///
-    /// Get the value.
-    pub const fn l1(&self) -> f64 {
-        1.
-    }
-
     impl_parm_method! {
+        /// X offset of the driver link pivot.
+        fn p0x(self) -> f64 { 0. }
+        /// Y offset of the driver link pivot.
+        fn p0y(self) -> f64 { 0. }
+        /// Angle offset of the ground link.
+        fn a(self) -> f64 { 0. }
         /// Length of the ground link.
-        fn l0, l0_mut => 0
+        fn l0, l0_mut(self) -> f64 { self.v[0] }
+        /// Length of the driver link.
+        fn l1(self) -> f64 { 1. }
         /// Length of the coupler link.
-        fn l2, l2_mut => 1
+        fn l2, l2_mut(self) -> f64 { self.v[1] }
         /// Length of the follower link.
-        fn l3, l3_mut => 2
+        fn l3, l3_mut(self) -> f64 { self.v[2] }
         /// Length of the extended link.
-        fn l4, l4_mut => 3
+        fn l4, l4_mut(self) -> f64 { self.v[3] }
         /// Angle of the extended link on the coupler.
-        fn g, g_mut => 4
-    }
-
-    /// Inverse coupler and follower to another circuit.
-    ///
-    /// Get the value.
-    pub const fn inv(&self) -> bool {
-        self.inv
-    }
-
-    /// Inverse coupler and follower to another circuit.
-    ///
-    /// Modify the value.
-    pub fn inv_mut(&mut self) -> &mut bool {
-        &mut self.inv
+        fn g, g_mut(self) -> f64 { self.v[4] }
+        /// Inverse coupler and follower to another circuit.
+        fn inv, inv_mut(self) -> bool { self.inv }
     }
 
     /// Get the vector representation of the normalized linkage.
@@ -431,13 +413,25 @@ impl FourBar {
 
     impl_parm_method! {
         /// X offset of the driver link pivot.
-        fn p0x, p0x_mut => 0
+        fn p0x, p0x_mut(self) -> f64 { self.v[0] }
         /// Y offset of the driver link pivot.
-        fn p0y, p0y_mut  => 1
+        fn p0y, p0y_mut(self) -> f64 { self.v[1] }
         /// Angle offset of the ground link.
-        fn a, a_mut  => 2
+        fn a, a_mut(self) -> f64 { self.v[2] }
+        /// Length of the ground link.
+        fn l0, l0_mut(self) -> f64 { self.norm.v[0] }
         /// Length of the driver link.
-        fn l1, l1_mut => 3
+        fn l1, l1_mut(self) -> f64 { self.v[3] }
+        /// Length of the coupler link.
+        fn l2, l2_mut(self) -> f64 { self.norm.v[1] }
+        /// Length of the follower link.
+        fn l3, l3_mut(self) -> f64 { self.norm.v[2] }
+        /// Length of the extended link.
+        fn l4, l4_mut(self) -> f64 { self.norm.v[3] }
+        /// Angle of the extended link on the coupler.
+        fn g, g_mut(self) -> f64 { self.norm.v[4] }
+        /// Inverse coupler and follower to another circuit.
+        fn inv, inv_mut(self) -> bool { self.norm.inv }
     }
 
     /// An example crank rocker.
@@ -462,25 +456,12 @@ impl FourBar {
     }
 
     /// Get the normalized four-bar linkage from this one.
-    pub fn to_norm(&self) -> NormFourBar {
-        self.norm.clone() / self.l1()
+    pub fn to_norm(self) -> NormFourBar {
+        let l1 = self.l1();
+        self.norm / l1
     }
 
     impl_shared_method!(self, &self.v, &self.norm);
-}
-
-impl std::ops::Deref for FourBar {
-    type Target = NormFourBar;
-
-    fn deref(&self) -> &Self::Target {
-        &self.norm
-    }
-}
-
-impl std::ops::DerefMut for FourBar {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.norm
-    }
 }
 
 impl Mul<f64> for NormFourBar {
