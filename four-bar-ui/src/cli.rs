@@ -49,12 +49,9 @@ struct SynCfg {
     /// Number of generation
     #[clap(short, long, default_value_t = 50)]
     gen: u64,
-    /// Number of population
-    #[clap(short, long, default_value_t = 400)]
+    /// Number of population (the fetch number in codebook)
+    #[clap(short, long, default_value_t = 200)]
     pop: usize,
-    /// If codebook is enabled, the fetch number
-    #[clap(short, default_value_t = 20)]
-    k: usize,
     /// Plot and save the changes in each generation
     #[clap(long)]
     log: bool,

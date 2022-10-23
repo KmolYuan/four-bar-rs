@@ -87,7 +87,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
             .resolution(cfg.n);
         let mut s = mh::Solver::build(mh::De::default(), func);
         if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
-            .then(|| cb.fetch_raw(&target, cfg.k))
+            .then(|| cb.fetch_raw(&target, cfg.pop))
             .filter(|candi| !candi.is_empty())
         {
             s = s.pop_num(candi.len());
