@@ -406,9 +406,8 @@ impl FourBar {
 
     /// Transform a normalized four-bar linkage from a vector.
     pub fn from_trans(norm: NormFourBar, trans: &efd::Transform2) -> Self {
-        let [p0x, p0y] = trans.center;
-        let v = [p0x, p0y, trans.rot, trans.scale];
-        Self { v, norm: norm * trans.scale }
+        let efd::Transform2 { center: [p0x, p0y], rot, scale } = *trans;
+        Self { v: [p0x, p0y, rot, scale], norm: norm * scale }
     }
 
     impl_parm_method! {
