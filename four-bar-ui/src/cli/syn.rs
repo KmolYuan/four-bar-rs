@@ -64,7 +64,7 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
 
 fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     let file = file.canonicalize().unwrap();
-    let pb = mpb.add(ProgressBar::new(cfg.gen));
+    let pb = mpb.add(ProgressBar::new(cfg.gen as u64));
     let Info { target, title, mode } = match info(&file, cfg.n) {
         Ok(info) => info,
         Err(e) => {
@@ -106,12 +106,12 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
             std::fs::remove_dir_all(&root)?;
         }
         std::fs::create_dir(&root)?;
-        let mut history = Vec::with_capacity(if cfg.log { cfg.gen as usize } else { 0 });
-        let mut history_fb = Vec::with_capacity(if cfg.log { cfg.gen as usize } else { 0 });
+        let mut history = Vec::with_capacity(if cfg.log > 0 { cfg.gen as usize } else { 0 });
+        let mut history_fb = Vec::with_capacity(if cfg.log > 0 { cfg.gen as usize } else { 0 });
         let s = s
-            .task(|ctx| ctx.gen == cfg.gen)
+            .task(|ctx| ctx.gen == cfg.gen as u64)
             .callback(|ctx| {
-                if cfg.log {
+                if ctx.gen % cfg.log as u64 == 0 {
                     let (f, fb) = ctx.result();
                     history_fb.push(fb);
                     history.push(f);
@@ -120,7 +120,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
             })
             .solve()?;
         let spent_time = Instant::now() - t0;
-        if cfg.log {
+        if cfg.log > 0 {
             history_fb
                 .into_iter()
                 .enumerate()
