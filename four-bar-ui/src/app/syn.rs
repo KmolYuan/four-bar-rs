@@ -177,7 +177,7 @@ impl UiConfig {
                 });
             }
             if let Some(h) = self.efd_h {
-                if ui.button(format!("🔀 Re-describe ({})", h)).clicked() {
+                if ui.button(format!("🔀 Re-describe ({h})")).clicked() {
                     self.write_curve_str(|c| {
                         let c = self.syn.mode.regularize(c);
                         let len = c.len();
