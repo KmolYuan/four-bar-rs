@@ -1,2 +1,11 @@
 [workspace]
 members = ["four-bar", "four-bar-ui"]
+
+[workspace.package]
+version = "3.0.0"
+authors = ["KmolYuan <pyslvs@gmail.com>"]
+edition = "2021"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/KmolYuan/four-bar-rs"
+keywords = ["mechanism", "simulation", "optimization"]
+categories = ["algorithms"]
