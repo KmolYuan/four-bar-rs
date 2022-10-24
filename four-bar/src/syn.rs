@@ -10,11 +10,10 @@
 //! let func = syn::PathSyn::from_curve(curve, syn::Mode::Closed)
 //!     .expect("invalid curve")
 //!     .resolution(n);
-//! let s = mh::Solver::build(mh::Rga::default())
+//! let s = mh::Solver::build(mh::Rga::default(), func)
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
-//!     .record(|ctx| ctx.best_f)
-//!     .solve(func)
+//!     .solve()
 //!     .unwrap();
 //! ```
 use crate::{curve, efd, mh, FourBar, NormFourBar};
