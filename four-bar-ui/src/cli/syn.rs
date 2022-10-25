@@ -106,8 +106,9 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
             std::fs::remove_dir_all(&root)?;
         }
         std::fs::create_dir(&root)?;
-        let mut history = Vec::with_capacity(if cfg.log > 0 { cfg.gen as usize } else { 0 });
-        let mut history_fb = Vec::with_capacity(if cfg.log > 0 { cfg.gen as usize } else { 0 });
+        let use_log = cfg.log > 0;
+        let mut history = Vec::with_capacity(if use_log { cfg.gen as usize } else { 0 });
+        let mut history_fb = Vec::with_capacity(if use_log { cfg.gen as usize } else { 0 });
         let s = s
             .task(|ctx| ctx.gen == cfg.gen as u64)
             .callback(|ctx| {
@@ -120,7 +121,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
             })
             .solve()?;
         let spent_time = Instant::now() - t0;
-        if cfg.log > 0 {
+        if use_log {
             history_fb
                 .into_iter()
                 .enumerate()
