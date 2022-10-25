@@ -23,23 +23,23 @@ macro_rules! impl_shared_method {
         }
 
         /// Generator for curves in specified angle.
-        pub fn curves_in(&$self, start: f64, end: f64, n: usize) -> Vec<[[f64; 2]; 3]> {
-            curve_in(start, end, n, |theta| $self.pos(theta), |[.., j2, j3, j4]| [j2, j3, j4])
+        pub fn curves_in(&$self, start: f64, end: f64, res: usize) -> Vec<[[f64; 2]; 3]> {
+            curve_in(start, end, res, |theta| $self.pos(theta), |[.., j2, j3, j4]| [j2, j3, j4])
         }
 
         /// Generator for coupler curve in specified angle.
-        pub fn curve_in(&$self, start: f64, end: f64, n: usize) -> Vec<[f64; 2]> {
-            curve_in(start, end, n, |theta| $self.pos(theta), |[.., j4]| j4)
+        pub fn curve_in(&$self, start: f64, end: f64, res: usize) -> Vec<[f64; 2]> {
+            curve_in(start, end, res, |theta| $self.pos(theta), |[.., j4]| j4)
         }
 
         /// Generator for curves.
-        pub fn curves(&$self, n: usize) -> Vec<[[f64; 2]; 3]> {
-            $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, n)).unwrap_or_default()
+        pub fn curves(&$self, res: usize) -> Vec<[[f64; 2]; 3]> {
+            $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, res)).unwrap_or_default()
         }
 
         /// Generator for coupler curve.
-        pub fn curve(&$self, n: usize) -> Vec<[f64; 2]> {
-            $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, n)).unwrap_or_default()
+        pub fn curve(&$self, res: usize) -> Vec<[f64; 2]> {
+            $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, res)).unwrap_or_default()
         }
 
         /// Return true if the linkage is parallel.
@@ -116,13 +116,13 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
     }
 }
 
-fn curve_in<F, M, B>(start: f64, end: f64, n: usize, f: F, map: M) -> Vec<B>
+fn curve_in<F, M, B>(start: f64, end: f64, res: usize, f: F, map: M) -> Vec<B>
 where
     F: Fn(f64) -> [[f64; 2]; 5],
     M: Fn([[f64; 2]; 5]) -> B + Copy,
 {
-    let interval = (end - start) / n as f64;
-    let mut iter = (0..n).map(move |n| start + n as f64 * interval).map(f);
+    let interval = (end - start) / res as f64;
+    let mut iter = (0..res).map(move |n| start + n as f64 * interval).map(f);
     let mut last = Vec::new();
     while iter.len() > 0 {
         let v = iter

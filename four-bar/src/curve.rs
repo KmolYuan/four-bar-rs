@@ -135,8 +135,8 @@ where
         .iter()
         .enumerate()
         .map(|(i, &[x, y])| {
-            let i_n = i as f64 / n;
-            [x - x0 - xd * i_n, y - y0 - yd * i_n]
+            let i = i as f64 / n;
+            [x - x0 - xd * i, y - y0 - yd * i]
         })
         .collect::<Vec<_>>();
     let v2 = v1

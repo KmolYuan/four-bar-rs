@@ -73,7 +73,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
             return;
         }
     };
-    let Info { target, title, mode } = match info(&file, cfg.n) {
+    let Info { target, title, mode } = match info(&file, cfg.res) {
         Ok(info) => info,
         Err(e) => {
             if !matches!(e, SynErr::Format) {
@@ -91,7 +91,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     let f = || -> AnyResult {
         let func = syn::PathSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
-            .resolution(cfg.n);
+            .res(cfg.res);
         let mut s = mh::Solver::build(mh::De::default(), func);
         if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
             .then(|| cb.fetch_raw(&target, cfg.pop))
@@ -132,13 +132,13 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
             history_fb
                 .into_iter()
                 .enumerate()
-                .try_for_each(|(i, ans)| draw_midway(i, &root, title, &target, ans, cfg.n))?;
+                .try_for_each(|(i, ans)| draw_midway(i, &root, title, &target, ans, cfg.res))?;
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 600));
             plot::history(svg, history)?;
         }
         let (_, ans) = s.result();
-        draw_ans(root, title, &target, ans, cfg.n)?;
+        draw_ans(root, title, &target, ans, cfg.res)?;
         let harmonic = s.func().harmonic();
         pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
         Ok(())
@@ -148,7 +148,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
     }
 }
 
-fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
+fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
     let target = path
         .extension()
         .and_then(std::ffi::OsStr::to_str)
@@ -158,7 +158,7 @@ fn info(path: &Path, n: usize) -> Result<Info, SynErr> {
                 let fb = std::fs::read_to_string(path)
                     .map_err(|_| SynErr::Io)
                     .and_then(|s| ron::from_str::<FourBar>(&s).map_err(|_| SynErr::Ser))?;
-                Some(fb.curve(n))
+                Some(fb.curve(res))
                     .filter(|c| c.len() > 1)
                     .ok_or(SynErr::Linkage)
             }
@@ -194,9 +194,9 @@ fn draw_midway(
     title: &str,
     target: &[[f64; 2]],
     ans: FourBar,
-    n: usize,
+    res: usize,
 ) -> AnyResult {
-    let curve = Some(ans.curve(n))
+    let curve = Some(ans.curve(res))
         .filter(|c| c.len() > 1)
         .expect("solved error");
     let curves = [("Target", target), ("Optimized", &curve)];
@@ -209,12 +209,18 @@ fn draw_midway(
     Ok(())
 }
 
-fn draw_ans(root: PathBuf, title: &str, target: &[[f64; 2]], ans: FourBar, n: usize) -> AnyResult {
+fn draw_ans(
+    root: PathBuf,
+    title: &str,
+    target: &[[f64; 2]],
+    ans: FourBar,
+    res: usize,
+) -> AnyResult {
     {
         let path = root.join(format!("{title}_result.ron"));
         std::fs::write(path, ron::to_string(&ans)?)?;
     }
-    let curve = Some(ans.curve(n))
+    let curve = Some(ans.curve(res))
         .filter(|c| c.len() > 1)
         .expect("solved error");
     let curves = [("Target", target), ("Optimized", &curve)];

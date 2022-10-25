@@ -6,10 +6,10 @@
 //! # let curve = vec![[0., 0.], [1., 0.], [2., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
-//! # let n = 3;
+//! # let res = 3;
 //! let func = syn::PathSyn::from_curve(curve, syn::Mode::Closed)
 //!     .expect("invalid curve")
-//!     .resolution(n);
+//!     .res(res);
 //! let s = mh::Solver::build(mh::Rga::default(), func)
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
@@ -87,7 +87,7 @@ pub struct PathSyn {
     pub efd: efd::Efd2,
     mode: Mode,
     // How many points need to be generated or compared
-    n: usize,
+    res: usize,
 }
 
 impl PathSyn {
@@ -132,13 +132,13 @@ impl PathSyn {
     /// must preprocess with [`Mode::regularize()`] method before turned into
     /// EFD.
     pub fn from_efd(efd: efd::Efd2, mode: Mode) -> Self {
-        Self { efd, mode, n: 720 }
+        Self { efd, mode, res: 720 }
     }
 
     /// Set the resolution during synthesis.
-    pub fn resolution(self, n: usize) -> Self {
-        assert!(n > 0);
-        Self { n, ..self }
+    pub fn res(self, res: usize) -> Self {
+        assert!(res > 0);
+        Self { res, ..self }
     }
 
     /// The harmonic used of target EFD.
@@ -183,7 +183,7 @@ impl mh::ObjFactory for PathSyn {
             let iter = [false, true].into_iter();
             iter.map(move |inv| {
                 let fb = fb.with_inv(inv);
-                let curve = fb.curve_in(t1, t2, self.n);
+                let curve = fb.curve_in(t1, t2, self.res);
                 (curve, fb)
             })
             .filter(|(c, _)| c.len() > 1)

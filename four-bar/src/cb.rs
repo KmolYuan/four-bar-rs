@@ -42,26 +42,32 @@ impl Default for Codebook {
 
 impl Codebook {
     /// Takes time to generate codebook data.
-    pub fn make(is_open: bool, n: usize, res: usize, harmonic: usize) -> Self {
-        Self::make_with(is_open, n, res, harmonic, |_| ())
+    pub fn make(is_open: bool, size: usize, res: usize, harmonic: usize) -> Self {
+        Self::make_with(is_open, size, res, harmonic, |_| ())
     }
 
     /// Takes time to generate codebook data with a callback function.
-    pub fn make_with<C>(is_open: bool, n: usize, res: usize, harmonic: usize, callback: C) -> Self
+    pub fn make_with<C>(
+        is_open: bool,
+        size: usize,
+        res: usize,
+        harmonic: usize,
+        callback: C,
+    ) -> Self
     where
         C: Fn(usize) + Sync + Send,
     {
         let rng = Rng::new(None);
-        let fb_stack = Mutex::new(Vec::with_capacity(n));
-        let inv_stack = Mutex::new(Vec::with_capacity(n));
-        let efd_stack = Mutex::new(Vec::with_capacity(n));
-        let trans_stack = Mutex::new(Vec::with_capacity(n));
+        let fb_stack = Mutex::new(Vec::with_capacity(size));
+        let inv_stack = Mutex::new(Vec::with_capacity(size));
+        let efd_stack = Mutex::new(Vec::with_capacity(size));
+        let trans_stack = Mutex::new(Vec::with_capacity(size));
         loop {
             let len = efd_stack.lock().unwrap().len();
             #[cfg(feature = "rayon")]
-            let iter = (0..(n - len) / 2).into_par_iter();
+            let iter = (0..(size - len) / 2).into_par_iter();
             #[cfg(not(feature = "rayon"))]
-            let iter = 0..(n - len) / 2;
+            let iter = 0..(size - len) / 2;
             iter.flat_map(|_| {
                 let v = BOUND[..5]
                     .iter()
@@ -88,14 +94,14 @@ impl Codebook {
                 callback(stack.len());
                 inv_stack.lock().unwrap().push(arr0(fb.inv()));
             });
-            if efd_stack.lock().unwrap().len() >= n {
+            if efd_stack.lock().unwrap().len() >= size {
                 break;
             }
         }
-        let fb = stack(fb_stack, n);
-        let inv = stack(inv_stack, n);
-        let efd = stack(efd_stack, n);
-        let trans = stack(trans_stack, n);
+        let fb = stack(fb_stack, size);
+        let inv = stack(inv_stack, size);
+        let efd = stack(efd_stack, size);
+        let trans = stack(trans_stack, size);
         Self { fb, inv, efd, trans }
     }
 
@@ -145,8 +151,8 @@ impl Codebook {
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
-    pub fn fetch(&self, target: &[[f64; 2]], n: usize) -> Vec<(f64, FourBar)> {
-        self.fetch_inner(target, n, true)
+    pub fn fetch(&self, target: &[[f64; 2]], size: usize) -> Vec<(f64, FourBar)> {
+        self.fetch_inner(target, size, true)
     }
 
     /// Get the nearest four-bar linkage from a target curve.
@@ -155,8 +161,8 @@ impl Codebook {
     }
 
     /// Fetch without applying transformation.
-    pub fn fetch_raw(&self, target: &[[f64; 2]], n: usize) -> Vec<(f64, FourBar)> {
-        self.fetch_inner(target, n, false)
+    pub fn fetch_raw(&self, target: &[[f64; 2]], size: usize) -> Vec<(f64, FourBar)> {
+        self.fetch_inner(target, size, false)
     }
 
     /// Fetch nearest without applying transformation.
@@ -164,10 +170,10 @@ impl Codebook {
         self.fetch_1st_inner(target, false)
     }
 
-    fn fetch_inner(&self, target: &[[f64; 2]], n: usize, trans: bool) -> Vec<(f64, FourBar)> {
+    fn fetch_inner(&self, target: &[[f64; 2]], size: usize, trans: bool) -> Vec<(f64, FourBar)> {
         if self.is_empty() {
             return Vec::new();
-        } else if n == 1 {
+        } else if size == 1 {
             return self.fetch_1st_inner(target, trans).into_iter().collect();
         }
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
@@ -181,7 +187,7 @@ impl Codebook {
         let mut ind = (0..self.size()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
-            .take(n)
+            .take(size)
             .map(|i| (dis[i], self.pick(i, &target, trans)))
             .collect()
     }

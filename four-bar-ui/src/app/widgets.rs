@@ -7,18 +7,18 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     }
 }
 
-pub(crate) fn unit<V, N>(ui: &mut Ui, label: &str, val: &mut V, n: N) -> Response
+pub(crate) fn unit<V, N>(ui: &mut Ui, label: &str, val: &mut V, int: N) -> Response
 where
     V: emath::Numeric,
     N: Into<f64>,
 {
-    ui.add(DragValue::new(val).prefix(label).speed(n))
+    ui.add(DragValue::new(val).prefix(label).speed(int))
 }
 
-pub(crate) fn link(ui: &mut Ui, label: &str, val: &mut f64, n: f64) -> Response {
+pub(crate) fn link(ui: &mut Ui, label: &str, val: &mut f64, int: f64) -> Response {
     let dv = DragValue::new(val)
         .prefix(label)
-        .speed(n)
+        .speed(int)
         .clamp_range(1e-4..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)

@@ -385,20 +385,20 @@ impl ProjInner {
         self.cache(cfg.res);
     }
 
-    pub(crate) fn cache(&mut self, n: usize) {
+    pub(crate) fn cache(&mut self, res: usize) {
         if self.cache.changed {
-            self.cache_inner(n);
+            self.cache_inner(res);
         }
     }
 
-    fn cache_inner(&mut self, n: usize) {
+    fn cache_inner(&mut self, res: usize) {
         // Recalculation
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angles.theta2);
         self.cache.defect = self.fb.has_defect();
         self.cache.has_closed_curve = self.fb.has_closed_curve();
-        self.cache.curves = self.fb.curves(n);
-        let step = TAU / n as f64;
+        self.cache.curves = self.fb.curves(res);
+        let step = TAU / res as f64;
         self.cache.dynamics = self
             .cache
             .curves
@@ -541,8 +541,8 @@ impl Project {
             .collect()
     }
 
-    fn cache(&self, n: usize) {
-        self.0.write().unwrap().cache(n);
+    fn cache(&self, res: usize) {
+        self.0.write().unwrap().cache(res);
     }
 
     fn request_cache(&self) {
