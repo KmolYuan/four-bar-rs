@@ -63,17 +63,24 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
 }
 
 fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
-    let file = file.canonicalize().unwrap();
     let pb = mpb.add(ProgressBar::new(cfg.gen as u64));
+    let file = match file.canonicalize() {
+        Ok(path) => path,
+        Err(e) => {
+            const STYLE: &str = "{msg}";
+            pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
+            pb.finish_with_message(e.to_string());
+            return;
+        }
+    };
     let Info { target, title, mode } = match info(&file, cfg.n) {
         Ok(info) => info,
         Err(e) => {
             if !matches!(e, SynErr::Format) {
-                let title = file.to_str().unwrap().to_string();
                 const STYLE: &str = "[{prefix}] {msg}";
                 pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
-                pb.set_prefix(title);
-                pb.set_message(e.to_string());
+                pb.set_prefix(file.to_str().unwrap().to_string());
+                pb.finish_with_message(e.to_string());
             }
             return;
         }
