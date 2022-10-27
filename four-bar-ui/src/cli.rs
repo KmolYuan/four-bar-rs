@@ -1,6 +1,8 @@
 use clap::Parser;
 use std::path::PathBuf;
 
+use crate::syn_method::SynMethod;
+
 mod syn;
 
 #[derive(Parser)]
@@ -30,11 +32,15 @@ enum Cmd {
 struct Syn {
     /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
     files: Vec<PathBuf>,
-    /// Disable parallel for all task
+    /// Algorithm name
+    #[clap(short, long, value_enum, default_value_t = SynMethod::De)]
+    method: SynMethod,
+    /// Disable parallel for all tasks
     #[clap(long)]
     no_parallel: bool,
-    /// Provide pre-generated codebook databases, support join multiple paths
-    /// like "cb1.npy:cb2.npy" or "cb1.npy;cb2.npy" in multi-platform
+    /// Provide pre-generated codebook databases, support multiple paths as
+    #[cfg_attr(windows, doc = "\"a.npy;b.npy\"")]
+    #[cfg_attr(not(windows), doc = "\"a.npy:b.npy\"")]
     #[clap(long)]
     cb: Option<std::ffi::OsString>,
     #[clap(flatten)]
@@ -52,8 +58,8 @@ struct SynCfg {
     /// Number of population (the fetch number in codebook)
     #[clap(short, long, default_value_t = 200)]
     pop: usize,
-    /// Plot and save the changes with log interval, disable with 0
-    #[clap(long)]
+    /// Plot and save the changes with log interval, default to disabled
+    #[clap(long, default_value_t = 0)]
     log: usize,
 }
 

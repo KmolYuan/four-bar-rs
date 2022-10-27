@@ -1,5 +1,8 @@
 use super::{io, linkages::Linkages, widgets::unit};
-use crate::csv::{dump_csv, parse_csv};
+use crate::{
+    csv::{dump_csv, parse_csv},
+    syn_method::SynMethod,
+};
 use eframe::egui::*;
 use four_bar::{cb::Codebook, curve, efd, mh, syn};
 use serde::{Deserialize, Serialize};
@@ -212,32 +215,10 @@ impl UiConfig {
     }
 }
 
-#[derive(Default, Deserialize, Serialize, Clone, PartialEq)]
-enum Method {
-    #[default]
-    De,
-    Fa,
-    Pso,
-    Rga,
-    Tlbo,
-}
-
-impl Method {
-    const fn name(&self) -> &'static str {
-        match self {
-            Method::De => "Differential Evolution",
-            Method::Fa => "Firefly Algorithm",
-            Method::Pso => "Particle Swarm Optimization",
-            Method::Rga => "Real-coded Genetic Algorithm",
-            Method::Tlbo => "Teaching Learning Based Optimization",
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 struct SynConfig {
-    method: Method,
+    method: SynMethod,
     gen: u64,
     pop: usize,
     mode: syn::Mode,
@@ -248,7 +229,7 @@ struct SynConfig {
 impl Default for SynConfig {
     fn default() -> Self {
         Self {
-            method: Method::default(),
+            method: SynMethod::default(),
             gen: 50,
             pop: 400,
             mode: syn::Mode::Closed,
@@ -284,26 +265,14 @@ impl Synthesis {
         });
         let method = &mut self.config.syn.method;
         ui.horizontal_wrapped(|ui| {
-            for (m, abb) in [
-                (Method::De, "DE"),
-                (Method::Fa, "FA"),
-                (Method::Pso, "PSO"),
-                (Method::Rga, "RGA"),
-                (Method::Tlbo, "TLBO"),
-            ] {
+            for m in SynMethod::LIST {
                 let name = m.name();
-                ui.selectable_value(method, m, abb).on_hover_text(name);
+                let abbr = m.abbr();
+                ui.selectable_value(method, *m, abbr).on_hover_text(name);
             }
         });
         ui.horizontal_wrapped(|ui| {
-            let url = match method {
-                Method::De => "https://en.wikipedia.org/wiki/Differential_evolution",
-                Method::Fa => "https://en.wikipedia.org/wiki/Firefly_algorithm",
-                Method::Pso => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
-                Method::Rga => "https://en.wikipedia.org/wiki/Genetic_algorithm",
-                Method::Tlbo => "https://doi.org/10.1016/j.cad.2010.12.015",
-            };
-            ui.hyperlink_to(method.name(), url)
+            ui.hyperlink_to(method.name(), method.link())
                 .on_hover_text(format!("More about {}", method.name()));
         });
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
@@ -436,7 +405,6 @@ impl Synthesis {
     }
 
     fn start_syn(&mut self, queue: super::proj::Queue) {
-        use four_bar::mh::methods::*;
         #[cfg(not(target_arch = "wasm32"))]
         use four_bar::mh::rayon::spawn;
         let config = self.config.syn.clone();
@@ -450,11 +418,11 @@ impl Synthesis {
         let f = move || {
             let cb = cb.read().unwrap();
             let fb = match config.method {
-                Method::De => solve(&task, &cb, config, De::default()),
-                Method::Fa => solve(&task, &cb, config, Fa::default()),
-                Method::Pso => solve(&task, &cb, config, Pso::default()),
-                Method::Rga => solve(&task, &cb, config, Rga::default()),
-                Method::Tlbo => solve(&task, &cb, config, Tlbo::default()),
+                SynMethod::De => solve(&task, &cb, config, mh::De::default()),
+                SynMethod::Fa => solve(&task, &cb, config, mh::Fa::default()),
+                SynMethod::Pso => solve(&task, &cb, config, mh::Pso::default()),
+                SynMethod::Rga => solve(&task, &cb, config, mh::Rga::default()),
+                SynMethod::Tlbo => solve(&task, &cb, config, mh::Tlbo::default()),
             };
             queue.push(None, fb);
             task.start.store(false, Ordering::Relaxed);

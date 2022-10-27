@@ -1,4 +1,5 @@
 use super::{Syn, SynCfg};
+use crate::syn_method::SynMethod;
 use four_bar::{cb::Codebook, mh, plot, syn, FourBar};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
@@ -38,13 +39,19 @@ struct Info<'a> {
 }
 
 pub(super) fn syn(syn: Syn) {
-    let Syn { files, no_parallel, cfg, cb } = syn;
+    let Syn { files, method, no_parallel, cfg, cb } = syn;
     let cb = cb
         .map(|cb| std::env::split_paths(&cb).collect())
         .unwrap_or_default();
     let cb = load_codebook(cb).expect("Load codebook failed!");
     let mpb = MultiProgress::new();
-    let run = |file: PathBuf| run(&mpb, file, &cfg, &cb);
+    let run: Box<dyn Fn(PathBuf) + Send + Sync> = match method {
+        SynMethod::De => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::De::default())),
+        SynMethod::Fa => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Fa::default())),
+        SynMethod::Pso => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Pso::default())),
+        SynMethod::Rga => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Rga::default())),
+        SynMethod::Tlbo => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Tlbo::default())),
+    };
     if no_parallel {
         files.into_iter().for_each(run);
     } else {
@@ -62,7 +69,11 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
         .collect()
 }
 
-fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
+fn run<S>(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook, setting: S)
+where
+    S: mh::Setting,
+    S::Algorithm: mh::Algorithm<syn::PathSyn>,
+{
     let pb = mpb.add(ProgressBar::new(cfg.gen as u64));
     let file = match file.canonicalize() {
         Ok(path) => path,
@@ -92,7 +103,7 @@ fn run(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook) {
         let func = syn::PathSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
             .res(cfg.res);
-        let mut s = mh::Solver::build(mh::De::default(), func);
+        let mut s = mh::Solver::build(setting, func);
         if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
             .then(|| cb.fetch_raw(&target, cfg.pop))
             .filter(|candi| !candi.is_empty())
