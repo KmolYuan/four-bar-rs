@@ -112,16 +112,6 @@ impl<'a> Opt<'a> {
     }
 }
 
-/// Plot 2D curve.
-#[deprecated = "please use `plot2d()` instead"]
-pub fn curve<B, F>(backend: B, title: &str, curve: &[(&str, &[[f64; 2]])], fb: F) -> PResult<(), B>
-where
-    B: DrawingBackend,
-    F: Into<FourBar>,
-{
-    plot2d(backend, curve, Opt::new().fb(fb).title(title))
-}
-
 /// Plot 2D curves and linkages.
 pub fn plot2d<'a, B, O>(backend: B, curves: &[(&str, &[[f64; 2]])], opt: O) -> PResult<(), B>
 where
