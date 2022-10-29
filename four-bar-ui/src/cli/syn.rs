@@ -3,6 +3,7 @@ use crate::syn_method::SynMethod;
 use four_bar::{cb::Codebook, mh, plot, syn, FourBar};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
+    ffi::OsStr,
     path::{Path, PathBuf},
     time::Instant,
 };
@@ -13,22 +14,24 @@ enum SynErr {
     // Unsupported format
     Format,
     // Reading file error
-    Io,
+    Io(std::io::Error),
     // Serialization error
-    Ser,
+    CsvSer(csv::Error),
+    // Serialization error
+    RonSer(ron::error::SpannedError),
     // Invalid linkage
     Linkage,
 }
 
 impl std::fmt::Display for SynErr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let s = match self {
-            Self::Format => "unsupported format",
-            Self::Io => "reading file error",
-            Self::Ser => "serialization error",
-            Self::Linkage => "invalid linkage",
-        };
-        f.write_str(s)
+        match self {
+            Self::Format => write!(f, "unsupported format"),
+            Self::Io(e) => write!(f, "reading file error: {e}"),
+            Self::CsvSer(e) => write!(f, "csv serialization error: {e}"),
+            Self::RonSer(e) => write!(f, "ron serialization error: {e}"),
+            Self::Linkage => write!(f, "invalid linkage"),
+        }
     }
 }
 
@@ -162,41 +165,36 @@ where
 fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
     let target = path
         .extension()
-        .and_then(std::ffi::OsStr::to_str)
+        .and_then(OsStr::to_str)
         .ok_or(SynErr::Format)
         .and_then(|s| match s {
             "ron" => {
                 let fb = std::fs::read_to_string(path)
-                    .map_err(|_| SynErr::Io)
-                    .and_then(|s| ron::from_str::<FourBar>(&s).map_err(|_| SynErr::Ser))?;
+                    .map_err(SynErr::Io)
+                    .and_then(|s| ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer))?;
                 Some(fb.curve(res))
                     .filter(|c| c.len() > 1)
                     .ok_or(SynErr::Linkage)
             }
             "csv" | "txt" => std::fs::read_to_string(path)
-                .map_err(|_| SynErr::Io)
-                .and_then(|s| crate::csv::parse_csv(&s).map_err(|_| SynErr::Ser)),
+                .map_err(SynErr::Io)
+                .and_then(|s| crate::csv::parse_csv(&s).map_err(SynErr::CsvSer)),
             _ => Err(SynErr::Format),
         })?;
-    path.file_stem()
-        .and_then(std::ffi::OsStr::to_str)
-        .ok_or(SynErr::Format)
-        .and_then(|title| {
-            title
-                .rsplit('.')
-                .next()
-                .and_then(|s| match s {
-                    "close" => Some(syn::Mode::Closed),
-                    "partial" => Some(syn::Mode::Partial),
-                    "open" => Some(syn::Mode::Open),
-                    _ => None,
-                })
-                .map(|mode| {
-                    let target = mode.regularize(target);
-                    Info { target, title, mode }
-                })
-                .ok_or(SynErr::Format)
-        })
+    let f = || {
+        let title = path.file_stem().and_then(OsStr::to_str)?;
+        let mode = Path::new(title)
+            .extension()
+            .and_then(OsStr::to_str)
+            .and_then(|mode| match mode {
+                "close" => Some(syn::Mode::Closed),
+                "partial" => Some(syn::Mode::Partial),
+                "open" => Some(syn::Mode::Open),
+                _ => None,
+            })?;
+        Some(Info { target: mode.regularize(target), title, mode })
+    };
+    f().ok_or(SynErr::Format)
 }
 
 fn draw_midway(
