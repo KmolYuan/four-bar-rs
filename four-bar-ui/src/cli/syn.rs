@@ -212,7 +212,7 @@ fn draw_midway(
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
-        let opt = plot::Opt::new().fb(ans).use_dot(true).title("Linkage");
+        let opt = plot::Opt::new().fb(ans).use_dot(true);
         plot::plot2d(svg, &curves, opt)?;
     }
     Ok(())
