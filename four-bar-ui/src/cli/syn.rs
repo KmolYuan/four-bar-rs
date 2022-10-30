@@ -49,11 +49,11 @@ pub(super) fn syn(syn: Syn) {
     let cb = load_codebook(cb).expect("Load codebook failed!");
     let mpb = MultiProgress::new();
     let run: Box<dyn Fn(PathBuf) + Send + Sync> = match method {
-        SynMethod::De => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::De::default())),
-        SynMethod::Fa => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Fa::default())),
-        SynMethod::Pso => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Pso::default())),
-        SynMethod::Rga => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Rga::default())),
-        SynMethod::Tlbo => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Tlbo::default())),
+        SynMethod::De => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::De::new())),
+        SynMethod::Fa => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Fa::new())),
+        SynMethod::Pso => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Pso::new())),
+        SynMethod::Rga => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Rga::new())),
+        SynMethod::Tlbo => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Tlbo::new())),
     };
     if no_parallel {
         files.into_iter().for_each(run);
@@ -133,7 +133,7 @@ where
         let s = s
             .task(|ctx| ctx.gen == cfg.gen as u64)
             .callback(|ctx| {
-                if ctx.gen % cfg.log as u64 == 0 {
+                if use_log && ctx.gen % cfg.log as u64 == 0 {
                     let (f, fb) = ctx.result();
                     history_fb.push(fb);
                     history.push(f);

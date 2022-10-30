@@ -418,11 +418,11 @@ impl Synthesis {
         let f = move || {
             let cb = cb.read().unwrap();
             let fb = match config.method {
-                SynMethod::De => solve(&task, &cb, config, mh::De::default()),
-                SynMethod::Fa => solve(&task, &cb, config, mh::Fa::default()),
-                SynMethod::Pso => solve(&task, &cb, config, mh::Pso::default()),
-                SynMethod::Rga => solve(&task, &cb, config, mh::Rga::default()),
-                SynMethod::Tlbo => solve(&task, &cb, config, mh::Tlbo::default()),
+                SynMethod::De => solve(&task, &cb, config, mh::De::new()),
+                SynMethod::Fa => solve(&task, &cb, config, mh::Fa::new()),
+                SynMethod::Pso => solve(&task, &cb, config, mh::Pso::new()),
+                SynMethod::Rga => solve(&task, &cb, config, mh::Rga::new()),
+                SynMethod::Tlbo => solve(&task, &cb, config, mh::Tlbo::new()),
             };
             queue.push(None, fb);
             task.start.store(false, Ordering::Relaxed);
