@@ -30,12 +30,13 @@ enum Cmd {
 
 #[derive(clap::Args)]
 struct Syn {
-    /// Algorithm name
-    #[clap(value_enum, default_value_t = SynMethod::De)]
-    method: SynMethod,
     /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
+    #[clap(required = true)]
     files: Vec<PathBuf>,
-    /// Disable parallel for all tasks
+    /// Algorithm name
+    #[clap(long, value_enum, default_value_t = SynMethod::De)]
+    method: SynMethod,
+    /// Disable parallel for enumerating all tasks
     #[clap(long)]
     no_parallel: bool,
     /// Provide pre-generated codebook databases, support multiple paths as
