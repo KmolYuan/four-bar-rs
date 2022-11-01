@@ -1,3 +1,5 @@
+#![warn(clippy::semicolon_if_nothing_returned)]
+
 mod app;
 #[cfg(not(target_arch = "wasm32"))]
 mod cli;
@@ -6,7 +8,7 @@ mod syn_method;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    cli::Entry::parse()
+    cli::Entry::parse();
 }
 
 #[cfg(target_arch = "wasm32")]

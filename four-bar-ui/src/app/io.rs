@@ -123,21 +123,21 @@ pub(crate) fn open_ron<C>(done: C)
 where
     C: Fn(String, String) + 'static,
 {
-    open(FMT, EXT, done)
+    open(FMT, EXT, done);
 }
 
 pub(crate) fn open_csv_single<C>(done: C)
 where
     C: Fn(String, String) + 'static,
 {
-    open_single(CSV_FMT, CSV_EXT, done)
+    open_single(CSV_FMT, CSV_EXT, done);
 }
 
 pub(crate) fn open_cb<C>(done: C)
 where
     C: Fn(Vec<u8>) + 'static,
 {
-    open_bin(CB_FMT, CB_EXT, done)
+    open_bin(CB_FMT, CB_EXT, done);
 }
 
 pub(crate) fn save_csv_ask<S>(curve: &[S])
@@ -145,25 +145,25 @@ where
     S: serde::Serialize + Clone,
 {
     let s = dump_csv(curve).unwrap();
-    save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ())
+    save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
 }
 
 pub(crate) fn save_ron_ask<C>(fb: &FourBar, name: &str, done: C)
 where
     C: FnOnce(String) + 'static,
 {
-    save_ask(&ron::to_string(fb).unwrap(), name, FMT, EXT, done)
+    save_ask(&ron::to_string(fb).unwrap(), name, FMT, EXT, done);
 }
 
 pub(crate) fn save_ron(fb: &FourBar, path: &str) {
-    save(&ron::to_string(fb).unwrap(), path)
+    save(&ron::to_string(fb).unwrap(), path);
 }
 
 pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 600));
     plot::history(svg, history).unwrap();
-    save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
+    save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }
 
 pub(crate) fn save_curve_ask<'a, O>(target: &[[f64; 2]], curve: &[[f64; 2]], opt: O, name: &str)
@@ -182,5 +182,5 @@ where
         (true, false) => plot::plot2d(svg, &curves, opt.title("Comparison")).unwrap(),
         _ => plot::plot2d(svg, &curves, opt).unwrap(),
     }
-    save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ())
+    save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }

@@ -299,7 +299,7 @@ impl Synthesis {
                     .unwrap()
                     .merge_inplace(&cb_new)
                     .unwrap_or_default();
-            })
+            });
         }
         ui.separator();
         ui.heading("Optimization");

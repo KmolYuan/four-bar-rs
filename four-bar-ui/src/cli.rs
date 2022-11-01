@@ -113,7 +113,7 @@ fn native(files: Vec<PathBuf>) {
         winapi::um::wincon::FreeConsole();
     }
     use crate::app::App;
-    eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files)))
+    eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files)));
 }
 
 fn codebook(cb: Codebook) {

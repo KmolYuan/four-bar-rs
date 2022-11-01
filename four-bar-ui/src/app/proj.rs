@@ -190,7 +190,7 @@ struct ProjInner {
     angles: Angles,
     hide: bool,
     angle_open: bool,
-    angle_use_rad: bool,
+    use_rad: bool,
     #[serde(skip)]
     cache: Cache,
     #[serde(skip)]
@@ -205,7 +205,7 @@ impl Default for ProjInner {
             angles: Default::default(),
             hide: false,
             angle_open: false,
-            angle_use_rad: false,
+            use_rad: false,
             cache: Cache { changed: true, ..Cache::default() },
             undo: Default::default(),
         }
@@ -267,7 +267,7 @@ impl ProjInner {
                 let res = angle(ui, "Omega: ", &mut self.angles.omega2, "/s")
                     | angle(ui, "Alpha: ", &mut self.angles.alpha2, "/s²");
                 self.cache.changed |= res.changed();
-                ui.checkbox(&mut self.angle_use_rad, "Plot radians");
+                ui.checkbox(&mut self.use_rad, "Plot radians");
                 for (i, (id, symbol, title)) in [
                     ("plot_theta", "theta", "Angle"),
                     ("plot_omega", "omega", "Angular Velocity"),
@@ -286,9 +286,7 @@ impl ProjInner {
                     plot::Plot::new(id)
                         .legend(Default::default())
                         .height(200.)
-                        .show(ui, |ui| {
-                            plot_values(ui, &values, symbol, self.angle_use_rad)
-                        });
+                        .show(ui, |ui| plot_values(ui, &values, symbol, self.use_rad));
                 }
             });
         self.undo.fetch(ui.ctx().input().time, &self.fb);
