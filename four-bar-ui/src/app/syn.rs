@@ -231,7 +231,7 @@ impl Default for SynConfig {
         Self {
             method: SynMethod::default(),
             gen: 50,
-            pop: 400,
+            pop: 200,
             mode: syn::Mode::Closed,
             target: Vec::new(),
         }
