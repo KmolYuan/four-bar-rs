@@ -14,7 +14,7 @@ Powered by <https://github.com/emilk/egui>.
 
 Native icon from <https://icons8.com>.
 
-## Release
+## Releases
 
 In Linux, `libxcb` and `libgtk-3` are required. (most desktops are already provided)
 
