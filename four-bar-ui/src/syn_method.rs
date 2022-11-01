@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Deserialize, Serialize, Clone, Copy, PartialEq)]
+#[derive(Default, Deserialize, Serialize, Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(clap::ValueEnum))]
 pub(crate) enum SynMethod {
     #[default]

@@ -43,6 +43,10 @@ struct Info<'a> {
 
 pub(super) fn syn(syn: Syn) {
     let Syn { files, method, no_parallel, cfg, cb } = syn;
+    {
+        let SynCfg { res, gen, pop, log } = cfg;
+        println!("method={method:?}, res={res}, gen={gen}, pop={pop}, log={log}");
+    }
     let cb = cb
         .map(|cb| std::env::split_paths(&cb).collect())
         .unwrap_or_default();
