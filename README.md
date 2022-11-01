@@ -5,7 +5,7 @@
 
 Four🍀bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
-+ GUI program is called `four-bar-ui`, but the executable is called `four-bar`.
++ CLI/GUI program is `four-bar-ui` crate, but the executable is called `four-bar`.
 + Kernel library `four-bar` is on [crates.io](https://crates.io).
 
 Online demo: <https://kmolyuan.github.io/four-bar-rs/>
