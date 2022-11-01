@@ -53,9 +53,14 @@ impl Linkages {
         }
         ui.checkbox(&mut self.cfg.plot_dot, "Use dot curve in plots");
         ui.checkbox(&mut self.cfg.plot_grid, "Use grid in plots");
-        let mut vis = ui.visuals().clone();
-        vis.light_dark_radio_buttons(ui);
-        ui.ctx().set_visuals(vis);
+        ui.horizontal(|ui| {
+            ui.group(|ui| {
+                let mut vis = ui.visuals().clone();
+                ui.selectable_value(&mut vis, Visuals::light(), "☀ Light");
+                ui.selectable_value(&mut vis, Visuals::dark(), "🌜 Dark");
+                ui.ctx().set_visuals(vis);
+            });
+        });
         ui.separator();
         ui.heading("Control Tips");
         ui.label("Pan move: Left-drag / Drag");
