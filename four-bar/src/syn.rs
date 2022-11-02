@@ -67,7 +67,7 @@ impl Mode {
         !self.is_result_open()
     }
 
-    /// Regularize path with the mode.
+    /// Regularize curve with the mode.
     pub fn regularize<'a, C>(&self, curve: C) -> Vec<[f64; 2]>
     where
         C: Into<CowCurve<'a>>,
