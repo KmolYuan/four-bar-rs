@@ -1,4 +1,8 @@
-use super::{io, linkages::Linkages, widgets::unit};
+use super::{
+    io,
+    linkages::Linkages,
+    widgets::{unit, url_btn},
+};
 use crate::{
     csv::{dump_csv, parse_csv},
     syn_method::SynMethod,
@@ -15,6 +19,11 @@ use std::{
 };
 
 mod painting;
+
+const CLOSED_URL: &str =
+    "https://drive.google.com/file/d/1xOgypg2fCWgfAPVneuDO-cnPdc_GHCsK/view?usp=sharing";
+const OPEN_URL: &str =
+    "https://drive.google.com/file/d/1vPPK4KzyAiaC25m1MiJGiSpxbl9ZDEW4/view?usp=sharing";
 
 fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
     if let Ok(curve) = parse_csv(s) {
@@ -289,8 +298,18 @@ impl Synthesis {
             }
         });
         ui.label("Use pre-searched dataset to increase the speed.");
-        let size = self.cb.read().unwrap().size();
-        ui.label(format!("Number of data: {size}"));
+        {
+            let size = self.cb.read().unwrap().size();
+            ui.label(format!("Number of data: {size}"));
+        }
+        ui.collapsing("Help", |ui| {
+            ui.label("Run \"four-bar cb\" in command line window to generate codebook file.");
+            ui.horizontal(|ui| {
+                ui.label("Author provided:");
+                url_btn(ui, "", "Downlod closed curve dataset", CLOSED_URL);
+                url_btn(ui, "", "Downlod open curve dataset", OPEN_URL);
+            });
+        });
         if ui.button("🖴 Open").clicked() {
             let cb = self.cb.clone();
             io::open_cb(move |a| {
