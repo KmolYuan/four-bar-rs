@@ -4,7 +4,7 @@ use super::{
     FourBar, NormFourBar,
 };
 use efd::{Efd2, Transform2};
-use mh::utility::prelude::*;
+use mh::utility::{prelude::*, Rng};
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
@@ -71,7 +71,7 @@ impl Codebook {
             iter.flat_map(|_| {
                 let v = BOUND[..5]
                     .iter()
-                    .map(|&[u, l]| rng.float(u..l))
+                    .map(|&[u, l]| rng.range(u..l))
                     .collect::<Vec<_>>();
                 [false, true].map(|inv| NormFourBar::try_from_slice(&v, inv).unwrap())
             })
