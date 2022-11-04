@@ -145,7 +145,7 @@ where
                 pb.set_position(ctx.gen);
             })
             .solve()?;
-        let spent_time = Instant::now() - t0;
+        let spent_time = t0.elapsed();
         if use_log {
             history_fb
                 .into_iter()
