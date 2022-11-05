@@ -10,7 +10,7 @@ use std::{
     sync::Mutex,
 };
 
-fn stack<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
+fn to_array<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
 where
     A: Clone,
     D: Dimension,
@@ -98,10 +98,10 @@ impl Codebook {
                 break;
             }
         }
-        let fb = stack(fb_stack, size);
-        let inv = stack(inv_stack, size);
-        let efd = stack(efd_stack, size);
-        let trans = stack(trans_stack, size);
+        let fb = to_array(fb_stack, size);
+        let inv = to_array(inv_stack, size);
+        let efd = to_array(efd_stack, size);
+        let trans = to_array(trans_stack, size);
         Self { fb, inv, efd, trans }
     }
 
@@ -118,7 +118,10 @@ impl Codebook {
     }
 
     /// Write codebook to NPZ file.
-    pub fn write(&self, w: impl Write + Seek) -> Result<(), ndarray_npy::WriteNpzError> {
+    pub fn write<W>(&self, w: W) -> Result<W, ndarray_npy::WriteNpzError>
+    where
+        W: Write + Seek,
+    {
         let mut w = ndarray_npy::NpzWriter::new_compressed(w);
         macro_rules! impl_write {
             ($w:ident, $($field:ident),+) => {
@@ -127,7 +130,7 @@ impl Codebook {
             };
         }
         impl_write!(w, fb, inv, efd, trans);
-        w.finish().map(|_| ())
+        w.finish()
     }
 
     /// Total size.

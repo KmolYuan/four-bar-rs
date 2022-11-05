@@ -1,7 +1,6 @@
+use crate::{app::App, syn_method::SynMethod};
 use clap::Parser;
 use std::path::PathBuf;
-
-use crate::syn_method::SynMethod;
 
 mod syn;
 
@@ -83,7 +82,7 @@ struct Codebook {
 }
 
 impl Entry {
-    pub(crate) fn parse() {
+    pub(super) fn parse() {
         let entry = <Self as Parser>::parse_from(wild::args());
         match entry.cmd {
             None => native(entry.files),
@@ -112,7 +111,6 @@ fn native(files: Vec<PathBuf>) {
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
-    use crate::app::App;
     eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files)));
 }
 
