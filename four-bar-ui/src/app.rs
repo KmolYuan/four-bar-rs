@@ -40,7 +40,6 @@ enum Panel {
 #[serde(default)]
 pub(crate) struct App {
     welcome_off: bool,
-    started: bool,
     linkage: Linkages,
     syn: Synthesis,
     #[serde(skip)]
