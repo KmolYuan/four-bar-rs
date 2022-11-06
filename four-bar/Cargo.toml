@@ -1,6 +1,6 @@
 [package]
 name = "four-bar"
-version.workspace = true
+version = "3.0.0"
 authors.workspace = true
 edition.workspace = true
 description = "Four🍀bar library provides simulation and synthesis function for four-bar linkages."
