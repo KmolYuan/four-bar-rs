@@ -79,7 +79,6 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
 fn run<S>(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook, setting: S)
 where
     S: mh::Setting,
-    S::Algorithm: mh::Algorithm<syn::PathSyn>,
 {
     let pb = mpb.add(ProgressBar::new(cfg.gen as u64));
     let file = match file.canonicalize() {

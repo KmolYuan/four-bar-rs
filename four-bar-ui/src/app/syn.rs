@@ -48,7 +48,6 @@ fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
 fn solve<S>(task: &Task, cb: &Codebook, config: SynConfig, setting: S) -> four_bar::FourBar
 where
     S: mh::Setting,
-    S::Algorithm: mh::Algorithm<syn::PathSyn>,
 {
     #[cfg(target_arch = "wasm32")]
     use instant::Instant;
