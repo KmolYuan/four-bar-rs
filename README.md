@@ -3,6 +3,8 @@
 [![dependency status](https://deps.rs/repo/github/KmolYuan/four-bar-rs/status.svg)](https://deps.rs/repo/github/KmolYuan/four-bar-rs)
 [![documentation](https://docs.rs/four-bar/badge.svg)](https://docs.rs/four-bar)
 
+![](https://raw.githubusercontent.com/KmolYuan/four-bar-rs/master/img/screenshot.png)
+
 Four🍀bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
 + CLI/GUI program is `four-bar-ui` crate, but the executable is called `four-bar`.
