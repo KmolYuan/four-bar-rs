@@ -137,15 +137,15 @@ where
             .task(|ctx| ctx.gen == cfg.gen as u64)
             .callback(|ctx| {
                 if use_log && ctx.gen % cfg.log as u64 == 0 {
-                    let (f, fb) = ctx.result();
+                    let (_, fb) = ctx.result();
                     history_fb.push(fb);
-                    history.push(f);
                 }
+                history.push(ctx.best_f);
                 pb.set_position(ctx.gen);
             })
             .solve()?;
         let spent_time = t0.elapsed();
-        if use_log {
+        {
             history_fb
                 .into_iter()
                 .enumerate()
