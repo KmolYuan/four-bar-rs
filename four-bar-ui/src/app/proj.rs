@@ -363,7 +363,9 @@ impl ProjInner {
         if let Some([start, end]) = self.fb.angle_bound() {
             res |= angle_bound_btns(ui, &mut self.angles.theta2, start, end);
         }
-        res |= angle(ui, "Theta: ", &mut self.angles.theta2, "");
+        res |= ui
+            .group(|ui| angle(ui, "Theta: ", &mut self.angles.theta2, ""))
+            .inner;
         self.cache.changed |= res.changed();
         if ui.button("⚽ Dynamics").clicked() {
             self.angle_open = !self.angle_open;

@@ -107,7 +107,7 @@ fn native(files: Vec<PathBuf>) {
             ..Default::default()
         }
     };
-    #[cfg(windows)]
+    #[cfg(all(windows, not(debug_assertions)))]
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
