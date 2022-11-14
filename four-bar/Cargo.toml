@@ -20,8 +20,8 @@ rayon = ["metaheuristics-nature/rayon"]
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 ndarray-npy = { version = "0.8", optional = true }
-metaheuristics-nature = "7"
-efd = "0.23"
+metaheuristics-nature = "7.1"
+efd = "0.24"
 
 [dependencies.plotters]
 version = "0.3"
