@@ -33,7 +33,7 @@ struct Syn {
     #[clap(required = true)]
     files: Vec<PathBuf>,
     /// Algorithm name
-    #[clap(long, value_enum, default_value_t = SynMethod::De)]
+    #[clap(short, long, value_enum, default_value_t = SynMethod::De)]
     method: SynMethod,
     /// Disable parallel for enumerating all tasks
     #[clap(long)]

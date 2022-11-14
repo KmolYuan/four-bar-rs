@@ -124,21 +124,20 @@ where
         } else {
             s = s.pop_num(cfg.pop);
         }
-        let t0 = Instant::now();
         let root = file.parent().unwrap().join(title);
         if root.is_dir() {
             std::fs::remove_dir_all(&root)?;
         }
+        let t0 = Instant::now();
         std::fs::create_dir(&root)?;
         let use_log = cfg.log > 0;
         let mut history = Vec::with_capacity(if use_log { cfg.gen as usize } else { 0 });
-        let mut history_fb = Vec::with_capacity(if use_log { cfg.gen as usize } else { 0 });
         let s = s
             .task(|ctx| ctx.gen == cfg.gen as u64)
             .callback(|ctx| {
                 if use_log && ctx.gen % cfg.log as u64 == 0 {
-                    let (_, fb) = ctx.result();
-                    history_fb.push(fb);
+                    let (_, ans) = ctx.result();
+                    let _ = draw_midway(ctx.gen, &root, title, &target, ans, cfg.res);
                 }
                 history.push(ctx.best_f);
                 pb.set_position(ctx.gen);
@@ -146,10 +145,6 @@ where
             .solve()?;
         let spent_time = t0.elapsed();
         {
-            history_fb
-                .into_iter()
-                .enumerate()
-                .try_for_each(|(i, ans)| draw_midway(i, &root, title, &target, ans, cfg.res))?;
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 600));
             plot::history(svg, history)?;
@@ -201,7 +196,7 @@ fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
 }
 
 fn draw_midway(
-    i: usize,
+    i: u64,
     root: &Path,
     title: &str,
     target: &[[f64; 2]],
@@ -210,7 +205,7 @@ fn draw_midway(
 ) -> AnyResult {
     let curve = Some(ans.curve(res))
         .filter(|c| c.len() > 1)
-        .expect("solved error");
+        .ok_or(format!("solved error: {:?}", &ans))?;
     let curves = [("Target", target), ("Optimized", &curve)];
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));
@@ -234,7 +229,7 @@ fn draw_ans(
     }
     let curve = Some(ans.curve(res))
         .filter(|c| c.len() > 1)
-        .expect("solved error");
+        .ok_or(format!("solved error: {:?}", &ans))?;
     let curves = [("Target", target), ("Optimized", &curve)];
     {
         let path = root.join(format!("{title}_linkage.svg"));
