@@ -1,12 +1,40 @@
 use four_bar::FourBar;
 
+macro_rules! impl_undo_redo {
+    (@$(fn $method:ident($self:ident) { $ind:expr } => $($f:ident, $m:ident);+)+) => {$(
+        fn $method(&$self, state: &mut Self::State) {
+            *match $self.0 { $(Field::$f => state.$m()),+ } = $ind;
+        }
+    )+};
+    ($(fn $method:ident($self:ident) { $ind:expr })+) => {
+        impl_undo_redo!(@$(fn $method($self) { $ind } =>
+            P0x, p0x_mut; P0y, p0y_mut; A, a_mut; L0, l0_mut; L1, l1_mut; L2, l2_mut; L3, l3_mut; L4, l4_mut; G, g_mut)+);
+    };
+    ($(fn $method:ident, $inv:ident)+) => {$(
+        pub(crate) fn $method(&mut self, state: &mut D::State) {
+            let Some(delta) = self.$method.pop() else { return };
+            delta.$method(state);
+            self.$inv.push(delta);
+            self.last = Some(state.clone());
+        }
+    )+};
+}
+
 pub(crate) trait Delta: Sized {
     type State: Clone;
 
     fn delta(a: &Self::State, b: &Self::State) -> Option<Self>;
-    fn change(&self, target: &mut Self::State);
+    fn undo(&self, state: &mut Self::State);
+    fn redo(&self, state: &mut Self::State);
+    #[allow(unused_variables)]
+    fn require_merge(&self, rhs: &Self) -> bool {
+        false
+    }
+    #[allow(unused_variables)]
+    fn merge(&mut self, rhs: Self) {}
 }
 
+#[derive(PartialEq)]
 enum Field {
     P0x,
     P0y,
@@ -19,103 +47,81 @@ enum Field {
     G,
 }
 
-pub(crate) struct FourBarDelta(Field, f64);
+pub(crate) struct FourBarDelta(Field, f64, f64);
 
 impl Delta for FourBarDelta {
     type State = FourBar;
 
     fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
         macro_rules! branch {
-            ($a:ident, $b:ident => $($f:ident, $m:ident);+ $(;)?) => {
-                match ($a, $b) {
-                    $((a, b) if a.$m() != b.$m() => Some(Self(Field::$f, a.$m())),)+
+            ($($f:ident, $m:ident);+) => {
+                match (a, b) {
+                    $(_ if a.$m() != b.$m() => Some(Self(Field::$f, a.$m(), b.$m())),)+
                     _ => None,
                 }
             };
         }
-        branch! { a, b => P0x, p0x; P0y, p0y; A, a; L0, l0; L1, l1; L2, l2; L3, l3; L4, l4; G, g }
+        branch!(P0x, p0x; P0y, p0y; A, a; L0, l0; L1, l1; L2, l2; L3, l3; L4, l4; G, g)
     }
 
-    fn change(&self, state: &mut Self::State) {
-        *match self.0 {
-            Field::P0x => state.p0x_mut(),
-            Field::P0y => state.p0y_mut(),
-            Field::A => state.a_mut(),
-            Field::L0 => state.l0_mut(),
-            Field::L1 => state.l1_mut(),
-            Field::L2 => state.l2_mut(),
-            Field::L3 => state.l3_mut(),
-            Field::L4 => state.l4_mut(),
-            Field::G => state.g_mut(),
-        } = self.1;
+    impl_undo_redo! {
+        fn undo(self) { self.1 }
+        fn redo(self) { self.2 }
+    }
+
+    fn require_merge(&self, rhs: &Self) -> bool {
+        self.0 == rhs.0
+    }
+
+    fn merge(&mut self, rhs: Self) {
+        self.2 = rhs.2;
     }
 }
 
 pub(crate) struct Undo<D: Delta> {
     undo: Vec<D>,
     redo: Vec<D>,
-    base: Option<D::State>,
-    time: f64,
+    last: Option<D::State>,
 }
 
 impl<D: Delta> Default for Undo<D> {
     fn default() -> Self {
-        Self::new()
+        Self { undo: Vec::new(), redo: Vec::new(), last: None }
     }
 }
 
 impl<D: Delta> Undo<D> {
-    pub(crate) fn new() -> Self {
-        Self {
-            undo: Vec::new(),
-            redo: Vec::new(),
-            base: None,
-            time: 0.,
-        }
-    }
-
-    pub(crate) fn is_able_undo(&self) -> bool {
+    pub(crate) fn able_undo(&self) -> bool {
         !self.undo.is_empty()
     }
 
-    pub(crate) fn is_able_redo(&self) -> bool {
+    pub(crate) fn able_redo(&self) -> bool {
         !self.redo.is_empty()
     }
 
-    pub(crate) fn fetch(&mut self, time: f64, state: &D::State) {
-        if let Some(base) = &self.base {
-            if let Some(delta) = D::delta(base, state) {
-                if time - self.time < 5. && !self.undo.is_empty() {
-                    return;
-                }
-                self.undo.push(delta);
-                self.redo.clear();
-                self.base = Some(state.clone());
-                self.time = time;
-            }
+    pub(crate) fn fetch(&mut self, state: &D::State) {
+        let Some(base) = &self.last else {
+            self.last = Some(state.clone());
+            return;
+        };
+        let Some(delta) = D::delta(base, state) else { return };
+        if let Some(d) = self.undo.last_mut().filter(|d| d.require_merge(&delta)) {
+            d.merge(delta);
         } else {
-            self.base = Some(state.clone());
-            self.time = time;
+            self.undo.push(delta);
         }
+        self.redo.clear();
+        self.last = Some(state.clone());
     }
 
     pub(crate) fn clear(&mut self) {
-        *self = Self::new();
+        self.undo.clear();
+        self.redo.clear();
+        self.last = None;
     }
 
-    pub(crate) fn undo(&mut self, state: &mut D::State) {
-        let base = self.base.as_mut().unwrap();
-        *base = state.clone();
-        self.undo.pop().unwrap().change(state);
-        self.redo.push(D::delta(base, state).unwrap());
-        *base = state.clone();
-    }
-
-    pub(crate) fn redo(&mut self, state: &mut D::State) {
-        let base = self.base.as_mut().unwrap();
-        *base = state.clone();
-        self.redo.pop().unwrap().change(state);
-        self.undo.push(D::delta(base, state).unwrap());
-        *base = state.clone();
+    impl_undo_redo! {
+        fn undo, redo
+        fn redo, undo
     }
 }

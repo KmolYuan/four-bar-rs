@@ -245,12 +245,12 @@ impl ProjInner {
         }
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
-            let enabled = self.undo.is_able_undo();
+            let enabled = self.undo.able_undo();
             if ui.add_enabled(enabled, Button::new("⮪ Undo")).clicked() {
                 self.undo.undo(&mut self.fb);
                 self.cache.changed = true;
             }
-            let enabled = self.undo.is_able_redo();
+            let enabled = self.undo.able_redo();
             if ui.add_enabled(enabled, Button::new("⮫ Redo")).clicked() {
                 self.undo.redo(&mut self.fb);
                 self.cache.changed = true;
@@ -289,7 +289,7 @@ impl ProjInner {
                         .show(ui, |ui| plot_values(ui, &values, symbol, self.use_rad));
                 }
             });
-        self.undo.fetch(ui.ctx().input().time, &self.fb);
+        self.undo.fetch(&self.fb);
     }
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
