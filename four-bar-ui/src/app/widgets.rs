@@ -47,3 +47,13 @@ pub(crate) fn angle(ui: &mut Ui, label: &str, val: &mut f64, suffix: &str) -> Re
     })
     .inner
 }
+
+pub(crate) fn percent(ui: &mut Ui, label: &str, val: &mut f64) -> Response {
+    let dv = DragValue::new(val)
+        .prefix(label)
+        .custom_formatter(|v, _| format!("{}%", v * 100.))
+        .speed(0.1)
+        .clamp_range(1e-4..=f64::MAX)
+        .min_decimals(2);
+    ui.add(dv)
+}

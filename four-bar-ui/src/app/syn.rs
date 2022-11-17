@@ -1,7 +1,7 @@
 use super::{
     io,
     linkages::Linkages,
-    widgets::{unit, url_btn},
+    widgets::{percent, unit, url_btn},
 };
 use crate::{
     csv::{dump_csv, parse_csv},
@@ -54,7 +54,7 @@ where
     #[cfg(not(target_arch = "wasm32"))]
     use std::time::Instant;
     let start_time = Instant::now();
-    let SynConfig { method: _, gen, pop, mode, target } = config;
+    let SynConfig { gen, pop, mode, target } = config;
     let mut s =
         four_bar::mh::Solver::build(setting, syn::PathSyn::from_curve(&target, mode).unwrap());
     if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
@@ -101,6 +101,7 @@ pub(crate) struct Synthesis {
 #[serde(default)]
 struct UiConfig {
     painting: painting::Painting,
+    method: SynCmd,
     syn: SynConfig,
     curve_str: Arc<RwLock<String>>,
     #[serde(skip)]
@@ -226,7 +227,6 @@ impl UiConfig {
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 struct SynConfig {
-    method: SynCmd,
     gen: u64,
     pop: usize,
     mode: syn::Mode,
@@ -237,7 +237,6 @@ struct SynConfig {
 impl Default for SynConfig {
     fn default() -> Self {
         Self {
-            method: SynCmd::default(),
             gen: 50,
             pop: 200,
             mode: syn::Mode::Closed,
@@ -271,26 +270,7 @@ impl Synthesis {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.config);
         });
-        ui.horizontal_wrapped(|ui| {
-            for (abbr, f) in [
-                ("DE", SynCmd::de as fn() -> SynCmd),
-                ("FA", SynCmd::fa),
-                ("PSO", SynCmd::pso),
-                ("RGA", SynCmd::rga),
-                ("TLBO", SynCmd::tlbo),
-            ] {
-                if ui
-                    .selectable_label(self.config.syn.method.abbr() == abbr, abbr)
-                    .clicked()
-                {
-                    self.config.syn.method = f();
-                }
-            }
-        });
-        ui.horizontal_wrapped(|ui| {
-            ui.hyperlink_to(self.config.syn.method.name(), self.config.syn.method.link())
-                .on_hover_text(format!("More about {}", self.config.syn.method.name()));
-        });
+        ui.group(|ui| self.opt_setting(ui));
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
         unit(ui, "Population: ", &mut self.config.syn.pop, 1);
         ui.label("Edit target curve then click refresh button to update the task.");
@@ -390,6 +370,51 @@ impl Synthesis {
         self.target_curve_editor(ui);
     }
 
+    fn opt_setting(&mut self, ui: &mut Ui) {
+        ui.horizontal_wrapped(|ui| {
+            for (abbr, f) in [
+                ("DE", SynCmd::de as fn() -> SynCmd),
+                ("FA", SynCmd::fa),
+                ("PSO", SynCmd::pso),
+                ("RGA", SynCmd::rga),
+                ("TLBO", SynCmd::tlbo),
+            ] {
+                let c = self.config.method.abbr() == abbr;
+                if ui.selectable_label(c, abbr).clicked() && !c {
+                    self.config.method = f();
+                }
+            }
+        });
+        let m = &mut self.config.method;
+        ui.horizontal_wrapped(|ui| {
+            ui.hyperlink_to(m.name(), m.link())
+                .on_hover_text(format!("More about {}", m.name()));
+        });
+        macro_rules! param {
+            ($s:ident, $($name:ident),+) => {{$(
+                percent(ui, concat![stringify!($name), ": "], &mut $s.$name);
+            )+}};
+        }
+        match m {
+            SynCmd::De(s) => {
+                ui.horizontal_wrapped(|ui| {
+                    use mh::de::Strategy::*;
+                    for (i, strategy) in [S1, S2, S3, S4, S5, S6, S7, S8, S9, S10]
+                        .into_iter()
+                        .enumerate()
+                    {
+                        ui.selectable_value(&mut s.strategy, strategy, format!("S{i}"));
+                    }
+                });
+                param!(s, f, cross);
+            }
+            SynCmd::Fa(s) => param!(s, alpha, beta_min, gamma),
+            SynCmd::Pso(s) => param!(s, cognition, social, velocity),
+            SynCmd::Rga(s) => param!(s, cross, mutate, win, delta),
+            SynCmd::Tlbo(_) => (),
+        }
+    }
+
     fn convergence_plot(&mut self, ui: &mut Ui) {
         Window::new("📉 Convergence Plot")
             .open(&mut self.conv_open)
@@ -433,6 +458,7 @@ impl Synthesis {
     fn start_syn(&mut self, queue: super::proj::Queue) {
         #[cfg(not(target_arch = "wasm32"))]
         use four_bar::mh::rayon::spawn;
+        let method = self.config.method.clone();
         let config = self.config.syn.clone();
         let task = Task {
             total_gen: config.gen,
@@ -443,7 +469,7 @@ impl Synthesis {
         let cb = self.cb.clone();
         let f = move || {
             let cb = cb.read().unwrap();
-            let fb = match config.method {
+            let fb = match method {
                 SynCmd::De(s) => solve(&task, &cb, config, s),
                 SynCmd::Fa(s) => solve(&task, &cb, config, s),
                 SynCmd::Pso(s) => solve(&task, &cb, config, s),
