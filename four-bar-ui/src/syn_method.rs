@@ -1,46 +1,72 @@
+use four_bar::mh::{De, Fa, Pso, Rga, Tlbo};
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Deserialize, Serialize, Clone, Copy, PartialEq, Debug)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(clap::ValueEnum))]
-pub(crate) enum SynMethod {
-    #[default]
-    De,
-    Fa,
-    Pso,
-    Rga,
-    Tlbo,
+macro_rules! impl_new {
+    ($(fn $method:ident, $name:ident)+) => {$(
+        pub(crate) const fn $method() -> Self {
+            Self::$name($name::new())
+        }
+   )+};
 }
 
-impl SynMethod {
-    pub(crate) const LIST: &[Self] = &[Self::De, Self::Fa, Self::Pso, Self::Rga, Self::Tlbo];
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(clap::Subcommand))]
+pub(crate) enum SynCmd {
+    De(De),
+    Fa(Fa),
+    Pso(Pso),
+    Rga(Rga),
+    Tlbo(Tlbo),
+}
 
+impl Default for SynCmd {
+    fn default() -> Self {
+        Self::De(De::default())
+    }
+}
+
+impl std::fmt::Debug for SynCmd {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+impl SynCmd {
     pub(crate) const fn name(&self) -> &'static str {
         match self {
-            Self::De => "Differential Evolution",
-            Self::Fa => "Firefly Algorithm",
-            Self::Pso => "Particle Swarm Optimization",
-            Self::Rga => "Real-coded Genetic Algorithm",
-            Self::Tlbo => "Teaching Learning Based Optimization",
+            Self::De(_) => "Differential Evolution",
+            Self::Fa(_) => "Firefly Algorithm",
+            Self::Pso(_) => "Particle Swarm Optimization",
+            Self::Rga(_) => "Real-coded Genetic Algorithm",
+            Self::Tlbo(_) => "Teaching Learning Based Optimization",
         }
     }
 
     pub(crate) const fn abbr(&self) -> &'static str {
         match self {
-            Self::De => "DE",
-            Self::Fa => "FA",
-            Self::Pso => "PSO",
-            Self::Rga => "RGA",
-            Self::Tlbo => "TLBO",
+            Self::De(_) => "DE",
+            Self::Fa(_) => "FA",
+            Self::Pso(_) => "PSO",
+            Self::Rga(_) => "RGA",
+            Self::Tlbo(_) => "TLBO",
         }
     }
 
     pub(crate) const fn link(&self) -> &'static str {
         match self {
-            SynMethod::De => "https://en.wikipedia.org/wiki/Differential_evolution",
-            SynMethod::Fa => "https://en.wikipedia.org/wiki/Firefly_algorithm",
-            SynMethod::Pso => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
-            SynMethod::Rga => "https://en.wikipedia.org/wiki/Genetic_algorithm",
-            SynMethod::Tlbo => "https://doi.org/10.1016/j.cad.2010.12.015",
+            Self::De(_) => "https://en.wikipedia.org/wiki/Differential_evolution",
+            Self::Fa(_) => "https://en.wikipedia.org/wiki/Firefly_algorithm",
+            Self::Pso(_) => "https://en.wikipedia.org/wiki/Particle_swarm_optimization",
+            Self::Rga(_) => "https://en.wikipedia.org/wiki/Genetic_algorithm",
+            Self::Tlbo(_) => "https://doi.org/10.1016/j.cad.2010.12.015",
         }
+    }
+
+    impl_new! {
+        fn de, De
+        fn fa, Fa
+        fn pso, Pso
+        fn rga, Rga
+        fn tlbo, Tlbo
     }
 }

@@ -35,6 +35,7 @@ features = ["persistence", "glow", "dark-light"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
+metaheuristics-nature = { version = "7.3.1", features = ["clap", "serde"] }
 indicatif = { version = "0.17", features = ["improved_unicode"] }
 clap = { version = "4", features = ["derive"] }
 image = "0.24"

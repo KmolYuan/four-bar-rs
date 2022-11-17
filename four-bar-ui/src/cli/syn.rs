@@ -1,5 +1,5 @@
 use super::{Syn, SynCfg};
-use crate::syn_method::SynMethod;
+use crate::syn_method::*;
 use four_bar::{cb::Codebook, mh, plot, syn, FourBar};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
@@ -42,22 +42,23 @@ struct Info<'a> {
 }
 
 pub(super) fn syn(syn: Syn) {
-    let Syn { files, method, no_parallel, cfg, cb } = syn;
+    let Syn { files, no_parallel, cfg, cb, method_cmd } = syn;
     {
         let SynCfg { res, gen, pop, log } = cfg;
-        println!("method={method:?}, res={res}, gen={gen}, pop={pop}, log={log}");
+        println!("res={res}, gen={gen}, pop={pop}, log={log}");
     }
     let cb = cb
         .map(|cb| std::env::split_paths(&cb).collect())
         .unwrap_or_default();
     let cb = load_codebook(cb).expect("Load codebook failed!");
     let mpb = MultiProgress::new();
-    let run: Box<dyn Fn(PathBuf) + Send + Sync> = match method {
-        SynMethod::De => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::De::new())),
-        SynMethod::Fa => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Fa::new())),
-        SynMethod::Pso => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Pso::new())),
-        SynMethod::Rga => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Rga::new())),
-        SynMethod::Tlbo => Box::new(|file| run(&mpb, file, &cfg, &cb, mh::Tlbo::new())),
+    let method_cmd = method_cmd.unwrap_or_default();
+    let run: Box<dyn Fn(PathBuf) + Send + Sync> = match &method_cmd {
+        SynCmd::De(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
+        SynCmd::Fa(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
+        SynCmd::Pso(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
+        SynCmd::Rga(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
+        SynCmd::Tlbo(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
     };
     if no_parallel {
         files.into_iter().for_each(run);

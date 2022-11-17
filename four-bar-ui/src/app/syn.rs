@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     csv::{dump_csv, parse_csv},
-    syn_method::SynMethod,
+    syn_method::SynCmd,
 };
 use eframe::egui::*;
 use four_bar::{cb::Codebook, curve, efd, mh, syn};
@@ -226,7 +226,7 @@ impl UiConfig {
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 struct SynConfig {
-    method: SynMethod,
+    method: SynCmd,
     gen: u64,
     pop: usize,
     mode: syn::Mode,
@@ -237,7 +237,7 @@ struct SynConfig {
 impl Default for SynConfig {
     fn default() -> Self {
         Self {
-            method: SynMethod::default(),
+            method: SynCmd::default(),
             gen: 50,
             pop: 200,
             mode: syn::Mode::Closed,
@@ -271,17 +271,25 @@ impl Synthesis {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.config);
         });
-        let method = &mut self.config.syn.method;
         ui.horizontal_wrapped(|ui| {
-            for m in SynMethod::LIST {
-                let name = m.name();
-                let abbr = m.abbr();
-                ui.selectable_value(method, *m, abbr).on_hover_text(name);
+            for (abbr, f) in [
+                ("DE", SynCmd::de as fn() -> SynCmd),
+                ("FA", SynCmd::fa),
+                ("PSO", SynCmd::pso),
+                ("RGA", SynCmd::rga),
+                ("TLBO", SynCmd::tlbo),
+            ] {
+                if ui
+                    .selectable_label(self.config.syn.method.abbr() == abbr, abbr)
+                    .clicked()
+                {
+                    self.config.syn.method = f();
+                }
             }
         });
         ui.horizontal_wrapped(|ui| {
-            ui.hyperlink_to(method.name(), method.link())
-                .on_hover_text(format!("More about {}", method.name()));
+            ui.hyperlink_to(self.config.syn.method.name(), self.config.syn.method.link())
+                .on_hover_text(format!("More about {}", self.config.syn.method.name()));
         });
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
         unit(ui, "Population: ", &mut self.config.syn.pop, 1);
@@ -436,11 +444,11 @@ impl Synthesis {
         let f = move || {
             let cb = cb.read().unwrap();
             let fb = match config.method {
-                SynMethod::De => solve(&task, &cb, config, mh::De::new()),
-                SynMethod::Fa => solve(&task, &cb, config, mh::Fa::new()),
-                SynMethod::Pso => solve(&task, &cb, config, mh::Pso::new()),
-                SynMethod::Rga => solve(&task, &cb, config, mh::Rga::new()),
-                SynMethod::Tlbo => solve(&task, &cb, config, mh::Tlbo::new()),
+                SynCmd::De(s) => solve(&task, &cb, config, s),
+                SynCmd::Fa(s) => solve(&task, &cb, config, s),
+                SynCmd::Pso(s) => solve(&task, &cb, config, s),
+                SynCmd::Rga(s) => solve(&task, &cb, config, s),
+                SynCmd::Tlbo(s) => solve(&task, &cb, config, s),
             };
             queue.push(None, fb);
             task.start.store(false, Ordering::Relaxed);

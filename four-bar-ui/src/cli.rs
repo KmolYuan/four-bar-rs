@@ -1,4 +1,4 @@
-use crate::{app::App, syn_method::SynMethod};
+use crate::{app::App, syn_method::SynCmd};
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -28,13 +28,11 @@ enum Cmd {
 }
 
 #[derive(clap::Args)]
+#[clap(subcommand_precedence_over_arg = true)]
 struct Syn {
     /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
     #[clap(required = true)]
     files: Vec<PathBuf>,
-    /// Algorithm name
-    #[clap(short, long, value_enum, default_value_t = SynMethod::De)]
-    method: SynMethod,
     /// Disable parallel for enumerating all tasks
     #[clap(long)]
     no_parallel: bool,
@@ -45,6 +43,8 @@ struct Syn {
     cb: Option<std::ffi::OsString>,
     #[clap(flatten)]
     cfg: SynCfg,
+    #[clap(subcommand)]
+    method_cmd: Option<SynCmd>,
 }
 
 #[derive(clap::Args)]
