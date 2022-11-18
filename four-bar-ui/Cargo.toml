@@ -1,6 +1,6 @@
 [package]
 name = "four-bar-ui"
-version = "3.0.0"
+version.workspace = true
 authors.workspace = true
 edition.workspace = true
 description = "Four🍀bar GUI is a simulator, a synthesizing tool for four-bar linkages."
@@ -24,7 +24,7 @@ ron = "0.8"
 csv = "1"
 
 [dependencies.four-bar]
-version = "3"
+version = "3.1"
 path = "../four-bar"
 features = ["serde", "codebook", "plot"]
 
