@@ -185,7 +185,7 @@ impl Codebook {
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         let dis = iter
-            .map(|efd| target.l2_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
+            .map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .collect::<Vec<_>>();
         let mut ind = (0..self.size()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
@@ -204,7 +204,7 @@ impl Codebook {
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
-        iter.map(|efd| target.l2_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
+        iter.map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(i, err)| (err, self.pick(i, &target, trans)))
