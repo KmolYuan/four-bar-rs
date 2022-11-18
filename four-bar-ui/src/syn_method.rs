@@ -9,6 +9,15 @@ macro_rules! impl_new {
    )+};
 }
 
+macro_rules! impl_list {
+    ($name:ident) => {{
+        let s = Self::$name();
+        (s.name(), s.abbr(), Self::$name)
+    }};
+}
+
+type ListItem = (&'static str, &'static str, fn() -> SynCmd);
+
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(clap::Subcommand))]
 pub(crate) enum SynCmd {
@@ -32,6 +41,14 @@ impl std::fmt::Debug for SynCmd {
 }
 
 impl SynCmd {
+    pub(crate) const LIST: &[ListItem] = &[
+        impl_list!(de),
+        impl_list!(fa),
+        impl_list!(pso),
+        impl_list!(rga),
+        impl_list!(tlbo),
+    ];
+
     pub(crate) const fn name(&self) -> &'static str {
         match self {
             Self::De(_) => "Differential Evolution",

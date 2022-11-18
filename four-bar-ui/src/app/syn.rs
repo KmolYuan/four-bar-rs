@@ -372,15 +372,9 @@ impl Synthesis {
 
     fn opt_setting(&mut self, ui: &mut Ui) {
         ui.horizontal_wrapped(|ui| {
-            for (abbr, f) in [
-                ("DE", SynCmd::de as fn() -> SynCmd),
-                ("FA", SynCmd::fa),
-                ("PSO", SynCmd::pso),
-                ("RGA", SynCmd::rga),
-                ("TLBO", SynCmd::tlbo),
-            ] {
+            for &(name, abbr, f) in SynCmd::LIST {
                 let c = self.config.method.abbr() == abbr;
-                if ui.selectable_label(c, abbr).clicked() && !c {
+                if ui.selectable_label(c, abbr).on_hover_text(name).clicked() && !c {
                     self.config.method = f();
                 }
             }
