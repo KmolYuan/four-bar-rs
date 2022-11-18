@@ -44,12 +44,6 @@ impl Default for SynCmd {
     }
 }
 
-impl std::fmt::Debug for SynCmd {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(self.name())
-    }
-}
-
 impl SynCmd {
     impl_method! {
         fn de, De, "DE", "Differential Evolution", "https://en.wikipedia.org/wiki/Differential_evolution"

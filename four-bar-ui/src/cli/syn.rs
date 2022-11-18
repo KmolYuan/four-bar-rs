@@ -146,7 +146,7 @@ where
             s = s.pop_num(cfg.pop);
         }
         let t0 = Instant::now();
-        let s = single_thread(cfg.seed.is_some(), || s.solve())?;
+        let s = s.solve_single_thread(cfg.seed.is_some())?;
         let spent_time = t0.elapsed();
         {
             let path = root.join(format!("{title}_history.svg"));
