@@ -172,6 +172,7 @@ where
     if curves.iter().filter(|(_, c)| !c.is_empty()).count() > 1 {
         chart
             .configure_series_labels()
+            .position(SeriesLabelPosition::LowerRight)
             .background_style(WHITE)
             .border_style(BLACK)
             .label_font(font())
