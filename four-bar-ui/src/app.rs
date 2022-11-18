@@ -17,9 +17,7 @@ const FONT: &[(&str, &[u8])] = &[
 ];
 
 fn side_panel(ctx: &Context, f: impl FnOnce(&mut Ui)) {
-    SidePanel::left("side panel")
-        .resizable(false)
-        .show(ctx, |ui| ScrollArea::vertical().show(ui, f));
+    SidePanel::left("side").show(ctx, |ui| ScrollArea::vertical().show(ui, f));
 }
 
 fn pan_panel(ui: &mut Ui, f: impl FnOnce(&mut Ui)) {

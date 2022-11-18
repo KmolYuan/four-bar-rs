@@ -645,10 +645,10 @@ impl Projects {
                 ComboBox::from_label("")
                     .show_index(ui, &mut self.curr, self.list.len(), |i| self.list[i].name());
                 if show_btn {
-                    if ui.button("💾 Save").clicked() {
+                    if ui.small_button("💾").on_hover_text("Save").clicked() {
                         self.list[self.curr].save();
                     }
-                    if ui.button("✖ Close").clicked() {
+                    if ui.small_button("✖").on_hover_text("Close").clicked() {
                         self.list.remove(self.curr);
                         if self.curr > 0 {
                             self.curr -= 1;
