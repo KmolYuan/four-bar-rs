@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     csv::{dump_csv, parse_csv},
-    syn_method::SynCmd,
+    syn_cmd::SynCmd,
 };
 use eframe::egui::*;
 use four_bar::{cb::Codebook, curve, efd, mh, syn};

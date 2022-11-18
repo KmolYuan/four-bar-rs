@@ -1,4 +1,4 @@
-use crate::{app::App, syn_method::SynCmd};
+use crate::{app::App, syn_cmd::SynCmd};
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -33,9 +33,9 @@ struct Syn {
     /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
     #[clap(required = true)]
     files: Vec<PathBuf>,
-    /// Disable parallel for enumerating all tasks
+    /// Disable parallel for running all tasks
     #[clap(long)]
-    no_parallel: bool,
+    one_by_one: bool,
     /// Provide pre-generated codebook databases, support multiple paths as
     #[cfg_attr(windows, doc = "\"a.npy;b.npy\"")]
     #[cfg_attr(not(windows), doc = "\"a.npy:b.npy\"")]
@@ -58,6 +58,9 @@ struct SynCfg {
     /// Number of population (the fetch number in codebook)
     #[clap(short, long, default_value_t = 200)]
     pop: usize,
+    /// Fix the seed to get a determined result, default to random
+    #[clap(short, long)]
+    seed: Option<u64>,
     /// Plot and save the changes with log interval, default to disabled
     #[clap(long, default_value_t = 0)]
     log: usize,

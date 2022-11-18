@@ -57,7 +57,7 @@ impl Codebook {
     where
         C: Fn(usize) + Sync + Send,
     {
-        let rng = Rng::new(None);
+        let rng = Rng::new(mh::utility::SeedOption::None);
         let fb_stack = Mutex::new(Vec::with_capacity(size));
         let inv_stack = Mutex::new(Vec::with_capacity(size));
         let efd_stack = Mutex::new(Vec::with_capacity(size));

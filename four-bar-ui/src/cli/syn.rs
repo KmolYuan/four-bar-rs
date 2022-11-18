@@ -1,6 +1,10 @@
 use super::{Syn, SynCfg};
-use crate::syn_method::*;
-use four_bar::{cb::Codebook, mh, plot, syn, FourBar};
+use crate::syn_cmd::*;
+use four_bar::{
+    cb::Codebook,
+    mh::{self, rayon::single_thread},
+    plot, syn, FourBar,
+};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     ffi::OsStr,
@@ -42,9 +46,12 @@ struct Info<'a> {
 }
 
 pub(super) fn syn(syn: Syn) {
-    let Syn { files, no_parallel, cfg, cb, method_cmd } = syn;
+    let Syn { files, one_by_one, cfg, cb, method_cmd } = syn;
     {
-        let SynCfg { res, gen, pop, log } = cfg;
+        let SynCfg { res, gen, pop, seed, log } = cfg;
+        if let Some(seed) = seed {
+            print!("seed={seed} ");
+        }
         println!("res={res}, gen={gen}, pop={pop}, log={log}");
     }
     let cb = cb
@@ -60,12 +67,8 @@ pub(super) fn syn(syn: Syn) {
         SynCmd::Rga(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
         SynCmd::Tlbo(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
     };
-    if no_parallel {
-        files.into_iter().for_each(run);
-    } else {
-        use mh::rayon::prelude::*;
-        files.into_par_iter().for_each(run);
-    }
+    use mh::rayon::prelude::*;
+    single_thread(one_by_one, || files.into_par_iter().for_each(run));
 }
 
 fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
@@ -79,7 +82,7 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
 
 fn run<S>(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook, setting: S)
 where
-    S: mh::Setting,
+    S: mh::Setting + Send,
 {
     let pb = mpb.add(ProgressBar::new(cfg.gen as u64));
     let file = match file.canonicalize() {
@@ -110,7 +113,24 @@ where
         let func = syn::PathSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
             .res(cfg.res);
-        let mut s = mh::Solver::build(setting, func);
+        let root = file.parent().unwrap().join(title);
+        if root.is_dir() {
+            std::fs::remove_dir_all(&root)?;
+        }
+        std::fs::create_dir(&root)?;
+        let use_log = cfg.log > 0;
+        let mut history = Vec::with_capacity(if use_log { cfg.gen as usize } else { 0 });
+        let mut s = mh::Solver::build(setting, func)
+            .seed(cfg.seed)
+            .task(|ctx| ctx.gen == cfg.gen as u64)
+            .callback(|ctx| {
+                if use_log && ctx.gen % cfg.log as u64 == 0 {
+                    let (_, ans) = ctx.result();
+                    let _ = draw_midway(ctx.gen, &root, title, &target, ans, cfg.res);
+                }
+                history.push(ctx.best_f);
+                pb.set_position(ctx.gen);
+            });
         if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
             .then(|| cb.fetch_raw(&target, cfg.pop))
             .filter(|candi| !candi.is_empty())
@@ -125,25 +145,8 @@ where
         } else {
             s = s.pop_num(cfg.pop);
         }
-        let root = file.parent().unwrap().join(title);
-        if root.is_dir() {
-            std::fs::remove_dir_all(&root)?;
-        }
         let t0 = Instant::now();
-        std::fs::create_dir(&root)?;
-        let use_log = cfg.log > 0;
-        let mut history = Vec::with_capacity(if use_log { cfg.gen as usize } else { 0 });
-        let s = s
-            .task(|ctx| ctx.gen == cfg.gen as u64)
-            .callback(|ctx| {
-                if use_log && ctx.gen % cfg.log as u64 == 0 {
-                    let (_, ans) = ctx.result();
-                    let _ = draw_midway(ctx.gen, &root, title, &target, ans, cfg.res);
-                }
-                history.push(ctx.best_f);
-                pb.set_position(ctx.gen);
-            })
-            .solve()?;
+        let s = single_thread(cfg.seed.is_some(), || s.solve())?;
         let spent_time = t0.elapsed();
         {
             let path = root.join(format!("{title}_history.svg"));
