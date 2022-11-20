@@ -13,9 +13,10 @@ categories.workspace = true
 [features]
 default = []
 plot = ["plotters"]
-serde = ["dep:serde"]
-codebook = ["ndarray-npy"]
+serde = ["dep:serde", "metaheuristics-nature/serde"]
+mh-clap = ["metaheuristics-nature/clap"]
 rayon = ["metaheuristics-nature/rayon"]
+codebook = ["ndarray-npy"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
