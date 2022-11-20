@@ -23,6 +23,52 @@ where
     ndarray::stack(Axis(0), &arrays).unwrap()
 }
 
+/// Codebook generation config.
+pub struct Cfg {
+    /// Open curve
+    pub is_open: bool,
+    /// Number of data
+    pub size: usize,
+    /// Number of curve coordinates
+    pub res: usize,
+    /// Harmonic
+    pub harmonic: usize,
+    /// Random seed
+    pub seed: SeedOption,
+}
+
+impl Default for Cfg {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Cfg {
+    /// Constant default value.
+    pub const fn new() -> Self {
+        Self {
+            is_open: false,
+            size: 102400,
+            res: 720,
+            harmonic: 20,
+            seed: SeedOption::None,
+        }
+    }
+
+    mh::impl_builders! {
+        /// Open curve
+        fn is_open(bool)
+        /// Number of data
+        fn size(usize)
+        /// Number of curve coordinates
+        fn res(usize)
+        /// Harmonic
+        fn harmonic(usize)
+        /// Random seed
+        fn seed(SeedOption)
+    }
+}
+
 /// Codebook type.
 #[derive(Clone)]
 pub struct Codebook {
@@ -45,22 +91,17 @@ impl Default for Codebook {
 
 impl Codebook {
     /// Takes time to generate codebook data.
-    pub fn make(is_open: bool, size: usize, res: usize, harmonic: usize) -> Self {
-        Self::make_with(is_open, size, res, harmonic, |_| ())
+    pub fn make(cfg: Cfg) -> Self {
+        Self::make_with(cfg, |_| ())
     }
 
     /// Takes time to generate codebook data with a callback function.
-    pub fn make_with<C>(
-        is_open: bool,
-        size: usize,
-        res: usize,
-        harmonic: usize,
-        callback: C,
-    ) -> Self
+    pub fn make_with<C>(cfg: Cfg, callback: C) -> Self
     where
         C: Fn(usize) + Sync + Send,
     {
-        let rng = Rng::new(SeedOption::None);
+        let Cfg { is_open, size, res, harmonic, seed } = cfg;
+        let rng = Rng::new(seed);
         let fb_stack = Mutex::new(Vec::with_capacity(size));
         let inv_stack = Mutex::new(Vec::with_capacity(size));
         let efd_stack = Mutex::new(Vec::with_capacity(size));

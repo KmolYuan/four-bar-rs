@@ -1,5 +1,6 @@
 use crate::{app::App, syn_cmd::SynCmd};
 use clap::Parser;
+use four_bar::cb;
 use std::path::PathBuf;
 
 mod syn;
@@ -24,7 +25,7 @@ enum Cmd {
     Syn(Syn),
     /// Generate codebook
     #[clap(alias = "cb")]
-    Codebook(Codebook),
+    Codebook(CbCfg),
 }
 
 #[derive(clap::Args)]
@@ -67,21 +68,24 @@ struct SynCfg {
 }
 
 #[derive(clap::Args)]
-struct Codebook {
+struct CbCfg {
     /// Output path of the codebook (in NPY format)
     file: PathBuf,
     /// Generate for open curve
     #[clap(long)]
     is_open: bool,
     /// Number of data
-    #[clap(long, default_value_t = 102400)]
+    #[clap(long, default_value_t = cb::Cfg::new().size)]
     size: usize,
     /// Number of the points (resolution) in curve production
-    #[clap(long, default_value_t = 720)]
+    #[clap(long, default_value_t = cb::Cfg::new().res)]
     res: usize,
-    /// Number of harmonic
-    #[clap(long, default_value_t = 20)]
+    /// Number of harmonics
+    #[clap(long, default_value_t = cb::Cfg::new().harmonic)]
     harmonic: usize,
+    /// Fix the seed to get a determined result, default to random
+    #[clap(short, long)]
+    seed: Option<u64>,
 }
 
 impl Entry {
@@ -117,16 +121,17 @@ fn native(files: Vec<PathBuf>) {
     eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files)));
 }
 
-fn codebook(cb: Codebook) {
-    let Codebook { mut file, is_open, size, res, harmonic } = cb;
+fn codebook(cb: CbCfg) {
+    let CbCfg { mut file, is_open, size, res, harmonic, seed } = cb;
     let ext = file.extension().and_then(std::ffi::OsStr::to_str);
     if !matches!(ext, Some("npy")) {
         file.set_extension("npy");
     }
     println!("Generate to: {}", file.display());
     println!("open={is_open}, size={size}, res={res}, harmonic={harmonic}");
+    let cfg = cb::Cfg { is_open, size, res, harmonic, seed: seed.into() };
     let pb = indicatif::ProgressBar::new(size as u64);
-    four_bar::cb::Codebook::make_with(is_open, size, res, harmonic, |n| pb.set_position(n as u64))
+    cb::Codebook::make_with(cfg, |n| pb.set_position(n as u64))
         .write(std::fs::File::create(file).unwrap())
         .unwrap();
     pb.finish_and_clear();
