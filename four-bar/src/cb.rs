@@ -4,7 +4,10 @@ use super::{
     FourBar, NormFourBar,
 };
 use efd::{Efd2, Transform2};
-use mh::utility::{prelude::*, Rng};
+use mh::{
+    random::{Rng, SeedOption},
+    utility::prelude::*,
+};
 use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
@@ -57,18 +60,19 @@ impl Codebook {
     where
         C: Fn(usize) + Sync + Send,
     {
-        let rng = Rng::new(mh::utility::SeedOption::None);
+        let rng = Rng::new(SeedOption::None);
         let fb_stack = Mutex::new(Vec::with_capacity(size));
         let inv_stack = Mutex::new(Vec::with_capacity(size));
         let efd_stack = Mutex::new(Vec::with_capacity(size));
         let trans_stack = Mutex::new(Vec::with_capacity(size));
         loop {
             let len = efd_stack.lock().unwrap().len();
+            let n = (size - len) / 2;
             #[cfg(feature = "rayon")]
-            let iter = (0..(size - len) / 2).into_par_iter();
+            let iter = rng.stream(n).into_par_iter();
             #[cfg(not(feature = "rayon"))]
-            let iter = 0..(size - len) / 2;
-            iter.flat_map(|_| {
+            let iter = rng.stream(n).into_iter();
+            iter.flat_map(|rng| {
                 let v = BOUND[..5]
                     .iter()
                     .map(|&[u, l]| rng.range(u..l))
