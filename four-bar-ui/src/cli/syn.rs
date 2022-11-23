@@ -147,16 +147,19 @@ where
         }
         let t0 = Instant::now();
         let s = s.solve_single_thread(false)?;
-        let spent_time = t0.elapsed();
+        let t1 = t0.elapsed();
         {
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 600));
             plot::history(svg, history)?;
         }
-        let (_, ans) = s.result();
+        let (fit, ans) = s.result();
         draw_ans(root, title, &target, ans, cfg.res)?;
         let harmonic = s.func().harmonic();
-        pb.finish_with_message(format!("| spent: {spent_time:?} | harmonic: {harmonic}"));
+        const STYLE: &str = "[{prefix}] {msg}";
+        pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
+        let msg = format!("spent: {t1:?} | harmonic: {harmonic} | fitness: {fit}");
+        pb.finish_with_message(msg);
         Ok(())
     };
     if let Err(e) = f() {
@@ -238,13 +241,13 @@ fn draw_ans(
     {
         let path = root.join(format!("{title}_linkage.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
-        let opt = plot::Opt::new().fb(ans).use_dot(true).title("Linkage");
+        let opt = plot::Opt::new().fb(ans).use_dot(true);
         plot::plot2d(svg, &curves, opt)?;
     }
     {
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
-        let opt = plot::Opt::new().use_dot(true).title("Comparison");
+        let opt = plot::Opt::new().use_dot(true);
         plot::plot2d(svg, &curves, opt)?;
     }
     Ok(())
