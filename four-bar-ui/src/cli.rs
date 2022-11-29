@@ -42,6 +42,12 @@ struct Syn {
     #[cfg_attr(not(windows), doc = "\"a.npy:b.npy\"")]
     #[clap(long)]
     cb: Option<std::ffi::OsString>,
+    /// Reference (competitor) path with the same filename, support multiple
+    /// paths as
+    #[cfg_attr(windows, doc = "\"a.npy;b.npy\"")]
+    #[cfg_attr(not(windows), doc = "\"a.npy:b.npy\"")]
+    #[clap(short, long)]
+    refer: Option<std::ffi::OsString>,
     #[clap(flatten)]
     cfg: SynCfg,
     #[clap(subcommand)]

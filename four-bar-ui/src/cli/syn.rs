@@ -14,6 +14,7 @@ use std::{
 
 type AnyResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+#[derive(Debug)]
 enum SynErr {
     // Unsupported format
     Format,
@@ -39,6 +40,8 @@ impl std::fmt::Display for SynErr {
     }
 }
 
+impl std::error::Error for SynErr {}
+
 struct Info<'a> {
     target: Vec<[f64; 2]>,
     title: &'a str,
@@ -46,7 +49,7 @@ struct Info<'a> {
 }
 
 pub(super) fn syn(syn: Syn) {
-    let Syn { files, one_by_one, cfg, cb, method_cmd } = syn;
+    let Syn { files, one_by_one, cfg, cb, refer, method_cmd } = syn;
     {
         let SynCfg { res, gen, pop, seed, log } = cfg;
         if let Some(seed) = seed {
@@ -58,14 +61,17 @@ pub(super) fn syn(syn: Syn) {
         .map(|cb| std::env::split_paths(&cb).collect())
         .unwrap_or_default();
     let cb = load_codebook(cb).expect("Load codebook failed!");
+    let refer = refer
+        .map(|cb| std::env::split_paths(&cb).collect::<Vec<_>>())
+        .unwrap_or_default();
     let mpb = MultiProgress::new();
     let method_cmd = method_cmd.unwrap_or_default();
     let run: Box<dyn Fn(PathBuf) + Send + Sync> = match &method_cmd {
-        SynCmd::De(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
-        SynCmd::Fa(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
-        SynCmd::Pso(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
-        SynCmd::Rga(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
-        SynCmd::Tlbo(s) => Box::new(|file| run(&mpb, file, &cfg, &cb, s.clone())),
+        SynCmd::De(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynCmd::Fa(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynCmd::Pso(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynCmd::Rga(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynCmd::Tlbo(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
     };
     use mh::rayon::prelude::*;
     single_thread(one_by_one, || files.into_par_iter().for_each(run));
@@ -80,8 +86,14 @@ fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
         .collect()
 }
 
-fn run<S>(mpb: &MultiProgress, file: PathBuf, cfg: &SynCfg, cb: &Codebook, setting: S)
-where
+fn run<S>(
+    mpb: &MultiProgress,
+    file: PathBuf,
+    cfg: &SynCfg,
+    cb: &Codebook,
+    refer: &[PathBuf],
+    setting: S,
+) where
     S: mh::Setting + Send,
 {
     let pb = mpb.add(ProgressBar::new(cfg.gen as u64));
@@ -154,7 +166,40 @@ where
             plot::history(svg, history)?;
         }
         let (fit, ans) = s.result();
-        draw_ans(root, title, &target, ans, cfg.res)?;
+        {
+            let path = root.join(format!("{title}_result.ron"));
+            std::fs::write(path, ron::to_string(&ans)?)?;
+        }
+        let curve = Some(ans.curve(cfg.res))
+            .filter(|c| c.len() > 1)
+            .ok_or(format!("solved error: {:?}", &ans))?;
+        let mut curves = vec![("Target", target.as_slice()), ("Optimized", &curve)];
+        let refer = refer
+            .iter()
+            .map(|f| f.join(title).with_extension("ron"))
+            .filter(|f| f.is_file())
+            .map(std::fs::read_to_string)
+            .map(|s| {
+                s.map_err(SynErr::Io).and_then(|s| {
+                    ron::from_str::<FourBar>(&s)
+                        .map_err(SynErr::RonSer)
+                        .map(|fb| fb.curve(cfg.res))
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        curves.extend(refer.iter().map(|c| ("competitor", c.as_slice())));
+        {
+            let path = root.join(format!("{title}_linkage.svg"));
+            let svg = plot::SVGBackend::new(&path, (800, 800));
+            let opt = plot::Opt::new().fb(ans).use_dot(true);
+            plot::plot2d(svg, &curves, opt)?;
+        }
+        {
+            let path = root.join(format!("{title}_result.svg"));
+            let svg = plot::SVGBackend::new(&path, (800, 800));
+            let opt = plot::Opt::new().use_dot(true);
+            plot::plot2d(svg, &curves, opt)?;
+        }
         let harmonic = s.func().harmonic();
         const STYLE: &str = "[{prefix}] {msg}";
         pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
@@ -218,36 +263,6 @@ fn draw_midway(
         let path = root.join(format!("{title}_{i}_linkage.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
         let opt = plot::Opt::new().fb(ans).use_dot(true);
-        plot::plot2d(svg, &curves, opt)?;
-    }
-    Ok(())
-}
-
-fn draw_ans(
-    root: PathBuf,
-    title: &str,
-    target: &[[f64; 2]],
-    ans: FourBar,
-    res: usize,
-) -> AnyResult {
-    {
-        let path = root.join(format!("{title}_result.ron"));
-        std::fs::write(path, ron::to_string(&ans)?)?;
-    }
-    let curve = Some(ans.curve(res))
-        .filter(|c| c.len() > 1)
-        .ok_or(format!("solved error: {:?}", &ans))?;
-    let curves = [("Target", target), ("Optimized", &curve)];
-    {
-        let path = root.join(format!("{title}_linkage.svg"));
-        let svg = plot::SVGBackend::new(&path, (800, 800));
-        let opt = plot::Opt::new().fb(ans).use_dot(true);
-        plot::plot2d(svg, &curves, opt)?;
-    }
-    {
-        let path = root.join(format!("{title}_result.svg"));
-        let svg = plot::SVGBackend::new(&path, (800, 800));
-        let opt = plot::Opt::new().use_dot(true);
         plot::plot2d(svg, &curves, opt)?;
     }
     Ok(())
