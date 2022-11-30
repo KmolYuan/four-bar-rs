@@ -46,7 +46,7 @@ struct Syn {
     /// paths as
     #[cfg_attr(windows, doc = "\"a.npy;b.npy\"")]
     #[cfg_attr(not(windows), doc = "\"a.npy:b.npy\"")]
-    #[clap(short, long)]
+    #[clap(short, long, default_value = "refer")]
     refer: Option<std::ffi::OsString>,
     #[clap(flatten)]
     cfg: SynCfg,

@@ -9,6 +9,7 @@ where
 {
     ReaderBuilder::new()
         .has_headers(false)
+        .comment(Some(b'#'))
         .from_reader(Cursor::new(s))
         .deserialize()
         .collect()
