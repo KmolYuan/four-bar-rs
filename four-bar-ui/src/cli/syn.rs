@@ -172,6 +172,15 @@ fn run<S>(
         let curve = Some(ans.curve(cfg.res))
             .filter(|c| c.len() > 1)
             .ok_or(format!("solved error: {:?}", &ans))?;
+        let h = s.func().harmonic();
+        let efd_ans = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
+        let err = match mode {
+            syn::Mode::Partial => {
+                let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&curve), h).unwrap();
+                efd_ans.l1_norm(&efd)
+            }
+            _ => err,
+        };
         let legend = format!("Optimized ({err:.04})");
         let mut curves = vec![("Target", target.as_slice()), (&legend, &curve)];
         {
@@ -180,8 +189,6 @@ fn run<S>(
             let opt = plot::Opt::new().fb(ans).use_dot(true);
             plot::plot2d(svg, &curves, opt)?;
         }
-        let harmonic = s.func().harmonic();
-        let efd_ans = efd::Efd2::from_curve_harmonic(&target, harmonic).unwrap();
         let refer = refer
             .iter()
             .map(|f| file.parent().unwrap().join(f).join(format!("{title}.ron")))
@@ -191,7 +198,7 @@ fn run<S>(
                 let s = s.map_err(SynErr::Io)?;
                 let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
                 let c = fb.curve(cfg.res);
-                let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), harmonic).unwrap();
+                let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
                 let err = efd_ans.l1_norm(&efd);
                 Ok((format!("Competitor ({err:.04})"), c))
             })
@@ -200,7 +207,7 @@ fn run<S>(
         {
             let path = root.join(format!("{title}_result.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 800));
-            let title = format!("Harmonic: {harmonic} | Time: {t1:?}");
+            let title = format!("Harmonic: {h} | Time: {t1:?}");
             let opt = plot::Opt::new().use_dot(true).title(&title);
             plot::plot2d(svg, &curves, opt)?;
         }
