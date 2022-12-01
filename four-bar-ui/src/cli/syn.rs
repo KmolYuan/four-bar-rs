@@ -2,6 +2,7 @@ use super::{Syn, SynCfg};
 use crate::syn_cmd::*;
 use four_bar::{
     cb::Codebook,
+    efd,
     mh::{self, rayon::single_thread},
     plot, syn, FourBar,
 };
@@ -61,9 +62,7 @@ pub(super) fn syn(syn: Syn) {
         .map(|cb| std::env::split_paths(&cb).collect())
         .unwrap_or_default();
     let cb = load_codebook(cb).expect("Load codebook failed!");
-    let refer = refer
-        .map(|cb| std::env::split_paths(&cb).collect::<Vec<_>>())
-        .unwrap_or_default();
+    let refer = std::env::split_paths(&refer).collect::<Vec<_>>();
     let mpb = MultiProgress::new();
     let method_cmd = method_cmd.unwrap_or_default();
     let run: Box<dyn Fn(PathBuf) + Send + Sync> = match &method_cmd {
@@ -165,7 +164,7 @@ fn run<S>(
             let svg = plot::SVGBackend::new(&path, (800, 600));
             plot::history(svg, history)?;
         }
-        let (fit, ans) = s.result();
+        let (err, ans) = s.result();
         {
             let path = root.join(format!("{title}_result.ron"));
             std::fs::write(path, ron::to_string(&ans)?)?;
@@ -173,38 +172,39 @@ fn run<S>(
         let curve = Some(ans.curve(cfg.res))
             .filter(|c| c.len() > 1)
             .ok_or(format!("solved error: {:?}", &ans))?;
-        let mut curves = vec![("Target", target.as_slice()), ("Optimized", &curve)];
-        let refer = refer
-            .iter()
-            .map(|f| f.join(title).with_extension("ron"))
-            .filter(|f| f.is_file())
-            .map(std::fs::read_to_string)
-            .map(|s| {
-                s.map_err(SynErr::Io).and_then(|s| {
-                    ron::from_str::<FourBar>(&s)
-                        .map_err(SynErr::RonSer)
-                        .map(|fb| fb.curve(cfg.res))
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        curves.extend(refer.iter().map(|c| ("competitor", c.as_slice())));
+        let legend = format!("Optimized ({err:.04})");
+        let mut curves = vec![("Target", target.as_slice()), (&legend, &curve)];
         {
             let path = root.join(format!("{title}_linkage.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 800));
             let opt = plot::Opt::new().fb(ans).use_dot(true);
             plot::plot2d(svg, &curves, opt)?;
         }
+        let harmonic = s.func().harmonic();
+        let efd_ans = efd::Efd2::from_curve_harmonic(&target, harmonic).unwrap();
+        let refer = refer
+            .iter()
+            .map(|f| file.parent().unwrap().join(f).join(format!("{title}.ron")))
+            .filter(|f| f.is_file())
+            .map(std::fs::read_to_string)
+            .map(|s| -> Result<_, SynErr> {
+                let s = s.map_err(SynErr::Io)?;
+                let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
+                let c = fb.curve(cfg.res);
+                let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), harmonic).unwrap();
+                let err = efd_ans.l1_norm(&efd);
+                Ok((format!("Competitor ({err:.04})"), c))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        curves.extend(refer.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
         {
             let path = root.join(format!("{title}_result.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 800));
-            let opt = plot::Opt::new().use_dot(true);
+            let title = format!("Harmonic: {harmonic} | Time: {t1:?}");
+            let opt = plot::Opt::new().use_dot(true).title(&title);
             plot::plot2d(svg, &curves, opt)?;
         }
-        let harmonic = s.func().harmonic();
-        const STYLE: &str = "[{prefix}] {msg}";
-        pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
-        let msg = format!("spent: {t1:?} | harmonic: {harmonic} | fitness: {fit}");
-        pb.finish_with_message(msg);
+        pb.finish();
         Ok(())
     };
     if let Err(e) = f() {
