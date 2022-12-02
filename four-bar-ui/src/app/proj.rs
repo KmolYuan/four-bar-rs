@@ -171,7 +171,6 @@ struct Angles {
     alpha2: f64,
 }
 
-#[allow(dead_code)]
 #[derive(Default)]
 struct Cache {
     changed: bool,
@@ -380,7 +379,7 @@ impl ProjInner {
                 .angle(self.angles.theta2)
                 .use_dot(cfg.plot_dot)
                 .use_grid(cfg.plot_grid);
-            io::save_curve_ask(&[], &curve, opt, "fig.svg");
+            io::save_curve_ask([("Coupler Curve", curve.as_slice())], opt, "fig.svg");
         }
         self.cache(cfg.res);
     }
@@ -498,7 +497,7 @@ impl Project {
         }
     }
 
-    fn name(&self) -> String {
+    pub(crate) fn name(&self) -> String {
         self.0.read().unwrap().path.name()
     }
 
@@ -530,7 +529,7 @@ impl Project {
             .angle(proj.angles.theta2)
     }
 
-    fn clone_curve(&self) -> Vec<[f64; 2]> {
+    pub(crate) fn clone_curve(&self) -> Vec<[f64; 2]> {
         self.0
             .read()
             .unwrap()
@@ -541,7 +540,7 @@ impl Project {
             .collect()
     }
 
-    fn cache(&self, res: usize) {
+    pub(crate) fn cache(&self, res: usize) {
         self.0.write().unwrap().cache(res);
     }
 

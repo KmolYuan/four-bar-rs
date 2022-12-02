@@ -113,15 +113,17 @@ impl<'a> Opt<'a> {
 }
 
 /// Plot 2D curves and linkages.
-pub fn plot2d<'a, B, O>(backend: B, curves: &[(&str, &[[f64; 2]])], opt: O) -> PResult<(), B>
+pub fn plot2d<'a, B, C, O>(backend: B, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
+    C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
     O: Into<Opt<'a>>,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
     let opt = opt.into();
     let joints = opt.joints();
+    let curves = curves.into_iter().collect::<Vec<_>>();
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
     let mut chart = ChartBuilder::on(&root);

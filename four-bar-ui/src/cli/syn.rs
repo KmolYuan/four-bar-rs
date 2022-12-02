@@ -181,13 +181,13 @@ fn run<S>(
             }
             _ => err,
         };
-        let legend = format!("Optimized ({err:.04})");
+        let legend = format!("Synthesized ({err:.04})");
         let mut curves = vec![("Target", target.as_slice()), (&legend, &curve)];
         {
             let path = root.join(format!("{title}_linkage.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 800));
             let opt = plot::Opt::new().fb(ans).use_dot(true);
-            plot::plot2d(svg, &curves, opt)?;
+            plot::plot2d(svg, curves.clone(), opt)?;
         }
         let refer = refer
             .iter()
@@ -209,7 +209,7 @@ fn run<S>(
             let svg = plot::SVGBackend::new(&path, (800, 800));
             let title = format!("Harmonic: {h} | Time: {t1:?}");
             let opt = plot::Opt::new().use_dot(true).title(&title);
-            plot::plot2d(svg, &curves, opt)?;
+            plot::plot2d(svg, curves, opt)?;
         }
         pb.finish();
         Ok(())
@@ -265,12 +265,12 @@ fn draw_midway(
     let curve = Some(ans.curve(res))
         .filter(|c| c.len() > 1)
         .ok_or(format!("solved error: {:?}", &ans))?;
-    let curves = [("Target", target), ("Optimized", &curve)];
+    let curves = [("Target", target), ("Synthesized", &curve)];
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
         let opt = plot::Opt::new().fb(ans).use_dot(true);
-        plot::plot2d(svg, &curves, opt)?;
+        plot::plot2d(svg, curves, opt)?;
     }
     Ok(())
 }

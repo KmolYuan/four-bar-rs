@@ -1,6 +1,6 @@
 use self::impl_io::*;
 use crate::csv::dump_csv;
-use four_bar::{curve, plot, FourBar};
+use four_bar::{plot, FourBar};
 
 const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
@@ -166,21 +166,13 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }
 
-pub(crate) fn save_curve_ask<'a, O>(target: &[[f64; 2]], curve: &[[f64; 2]], opt: O, name: &str)
+pub(crate) fn save_curve_ask<'a, C, O>(curves: C, opt: O, name: &str)
 where
+    C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
     O: Into<plot::Opt<'a>>,
 {
     let mut buf = String::new();
-    let opt = opt.into();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));
-    let curves = [("Target", target), ("Optimized", curve)];
-    match (!target.is_empty(), target.len() == curve.len()) {
-        (true, true) => {
-            let title = format!("Comparison (Error: {:.04})", curve::geo_err(target, curve));
-            plot::plot2d(svg, &curves, opt.title(&title)).unwrap();
-        }
-        (true, false) => plot::plot2d(svg, &curves, opt.title("Comparison")).unwrap(),
-        _ => plot::plot2d(svg, &curves, opt).unwrap(),
-    }
+    plot::plot2d(svg, curves, opt).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }

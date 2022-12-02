@@ -82,7 +82,7 @@ impl App {
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
-        app.linkage.pre_open_proj(files);
+        app.linkage.pre_open_proj(files, app.linkage.cfg.res);
         Box::new(app)
     }
 

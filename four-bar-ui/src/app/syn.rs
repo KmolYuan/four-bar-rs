@@ -95,6 +95,7 @@ pub(crate) struct Synthesis {
     csv_open: bool,
     conv_open: bool,
     plot_linkage: bool,
+    competitor: usize,
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -265,7 +266,7 @@ struct Task {
 }
 
 impl Synthesis {
-    pub(crate) fn show(&mut self, ui: &mut Ui, linkage: &mut Linkages) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.config);
@@ -343,27 +344,42 @@ impl Synthesis {
         ui.horizontal(|ui| {
             let enabled = !self.config.syn.target.is_empty();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
-                self.start_syn(linkage.projs.queue());
+                self.start_syn(lnk.projs.queue());
             }
             ui.add(ProgressBar::new(0.).show_percentage());
         });
         ui.separator();
         ui.heading("Projects");
         ui.label("Compare results from a project's coupler curve.");
-        if linkage.projs.select(ui, false) {
+        if lnk.projs.select(ui, false) {
+            let len = lnk.projs.len() + 1;
+            ComboBox::from_label("").show_index(ui, &mut self.competitor, len, |i| {
+                if i == 0 {
+                    "None".to_string()
+                } else {
+                    lnk.projs[i - 1].name()
+                }
+            });
             ui.horizontal(|ui| {
                 if ui.button("💾 Save Comparison").clicked() {
-                    let target = &self.config.syn.target;
-                    let curve = linkage.projs.current_curve();
+                    let mut curves = vec![
+                        ("Target", self.config.syn.target.clone()),
+                        ("Synthesized", lnk.projs.current_curve()),
+                    ];
+                    if self.competitor > 0 {
+                        let curve = lnk.projs[self.competitor - 1].clone_curve();
+                        curves.push(("Competitor", curve));
+                    }
                     let opt = self
                         .plot_linkage
-                        .then(|| linkage.projs.four_bar_state().use_dot(linkage.cfg.plot_dot));
-                    io::save_curve_ask(target, &curve, opt, "fb.svg");
+                        .then(|| lnk.projs.four_bar_state().use_dot(lnk.cfg.plot_dot));
+                    let curves = curves.iter().map(|(s, c)| (*s, c.as_slice()));
+                    io::save_curve_ask(curves, opt, "fb.svg");
                 }
                 ui.checkbox(&mut self.plot_linkage, "With linkage");
             });
             if ui.button("🗐 Copy Coupler Curve").clicked() {
-                self.config.set_target(linkage.projs.current_curve());
+                self.config.set_target(lnk.projs.current_curve());
             }
         }
         self.convergence_plot(ui);
