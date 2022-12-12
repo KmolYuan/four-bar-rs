@@ -17,6 +17,7 @@ mod impl_io {
 
     #[wasm_bindgen]
     extern "C" {
+        fn alert(s: &str);
         fn open_file(ext: &str, done: JsValue, multiple: bool);
         fn open_bfile(ext: &str, done: JsValue);
         fn save_file(s: &str, path: &str);
@@ -27,6 +28,10 @@ mod impl_io {
             .map(|s| format!(".{s}"))
             .collect::<Vec<_>>()
             .join(",")
+    }
+
+    pub(super) fn alert_dialog(s: &str) {
+        alert(s)
     }
 
     pub(super) fn open<C>(_fmt: &str, ext: &[&str], done: C)
@@ -67,14 +72,24 @@ mod impl_io {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod impl_io {
+    pub(super) fn alert_dialog(s: &str) {
+        rfd::MessageDialog::new()
+            .set_title("Error")
+            .set_description(s)
+            .set_level(rfd::MessageLevel::Error)
+            .show();
+    }
+
     pub(super) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
         C: Fn(String, String) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             for path in paths {
-                let s = std::fs::read_to_string(&path).unwrap_or_default();
-                done(path.to_str().unwrap().to_string(), s);
+                match std::fs::read_to_string(&path) {
+                    Ok(s) => done(path.to_str().unwrap().to_string(), s),
+                    Err(e) => alert_dialog(&e.to_string()),
+                };
             }
         }
     }
@@ -85,7 +100,10 @@ mod impl_io {
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             for path in paths {
-                done(std::fs::read(&path).unwrap_or_default());
+                match std::fs::read(path) {
+                    Ok(s) => done(s),
+                    Err(e) => alert_dialog(&e.to_string()),
+                }
             }
         }
     }
@@ -95,8 +113,10 @@ mod impl_io {
         C: Fn(String, String) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            let s = std::fs::read_to_string(&path).unwrap_or_default();
-            done(path.to_str().unwrap().to_string(), s);
+            match std::fs::read_to_string(&path) {
+                Ok(s) => done(path.to_str().unwrap().to_string(), s),
+                Err(e) => alert_dialog(&e.to_string()),
+            }
         }
     }
 
@@ -109,13 +129,17 @@ mod impl_io {
             .add_filter(fmt, ext)
             .save_file()
         {
-            std::fs::write(&file_name, s).unwrap_or_default();
+            if let Err(e) = std::fs::write(&file_name, s) {
+                alert_dialog(&e.to_string());
+            }
             done(file_name.to_str().unwrap().to_string());
         }
     }
 
     pub(super) fn save(s: &str, path: &str) {
-        std::fs::write(path, s).unwrap_or_default();
+        if let Err(e) = std::fs::write(path, s) {
+            alert_dialog(&e.to_string());
+        }
     }
 }
 
