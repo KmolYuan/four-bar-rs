@@ -16,7 +16,11 @@ fn main() {
     use self::app::App;
     console_error_panic_hook::set_once();
     tracing_wasm::set_as_global_default();
-    let opt = eframe::WebOptions::default();
-    eframe::start_web("app", opt, Box::new(|ctx| App::new(ctx, Vec::new())))
-        .expect("failed to startup");
+    let fut = async {
+        let opt = eframe::WebOptions::default();
+        eframe::start_web("app", opt, Box::new(|ctx| App::new(ctx, Vec::new())))
+            .await
+            .expect("failed to startup");
+    };
+    wasm_bindgen_futures::spawn_local(fut);
 }

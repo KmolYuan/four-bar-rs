@@ -68,11 +68,11 @@ impl App {
             .set_fonts(FontDefinitions { font_data, families });
         let mut style = (*ctx.egui_ctx.style()).clone();
         for (text_style, size) in [
-            (TextStyle::Small, 18.),
-            (TextStyle::Body, 24.),
-            (TextStyle::Monospace, 24.),
-            (TextStyle::Button, 30.),
-            (TextStyle::Heading, 40.),
+            (TextStyle::Small, 14.),
+            (TextStyle::Body, 18.),
+            (TextStyle::Monospace, 18.),
+            (TextStyle::Button, 12.5),
+            (TextStyle::Heading, 20.),
         ] {
             let id = FontId::proportional(size);
             style.text_styles.insert(text_style, id);
