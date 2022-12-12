@@ -1,6 +1,6 @@
 use self::impl_io::*;
 use crate::csv::dump_csv;
-use four_bar::{plot, FourBar};
+use four_bar::{cb::Codebook, plot, FourBar};
 
 const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
@@ -72,6 +72,8 @@ mod impl_io {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod impl_io {
+    use super::alert;
+
     pub(super) fn alert_dialog(s: &str) {
         rfd::MessageDialog::new()
             .set_title("Error")
@@ -86,10 +88,9 @@ mod impl_io {
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             for path in paths {
-                match std::fs::read_to_string(&path) {
-                    Ok(s) => done(path.to_str().unwrap().to_string(), s),
-                    Err(e) => alert_dialog(&e.to_string()),
-                };
+                alert(std::fs::read_to_string(&path), |s| {
+                    done(path.to_str().unwrap().to_string(), s);
+                });
             }
         }
     }
@@ -100,10 +101,7 @@ mod impl_io {
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             for path in paths {
-                match std::fs::read(path) {
-                    Ok(s) => done(s),
-                    Err(e) => alert_dialog(&e.to_string()),
-                }
+                alert(std::fs::read(path), &done);
             }
         }
     }
@@ -113,10 +111,9 @@ mod impl_io {
         C: Fn(String, String) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            match std::fs::read_to_string(&path) {
-                Ok(s) => done(path.to_str().unwrap().to_string(), s),
-                Err(e) => alert_dialog(&e.to_string()),
-            }
+            alert(std::fs::read_to_string(&path), |s| {
+                done(path.to_str().unwrap().to_string(), s);
+            });
         }
     }
 
@@ -129,24 +126,33 @@ mod impl_io {
             .add_filter(fmt, ext)
             .save_file()
         {
-            if let Err(e) = std::fs::write(&file_name, s) {
-                alert_dialog(&e.to_string());
-            }
-            done(file_name.to_str().unwrap().to_string());
+            alert(std::fs::write(&file_name, s), |_| {
+                done(file_name.to_str().unwrap().to_string());
+            });
         }
     }
 
     pub(super) fn save(s: &str, path: &str) {
-        if let Err(e) = std::fs::write(path, s) {
-            alert_dialog(&e.to_string());
-        }
+        alert(std::fs::write(path, s), |_| ());
+    }
+}
+
+pub(crate) fn alert<T, E, C>(r: Result<T, E>, done: C)
+where
+    E: std::error::Error,
+    C: FnOnce(T),
+{
+    match r {
+        Ok(t) => done(t),
+        Err(e) => alert_dialog(&e.to_string()),
     }
 }
 
 pub(crate) fn open_ron<C>(done: C)
 where
-    C: Fn(String, String) + 'static,
+    C: Fn(String, FourBar) + 'static,
 {
+    let done = move |path: String, s: String| alert(ron::from_str(&s), |fb| done(path, fb));
     open(FMT, EXT, done);
 }
 
@@ -159,8 +165,9 @@ where
 
 pub(crate) fn open_cb<C>(done: C)
 where
-    C: Fn(Vec<u8>) + 'static,
+    C: Fn(Codebook) + 'static,
 {
+    let done = move |b| alert(Codebook::read(std::io::Cursor::new(b)), &done);
     open_bin(CB_FMT, CB_EXT, done);
 }
 

@@ -10,12 +10,9 @@ use crate::{
 use eframe::egui::*;
 use four_bar::{cb::Codebook, curve, efd, mh, syn};
 use serde::{Deserialize, Serialize};
-use std::{
-    io::Cursor,
-    sync::{
-        atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
-        Arc, RwLock,
-    },
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
+    Arc, RwLock,
 };
 
 mod painting;
@@ -300,8 +297,7 @@ impl Synthesis {
         });
         if ui.button("🖴 Open").clicked() {
             let cb = self.cb.clone();
-            io::open_cb(move |a| {
-                let cb_new = Codebook::read(Cursor::new(a)).unwrap();
+            io::open_cb(move |cb_new| {
                 cb.write()
                     .unwrap()
                     .merge_inplace(&cb_new)

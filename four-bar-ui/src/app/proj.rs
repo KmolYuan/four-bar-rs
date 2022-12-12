@@ -619,12 +619,8 @@ impl Projects {
     pub(crate) fn show(&mut self, ui: &mut Ui, cfg: &super::Cfg) {
         ui.horizontal(|ui| {
             if ui.button("🖴 Open").clicked() {
-                let queue = self.queue();
-                io::open_ron(move |path, s| {
-                    if let Ok(fb) = ron::from_str(&s) {
-                        queue.push(Some(path), fb);
-                    }
-                });
+                let q = self.queue();
+                io::open_ron(move |path, fb| q.push(Some(path), fb));
             }
             if ui.button("🗋 New").clicked() {
                 self.push_example();
