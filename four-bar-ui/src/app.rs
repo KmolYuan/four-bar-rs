@@ -173,8 +173,4 @@ impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
-
-    fn persist_egui_memory(&self) -> bool {
-        false
-    }
 }
