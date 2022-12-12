@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
-pub(super) struct Painting {
+pub(super) struct Painter {
     stroke: Stroke,
 }
 
-impl Default for Painting {
+impl Default for Painter {
     fn default() -> Self {
         Self {
             stroke: Stroke::new(1.0, Color32::from_rgb(25, 200, 100)),
@@ -15,7 +15,7 @@ impl Default for Painting {
     }
 }
 
-impl Painting {
+impl Painter {
     pub(super) fn ui(&mut self, ui: &mut Ui, line: &mut Vec<[f64; 2]>) -> Response {
         stroke_ui(ui, &mut self.stroke, "Stroke");
         Frame::canvas(ui.style())

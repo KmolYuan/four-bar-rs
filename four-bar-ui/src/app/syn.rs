@@ -15,7 +15,7 @@ use std::sync::{
     Arc, RwLock,
 };
 
-mod painting;
+mod curve_painter;
 
 const CLOSED_URL: &str =
     "https://drive.google.com/file/d/1xOgypg2fCWgfAPVneuDO-cnPdc_GHCsK/view?usp=sharing";
@@ -98,7 +98,7 @@ pub(crate) struct Synthesis {
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 struct UiConfig {
-    painting: painting::Painting,
+    painter: curve_painter::Painter,
     method: SynCmd,
     syn: SynConfig,
     curve_str: Arc<RwLock<String>>,
@@ -212,7 +212,7 @@ impl UiConfig {
                     .desired_width(f32::INFINITY);
                 ui.add(w);
             });
-        } else if self.painting.ui(ui, &mut self.syn.target).changed() {
+        } else if self.painter.ui(ui, &mut self.syn.target).changed() {
             self.efd_h = efd::fourier_power_nyq(&self.syn.target);
             *self.curve_str.write().unwrap() = dump_csv(&self.syn.target).unwrap();
         }
