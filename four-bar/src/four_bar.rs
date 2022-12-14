@@ -238,7 +238,7 @@ impl FourBarTy {
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Clone, PartialEq, Debug)]
 pub struct NormFourBar {
-    /// Vector representation
+    // l0, l2, l3, l4, g
     v: [f64; 5],
     inv: bool,
 }
@@ -352,7 +352,8 @@ impl NormFourBar {
 #[cfg_attr(feature = "serde", serde(default))]
 #[derive(Clone, PartialEq, Debug)]
 pub struct FourBar {
-    v: [f64; 4], // p0x + p0y + a + l1
+    // p0x, p0y, a, l1
+    v: [f64; 4],
     norm: NormFourBar,
 }
 
@@ -406,8 +407,23 @@ impl FourBar {
 
     /// Transform a normalized four-bar linkage from a vector.
     pub fn from_trans(norm: NormFourBar, trans: &efd::Transform2) -> Self {
-        let efd::Transform2 { center: [p0x, p0y], rot, scale } = *trans;
-        Self { v: [p0x, p0y, rot, scale], norm: norm * scale }
+        Self::from_norm(norm).transform(trans)
+    }
+
+    /// Transform linkage.
+    pub fn transform(mut self, trans: &efd::Transform2) -> Self {
+        self.transform_inplace(trans);
+        self
+    }
+
+    /// Transform linkage in placed.
+    pub fn transform_inplace(&mut self, trans: &efd::Transform2) {
+        let [p0x, p0y] = trans.trans();
+        *self.p0x_mut() += p0x;
+        *self.p0y_mut() += p0y;
+        *self.a_mut() += trans.rot();
+        *self.l1_mut() *= trans.scale();
+        self.norm *= trans.scale();
     }
 
     impl_parm_method! {

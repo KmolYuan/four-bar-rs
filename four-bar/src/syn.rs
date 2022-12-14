@@ -190,7 +190,7 @@ impl mh::ObjFactory for PathSyn {
             .map(|(curve, fb)| {
                 let curve = self.mode.regularize(curve);
                 let efd = efd::Efd2::from_curve_harmonic(curve, self.efd.harmonic()).unwrap();
-                let fb = FourBar::from_trans(fb, &efd.to(&self.efd));
+                let fb = FourBar::from_trans(fb, &efd.as_trans().to(self.efd.as_trans()));
                 (efd.l1_norm(&self.efd), fb)
             })
         };

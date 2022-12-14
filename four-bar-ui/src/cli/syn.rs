@@ -173,11 +173,11 @@ fn run<S>(
             .filter(|c| c.len() > 1)
             .ok_or(format!("solved error: {:?}", &ans))?;
         let h = s.func().harmonic();
-        let efd_ans = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
+        let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
         let err = match mode {
             syn::Mode::Partial => {
                 let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&curve), h).unwrap();
-                efd_ans.l1_norm(&efd)
+                efd_target.l1_norm(&efd)
             }
             _ => err,
         };
@@ -199,7 +199,7 @@ fn run<S>(
                 let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
                 let c = fb.curve(cfg.res);
                 let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
-                let err = efd_ans.l1_norm(&efd);
+                let err = efd_target.l1_norm(&efd);
                 Ok((format!("Competitor ({err:.04})"), c))
             })
             .collect::<Result<Vec<_>, _>>()?;

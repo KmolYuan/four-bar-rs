@@ -22,7 +22,7 @@ codebook = ["ndarray-npy"]
 serde = { version = "1", features = ["derive"], optional = true }
 ndarray-npy = { version = "0.8", optional = true }
 metaheuristics-nature = "8"
-efd = "0.25"
+efd = "1"
 
 [dependencies.plotters]
 version = "0.3"

@@ -13,7 +13,7 @@ use std::{
     sync::Mutex,
 };
 
-fn to_array<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
+fn to_arr<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
 where
     A: Clone,
     D: Dimension,
@@ -21,6 +21,15 @@ where
     let stack = stack.into_inner().unwrap();
     let arrays = stack.iter().take(n).map(Array::view).collect::<Vec<_>>();
     ndarray::stack(Axis(0), &arrays).unwrap()
+}
+
+fn trans_to_arr(trans: &Transform2) -> Array1<f64> {
+    let [x, y] = trans.trans();
+    arr1(&[trans.scale(), trans.rot(), x, y])
+}
+
+fn arr_to_trans(arr: ArrayView1<f64>) -> Transform2 {
+    Transform2::new([arr[2], arr[3]], arr[1], arr[0])
 }
 
 /// Codebook generation config.
@@ -132,7 +141,7 @@ impl Codebook {
                 let curve = mode.regularize(curve);
                 let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
                 efd_stack.lock().unwrap().push(efd.coeffs().to_owned());
-                let trans = arr1(&[efd.rot, efd.scale, efd.center[0], efd.center[1]]);
+                let trans = trans_to_arr(efd.as_trans());
                 trans_stack.lock().unwrap().push(trans);
                 let mut stack = fb_stack.lock().unwrap();
                 stack.push(arr1(&fb.vec()));
@@ -143,10 +152,10 @@ impl Codebook {
                 break;
             }
         }
-        let fb = to_array(fb_stack, size);
-        let inv = to_array(inv_stack, size);
-        let efd = to_array(efd_stack, size);
-        let trans = to_array(trans_stack, size);
+        let fb = to_arr(fb_stack, size);
+        let inv = to_arr(inv_stack, size);
+        let efd = to_arr(efd_stack, size);
+        let trans = to_arr(trans_stack, size);
         Self { fb, inv, efd, trans }
     }
 
@@ -236,7 +245,7 @@ impl Codebook {
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
             .take(size)
-            .map(|i| (dis[i], self.pick(i, &target, trans)))
+            .map(|i| (dis[i], self.pick(i, target.as_trans(), trans)))
             .collect()
     }
 
@@ -252,7 +261,7 @@ impl Codebook {
         iter.map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(i, err)| (err, self.pick(i, &target, trans)))
+            .map(|(i, err)| (err, self.pick(i, target.as_trans(), trans)))
     }
 
     fn pick(&self, i: usize, target: &Transform2, trans: bool) -> FourBar {
@@ -260,10 +269,7 @@ impl Codebook {
         let inv = self.inv[i];
         let fb = NormFourBar::try_from_slice(view.as_slice().unwrap(), inv).unwrap();
         if trans {
-            let trans = {
-                let t = self.trans.slice(s![i, ..]);
-                Transform2 { rot: t[0], scale: t[1], center: [t[2], t[3]] }
-            };
+            let trans = arr_to_trans(self.trans.slice(s![i, ..]));
             FourBar::from_trans(fb, &trans.to(target))
         } else {
             fb.into()

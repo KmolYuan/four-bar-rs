@@ -123,7 +123,7 @@ impl UiConfig {
         let curve_str = self.curve_str.read().unwrap();
         if self.syn.target.is_empty() && !curve_str.is_empty() {
             if let Some(curve) = parse_curve(&curve_str) {
-                self.efd_h = efd::fourier_power_nyq(&curve);
+                self.efd_h = efd::Efd2::gate(&curve, None);
                 self.syn.target = curve;
             }
         }
@@ -132,7 +132,7 @@ impl UiConfig {
     fn poll(&mut self) {
         if self.changed.load(Ordering::Relaxed) >= Self::TICK {
             if let Some(curve) = parse_curve(&self.curve_str.read().unwrap()) {
-                self.efd_h = efd::fourier_power_nyq(&curve);
+                self.efd_h = efd::Efd2::gate(&curve, None);
                 self.syn.target = curve;
             }
             self.changed.store(0, Ordering::Relaxed);
@@ -142,7 +142,7 @@ impl UiConfig {
 
     fn set_target(&mut self, target: Vec<[f64; 2]>) {
         *self.curve_str.write().unwrap() = dump_csv(&target).unwrap();
-        self.efd_h = efd::fourier_power_nyq(&target);
+        self.efd_h = efd::Efd2::gate(&target, None);
         self.syn.target = target;
     }
 
@@ -213,7 +213,7 @@ impl UiConfig {
                 ui.add(w);
             });
         } else if self.painter.ui(ui, &mut self.syn.target).changed() {
-            self.efd_h = efd::fourier_power_nyq(&self.syn.target);
+            self.efd_h = efd::Efd2::gate(&self.syn.target, None);
             *self.curve_str.write().unwrap() = dump_csv(&self.syn.target).unwrap();
         }
         self.poll();
@@ -349,6 +349,9 @@ impl Synthesis {
         ui.label("Compare results from a project's coupler curve.");
         if lnk.projs.select(ui, false) {
             let len = lnk.projs.len() + 1;
+            if self.competitor >= len {
+                self.competitor = len - 1;
+            }
             ComboBox::from_label("").show_index(ui, &mut self.competitor, len, |i| {
                 if i == 0 {
                     "None".to_string()

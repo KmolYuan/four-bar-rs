@@ -589,7 +589,6 @@ impl Projects {
         let path = file.as_ref().to_str().unwrap().to_string();
         if let Some(fb) = pre_open(file) {
             self.push(Some(path), fb);
-            self.curr = self.len() - 1;
         }
     }
 
