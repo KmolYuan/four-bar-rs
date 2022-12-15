@@ -135,11 +135,14 @@ fn codebook(cb: CbCfg) {
     }
     println!("Generate to: {}", file.display());
     println!("open={is_open}, size={size}, res={res}, harmonic={harmonic}");
+    let t0 = std::time::Instant::now();
     let cfg = cb::Cfg { is_open, size, res, harmonic, seed: seed.into() };
     let pb = indicatif::ProgressBar::new(size as u64);
     cb::Codebook::make_with(cfg, |n| pb.set_position(n as u64))
         .write(std::fs::File::create(file).unwrap())
         .unwrap();
+    let t0 = t0.elapsed();
     pb.finish_and_clear();
+    println!("Time spent: {t0:?}");
     println!("Done");
 }
