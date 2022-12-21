@@ -130,7 +130,7 @@ fn run<S>(
         }
         std::fs::create_dir(&root)?;
         let use_log = cfg.log > 0;
-        let mut history = Vec::with_capacity(if use_log { cfg.gen as usize } else { 0 });
+        let mut history = Vec::with_capacity(if use_log { cfg.gen } else { 0 });
         let mut s = mh::Solver::build(setting, func)
             .seed(cfg.seed)
             .task(|ctx| ctx.gen == cfg.gen as u64)
