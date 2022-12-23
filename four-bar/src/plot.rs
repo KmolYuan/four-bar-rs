@@ -1,8 +1,10 @@
 //! The functions used to plot the curve and synthesis result.
 
 use crate::{curve, FourBar};
+use plotters::element::PointElement as _;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
+use std::f64::consts::TAU;
 
 type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 
@@ -187,6 +189,84 @@ where
             .label_font(font())
             .draw()?;
     }
+    Ok(())
+}
+
+/// Plot 3D spherical linkage.
+pub fn plot3d<'a, B, C>(backend: B, sr: f64, curves: C) -> PResult<(), B>
+where
+    B: DrawingBackend,
+    C: IntoIterator<Item = (&'a str, &'a [[f64; 3]])>,
+{
+    debug_assert!(sr > 0.);
+    let root = backend.into_drawing_area();
+    root.fill(&WHITE)?;
+    let mut chart = ChartBuilder::on(&root)
+        .set_label_area_size(LabelAreaPosition::Left, (8).percent())
+        .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
+        .margin((8).percent())
+        .build_cartesian_3d(-sr..sr, -sr..sr, -sr..sr)?;
+    chart.with_projection(|mut pb| {
+        pb.yaw = 0.9;
+        pb.scale = 0.9;
+        pb.into_matrix()
+    });
+    chart
+        .configure_axes()
+        .light_grid_style(BLACK.mix(0.15))
+        .label_style(font())
+        .max_light_lines(3)
+        .draw()?;
+    // Draw the sphere
+    {
+        let t = (0..=500).map(|t| t as f64 / 500. * TAU);
+        let z = t.clone().map(|t| sr * t.cos());
+        let y = t.map(|t| sr * t.sin());
+        const N: usize = 96;
+        for i in 0..N {
+            let phi = i as f64 / N as f64 * TAU;
+            let x = z.clone().map(|z| z * phi.sin());
+            let z = z.clone().map(|z| z * phi.cos());
+            let iter = x.zip(y.clone()).zip(z).map(|((x, y), z)| (x, y, z));
+            chart.draw_series(LineSeries::new(iter, BLACK.mix(0.1)))?;
+        }
+    }
+    // Draw axes
+    for (p, color) in [
+        ((0.3 * sr, 0., 0.), RED),
+        ((0., 0.3 * sr, 0.), GREEN),
+        ((0., 0., 0.3 * sr), BLUE),
+    ] {
+        chart.draw_series(LineSeries::new([(0., 0., 0.), p], color.stroke_width(5)))?;
+    }
+    // Draw the curves
+    for (i, (label, curve)) in curves.into_iter().enumerate() {
+        let color = Palette99::pick(i).stroke_width(2);
+        if i % 2 == 1 {
+            let series = curve
+                .iter()
+                .map(|&[x, y, z]| Circle::make_point((x, y, z), 5, color));
+            chart
+                .draw_series(series)?
+                .label(label)
+                .legend(move |(x, y)| Circle::new((x + 10, y), 5, color));
+        } else {
+            let series = curve
+                .iter()
+                .map(|&[x, y, z]| TriangleMarker::make_point((x, y, z), 5, color));
+            chart
+                .draw_series(series)?
+                .label(label)
+                .legend(move |(x, y)| TriangleMarker::new((x + 10, y), 5, color));
+        };
+    }
+    chart
+        .configure_series_labels()
+        .position(SeriesLabelPosition::LowerRight)
+        .background_style(WHITE)
+        .border_style(BLACK)
+        .label_font(font())
+        .draw()?;
     Ok(())
 }
 

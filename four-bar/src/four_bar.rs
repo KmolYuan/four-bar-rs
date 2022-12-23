@@ -24,12 +24,12 @@ macro_rules! impl_shared_method {
 
         /// Generator for curves in specified angle.
         pub fn curves_in(&$self, start: f64, end: f64, res: usize) -> Vec<[[f64; 2]; 3]> {
-            curve_in(start, end, res, |theta| $self.pos(theta), |[.., j2, j3, j4]| [j2, j3, j4])
+            curve_in(start, end, res, |theta| $self.pos(theta), |[.., p2, p3, p4]| [p2, p3, p4])
         }
 
         /// Generator for coupler curve in specified angle.
         pub fn curve_in(&$self, start: f64, end: f64, res: usize) -> Vec<[f64; 2]> {
-            curve_in(start, end, res, |theta| $self.pos(theta), |[.., j4]| j4)
+            curve_in(start, end, res, |theta| $self.pos(theta), |[.., p4]| p4)
         }
 
         /// Generator for curves.
@@ -85,6 +85,7 @@ macro_rules! impl_shared_method {
         }
     };
 }
+pub(crate) use impl_parm_method;
 
 fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
     fb.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
@@ -116,10 +117,11 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
     }
 }
 
-fn curve_in<F, M, B>(start: f64, end: f64, res: usize, f: F, map: M) -> Vec<B>
+pub(crate) fn curve_in<C, F, M, B>(start: f64, end: f64, res: usize, f: F, map: M) -> Vec<B>
 where
-    F: Fn(f64) -> [[f64; 2]; 5],
-    M: Fn([[f64; 2]; 5]) -> B + Copy,
+    C: Copy + IntoIterator<Item = f64> + 'static,
+    F: Fn(f64) -> [C; 5],
+    M: Fn([C; 5]) -> B + Copy,
 {
     let interval = (end - start) / res as f64;
     let mut iter = (0..res).map(move |n| start + n as f64 * interval).map(f);
@@ -127,7 +129,7 @@ where
     while iter.len() > 0 {
         let v = iter
             .by_ref()
-            .take_while(|c| c.iter().flatten().all(|x| x.is_finite()))
+            .take_while(|c| c.iter().copied().flatten().all(|x| x.is_finite()))
             .map(map)
             .collect::<Vec<_>>();
         last = v;
@@ -267,10 +269,10 @@ impl NormFourBar {
     /// Zeros data. (Default value)
     ///
     /// This is an invalid linkage.
-    pub const ZERO: Self = Self::from_vec([0.; 5], false);
+    pub const ZERO: Self = Self::new([0.; 5], false);
 
-    /// Create a normalized four-bar linkage from a vector.
-    pub const fn from_vec(v: [f64; 5], inv: bool) -> Self {
+    /// Create a normalized linkage from a vector.
+    pub const fn new(v: [f64; 5], inv: bool) -> Self {
         Self { v, inv }
     }
 
@@ -373,31 +375,21 @@ impl FourBar {
     /// Zeros data. (Default value)
     ///
     /// This is an invalid linkage.
-    pub const ZERO: Self = Self::new([0.; 6], false);
-
-    /// Create with linkage lengths.
-    ///
-    /// Order: `[l0, l1, l2, l3, l4, g]`
-    pub const fn new(v: [f64; 6], inv: bool) -> Self {
-        let [l0, l1, l2, l3, l4, g] = v;
-        let norm = NormFourBar::from_vec([l0, l2, l3, l4, g], inv);
-        let v = [0., 0., 0., l1];
-        Self { v, norm }
-    }
+    pub const ZERO: Self = Self::new([0.; 9], false);
 
     /// Create with linkage lengths and offset.
     ///
     /// Order: `[p0x, p0y, a, l0, l1, l2, l3, l4, g]`
-    pub const fn with_offset(v: [f64; 9], inv: bool) -> Self {
+    pub const fn new(v: [f64; 9], inv: bool) -> Self {
         let [p0x, p0y, a, l0, l1, l2, l3, l4, g] = v;
-        let norm = NormFourBar::from_vec([l0, l2, l3, l4, g], inv);
+        let norm = NormFourBar::new([l0, l2, l3, l4, g], inv);
         let v = [p0x, p0y, a, l1];
         Self { v, norm }
     }
 
-    /// Create a normalized four-bar linkage from a vector.
-    pub const fn from_vec(v: [f64; 5], inv: bool) -> Self {
-        Self::from_norm(NormFourBar::from_vec(v, inv))
+    /// Create a normalized linkage from a vector.
+    pub const fn new_norm(v: [f64; 5], inv: bool) -> Self {
+        Self::from_norm(NormFourBar::new(v, inv))
     }
 
     /// Create from normalized linkage.
@@ -405,9 +397,24 @@ impl FourBar {
         Self { v: [0., 0., 0., 1.], norm }
     }
 
-    /// Transform a normalized four-bar linkage from a vector.
-    pub fn from_trans(norm: NormFourBar, trans: &efd::Transform2) -> Self {
+    /// Transform a normalized linkage from a vector.
+    pub fn from_norm_trans(norm: NormFourBar, trans: &efd::Transform2) -> Self {
         Self::from_norm(norm).transform(trans)
+    }
+
+    /// Create with linkage lengths.
+    ///
+    /// Order: `[l0, l1, l2, l3, l4, g]`
+    pub const fn from_lengths(v: [f64; 6], inv: bool) -> Self {
+        let [l0, l1, l2, l3, l4, g] = v;
+        let norm = NormFourBar::new([l0, l2, l3, l4, g], inv);
+        let v = [0., 0., 0., l1];
+        Self { v, norm }
+    }
+
+    /// An example crank rocker.
+    pub const fn example() -> Self {
+        Self::from_lengths([90., 35., 70., 70., 45., FRAC_PI_6], false)
     }
 
     /// Transform linkage.
@@ -449,11 +456,6 @@ impl FourBar {
         fn inv, inv_mut(self) -> bool { self.norm.inv }
     }
 
-    /// An example crank rocker.
-    pub const fn example() -> Self {
-        Self::new([90., 35., 70., 70., 45., FRAC_PI_6], false)
-    }
-
     /// Return true if the linkage has no offset and offset angle.
     pub fn is_aligned(&self) -> bool {
         self.p0x() == 0. && self.p0y() == 0. && self.a() == 0.
@@ -464,13 +466,13 @@ impl FourBar {
         self.v[..3].fill(0.);
     }
 
-    /// Transform into normalized four-bar linkage.
+    /// Transform into normalized linkage.
     pub fn normalize(&mut self) {
         self.align();
         *self /= self.l1();
     }
 
-    /// Get the normalized four-bar linkage from this one.
+    /// Get the normalized linkage from this one.
     pub fn to_norm(self) -> NormFourBar {
         let l1 = self.l1();
         self.norm / l1
@@ -580,18 +582,18 @@ fn parallel([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], [x3, y3]: [f64; 2]) -> [f64;
     [x3 + d * a.cos(), y3 + d * a.sin()]
 }
 
-fn curve_interval(v: &[f64; 4], norm: &NormFourBar, theta: f64) -> [[f64; 2]; 5] {
+fn curve_interval(v: &[f64; 4], norm: &NormFourBar, b: f64) -> [[f64; 2]; 5] {
     let [p0x, p0y, a, l1] = v;
     let NormFourBar { v: [l0, l2, l3, l4, g], inv } = norm;
-    let j0 = [*p0x, *p0y];
-    let j1 = angle(j0, *l0, *a);
-    let j2 = angle(j0, *l1, theta);
-    let j3 = if (l0 - l2).abs() < f64::EPSILON && (l1 - l3).abs() < f64::EPSILON {
+    let p0 = [*p0x, *p0y];
+    let p1 = angle(p0, *l0, *a);
+    let p2 = angle(p0, *l1, b);
+    let p3 = if (l0 - l2).abs() < f64::EPSILON && (l1 - l3).abs() < f64::EPSILON {
         // Special case
-        parallel(j0, j2, j1)
+        parallel(p0, p2, p1)
     } else {
-        circle2(j2, j1, *l2, *l3, *inv)
+        circle2(p2, p1, *l2, *l3, *inv)
     };
-    let j4 = angle_with(j2, j3, *l4, *g);
-    [j0, j1, j2, j3, j4]
+    let p4 = angle_with(p2, p3, *l4, *g);
+    [p0, p1, p2, p3, p4]
 }

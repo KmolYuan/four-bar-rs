@@ -13,11 +13,12 @@
 #![warn(missing_docs)]
 #![warn(clippy::semicolon_if_nothing_returned)]
 
-pub use crate::{defect::*, four_bar::*};
+pub use crate::{defect::*, four_bar::*, sphere::*};
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
 pub extern crate metaheuristics_nature as mh;
+extern crate nalgebra as na;
 
 #[cfg(feature = "codebook")]
 pub mod cb;
@@ -26,6 +27,7 @@ mod defect;
 mod four_bar;
 #[cfg(feature = "plot")]
 pub mod plot;
+mod sphere;
 pub mod syn;
 #[cfg(test)]
 mod tests;

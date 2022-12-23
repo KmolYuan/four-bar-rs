@@ -270,7 +270,7 @@ impl Codebook {
         let fb = NormFourBar::try_from_slice(view.as_slice().unwrap(), inv).unwrap();
         if trans {
             let trans = arr_to_trans(self.trans.slice(s![i, ..]));
-            FourBar::from_trans(fb, &trans.to(target))
+            FourBar::from_norm_trans(fb, &trans.to(target))
         } else {
             fb.into()
         }
