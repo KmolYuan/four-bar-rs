@@ -1,3 +1,5 @@
+use std::f64::consts::FRAC_PI_2;
+
 use crate::four_bar::*;
 
 /// Spherical normalized four-bar linkage.
@@ -105,7 +107,7 @@ impl SFourBar {
 
     /// Create from normalized linkage.
     pub const fn from_norm(norm: SNormFourBar) -> Self {
-        Self { v: [0., 0., 0., 1., 0., 0., 0.], norm }
+        Self { v: [0., 0., 0., 1., FRAC_PI_2, 0., 0.], norm }
     }
 
     impl_parm_method! {
@@ -177,15 +179,15 @@ fn curve_interval(v: &[f64; 7], norm: &SNormFourBar, b: f64) -> [[f64; 3]; 5] {
     let z = na::Vector3::z_axis();
     let p1 = {
         let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op0), a);
-        let rot2 = na::Rotation3::from_axis_angle(&z, a);
+        let rot2 = na::Rotation3::from_axis_angle(&z, l0);
         rot1 * rot2 * p0
     };
-    let op2 = {
+    let p2 = {
         let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op0), a + b);
-        let rot2 = na::Rotation3::from_axis_angle(&z, l0);
-        rot1 * rot2 * op0
+        let rot2 = na::Rotation3::from_axis_angle(&z, l1);
+        rot1 * rot2 * p0
     };
-    let p2 = o + op2;
+    let op2 = p2 - o;
     let op1 = p1 - o;
     let op3 = {
         let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op1), a + d);
