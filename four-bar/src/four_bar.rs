@@ -22,7 +22,7 @@ macro_rules! impl_shared_method {
             curve_interval($v, $norm, theta)
         }
 
-        /// Generator for curves in specified angle.
+        /// Generator for all curves in specified angle.
         pub fn curves_in(&$self, start: f64, end: f64, res: usize) -> Vec<[[f64; 2]; 3]> {
             curve_in(start, end, res, |theta| $self.pos(theta), |[.., p2, p3, p4]| [p2, p3, p4])
         }

@@ -1,5 +1,24 @@
 use crate::four_bar::*;
 
+macro_rules! impl_shared_method {
+    ($self:ident, $v:expr, $norm:expr) => {
+        /// Return the position of the input angle.
+        pub fn pos(&$self, theta: f64) -> [[f64; 3]; 5] {
+            curve_interval($v, $norm, theta)
+        }
+
+        /// Generator for all curves in specified angle.
+        pub fn curves_in(&$self, start: f64, end: f64, res: usize) -> Vec<[[f64; 3]; 3]> {
+            curve_in(start, end, res, |theta| $self.pos(theta), |[.., p2, p3, p4]| [p2, p3, p4])
+        }
+
+        /// Generator for coupler curve in specified angle.
+        pub fn curve_in(&$self, start: f64, end: f64, res: usize) -> Vec<[f64; 3]> {
+            curve_in(start, end, res, |theta| $self.pos(theta), |[.., p4]| p4)
+        }
+    };
+}
+
 /// Spherical normalized four-bar linkage.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -52,6 +71,8 @@ impl SNormFourBar {
         /// Inverse coupler and follower to another circuit.
         fn inv, inv_mut(self) -> bool { self.inv }
     }
+
+    impl_shared_method!(self, &[0., 0., 0., 1., 0., 0., 0.], self);
 }
 
 /// Spherical four-bar linkage.
@@ -137,15 +158,7 @@ impl SFourBar {
         fn inv, inv_mut(self) -> bool { self.norm.inv }
     }
 
-    /// Return the position of the input angle.
-    pub fn pos(&self, theta: f64) -> [[f64; 3]; 5] {
-        curve_interval(&self.v, &self.norm, theta)
-    }
-
-    /// Generator for coupler curve in specified angle.
-    pub fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<[f64; 3]> {
-        curve_in(start, end, res, |theta| self.pos(theta), |[.., p4]| p4)
-    }
+    impl_shared_method!(self, &self.v, &self.norm);
 }
 
 fn curve_interval(v: &[f64; 7], norm: &SNormFourBar, b: f64) -> [[f64; 3]; 5] {
