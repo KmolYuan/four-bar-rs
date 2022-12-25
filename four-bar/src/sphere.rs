@@ -1,5 +1,3 @@
-use std::f64::consts::FRAC_PI_2;
-
 use crate::four_bar::*;
 
 /// Spherical normalized four-bar linkage.
@@ -107,7 +105,7 @@ impl SFourBar {
 
     /// Create from normalized linkage.
     pub const fn from_norm(norm: SNormFourBar) -> Self {
-        Self { v: [0., 0., 0., 1., FRAC_PI_2, 0., 0.], norm }
+        Self { v: [0., 0., 0., 1., 0., 0., 0.], norm }
     }
 
     impl_parm_method! {
@@ -153,6 +151,12 @@ impl SFourBar {
 fn curve_interval(v: &[f64; 7], norm: &SNormFourBar, b: f64) -> [[f64; 3]; 5] {
     let [ox, oy, oz, r, p0i, p0j, a] = *v;
     let SNormFourBar { v: [l0, l1, l2, l3, l4, g], inv } = *norm;
+    let e1 = {
+        let rx1v = na::Rotation3::from_axis_angle(&na::Vector3::x_axis(), g);
+        let rx1m = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l4);
+        let p1 = na::Vector3::new(r, 0., 0.);
+        rx1v * rx1m * p1
+    };
     let d = {
         let k1 = l1.cos() * l3.cos() * l0.cos();
         let k2 = l2.cos();
@@ -169,46 +173,41 @@ fn curve_interval(v: &[f64; 7], norm: &SNormFourBar, b: f64) -> [[f64; 3]; 5] {
             2. * (-h3 - (h3 * h3 - h1 * h1 + h2 * h2).sqrt()).atan2(h1 - h2)
         }
     };
-    let o = na::Point3::new(ox, oy, oz);
-    let op0 = na::Vector3::new(
-        r * p0i.sin() * p0j.cos(),
-        r * p0i.sin() * p0j.sin(),
-        r * p0i.cos(),
-    );
-    let p0 = o + op0;
-    let z = na::Vector3::z_axis();
-    let p1 = {
-        let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op0), a);
-        let rot2 = na::Rotation3::from_axis_angle(&z, l0);
-        rot1 * rot2 * p0
+    let op0 = na::Vector3::new(1., 0., 0.);
+    let op1 = {
+        let rot = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l0);
+        rot * op0
     };
-    let p2 = {
-        let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op0), a + b);
-        let rot2 = na::Rotation3::from_axis_angle(&z, l1);
-        rot1 * rot2 * p0
+    let op2 = {
+        let rot1 = na::Rotation3::from_axis_angle(&na::Vector3::x_axis(), b);
+        let rot2 = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l1);
+        rot1 * rot2 * op0
     };
-    let op2 = p2 - o;
-    let op1 = p1 - o;
     let op3 = {
-        let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op1), a + d);
-        let rot2 = na::Rotation3::from_axis_angle(&z, l3);
+        let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op1), d);
+        let rot2 = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l3);
         rot1 * rot2 * op1
     };
-    let p3 = o + op3;
-    let i = op2;
-    let k = op2.cross(&op3) / l2.sin();
-    let j = k.cross(&i);
-    let p4 = {
-        let rot1 = na::Matrix3::from_columns(&[i, j, k]);
-        let rot2 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op2), g);
-        let rot3 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op2.cross(&op3)), l4);
-        rot1 * rot2 * rot3 * p1
+    let rot = {
+        let rot1 = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), p0j);
+        let rot2 = na::Rotation3::from_axis_angle(&na::Vector3::y_axis(), p0i);
+        let rot3 = na::Rotation3::from_axis_angle(&na::Vector3::x_axis(), a);
+        rot1 * rot2 * rot3
     };
-    [
-        [p0.x, p0.y, p0.z],
-        [p1.x, p1.y, p1.z],
-        [p2.x, p2.y, p2.z],
-        [p3.x, p3.y, p3.z],
-        [p4.x, p4.y, p4.z],
-    ]
+    let o = na::Point3::new(ox, oy, oz);
+    let p0 = o + rot * op0;
+    let p1 = o + rot * op1;
+    let p2 = o + rot * op2;
+    let p3 = o + rot * op3;
+    let p4 = {
+        let i = op2;
+        let k = op2.cross(&op3) / l2.sin();
+        let j = k.cross(&i);
+        let op4 = na::Matrix3::from_columns(&[i, j, k]) * e1;
+        o + rot * op4
+    };
+    macro_rules! build_coords {
+        ($($p:ident),+) => { [$([$p.x, $p.y, $p.z]),+] }
+    }
+    build_coords!(p0, p1, p2, p3, p4)
 }
