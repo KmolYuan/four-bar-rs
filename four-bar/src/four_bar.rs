@@ -241,8 +241,8 @@ impl FourBarTy {
 #[derive(Clone, PartialEq, Debug)]
 pub struct NormFourBar {
     // l0, l2, l3, l4, g
-    v: [f64; 5],
-    inv: bool,
+    pub(crate) v: [f64; 5],
+    pub(crate) inv: bool,
 }
 
 impl Default for NormFourBar {

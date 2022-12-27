@@ -1,3 +1,5 @@
+use std::f64::consts::TAU;
+
 use crate::four_bar::*;
 
 macro_rules! impl_shared_method {
@@ -53,6 +55,13 @@ impl SNormFourBar {
     /// Order: `[l0, l1, l2, l3, l4, g]`
     pub fn new_degrees(v: [f64; 6], inv: bool) -> Self {
         Self { v: v.map(f64::to_radians), inv }
+    }
+
+    /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
+    pub fn new_wrap(fb: &NormFourBar, w: f64) -> Self {
+        let NormFourBar { v: [l0, l2, l3, l4, g], inv } = *fb;
+        let v = [l0, fb.l1(), l2, l3, l4, g].map(|x| x / w * TAU);
+        Self { v, inv }
     }
 
     impl_parm_method! {
