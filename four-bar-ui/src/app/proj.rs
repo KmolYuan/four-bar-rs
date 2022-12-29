@@ -4,7 +4,7 @@ use super::{
 };
 use crate::csv::dump_csv;
 use eframe::egui::*;
-use four_bar::FourBar;
+use four_bar::{FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,
@@ -116,6 +116,20 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
         .inner
     })
     .inner
+}
+
+// TODO: Support spherical four-bar
+#[derive(Deserialize, Serialize, Clone)]
+#[serde(tag = "type")]
+enum Fb {
+    FourBar(FourBar),
+    SFourBar(SFourBar),
+}
+
+impl Default for Fb {
+    fn default() -> Self {
+        Self::FourBar(FourBar::example())
+    }
 }
 
 #[derive(Default, Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]

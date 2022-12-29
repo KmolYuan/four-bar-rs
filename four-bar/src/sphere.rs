@@ -60,8 +60,8 @@ impl SNormFourBar {
     /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
     pub fn new_wrap(fb: &NormFourBar, w: f64) -> Self {
         let NormFourBar { v: [l0, l2, l3, l4, g], inv } = *fb;
-        let v = [l0, fb.l1(), l2, l3, l4, g].map(|x| x / w * TAU);
-        Self { v, inv }
+        let [l0, l1, l2, l3, l4] = [l0, fb.l1(), l2, l3, l4].map(|x| x / w * TAU);
+        Self { v: [l0, l1, l2, l3, l4, g], inv }
     }
 
     impl_parm_method! {
@@ -114,7 +114,7 @@ impl SFourBar {
 
     /// Create with linkage lengths in radians.
     ///
-    /// Order: `[ox, oy, r, p0i, p0j, a, l0, l1, l2, l3, l4, g]`
+    /// Order: `[ox, oy, oz, r, p0i, p0j, a, l0, l1, l2, l3, l4, g]`
     pub const fn new(v: [f64; 13], inv: bool) -> Self {
         let [ox, oy, oz, r, p0i, p0j, a, l0, l1, l2, l3, l4, g] = v;
         Self {
@@ -133,6 +133,26 @@ impl SFourBar {
         Self::from_norm(SNormFourBar::new_degrees(v, inv))
     }
 
+    /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
+    ///
+    /// Additionally, the sphere `center` and radius `r` must be given.
+    pub fn new_wrap(fb: &FourBar, center: [f64; 3], r: f64, w: f64) -> Self {
+        let FourBar {
+            v: [p0x, p0y, a, l1],
+            norm: NormFourBar { v: [l0, l2, l3, l4, g], inv },
+        } = *fb;
+        let [ox, oy, oz] = center;
+        let [p0i, p0j, l0, l1, l2, l3, l4] = [p0x, p0y, l0, l1, l2, l3, l4].map(|x| x / w * TAU);
+        Self::new([ox, oy, oz, r, p0i, p0j, a, l0, l1, l2, l3, l4, g], inv)
+    }
+
+    /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
+    ///
+    /// This method supports [`NormFourBar`] type.
+    pub fn new_wrap_norm(fb: &NormFourBar, w: f64) -> Self {
+        Self::from_norm(SNormFourBar::new_wrap(fb, w))
+    }
+
     /// Create from normalized linkage.
     pub const fn from_norm(norm: SNormFourBar) -> Self {
         Self { v: [0., 0., 0., 1., 0., 0., 0.], norm }
@@ -143,14 +163,16 @@ impl SFourBar {
         fn ox, ox_mut(self) -> f64 { self.v[0] }
         /// Y offset of the sphere center.
         fn oy, oy_mut(self) -> f64 { self.v[1] }
+        /// Z offset of the sphere center.
+        fn oz, oz_mut(self) -> f64 { self.v[2] }
         /// Radius of the sphere.
-        fn r, r_mut(self) -> f64 { self.v[2] }
+        fn r, r_mut(self) -> f64 { self.v[3] }
         /// Sphere polar angle offset of the driver link pivot.
-        fn p0i, p0i_mut(self) -> f64 { self.v[3] }
+        fn p0i, p0i_mut(self) -> f64 { self.v[4] }
         /// Sphere azimuth angle offset of the driver link pivot.
-        fn p0j, p0j_mut(self) -> f64 { self.v[4] }
+        fn p0j, p0j_mut(self) -> f64 { self.v[5] }
         /// Angle offset of the ground link.
-        fn a, a_mut(self) -> f64 { self.v[5] }
+        fn a, a_mut(self) -> f64 { self.v[6] }
         /// Length of the ground link.
         fn l0, l0_mut(self) -> f64 { self.norm.v[0] }
         /// Length of the driver link.
