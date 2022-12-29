@@ -222,10 +222,10 @@ fn curve_interval(v: &[f64; 7], norm: &SNormFourBar, b: f64) -> [[f64; 3]; 5] {
     let p2 = o + rot * op2;
     let p3 = o + rot * op3;
     let p4 = {
-        let i = op2;
-        let k = op2.cross(&op3) / l2.sin();
+        let i = op2.normalize();
+        let k = (op2.cross(&op3) / l2.sin()).normalize();
         let j = k.cross(&i);
-        let op4 = na::Matrix3::from_columns(&[i, j, k]) * e1;
+        let op4 = na::Rotation3::from_basis_unchecked(&[i, j, k]) * e1;
         o + rot * op4
     };
     macro_rules! build_coords {
