@@ -1,7 +1,6 @@
 //! The functions used to plot the curve and synthesis result.
 
-use crate::{curve, FourBar};
-use plotters::element::PointElement as _;
+use crate::*;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 use std::f64::consts::TAU;
@@ -47,71 +46,79 @@ where
     Ok(())
 }
 
-/// Drawing option of four-bar linkage and its input angle.
-#[derive(Default)]
-pub struct Opt<'a> {
-    fb: Option<FourBar>,
-    angle: Option<f64>,
-    title: Option<&'a str>,
-    dot: bool,
-    grid: bool,
+macro_rules! impl_opt {
+    ($(
+        $(#[$meta:meta])+
+        struct $ty_name:ident { $inner:ty, $coord:ty }
+    )+) => {$(
+        $(#[$meta])+
+        #[derive(Default)]
+        pub struct $ty_name<'a> {
+            fb: Option<$inner>,
+            angle: Option<f64>,
+            title: Option<&'a str>,
+            dot: bool,
+        }
+
+        impl From<Option<Self>> for $ty_name<'_> {
+            fn from(opt: Option<Self>) -> Self {
+                opt.unwrap_or_default()
+            }
+        }
+
+        impl<F: Into<$inner>> From<F> for $ty_name<'_> {
+            fn from(fb: F) -> Self {
+                Self { fb: Some(fb.into()), ..Self::default() }
+            }
+        }
+
+        impl<'a> $ty_name<'a> {
+            /// Create a default option, enables nothing.
+            pub fn new() -> Self {
+                Self::default()
+            }
+
+            /// Set the linkage.
+            pub fn fb(self, fb: impl Into<$inner>) -> Self {
+                Self { fb: Some(fb.into()), ..self }
+            }
+
+            /// Set the input angle of the linkage.
+            ///
+            /// If the angle value is not in the range of [`FourBar::angle_bound()`],
+            /// the actual angle will be the midpoint.
+            pub fn angle(self, angle: f64) -> Self {
+                Self { angle: angle.into(), ..self }
+            }
+
+            /// Set the title.
+            pub fn title(self, s: &'a str) -> Self {
+                Self { title: Some(s), ..self }
+            }
+
+            /// Use dot in the curves.
+            pub fn use_dot(self, dot: bool) -> Self {
+                Self { dot, ..self }
+            }
+
+            fn joints(&self) -> Option<[$coord; 5]> {
+                let fb = self.fb.as_ref()?;
+                let [start, end] = fb.angle_bound().expect("invalid linkage");
+                let angle = match self.angle {
+                    Some(angle) if (start..end).contains(&angle) => angle,
+                    _ => start + (end - start) * 0.25,
+                };
+                Some(fb.pos(angle))
+            }
+        }
+    )+};
 }
 
-impl From<Option<Self>> for Opt<'_> {
-    fn from(opt: Option<Self>) -> Self {
-        opt.unwrap_or_default()
-    }
-}
-
-impl<F: Into<FourBar>> From<F> for Opt<'_> {
-    fn from(fb: F) -> Self {
-        Self { fb: Some(fb.into()), ..Self::default() }
-    }
-}
-
-impl<'a> Opt<'a> {
-    /// Create a default option, enables nothing.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the linkage.
-    pub fn fb(self, fb: impl Into<FourBar>) -> Self {
-        Self { fb: Some(fb.into()), ..self }
-    }
-
-    /// Set the input angle of the linkage.
-    ///
-    /// If the angle value is not in the range of [`FourBar::angle_bound()`],
-    /// the actual angle will be the midpoint.
-    pub fn angle(self, angle: f64) -> Self {
-        Self { angle: angle.into(), ..self }
-    }
-
-    /// Set the title.
-    pub fn title(self, s: &'a str) -> Self {
-        Self { title: Some(s), ..self }
-    }
-
-    /// Use dot in the curves.
-    pub fn use_dot(self, dot: bool) -> Self {
-        Self { dot, ..self }
-    }
-
-    /// Use grid in the plot.
-    pub fn use_grid(self, grid: bool) -> Self {
-        Self { grid, ..self }
-    }
-
-    fn joints(&self) -> Option<[[f64; 2]; 5]> {
-        let fb = self.fb.as_ref()?;
-        let [start, end] = fb.angle_bound().expect("invalid linkage");
-        let angle = match self.angle {
-            Some(angle) if (start..end).contains(&angle) => angle,
-            _ => start + (end - start) * 0.25,
-        };
-        Some(fb.pos(angle))
-    }
+impl_opt! {
+    /// Drawing option of four-bar linkage and its input angle.
+    struct Opt2 { FourBar, [f64; 2] }
+    /// Drawing option of spherical four-bar linkage and its input angle.
+    struct Opt3 { SFourBar, [f64; 3] }
 }
 
 /// Plot 2D curves and linkages.
@@ -119,7 +126,7 @@ pub fn plot2d<'a, B, C, O>(backend: B, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
     C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
-    O: Into<Opt<'a>>,
+    O: Into<Opt2<'a>>,
 {
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
@@ -137,11 +144,11 @@ where
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .margin((8).percent())
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    let mut mesh = chart.configure_mesh();
-    if !opt.grid {
-        mesh.disable_mesh();
-    }
-    mesh.x_label_style(font()).y_label_style(font()).draw()?;
+    chart
+        .configure_mesh()
+        .x_label_style(font())
+        .y_label_style(font())
+        .draw()?;
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
@@ -193,15 +200,22 @@ where
 }
 
 /// Plot 3D spherical linkage.
-pub fn plot3d<'a, B, C>(backend: B, sr: f64, curves: C) -> PResult<(), B>
+pub fn plot3d<'a, B, C, O>(backend: B, sr: f64, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
     C: IntoIterator<Item = (&'a str, &'a [[f64; 3]])>,
+    O: Into<Opt3<'a>>,
 {
     debug_assert!(sr > 0.);
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
-    let mut chart = ChartBuilder::on(&root)
+    let opt = opt.into();
+    let joints = opt.joints();
+    let mut chart = ChartBuilder::on(&root);
+    if let Some(title) = opt.title {
+        chart.caption(title, font());
+    }
+    let mut chart = chart
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .margin((8).percent())
@@ -241,24 +255,37 @@ where
     }
     // Draw the curves
     for (i, (label, curve)) in curves.into_iter().enumerate() {
-        let color = Palette99::pick(i).stroke_width(2);
-        if i % 2 == 1 {
-            let series = curve
-                .iter()
-                .map(|&[x, y, z]| Circle::make_point((x, y, z), 5, color));
-            chart
-                .draw_series(series)?
-                .label(label)
-                .legend(move |(x, y)| Circle::new((x + 10, y), 5, color));
+        let color = Palette99::pick(i);
+        if opt.dot {
+            if i % 2 == 1 {
+                let series = curve
+                    .iter()
+                    .map(|&[x, y, z]| Circle::new((x, y, z), 5, &color));
+                chart
+                    .draw_series(series)?
+                    .label(label)
+                    .legend(move |(x, y)| Circle::new((x + 10, y), 5, &color));
+            } else {
+                let series = curve
+                    .iter()
+                    .map(|&[x, y, z]| TriangleMarker::new((x, y, z), 5, &color));
+                chart
+                    .draw_series(series)?
+                    .label(label)
+                    .legend(move |(x, y)| TriangleMarker::new((x + 10, y), 5, &color));
+            };
         } else {
-            let series = curve
-                .iter()
-                .map(|&[x, y, z]| TriangleMarker::make_point((x, y, z), 5, color));
             chart
-                .draw_series(series)?
+                .draw_series(LineSeries::new(
+                    curve.iter().map(|&[x, y, z]| (x, y, z)),
+                    &color,
+                ))?
                 .label(label)
-                .legend(move |(x, y)| TriangleMarker::new((x + 10, y), 5, color));
-        };
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
+        }
+    }
+    if let Some(_joints) = joints {
+        // TODO
     }
     chart
         .configure_series_labels()

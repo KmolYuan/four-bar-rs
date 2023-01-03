@@ -18,7 +18,26 @@ macro_rules! impl_shared_method {
         pub fn curve_in(&$self, start: f64, end: f64, res: usize) -> Vec<[f64; 3]> {
             curve_in(start, end, res, |theta| $self.pos(theta), |[.., p4]| p4)
         }
+
+        /// Return true if the linkage length is valid.
+        pub fn is_valid(&$self) -> bool {
+            let mut v = [$self.l0(), $self.l1(), $self.l2(), $self.l3()];
+            v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+            v[3] < v[..3].iter().sum()
+        }
+
+        /// Input angle bounds of the linkage.
+        ///
+        /// Return `None` if unsupported.
+        pub fn angle_bound(&self) -> Option<[f64; 2]> {
+            self.is_valid()
+                .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
+        }
     };
+}
+
+fn angle_bound(_: [f64; 5]) -> [f64; 2] {
+    todo!()
 }
 
 /// Spherical normalized four-bar linkage.
@@ -65,6 +84,20 @@ impl SNormFourBar {
     }
 
     impl_parm_method! {
+        /// X offset of the sphere center.
+        fn ox(self) -> f64 { 0. }
+        /// Y offset of the sphere center.
+        fn oy(self) -> f64 { 0. }
+        /// Z offset of the sphere center.
+        fn oz(self) -> f64 { 0. }
+        /// Radius of the sphere.
+        fn r(self) -> f64 { 1. }
+        /// Sphere polar angle offset of the driver link pivot.
+        fn p0i(self) -> f64 { 0. }
+        /// Sphere azimuth angle offset of the driver link pivot.
+        fn p0j(self) -> f64 { 0. }
+        /// Angle offset of the ground link.
+        fn a(self) -> f64 { 0. }
         /// Length of the ground link.
         fn l0, l0_mut(self) -> f64 { self.v[0] }
         /// Length of the driver link.
