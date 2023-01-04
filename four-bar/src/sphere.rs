@@ -1,6 +1,5 @@
+use crate::plane::*;
 use std::f64::consts::TAU;
-
-use crate::four_bar::*;
 
 macro_rules! impl_shared_method {
     ($self:ident, $v:expr, $norm:expr) => {

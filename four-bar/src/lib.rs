@@ -13,7 +13,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::semicolon_if_nothing_returned)]
 
-pub use crate::{defect::*, four_bar::*, sphere::*};
+pub use crate::{defect::*, plane::*, sphere::*};
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
@@ -24,7 +24,7 @@ extern crate nalgebra as na;
 pub mod cb;
 pub mod curve;
 mod defect;
-mod four_bar;
+mod plane;
 #[cfg(feature = "plot")]
 pub mod plot;
 mod sphere;
