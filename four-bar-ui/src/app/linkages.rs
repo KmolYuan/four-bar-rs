@@ -22,17 +22,11 @@ pub(crate) struct Cfg {
     pub(crate) res: usize,
     // Plot option
     pub(crate) plot_dot: bool,
-    pub(crate) plot_grid: bool,
 }
 
 impl Default for Cfg {
     fn default() -> Self {
-        Self {
-            int: 1.,
-            res: 360,
-            plot_dot: false,
-            plot_grid: false,
-        }
+        Self { int: 1., res: 360, plot_dot: false }
     }
 }
 
@@ -52,7 +46,6 @@ impl Linkages {
             self.projs.request_cache();
         }
         ui.checkbox(&mut self.cfg.plot_dot, "Use dot curve in plots");
-        ui.checkbox(&mut self.cfg.plot_grid, "Use grid in plots");
         ui.horizontal(|ui| {
             ui.group(|ui| {
                 let mut vis = ui.visuals().clone();

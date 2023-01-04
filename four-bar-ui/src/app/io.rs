@@ -200,7 +200,7 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
 pub(crate) fn save_curve_ask<'a, C, O>(curves: C, opt: O, name: &str)
 where
     C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
-    O: Into<plot::Opt<'a>>,
+    O: Into<plot::Opt2<'a>>,
 {
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 800));

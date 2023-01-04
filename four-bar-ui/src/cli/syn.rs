@@ -186,7 +186,7 @@ fn run<S>(
         {
             let path = root.join(format!("{title}_linkage.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 800));
-            let opt = plot::Opt::new().fb(ans).use_dot(true);
+            let opt = plot::Opt2::new().fb(ans).use_dot(true);
             plot::plot2d(svg, curves.clone(), opt)?;
         }
         let refer = refer
@@ -208,7 +208,7 @@ fn run<S>(
             let path = root.join(format!("{title}_result.svg"));
             let svg = plot::SVGBackend::new(&path, (800, 800));
             let title = format!("Harmonic: {h} | Time: {t1:?}");
-            let opt = plot::Opt::new().use_dot(true).title(&title);
+            let opt = plot::Opt2::new().use_dot(true).title(&title);
             plot::plot2d(svg, curves, opt)?;
         }
         pb.finish();
@@ -269,7 +269,7 @@ fn draw_midway(
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));
         let svg = plot::SVGBackend::new(&path, (800, 800));
-        let opt = plot::Opt::new().fb(ans).use_dot(true);
+        let opt = plot::Opt2::new().fb(ans).use_dot(true);
         plot::plot2d(svg, curves, opt)?;
     }
     Ok(())
