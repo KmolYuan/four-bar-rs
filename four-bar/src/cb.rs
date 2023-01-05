@@ -25,11 +25,11 @@ where
 
 fn trans_to_arr(trans: &Transform2) -> Array1<f64> {
     let [x, y] = trans.trans();
-    arr1(&[trans.scale(), trans.rot(), x, y])
+    arr1(&[trans.scale(), trans.rot().angle(), x, y])
 }
 
 fn arr_to_trans(arr: ArrayView1<f64>) -> Transform2 {
-    Transform2::new([arr[2], arr[3]], arr[1], arr[0])
+    Transform2::new([arr[2], arr[3]], na::UnitComplex::new(arr[1]), arr[0])
 }
 
 /// Codebook generation config.

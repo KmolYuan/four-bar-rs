@@ -428,7 +428,7 @@ impl FourBar {
         let [p0x, p0y] = trans.trans();
         *self.p0x_mut() += p0x;
         *self.p0y_mut() += p0y;
-        *self.a_mut() += trans.rot();
+        *self.a_mut() += trans.rot().angle();
         *self.l1_mut() *= trans.scale();
         self.norm *= trans.scale();
     }
