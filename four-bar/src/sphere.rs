@@ -30,12 +30,13 @@ macro_rules! impl_shared_method {
         /// Return `None` if unsupported.
         pub fn angle_bound(&self) -> Option<[f64; 2]> {
             self.is_valid()
-                .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
+                .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3()]))
         }
     };
 }
 
-fn angle_bound(_: [f64; 5]) -> [f64; 2] {
+#[allow(unused_variables)]
+fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
     todo!()
 }
 

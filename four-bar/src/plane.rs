@@ -81,7 +81,7 @@ macro_rules! impl_shared_method {
         /// Return `None` if unsupported.
         pub fn angle_bound(&self) -> Option<[f64; 2]> {
             self.is_valid()
-                .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3(), self.a()]))
+                .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3()]))
         }
     };
 }
@@ -92,18 +92,18 @@ fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
     fb
 }
 
-fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
+fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
     match (l0 + l1 <= l2 + l3, (l0 - l1).abs() >= (l2 - l3).abs()) {
         (true, true) => [0., TAU],
         (true, false) => {
             let l23 = l2 - l3;
             let d = (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
-            [d.acos() + a, TAU - d.acos() + a]
+            [d.acos(), TAU - d.acos()]
         }
         (false, true) => {
             let l23 = l2 + l3;
             let d = (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
-            [-d.acos() + a, d.acos() + a]
+            [-d.acos(), d.acos()]
         }
         (false, false) => {
             let up = l0 * l0 + l1 * l1;
@@ -112,7 +112,7 @@ fn angle_bound([l0, l1, l2, l3, a]: [f64; 5]) -> [f64; 2] {
             let d1 = (up - l23 * l23) / down;
             let l23 = l2 + l3;
             let d2 = (up - l23 * l23) / down;
-            [d1.acos() + a, d2.acos() + a]
+            [d1.acos(), d2.acos()]
         }
     }
 }
@@ -587,7 +587,7 @@ fn curve_interval(v: &[f64; 4], norm: &NormFourBar, b: f64) -> [[f64; 2]; 5] {
     let NormFourBar { v: [l0, l2, l3, l4, g], inv } = norm;
     let p0 = [*p0x, *p0y];
     let p1 = angle(p0, *l0, *a);
-    let p2 = angle(p0, *l1, b);
+    let p2 = angle(p0, *l1, a + b);
     let p3 = if (l0 - l2).abs() < f64::EPSILON && (l1 - l3).abs() < f64::EPSILON {
         // Special case
         parallel(p0, p2, p1)
