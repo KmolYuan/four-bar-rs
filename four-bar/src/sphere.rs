@@ -18,6 +18,13 @@ macro_rules! impl_shared_method {
             curve_in(start, end, res, |theta| $self.pos(theta), |[.., p4]| p4)
         }
 
+        /// Clone a instance with `!self.inv`.
+        pub fn clone_inversed(&$self) -> Self {
+            let mut fb = $self.clone();
+            *fb.inv_mut() = !fb.inv();
+            fb
+        }
+
         /// Return true if the linkage length is valid.
         pub fn is_valid(&$self) -> bool {
             let mut v = [$self.l0(), $self.l1(), $self.l2(), $self.l3()];

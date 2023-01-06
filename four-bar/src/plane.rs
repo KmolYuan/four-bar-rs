@@ -42,6 +42,13 @@ macro_rules! impl_shared_method {
             $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, res)).unwrap_or_default()
         }
 
+        /// Clone a instance with `!self.inv`.
+        pub fn clone_inversed(&$self) -> Self {
+            let mut fb = $self.clone();
+            *fb.inv_mut() = !fb.inv();
+            fb
+        }
+
         /// Return true if the linkage is parallel.
         pub fn is_parallel(&$self) -> bool {
             ($self.l0() - $self.l2()).abs() < f64::EPSILON && ($self.l1() - $self.l3()).abs() < f64::EPSILON
