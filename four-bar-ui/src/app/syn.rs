@@ -8,7 +8,7 @@ use crate::{
     syn_cmd::SynCmd,
 };
 use eframe::egui::*;
-use four_bar::{cb::Codebook, curve, efd, mh, syn};
+use four_bar::{cb::Codebook, curve, efd, mh, planar_syn};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -52,9 +52,11 @@ where
     use std::time::Instant;
     let start_time = Instant::now();
     let SynConfig { gen, pop, mode, target } = config;
-    let mut s =
-        four_bar::mh::Solver::build(setting, syn::PathSyn::from_curve(&target, mode).unwrap());
-    if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
+    let mut s = four_bar::mh::Solver::build(
+        setting,
+        planar_syn::PlanarSyn::from_curve(&target, mode).unwrap(),
+    );
+    if let Some(candi) = matches!(mode, planar_syn::Mode::Closed | planar_syn::Mode::Open)
         .then(|| cb.fetch_raw(&target, pop))
         .filter(|candi| !candi.is_empty())
     {
@@ -169,9 +171,13 @@ impl UiConfig {
             }
         });
         let mode = &mut self.syn.mode;
-        ui.radio_value(mode, syn::Mode::Closed, "Closed path matching");
-        ui.radio_value(mode, syn::Mode::Partial, "Closed path match open path");
-        ui.radio_value(mode, syn::Mode::Open, "Open path matching");
+        ui.radio_value(mode, planar_syn::Mode::Closed, "Closed path matching");
+        ui.radio_value(
+            mode,
+            planar_syn::Mode::Partial,
+            "Closed path match open path",
+        );
+        ui.radio_value(mode, planar_syn::Mode::Open, "Open path matching");
         ui.label("Transform:");
         ui.horizontal_wrapped(|ui| {
             if ui.button("🔀 To CSV").clicked() {
@@ -227,7 +233,7 @@ impl UiConfig {
 struct SynConfig {
     gen: u64,
     pop: usize,
-    mode: syn::Mode,
+    mode: planar_syn::Mode,
     #[serde(skip)]
     target: Vec<[f64; 2]>,
 }
@@ -237,7 +243,7 @@ impl Default for SynConfig {
         Self {
             gen: 50,
             pop: 200,
-            mode: syn::Mode::Closed,
+            mode: planar_syn::Mode::Closed,
             target: Vec::new(),
         }
     }

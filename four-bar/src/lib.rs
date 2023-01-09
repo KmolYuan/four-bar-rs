@@ -24,10 +24,11 @@ extern crate nalgebra as na;
 pub mod cb;
 pub mod curve;
 mod defect;
+pub mod planar_syn;
 mod plane;
 #[cfg(feature = "plot")]
 pub mod plot;
 mod sphere;
-pub mod syn;
+pub mod spherical_syn;
 #[cfg(test)]
 mod tests;
