@@ -1,6 +1,6 @@
 //! Create a codebook database for four-bar linkages.
 use super::{
-    syn::{Mode, BOUND},
+    planar_syn::{Mode, BOUND},
     FourBar, NormFourBar,
 };
 use efd::{Efd2, Transform2};

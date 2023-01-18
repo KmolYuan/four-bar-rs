@@ -1,7 +1,7 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 //!
 //! ```
-//! use four_bar::{efd, mh, syn};
+//! use four_bar::{efd, mh, planar_syn as syn};
 //!
 //! # let curve = vec![[0., 0.], [1., 0.], [2., 0.]];
 //! # let gen = 0;
@@ -82,7 +82,7 @@ impl Mode {
 }
 
 /// Path generation task of planar four-bar linkage.
-pub struct PathSyn {
+pub struct PlanarSyn {
     /// Target coefficient
     pub efd: efd::Efd2,
     mode: Mode,
@@ -90,7 +90,7 @@ pub struct PathSyn {
     res: usize,
 }
 
-impl PathSyn {
+impl PlanarSyn {
     /// Create a new task from target curve. The harmonic number is selected
     /// automatically.
     ///
@@ -147,7 +147,7 @@ impl PathSyn {
     }
 }
 
-impl mh::Bounded for PathSyn {
+impl mh::Bounded for PlanarSyn {
     #[inline]
     fn bound(&self) -> &[[f64; 2]] {
         if matches!(self.mode, Mode::Partial) {
@@ -158,7 +158,7 @@ impl mh::Bounded for PathSyn {
     }
 }
 
-impl mh::ObjFactory for PathSyn {
+impl mh::ObjFactory for PlanarSyn {
     type Product = (f64, FourBar);
     type Eval = f64;
 

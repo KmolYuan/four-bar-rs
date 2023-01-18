@@ -4,7 +4,7 @@ use four_bar::{
     cb::Codebook,
     efd,
     mh::{self, rayon::single_thread},
-    plot, syn, FourBar,
+    planar_syn, plot, FourBar,
 };
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
@@ -46,7 +46,7 @@ impl std::error::Error for SynErr {}
 struct Info<'a> {
     target: Vec<[f64; 2]>,
     title: &'a str,
-    mode: syn::Mode,
+    mode: planar_syn::Mode,
 }
 
 pub(super) fn syn(syn: Syn) {
@@ -121,7 +121,7 @@ fn run<S>(
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(title.to_string());
     let f = || -> AnyResult {
-        let func = syn::PathSyn::from_curve(&target, mode)
+        let func = planar_syn::PlanarSyn::from_curve(&target, mode)
             .ok_or("invalid target")?
             .res(cfg.res);
         let root = file.parent().unwrap().join(title);
@@ -142,7 +142,7 @@ fn run<S>(
                 history.push(ctx.best_f);
                 pb.set_position(ctx.gen);
             });
-        if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
+        if let Some(candi) = matches!(mode, planar_syn::Mode::Closed | planar_syn::Mode::Open)
             .then(|| cb.fetch_raw(&target, cfg.pop))
             .filter(|candi| !candi.is_empty())
         {
@@ -175,7 +175,7 @@ fn run<S>(
         let h = s.func().harmonic();
         let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
         let err = match mode {
-            syn::Mode::Partial => {
+            planar_syn::Mode::Partial => {
                 let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&curve), h).unwrap();
                 efd_target.l1_norm(&efd)
             }
@@ -244,9 +244,9 @@ fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
             .extension()
             .and_then(OsStr::to_str)
             .and_then(|mode| match mode {
-                "close" => Some(syn::Mode::Closed),
-                "partial" => Some(syn::Mode::Partial),
-                "open" => Some(syn::Mode::Open),
+                "close" => Some(planar_syn::Mode::Closed),
+                "partial" => Some(planar_syn::Mode::Partial),
+                "open" => Some(planar_syn::Mode::Open),
                 _ => None,
             })?;
         Some(Info { target: mode.regularize(target), title, mode })
