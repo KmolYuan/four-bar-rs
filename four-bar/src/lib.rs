@@ -27,7 +27,9 @@ mod defect;
 pub mod planar_syn;
 mod plane;
 #[cfg(feature = "plot")]
-pub mod plot;
+pub mod plot2d;
+#[cfg(feature = "plot")]
+pub mod plot3d;
 mod sphere;
 pub mod spherical_syn;
 #[cfg(test)]

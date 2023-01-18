@@ -4,7 +4,7 @@ use four_bar::{
     cb::Codebook,
     efd,
     mh::{self, rayon::single_thread},
-    planar_syn, plot, FourBar,
+    planar_syn, plot2d, FourBar,
 };
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
@@ -161,8 +161,8 @@ fn run<S>(
         let t1 = t0.elapsed();
         {
             let path = root.join(format!("{title}_history.svg"));
-            let svg = plot::SVGBackend::new(&path, (800, 600));
-            plot::history(svg, history)?;
+            let svg = plot2d::SVGBackend::new(&path, (800, 600));
+            plot2d::history(svg, history)?;
         }
         let (err, ans) = s.result();
         {
@@ -185,9 +185,9 @@ fn run<S>(
         let mut curves = vec![("Target", target.as_slice()), (&legend, &curve)];
         {
             let path = root.join(format!("{title}_linkage.svg"));
-            let svg = plot::SVGBackend::new(&path, (800, 800));
-            let opt = plot::Opt2::new().fb(ans).use_dot(true);
-            plot::plot2d(svg, curves.clone(), opt)?;
+            let svg = plot2d::SVGBackend::new(&path, (800, 800));
+            let opt = plot2d::Opt::new().fb(ans).use_dot(true);
+            plot2d::plot(svg, curves.clone(), opt)?;
         }
         let refer = refer
             .iter()
@@ -206,10 +206,10 @@ fn run<S>(
         curves.extend(refer.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
         {
             let path = root.join(format!("{title}_result.svg"));
-            let svg = plot::SVGBackend::new(&path, (800, 800));
+            let svg = plot2d::SVGBackend::new(&path, (800, 800));
             let title = format!("Harmonic: {h} | Time: {t1:?}");
-            let opt = plot::Opt2::new().use_dot(true).title(&title);
-            plot::plot2d(svg, curves, opt)?;
+            let opt = plot2d::Opt::new().use_dot(true).title(&title);
+            plot2d::plot(svg, curves, opt)?;
         }
         pb.finish();
         Ok(())
@@ -268,9 +268,9 @@ fn draw_midway(
     let curves = [("Target", target), ("Synthesized", &curve)];
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));
-        let svg = plot::SVGBackend::new(&path, (800, 800));
-        let opt = plot::Opt2::new().fb(ans).use_dot(true);
-        plot::plot2d(svg, curves, opt)?;
+        let svg = plot2d::SVGBackend::new(&path, (800, 800));
+        let opt = plot2d::Opt::new().fb(ans).use_dot(true);
+        plot2d::plot(svg, curves, opt)?;
     }
     Ok(())
 }

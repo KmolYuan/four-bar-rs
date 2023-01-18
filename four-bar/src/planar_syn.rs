@@ -1,13 +1,13 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 //!
 //! ```
-//! use four_bar::{efd, mh, planar_syn as syn};
+//! use four_bar::*;
 //!
 //! # let curve = vec![[0., 0.], [1., 0.], [2., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
 //! # let res = 3;
-//! let func = syn::PathSyn::from_curve(curve, syn::Mode::Closed)
+//! let func = planar_syn::PlanarSyn::from_curve(curve, planar_syn::Mode::Closed)
 //!     .expect("invalid curve")
 //!     .res(res);
 //! let s = mh::Solver::build(mh::Rga::default(), func)
