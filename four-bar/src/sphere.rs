@@ -18,6 +18,16 @@ macro_rules! impl_shared_method {
             curve_in(start, end, res, |theta| $self.pos(theta), |[.., p4]| p4)
         }
 
+        /// Generator for curves.
+        pub fn curves(&$self, res: usize) -> Vec<[[f64; 3]; 3]> {
+            $self.angle_bound().map(|[start, end]| $self.curves_in(start, end, res)).unwrap_or_default()
+        }
+
+        /// Generator for coupler curve.
+        pub fn curve(&$self, res: usize) -> Vec<[f64; 3]> {
+            $self.angle_bound().map(|[start, end]| $self.curve_in(start, end, res)).unwrap_or_default()
+        }
+
         /// Clone a instance with `!self.inv`.
         pub fn clone_inversed(&$self) -> Self {
             let mut fb = $self.clone();
@@ -42,14 +52,27 @@ macro_rules! impl_shared_method {
     };
 }
 
-#[allow(unused_variables)]
 fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
-    todo!()
+    // TODO
+    let min = ((l3 - l2).cos() >= (l0 - l1).cos())
+        .then(|| ((l3 - l2).cos() - l1.cos() * l0.cos()) / (l1.sin() * l0.sin()))
+        .filter(|c| (-1.0..1.).contains(c))
+        .map(|c| c.acos())
+        .unwrap_or(0.);
+    let max = ((l2 + l3).cos() <= (l1 + l0).cos())
+        .then(|| ((l2 + l3).cos() - l1.cos() * l0.cos()) / (l1.sin() * l0.sin()))
+        .filter(|c| (-1.0..1.).contains(c))
+        .map(|c| c.acos())
+        .unwrap_or(TAU);
+    [max, min]
 }
 
 /// Spherical normalized four-bar linkage.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(default)
+)]
 #[derive(Clone, PartialEq, Debug)]
 pub struct SNormFourBar {
     // l0, l1, l2, l3, l4, g
@@ -125,8 +148,7 @@ impl SNormFourBar {
 }
 
 /// Spherical four-bar linkage.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(default))]
 #[derive(Clone, PartialEq, Debug)]
 pub struct SFourBar {
     // ox, oy, oz, r, p0i, p0j, a

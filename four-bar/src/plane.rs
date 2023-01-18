@@ -243,8 +243,11 @@ impl FourBarTy {
 }
 
 /// Normalized four-bar linkage.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(default)
+)]
 #[derive(Clone, PartialEq, Debug)]
 pub struct NormFourBar {
     // l0, l2, l3, l4, g
@@ -357,8 +360,11 @@ impl NormFourBar {
 }
 
 /// Four-bar linkage with offset.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(default)
+)]
 #[derive(Clone, PartialEq, Debug)]
 pub struct FourBar {
     // p0x, p0y, a, l1
