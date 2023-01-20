@@ -113,6 +113,11 @@ impl SNormFourBar {
         Self { v: [l0, l1, l2, l3, l4, g], inv }
     }
 
+    /// Construct with `inv` option.
+    pub const fn with_inv(self, inv: bool) -> Self {
+        Self { inv, ..self }
+    }
+
     impl_parm_method! {
         /// X offset of the sphere center.
         fn ox(self) -> f64 { 0. }
@@ -148,7 +153,11 @@ impl SNormFourBar {
 }
 
 /// Spherical four-bar linkage.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(default))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(default)
+)]
 #[derive(Clone, PartialEq, Debug)]
 pub struct SFourBar {
     // ox, oy, oz, r, p0i, p0j, a
@@ -218,6 +227,12 @@ impl SFourBar {
     /// Create from normalized linkage.
     pub const fn from_norm(norm: SNormFourBar) -> Self {
         Self { v: [0., 0., 0., 1., 0., 0., 0.], norm }
+    }
+
+    /// Construct with `inv` option.
+    pub const fn with_inv(mut self, inv: bool) -> Self {
+        self.norm.inv = inv;
+        self
     }
 
     impl_parm_method! {

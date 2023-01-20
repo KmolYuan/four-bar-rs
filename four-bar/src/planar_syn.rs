@@ -21,8 +21,8 @@ use std::f64::consts::{FRAC_PI_8, TAU};
 
 type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
-// π/16
-const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
+/// The minimum input angle bound. (π/16)
+pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
 /// Boundary of the objective variables.
 pub const BOUND: [[f64; 2]; 7] = [
     [1e-4, 10.],
@@ -172,7 +172,7 @@ impl mh::ObjFactory for PlanarSyn {
             Mode::Closed | Mode::Partial => fb.to_closed_curve(),
             Mode::Open => fb.to_open_curve(),
         };
-        if self.mode.is_result_open() != fb.ty().is_open_curve() {
+        if self.mode.is_result_open() != fb.ty().is_open_curve() || !fb.is_valid() {
             return INFEASIBLE;
         }
         let f = |[t1, t2]: [f64; 2]| {
@@ -182,7 +182,7 @@ impl mh::ObjFactory for PlanarSyn {
             #[cfg(not(feature = "rayon"))]
             let iter = [false, true].into_iter();
             iter.map(move |inv| {
-                let fb = fb.with_inv(inv);
+                let fb = fb.clone().with_inv(inv);
                 let curve = fb.curve_in(t1, t2, self.res);
                 (curve, fb)
             })

@@ -1,5 +1,4 @@
 use std::{
-    array::TryFromSliceError,
     f64::consts::{FRAC_PI_6, TAU},
     ops::{Div, DivAssign, Mul, MulAssign},
 };
@@ -92,7 +91,23 @@ macro_rules! impl_shared_method {
         }
     };
 }
+
+macro_rules! impl_try_from_slice {
+    ($($ty:ty),+) => {$(
+        impl TryFrom<&[f64]> for $ty {
+            type Error = std::array::TryFromSliceError;
+
+            fn try_from(v: &[f64]) -> Result<Self, Self::Error> {
+                Ok(Self::new(v.try_into()?, false))
+            }
+        }
+    )+};
+}
+
 pub(crate) use impl_parm_method;
+pub(crate) use impl_try_from_slice;
+
+impl_try_from_slice!(NormFourBar, FourBar);
 
 fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
     fb.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
@@ -267,14 +282,6 @@ impl From<[f64; 5]> for NormFourBar {
     }
 }
 
-impl TryFrom<&[f64]> for NormFourBar {
-    type Error = TryFromSliceError;
-
-    fn try_from(v: &[f64]) -> Result<Self, Self::Error> {
-        Self::try_from_slice(v, false)
-    }
-}
-
 impl NormFourBar {
     /// Zeros data. (Default value)
     ///
@@ -286,16 +293,9 @@ impl NormFourBar {
         Self { v, inv }
     }
 
-    /// Create from a slice, equivalent to calling `<[f64; 5]>::try_from()`.
-    ///
-    /// The `TryFrom` implementation has the same effects.
-    pub fn try_from_slice(v: &[f64], inv: bool) -> Result<Self, TryFromSliceError> {
-        Ok(Self { v: v.try_into()?, inv })
-    }
-
     /// Construct with `inv` option.
-    pub const fn with_inv(&self, inv: bool) -> Self {
-        Self { inv, ..*self }
+    pub const fn with_inv(self, inv: bool) -> Self {
+        Self { inv, ..self }
     }
 
     impl_parm_method! {
@@ -321,8 +321,8 @@ impl NormFourBar {
         fn inv, inv_mut(self) -> bool { self.inv }
     }
 
-    /// Get the vector representation of the normalized linkage.
-    pub fn vec(&self) -> [f64; 5] {
+    /// Get an array representation of the normalized linkage.
+    pub fn as_array(&self) -> [f64; 5] {
         self.v
     }
 
@@ -425,6 +425,12 @@ impl FourBar {
         Self { v, norm }
     }
 
+    /// Construct with `inv` option.
+    pub const fn with_inv(mut self, inv: bool) -> Self {
+        self.norm.inv = inv;
+        self
+    }
+
     /// An example crank rocker.
     pub const fn example() -> Self {
         Self::from_lengths([90., 35., 70., 70., 45., FRAC_PI_6], false)
@@ -467,6 +473,13 @@ impl FourBar {
         fn g, g_mut(self) -> f64 { self.norm.v[4] }
         /// Inverse coupler and follower to another circuit.
         fn inv, inv_mut(self) -> bool { self.norm.inv }
+    }
+
+    /// Get an array representation of the normalized linkage.
+    pub fn as_array(&self) -> [f64; 9] {
+        let [p0x, p0y, a, l1] = self.v;
+        let [l0, l2, l3, l4, g] = self.norm.v;
+        [p0x, p0y, a, l0, l1, l2, l3, l4, g]
     }
 
     /// Return true if the linkage has no offset and offset angle.

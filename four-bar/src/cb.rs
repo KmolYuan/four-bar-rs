@@ -1,6 +1,6 @@
 //! Create a codebook database for four-bar linkages.
 use super::{
-    planar_syn::{Mode, BOUND},
+    planar_syn::{Mode, BOUND, MIN_ANGLE},
     FourBar, NormFourBar,
 };
 use efd::{Efd2, Transform2};
@@ -21,15 +21,6 @@ where
     let stack = stack.into_inner().unwrap();
     let arrays = stack.iter().take(n).map(Array::view).collect::<Vec<_>>();
     ndarray::stack(Axis(0), &arrays).unwrap()
-}
-
-fn trans_to_arr(trans: &Transform2) -> Array1<f64> {
-    let [x, y] = trans.trans();
-    arr1(&[trans.scale(), trans.rot().angle(), x, y])
-}
-
-fn arr_to_trans(arr: ArrayView1<f64>) -> Transform2 {
-    Transform2::new([arr[2], arr[3]], na::UnitComplex::new(arr[1]), arr[0])
 }
 
 /// Codebook generation config.
@@ -84,16 +75,14 @@ pub struct Codebook {
     fb: Array2<f64>,
     inv: Array1<bool>,
     efd: Array3<f64>,
-    trans: Array2<f64>,
 }
 
 impl Default for Codebook {
     fn default() -> Self {
         Self {
-            fb: Array2::default([0, 5]),
+            fb: Array2::default([0, 9]),
             inv: Array1::default(0),
             efd: Array3::default([0, 0, 4]),
-            trans: Array2::default([0, 4]),
         }
     }
 }
@@ -114,7 +103,6 @@ impl Codebook {
         let fb_stack = Mutex::new(Vec::with_capacity(size));
         let inv_stack = Mutex::new(Vec::with_capacity(size));
         let efd_stack = Mutex::new(Vec::with_capacity(size));
-        let trans_stack = Mutex::new(Vec::with_capacity(size));
         loop {
             let len = efd_stack.lock().unwrap().len();
             let n = (size - len) / 2;
@@ -127,24 +115,26 @@ impl Codebook {
                     .iter()
                     .map(|&[u, l]| rng.range(u..l))
                     .collect::<Vec<_>>();
-                [false, true].map(|inv| NormFourBar::try_from_slice(&v, inv).unwrap())
+                [false, true].map(|inv| NormFourBar::try_from(v.as_slice()).unwrap().with_inv(inv))
             })
             .map(|fb| match is_open {
                 false => fb.to_closed_curve(),
                 true => fb.to_open_curve(),
             })
             .filter(|fb| is_open == fb.ty().is_open_curve())
-            .map(|fb| (fb.curve(res), fb))
+            .filter_map(|fb| {
+                let [t1, t2] = fb.angle_bound().filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)?;
+                Some((fb.curve_in(t1, t2, res), fb))
+            })
             .filter(|(c, _)| c.len() > 1)
             .for_each(|(curve, fb)| {
                 let mode = if is_open { Mode::Open } else { Mode::Closed };
                 let curve = mode.regularize(curve);
                 let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
                 efd_stack.lock().unwrap().push(efd.coeffs().to_owned());
-                let trans = trans_to_arr(efd.as_trans());
-                trans_stack.lock().unwrap().push(trans);
                 let mut stack = fb_stack.lock().unwrap();
-                stack.push(arr1(&fb.vec()));
+                let fb = FourBar::from_norm_trans(fb, &efd.as_trans().inverse());
+                stack.push(arr1(&fb.as_array()));
                 callback(stack.len());
                 inv_stack.lock().unwrap().push(arr0(fb.inv()));
             });
@@ -155,8 +145,7 @@ impl Codebook {
         let fb = to_arr(fb_stack, size);
         let inv = to_arr(inv_stack, size);
         let efd = to_arr(efd_stack, size);
-        let trans = to_arr(trans_stack, size);
-        Self { fb, inv, efd, trans }
+        Self { fb, inv, efd }
     }
 
     /// Read codebook from NPZ file.
@@ -168,7 +157,7 @@ impl Codebook {
                 Ok(Self { $($field),+ })
             }};
         }
-        impl_read!(r, fb, inv, efd, trans)
+        impl_read!(r, fb, inv, efd)
     }
 
     /// Write codebook to NPZ file.
@@ -183,7 +172,7 @@ impl Codebook {
                 $($w.add_array(stringify!($field), $field)?;)+
             };
         }
-        impl_write!(w, fb, inv, efd, trans);
+        impl_write!(w, fb, inv, efd);
         w.finish()
     }
 
@@ -209,29 +198,10 @@ impl Codebook {
 
     /// Get the n-nearest four-bar linkages from a target curve.
     pub fn fetch(&self, target: &[[f64; 2]], size: usize) -> Vec<(f64, FourBar)> {
-        self.fetch_inner(target, size, true)
-    }
-
-    /// Get the nearest four-bar linkage from a target curve.
-    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> Option<(f64, FourBar)> {
-        self.fetch_1st_inner(target, true)
-    }
-
-    /// Fetch without applying transformation.
-    pub fn fetch_raw(&self, target: &[[f64; 2]], size: usize) -> Vec<(f64, FourBar)> {
-        self.fetch_inner(target, size, false)
-    }
-
-    /// Fetch nearest without applying transformation.
-    pub fn fetch_1st_raw(&self, target: &[[f64; 2]]) -> Option<(f64, FourBar)> {
-        self.fetch_1st_inner(target, false)
-    }
-
-    fn fetch_inner(&self, target: &[[f64; 2]], size: usize, trans: bool) -> Vec<(f64, FourBar)> {
         if self.is_empty() {
             return Vec::new();
         } else if size == 1 {
-            return self.fetch_1st_inner(target, trans).into_iter().collect();
+            return self.fetch_1st(target).into_iter().collect();
         }
         let target = Efd2::from_curve_harmonic(target, self.harmonic()).unwrap();
         #[cfg(feature = "rayon")]
@@ -245,11 +215,12 @@ impl Codebook {
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
             .take(size)
-            .map(|i| (dis[i], self.pick(i, target.as_trans(), trans)))
+            .map(|i| (dis[i], self.pick(i, target.as_trans())))
             .collect()
     }
 
-    fn fetch_1st_inner(&self, target: &[[f64; 2]], trans: bool) -> Option<(f64, FourBar)> {
+    /// Get the nearest four-bar linkage from a target curve.
+    pub fn fetch_1st(&self, target: &[[f64; 2]]) -> Option<(f64, FourBar)> {
         if self.is_empty() {
             return None;
         }
@@ -261,19 +232,15 @@ impl Codebook {
         iter.map(|efd| target.l1_norm(&Efd2::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(i, err)| (err, self.pick(i, target.as_trans(), trans)))
+            .map(|(i, err)| (err, self.pick(i, target.as_trans())))
     }
 
-    fn pick(&self, i: usize, target: &Transform2, trans: bool) -> FourBar {
-        let view = self.fb.slice(s![i, ..]);
-        let inv = self.inv[i];
-        let fb = NormFourBar::try_from_slice(view.as_slice().unwrap(), inv).unwrap();
-        if trans {
-            let trans = arr_to_trans(self.trans.slice(s![i, ..]));
-            FourBar::from_norm_trans(fb, &trans.to(target))
-        } else {
-            fb.into()
-        }
+    fn pick(&self, i: usize, trans: &Transform2) -> FourBar {
+        let fb = FourBar::try_from(self.fb.slice(s![i, ..]).as_slice().unwrap())
+            .unwrap()
+            .with_inv(self.inv[i])
+            .transform(trans);
+        fb
     }
 
     /// Merge two data to one codebook.
@@ -293,7 +260,7 @@ impl Codebook {
                     self.$field = ndarray::concatenate(Axis(0), &[self.$field.view(), rhs.$field.view()])?;
                 )+};
             }
-            merge!(fb, inv, efd, trans);
+            merge!(fb, inv, efd);
         }
         Ok(())
     }
