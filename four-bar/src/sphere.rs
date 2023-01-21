@@ -52,6 +52,8 @@ macro_rules! impl_shared_method {
     };
 }
 
+impl_try_from_slice!(SNormFourBar, SFourBar);
+
 fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
     // TODO
     let min = ((l3 - l2).cos() >= (l0 - l1).cos())
@@ -147,6 +149,11 @@ impl SNormFourBar {
         fn g, g_mut(self) -> f64 { self.v[5] }
         /// Inverse coupler and follower to another circuit.
         fn inv, inv_mut(self) -> bool { self.inv }
+    }
+
+    /// Get an array representation of the normalized linkage.
+    pub fn as_array(&self) -> [f64; 6] {
+        self.v
     }
 
     impl_shared_method!(self, &[0., 0., 0., 1., 0., 0., 0.], self);
@@ -264,6 +271,13 @@ impl SFourBar {
         fn g, g_mut(self) -> f64 { self.norm.v[5] }
         /// Inverse coupler and follower to another circuit.
         fn inv, inv_mut(self) -> bool { self.norm.inv }
+    }
+
+    /// Get an array representation of the normalized linkage.
+    pub fn as_array(&self) -> [f64; 13] {
+        let [ox, oy, oz, r, p0i, p0j, a] = self.v;
+        let [l0, l1, l2, l3, l4, g] = self.norm.v;
+        [ox, oy, oz, r, p0i, p0j, a, l0, l1, l2, l3, l4, g]
     }
 
     impl_shared_method!(self, &self.v, &self.norm);
