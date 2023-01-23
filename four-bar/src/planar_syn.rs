@@ -172,7 +172,7 @@ impl mh::ObjFactory for PlanarSyn {
             Mode::Closed | Mode::Partial => fb.to_closed_curve(),
             Mode::Open => fb.to_open_curve(),
         };
-        if self.mode.is_result_open() != fb.ty().is_open_curve() || !fb.is_valid() {
+        if self.mode.is_result_open() != fb.ty().is_open_curve() {
             return INFEASIBLE;
         }
         let f = |[t1, t2]: [f64; 2]| {
