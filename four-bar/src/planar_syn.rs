@@ -168,10 +168,6 @@ impl mh::ObjFactory for PlanarSyn {
         use mh::rayon::prelude::*;
         const INFEASIBLE: (f64, FourBar) = (1e10, FourBar::ZERO);
         let fb = NormFourBar::try_from(&xs[..5]).unwrap();
-        let fb = match self.mode {
-            Mode::Closed | Mode::Partial => fb.to_closed_curve(),
-            Mode::Open => fb.to_open_curve(),
-        };
         if self.mode.is_result_open() != fb.ty().is_open_curve() {
             return INFEASIBLE;
         }

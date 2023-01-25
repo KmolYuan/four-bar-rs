@@ -121,10 +121,6 @@ impl Codebook {
                     .collect::<Vec<_>>();
                 [false, true].map(|inv| NormFourBar::try_from(v.as_slice()).unwrap().with_inv(inv))
             })
-            .map(|fb| match is_open {
-                false => fb.to_closed_curve(),
-                true => fb.to_open_curve(),
-            })
             .filter(|fb| is_open == fb.ty().is_open_curve())
             .filter_map(|fb| {
                 let [t1, t2] = fb.angle_bound().filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)?;
