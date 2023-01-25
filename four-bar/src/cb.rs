@@ -1,4 +1,6 @@
 //! Create a codebook database for four-bar linkages.
+#[allow(unused_imports)]
+use self::vectorize::Vectorize; // TODO
 use super::{
     planar_syn::{Mode, BOUND, MIN_ANGLE},
     FourBar, NormFourBar,
@@ -12,6 +14,8 @@ use std::{
     io::{Read, Seek, Write},
     sync::Mutex,
 };
+
+mod vectorize;
 
 fn to_arr<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
 where
