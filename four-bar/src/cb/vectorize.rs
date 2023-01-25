@@ -14,12 +14,17 @@ macro_rules! impl_vec {
     )+};
 }
 
+/// Transform data to static array and back.
 pub trait Vectorize<const N: usize>: Sized {
+    /// Length of the array.
     const N: usize = N;
 
+    /// Convert from array.
     fn from_array(v: [f64; N]) -> Self;
+    /// Convert to array.
     fn to_array(self) -> [f64; N];
 
+    /// Convert from unknown-size slice.
     fn from_slice(v: &[f64]) -> Result<Self, std::array::TryFromSliceError> {
         Ok(Self::from_array(v.try_into()?))
     }

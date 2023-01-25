@@ -1,6 +1,5 @@
 //! Create a codebook database for four-bar linkages.
-#[allow(unused_imports)]
-use self::vectorize::Vectorize; // TODO
+pub use self::vectorize::Vectorize; // TODO
 use super::{
     planar_syn::{Mode, BOUND, MIN_ANGLE},
     FourBar, NormFourBar,
