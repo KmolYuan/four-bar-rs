@@ -91,7 +91,7 @@ where
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
     let best_f = history.last().unwrap();
-    let cap = format!("Convergence Plot (Best Fitness: {:.04})", best_f);
+    let cap = format!("Convergence Plot (Best Fitness: {best_f:.04})");
     let max_fitness = history
         .iter()
         .max_by(|a, b| a.partial_cmp(b).unwrap())
