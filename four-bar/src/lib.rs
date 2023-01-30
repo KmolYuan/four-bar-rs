@@ -18,7 +18,6 @@ pub use crate::{defect::*, plane::*, sphere::*};
 pub use efd;
 #[doc(no_inline)]
 pub extern crate metaheuristics_nature as mh;
-extern crate nalgebra as na;
 
 #[cfg(feature = "codebook")]
 pub mod cb;
