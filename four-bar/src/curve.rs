@@ -54,9 +54,7 @@ pub fn close_line<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
     C: Into<CowCurve<'a>>,
 {
-    let mut curve = curve.into().into_owned();
-    curve.push(curve[0]);
-    curve
+    efd::closed_curve(curve)
 }
 
 /// Close the open curve with a symmetry part.
