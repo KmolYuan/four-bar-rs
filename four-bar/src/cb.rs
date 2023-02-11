@@ -1,7 +1,6 @@
 //! Create a codebook database for four-bar linkages.
-pub use self::vectorize::Vectorize; // TODO
 use super::{
-    planar_syn::{Mode, BOUND, MIN_ANGLE},
+    planar_syn::{Mode, MIN_ANGLE},
     FourBar, NormFourBar,
 };
 use efd::{Efd2, Transform2};
@@ -14,7 +13,7 @@ use std::{
     sync::Mutex,
 };
 
-mod vectorize;
+mod distr;
 
 fn to_arr<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
 where
@@ -113,29 +112,23 @@ impl Codebook {
             let iter = rng.stream(n).into_par_iter();
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
-            iter.flat_map(|rng| {
-                let v = BOUND[..5]
-                    .iter()
-                    .map(|&[u, l]| rng.range(u..l))
-                    .collect::<Vec<_>>();
-                [false, true].map(|inv| NormFourBar::try_from(v.as_slice()).unwrap().with_inv(inv))
-            })
-            .filter(|fb| is_open == fb.ty().is_open_curve())
-            .filter_map(|fb| {
-                let [t1, t2] = fb.angle_bound().filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)?;
-                Some((fb.curve_in(t1, t2, res), fb))
-            })
-            .filter(|(c, _)| c.len() > 1)
-            .for_each(|(curve, fb)| {
-                let mode = if is_open { Mode::Open } else { Mode::Closed };
-                let curve = mode.regularize(curve);
-                let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
-                efd_stack.lock().unwrap().push(efd.into_inner());
-                let mut stack = fb_stack.lock().unwrap();
-                stack.push(arr1(&fb.as_array()));
-                callback(stack.len());
-                inv_stack.lock().unwrap().push(arr0(fb.inv()));
-            });
+            iter.flat_map(|rng| rng.sample(self::distr::NormFbDistr))
+                .filter(|fb| is_open == fb.ty().is_open_curve())
+                .filter_map(|fb| {
+                    let [t1, t2] = fb.angle_bound().filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)?;
+                    Some((fb.curve_in(t1, t2, res), fb))
+                })
+                .filter(|(c, _)| c.len() > 1)
+                .for_each(|(curve, fb)| {
+                    let mode = if is_open { Mode::Open } else { Mode::Closed };
+                    let curve = mode.regularize(curve);
+                    let efd = Efd2::from_curve_harmonic(curve, harmonic).unwrap();
+                    efd_stack.lock().unwrap().push(efd.into_inner());
+                    let mut stack = fb_stack.lock().unwrap();
+                    stack.push(arr1(&fb.as_array()));
+                    callback(stack.len());
+                    inv_stack.lock().unwrap().push(arr0(fb.inv()));
+                });
             if efd_stack.lock().unwrap().len() >= size {
                 break;
             }
