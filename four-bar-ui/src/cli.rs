@@ -138,7 +138,7 @@ fn codebook(cb: CbCfg) {
     let t0 = std::time::Instant::now();
     let cfg = cb::Cfg { is_open, size, res, harmonic, seed: seed.into() };
     let pb = indicatif::ProgressBar::new(size as u64);
-    cb::Codebook::make_with(cfg, |n| pb.set_position(n as u64))
+    cb::FbCodebook::make_with(cfg, |n| pb.set_position(n as u64))
         .write(std::fs::File::create(file).unwrap())
         .unwrap();
     let t0 = t0.elapsed();

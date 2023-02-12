@@ -1,7 +1,7 @@
 use super::{Syn, SynCfg};
 use crate::syn_cmd::*;
 use four_bar::{
-    cb::Codebook,
+    cb::FbCodebook,
     efd,
     mh::{self, rayon::single_thread},
     planar_syn, plot2d, FourBar,
@@ -76,12 +76,12 @@ pub(super) fn syn(syn: Syn) {
     single_thread(one_by_one, || files.into_par_iter().for_each(run));
 }
 
-fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<Codebook> {
+fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<FbCodebook> {
     if !cb.is_empty() {
         println!("Loading codebook database...");
     }
     cb.into_iter()
-        .map(|path| Ok(Codebook::read(std::fs::File::open(path)?)?))
+        .map(|path| Ok(FbCodebook::read(std::fs::File::open(path)?)?))
         .collect()
 }
 
@@ -89,7 +89,7 @@ fn run<S>(
     mpb: &MultiProgress,
     file: PathBuf,
     cfg: &SynCfg,
-    cb: &Codebook,
+    cb: &FbCodebook,
     refer: &[PathBuf],
     setting: S,
 ) where

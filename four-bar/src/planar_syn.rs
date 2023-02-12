@@ -17,7 +17,10 @@
 //!     .unwrap();
 //! ```
 use crate::{curve, efd, mh, FourBar, NormFourBar};
-use std::f64::consts::{FRAC_PI_8, TAU};
+use std::{
+    borrow::Cow,
+    f64::consts::{FRAC_PI_8, TAU},
+};
 
 type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
@@ -68,9 +71,10 @@ impl Mode {
     }
 
     /// Regularize curve with the mode.
-    pub fn regularize<'a, C>(&self, curve: C) -> Vec<[f64; 2]>
+    pub fn regularize<'a, A, C>(&self, curve: C) -> Vec<A>
     where
-        C: Into<CowCurve<'a>>,
+        A: PartialEq + Clone + 'a,
+        C: Into<Cow<'a, [A]>>,
     {
         let curve = curve.into();
         match self {

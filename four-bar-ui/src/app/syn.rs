@@ -8,7 +8,7 @@ use crate::{
     syn_cmd::SynCmd,
 };
 use eframe::egui::*;
-use four_bar::{cb::Codebook, curve, efd, mh, planar_syn};
+use four_bar::{cb::FbCodebook, curve, efd, mh, planar_syn};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -42,7 +42,7 @@ fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
     ron::ser::to_string_pretty(s, Default::default()).unwrap()
 }
 
-fn solve<S>(task: &Task, cb: &Codebook, config: SynConfig, setting: S) -> four_bar::FourBar
+fn solve<S>(task: &Task, cb: &FbCodebook, config: SynConfig, setting: S) -> four_bar::FourBar
 where
     S: mh::Setting,
 {
@@ -89,7 +89,7 @@ where
 pub(crate) struct Synthesis {
     config: UiConfig,
     #[serde(skip)]
-    cb: Arc<RwLock<Codebook>>,
+    cb: Arc<RwLock<FbCodebook>>,
     tasks: Vec<Task>,
     csv_open: bool,
     conv_open: bool,

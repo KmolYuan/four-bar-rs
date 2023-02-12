@@ -1,6 +1,6 @@
 use self::impl_io::*;
 use crate::csv::dump_csv;
-use four_bar::{cb::Codebook, plot2d, FourBar};
+use four_bar::{cb::FbCodebook, plot2d, FourBar};
 
 const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
@@ -165,9 +165,9 @@ where
 
 pub(crate) fn open_cb<C>(done: C)
 where
-    C: Fn(Codebook) + 'static,
+    C: Fn(FbCodebook) + 'static,
 {
-    let done = move |b| alert(Codebook::read(std::io::Cursor::new(b)), &done);
+    let done = move |b| alert(FbCodebook::read(std::io::Cursor::new(b)), &done);
     open_bin(CB_FMT, CB_EXT, done);
 }
 

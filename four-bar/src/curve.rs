@@ -2,15 +2,15 @@
 //!
 //! The input curve can be both a owned type `Vec<[f64; 2]>` or a pointer type
 //! `&[[f64; 2]]` since the generic are copy-on-write (COW) compatible.
+use std::borrow::Cow;
 
 type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
 /// Check if a curve's first and end points are very close.
-pub fn is_closed(curve: &[[f64; 2]]) -> bool {
-    if let (Some([x1, y1]), Some([x2, y2])) = (curve.first(), curve.last()) {
-        (x1 - x2).abs() < f64::EPSILON && (y1 - y2).abs() < f64::EPSILON
-    } else {
-        false
+pub fn is_closed<A: PartialEq>(curve: &[A]) -> bool {
+    match (curve.first(), curve.last()) {
+        (Some(a), Some(b)) => a == b,
+        _ => false,
     }
 }
 
@@ -50,9 +50,10 @@ where
 /// Close the open curve with a line.
 ///
 /// Panic with empty curve.
-pub fn close_line<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn close_line<'a, A, C>(curve: C) -> Vec<A>
 where
-    C: Into<CowCurve<'a>>,
+    A: Clone + 'a,
+    C: Into<Cow<'a, [A]>>,
 {
     efd::closed_curve(curve)
 }
@@ -151,12 +152,13 @@ where
 /// Close the open curve with its direction-inverted part.
 ///
 /// Panic with empty curve.
-pub fn close_rev<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn close_rev<'a, A, C>(curve: C) -> Vec<A>
 where
-    C: Into<CowCurve<'a>>,
+    A: Clone + 'a,
+    C: Into<Cow<'a, [A]>>,
 {
     let mut curve = curve.into().into_owned();
-    let curve2 = curve.iter().rev().skip(1).copied().collect::<Vec<_>>();
+    let curve2 = curve.iter().rev().skip(1).cloned().collect::<Vec<_>>();
     curve.extend(curve2);
     curve
 }
