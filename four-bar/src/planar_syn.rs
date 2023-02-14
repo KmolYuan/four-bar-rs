@@ -79,8 +79,8 @@ impl Mode {
         let curve = curve.into();
         match self {
             _ if curve::is_closed(&curve) => curve.into_owned(),
-            Self::Closed => curve::close_line(curve),
-            Self::Partial | Self::Open => curve::close_rev(curve),
+            Self::Closed => curve::closed_lin(curve),
+            Self::Partial | Self::Open => curve::closed_rev(curve),
         }
     }
 }

@@ -1,6 +1,9 @@
 #[test]
 fn test_anti_symmetry_extension() {
-    assert_eq!(crate::curve::close_anti_sym_ext(OPEN_CURVE), OPEN_CURVE_ANS);
+    assert_eq!(
+        crate::curve::closed_anti_sym_ext(OPEN_CURVE),
+        OPEN_CURVE_ANS
+    );
 }
 
 const OPEN_CURVE: &[[f64; 2]] = &[

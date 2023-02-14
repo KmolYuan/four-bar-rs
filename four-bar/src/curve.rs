@@ -2,7 +2,7 @@
 //!
 //! The input curve can be both a owned type `Vec<[f64; 2]>` or a pointer type
 //! `&[[f64; 2]]` since the generic are copy-on-write (COW) compatible.
-use std::borrow::Cow;
+pub use efd::{closed_lin, closed_rev};
 
 type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
@@ -47,21 +47,10 @@ where
     curve
 }
 
-/// Close the open curve with a line.
-///
-/// Panic with empty curve.
-pub fn close_line<'a, A, C>(curve: C) -> Vec<A>
-where
-    A: Clone + 'a,
-    C: Into<Cow<'a, [A]>>,
-{
-    efd::closed_curve(curve)
-}
-
 /// Close the open curve with a symmetry part.
 ///
 /// Panic with empty curve.
-pub fn close_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn closed_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
     C: Into<CowCurve<'a>>,
 {
@@ -86,13 +75,13 @@ where
         })
         .collect::<Vec<_>>();
     curve.extend(curve2);
-    close_line(curve)
+    closed_lin(curve)
 }
 
 /// Close the open curve with an anti-symmetry part.
 ///
 /// Panic with empty curve.
-pub fn close_anti_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn closed_anti_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
     C: Into<CowCurve<'a>>,
 {
@@ -113,13 +102,13 @@ where
         })
         .collect::<Vec<_>>();
     curve.extend(curve2);
-    close_line(curve)
+    closed_lin(curve)
 }
 
 /// Close the open curve with anti-symmetric extension function.
 ///
 /// Panic with empty curve.
-pub fn close_anti_sym_ext<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn closed_anti_sym_ext<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
     C: Into<CowCurve<'a>>,
 {
@@ -147,20 +136,6 @@ where
         .collect::<Vec<_>>();
     v1.extend(v2);
     v1
-}
-
-/// Close the open curve with its direction-inverted part.
-///
-/// Panic with empty curve.
-pub fn close_rev<'a, A, C>(curve: C) -> Vec<A>
-where
-    A: Clone + 'a,
-    C: Into<Cow<'a, [A]>>,
-{
-    let mut curve = curve.into().into_owned();
-    let curve2 = curve.iter().rev().skip(1).cloned().collect::<Vec<_>>();
-    curve.extend(curve2);
-    curve
 }
 
 /// Geometry error between two closed curves.
