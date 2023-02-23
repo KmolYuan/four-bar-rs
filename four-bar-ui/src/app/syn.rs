@@ -1,8 +1,4 @@
-use super::{
-    io,
-    linkages::Linkages,
-    widgets::{percent, unit, url_btn},
-};
+use super::{io, linkages::Linkages, widgets::*};
 use crate::{
     csv::{dump_csv, parse_csv},
     syn_cmd::SynCmd,
@@ -320,18 +316,14 @@ impl Synthesis {
             ui.horizontal(|ui| {
                 let start = task.start.load(Ordering::Relaxed);
                 if start {
-                    if ui.small_button("⏹").clicked() {
+                    if small_btn(ui, "⏹", "Stop") {
                         task.start.store(false, Ordering::Relaxed);
                     }
                 } else {
-                    if ui.small_button("🗑").on_hover_text("Delete").clicked() {
+                    if small_btn(ui, "🗑", "Delete") {
                         keep = false;
                     }
-                    if ui
-                        .small_button("💾")
-                        .on_hover_text("Save history plot")
-                        .clicked()
-                    {
+                    if small_btn(ui, "💾", "Save history plot") {
                         io::save_history_ask(&task.conv.read().unwrap(), "history.svg");
                     }
                 }

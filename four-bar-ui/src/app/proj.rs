@@ -1,7 +1,4 @@
-use super::{
-    io,
-    widgets::{angle, link, unit},
-};
+use super::{io, widgets::*};
 use crate::csv::dump_csv;
 use eframe::egui::*;
 use four_bar::{FourBar, SFourBar};
@@ -17,6 +14,12 @@ mod undo;
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
+
+macro_rules! hotkey {
+    ($ui:ident, $($mod:ident)|+, $key:ident) => {
+        $ui.ctx().input_mut().consume_key($(Modifiers::$mod)|+, Key::$key)
+    };
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn pre_open(file: impl AsRef<Path>) -> Option<FourBar> {
@@ -230,7 +233,7 @@ impl ProjInner {
         ui.horizontal(|ui| match &mut self.path {
             ProjName::Path(path) => {
                 let filename = filename(path);
-                if ui.small_button("🖊").on_hover_text("Rename path").clicked() {
+                if small_btn(ui, "🖊", "Rename path") {
                     self.path = ProjName::Named(filename);
                 } else {
                     ui.label(&filename);
@@ -259,16 +262,27 @@ impl ProjInner {
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
             let enabled = self.undo.able_undo();
-            if ui.add_enabled(enabled, Button::new("⮪ Undo")).clicked() {
+            if ui
+                .add_enabled(enabled, Button::new("⮪ Undo"))
+                .on_hover_text("Ctrl+Z")
+                .clicked()
+                || hotkey!(ui, CTRL, Z)
+            {
                 self.undo.undo(&mut self.fb);
                 self.cache.changed = true;
             }
             let enabled = self.undo.able_redo();
-            if ui.add_enabled(enabled, Button::new("⮫ Redo")).clicked() {
+            if ui
+                .add_enabled(enabled, Button::new("⮫ Redo"))
+                .on_hover_text("Ctrl+Shift+Z | Ctrl+Y")
+                .clicked()
+                || hotkey!(ui, CTRL, Y)
+                || hotkey!(ui, CTRL | SHIFT, Z)
+            {
                 self.undo.redo(&mut self.fb);
                 self.cache.changed = true;
             }
-            if ui.small_button("🗑").on_hover_text("Clear undo").clicked() {
+            if small_btn(ui, "🗑", "Clear undo") {
                 self.undo.clear();
             }
         });
@@ -323,10 +337,10 @@ impl ProjInner {
                     ui.selectable_value(pivot, Pivot::Driver, Pivot::Driver.name());
                     ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
                 });
-            if ui.small_button("💾").on_hover_text("Save").clicked() {
+            if small_btn(ui, "💾", "Save") {
                 io::save_csv_ask(&get_curve(*pivot, &self.fb, cfg.res));
             }
-            if ui.button("🗐").on_hover_text("Copy").clicked() {
+            if small_btn(ui, "🗐", "Copy") {
                 ui.output().copied_text = dump_csv(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
             }
         });
@@ -519,12 +533,18 @@ impl Project {
         if let ProjName::Path(path) = &proj.path {
             io::save_ron(&proj.fb, path);
         } else {
-            let name = proj.path.name();
-            let fb = proj.fb.clone();
             drop(proj);
-            let proj_cloned = self.clone();
-            io::save_ron_ask(&fb, &name, move |path| proj_cloned.set_path(path));
+            self.save_as();
         }
+    }
+
+    fn save_as(&self) {
+        let proj = self.0.read().unwrap();
+        let name = proj.path.name();
+        let fb = proj.fb.clone();
+        drop(proj);
+        let proj_cloned = self.clone();
+        io::save_ron_ask(&fb, &name, move |path| proj_cloned.set_path(path));
     }
 
     fn show(&self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
@@ -630,7 +650,7 @@ impl Projects {
 
     pub(crate) fn show(&mut self, ui: &mut Ui, cfg: &super::Cfg) {
         ui.horizontal(|ui| {
-            if ui.button("🖴 Open").clicked() {
+            if ui.button("🖴 Open").clicked() || hotkey!(ui, CTRL, O) {
                 let q = self.queue();
                 io::open_ron(move |path, fb| q.push(Some(path), fb));
             }
@@ -652,10 +672,15 @@ impl Projects {
                 ComboBox::from_label("")
                     .show_index(ui, &mut self.curr, self.list.len(), |i| self.list[i].name());
                 if show_btn {
-                    if ui.small_button("💾").on_hover_text("Save").clicked() {
+                    if small_btn(ui, "💾", "Save (Ctr+S)") || hotkey!(ui, CTRL, S) {
                         self.list[self.curr].save();
                     }
-                    if ui.small_button("✖").on_hover_text("Close").clicked() {
+                    if small_btn(ui, "💾 Save As", "Ctr+Shift+S")
+                        || hotkey!(ui, CTRL | SHIFT, S)
+                    {
+                        self.list[self.curr].save_as();
+                    }
+                    if small_btn(ui, "✖", "Close (Ctr+W)") || hotkey!(ui, CTRL, W) {
                         self.list.remove(self.curr);
                         if self.curr > 0 {
                             self.curr -= 1;

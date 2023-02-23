@@ -121,7 +121,7 @@ impl App {
         ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
             .on_hover_text("Focus on Canvas");
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
-            if ui.small_button("❓").on_hover_text("Welcome").clicked() {
+            if small_btn(ui, "❓", "Welcome") {
                 self.welcome_off = !self.welcome_off;
             }
         });
