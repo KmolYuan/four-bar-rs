@@ -667,29 +667,30 @@ impl Projects {
     }
 
     pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
-        if !self.is_empty() {
-            ui.horizontal(|ui| {
-                ComboBox::from_label("")
-                    .show_index(ui, &mut self.curr, self.list.len(), |i| self.list[i].name());
-                if show_btn {
-                    if small_btn(ui, "💾", "Save (Ctr+S)") || hotkey!(ui, CTRL, S) {
-                        self.list[self.curr].save();
-                    }
-                    if small_btn(ui, "💾 Save As", "Ctr+Shift+S")
-                        || hotkey!(ui, CTRL | SHIFT, S)
-                    {
-                        self.list[self.curr].save_as();
-                    }
-                    if small_btn(ui, "✖", "Close (Ctr+W)") || hotkey!(ui, CTRL, W) {
-                        self.list.remove(self.curr);
-                        if self.curr > 0 {
-                            self.curr -= 1;
-                        }
-                    }
-                }
-            });
+        let b = !self.is_empty();
+        if !b {
+            return b;
         }
-        !self.is_empty()
+        ui.horizontal(|ui| {
+            ComboBox::from_label("")
+                .show_index(ui, &mut self.curr, self.list.len(), |i| self.list[i].name());
+            if !show_btn {
+                return;
+            }
+            if small_btn(ui, "💾", "Save (Ctr+S)") || hotkey!(ui, CTRL, S) {
+                self.list[self.curr].save();
+            }
+            if small_btn(ui, "💾 Save As", "Ctr+Shift+S") || hotkey!(ui, CTRL | SHIFT, S) {
+                self.list[self.curr].save_as();
+            }
+            if small_btn(ui, "✖", "Close (Ctr+W)") || hotkey!(ui, CTRL, W) {
+                self.list.remove(self.curr);
+                if self.curr > 0 {
+                    self.curr -= 1;
+                }
+            }
+        });
+        b
     }
 
     pub(crate) fn four_bar_state(&self) -> four_bar::plot2d::Opt {
