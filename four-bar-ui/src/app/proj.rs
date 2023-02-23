@@ -676,13 +676,13 @@ impl Projects {
             if !show_btn {
                 return;
             }
-            if small_btn(ui, "💾", "Save (Ctr+S)") || hotkey!(ui, CTRL, S) {
+            if small_btn(ui, "💾", "Save (Ctrl+S)") || hotkey!(ui, CTRL, S) {
                 self.list[self.curr].save();
             }
-            if small_btn(ui, "💾 Save As", "Ctr+Shift+S") || hotkey!(ui, CTRL | SHIFT, S) {
+            if small_btn(ui, "💾 Save As", "Ctrl+Shift+S") || hotkey!(ui, CTRL | SHIFT, S) {
                 self.list[self.curr].save_as();
             }
-            if small_btn(ui, "✖", "Close (Ctr+W)") || hotkey!(ui, CTRL, W) {
+            if small_btn(ui, "✖", "Close (Ctrl+W)") || hotkey!(ui, CTRL, W) {
                 self.list.remove(self.curr);
                 if self.curr > 0 {
                     self.curr -= 1;
