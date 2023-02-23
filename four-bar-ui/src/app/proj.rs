@@ -667,9 +667,8 @@ impl Projects {
     }
 
     pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
-        let b = !self.is_empty();
-        if !b {
-            return b;
+        if self.is_empty() {
+            return false;
         }
         ui.horizontal(|ui| {
             ComboBox::from_label("")
@@ -690,7 +689,7 @@ impl Projects {
                 }
             }
         });
-        b
+        !self.is_empty()
     }
 
     pub(crate) fn four_bar_state(&self) -> four_bar::plot2d::Opt {
