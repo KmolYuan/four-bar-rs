@@ -2,9 +2,8 @@
 //!
 //! The input curve can be both a owned type `Vec<[f64; 2]>` or a pointer type
 //! `&[[f64; 2]]` since the generic are copy-on-write (COW) compatible.
-pub use efd::{closed_lin, closed_rev};
-
-type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
+pub use efd::{closed_lin, closed_rev, curve_diff};
+use std::borrow::Cow;
 
 /// Check if a curve's first and end points are very close.
 pub fn is_closed<A: PartialEq>(curve: &[A]) -> bool {
@@ -17,7 +16,7 @@ pub fn is_closed<A: PartialEq>(curve: &[A]) -> bool {
 /// Input a curve, split out the longest finite parts to a continuous curve.
 pub fn get_valid_part<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<CowCurve<'a>>,
+    C: Into<Cow<'a, [[f64; 2]]>>,
 {
     let curve = curve.into();
     let mut iter = curve.iter();
@@ -38,9 +37,10 @@ where
 /// Remove the last point.
 ///
 /// This function allows empty curve.
-pub fn remove_last<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn remove_last<'a, A, C>(curve: C) -> Vec<A>
 where
-    C: Into<CowCurve<'a>>,
+    A: Clone + 'a,
+    C: Into<Cow<'a, [A]>>,
 {
     let mut curve = curve.into().into_owned();
     curve.pop();
@@ -52,7 +52,7 @@ where
 /// Panic with empty curve.
 pub fn closed_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<CowCurve<'a>>,
+    C: Into<Cow<'a, [[f64; 2]]>>,
 {
     let mut curve = curve.into().into_owned();
     let first = &curve[0];
@@ -83,7 +83,7 @@ where
 /// Panic with empty curve.
 pub fn closed_anti_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<CowCurve<'a>>,
+    C: Into<Cow<'a, [[f64; 2]]>>,
 {
     let mut curve = curve.into().into_owned();
     let [ox, oy] = {
@@ -110,7 +110,7 @@ where
 /// Panic with empty curve.
 pub fn closed_anti_sym_ext<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<CowCurve<'a>>,
+    C: Into<Cow<'a, [[f64; 2]]>>,
 {
     let curve = curve.into().into_owned();
     let n = curve.len() - 1;
