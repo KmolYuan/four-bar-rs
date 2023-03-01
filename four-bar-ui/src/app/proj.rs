@@ -1,7 +1,6 @@
 use super::{io, widgets::*};
-use crate::csv::dump_csv;
 use eframe::egui::*;
-use four_bar::{FourBar, SFourBar};
+use four_bar::{csv::dump_csv, FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,

@@ -1,6 +1,5 @@
 use self::impl_io::*;
-use crate::csv::dump_csv;
-use four_bar::{cb::FbCodebook, plot2d, FourBar};
+use four_bar::{cb::FbCodebook, csv::dump_csv, plot2d, FourBar};
 
 const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];

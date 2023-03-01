@@ -3,7 +3,6 @@
 mod app;
 #[cfg(not(target_arch = "wasm32"))]
 mod cli;
-mod csv;
 mod syn_cmd;
 
 #[cfg(not(target_arch = "wasm32"))]

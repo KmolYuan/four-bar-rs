@@ -1,10 +1,11 @@
 use super::{io, linkages::Linkages, widgets::*};
-use crate::{
-    csv::{dump_csv, parse_csv},
-    syn_cmd::SynCmd,
-};
+use crate::syn_cmd::SynCmd;
 use eframe::egui::*;
-use four_bar::{cb::FbCodebook, curve, efd, mh, planar_syn};
+use four_bar::{
+    cb::FbCodebook,
+    csv::{dump_csv, parse_csv},
+    curve, efd, mh, planar_syn,
+};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},

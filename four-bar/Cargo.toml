@@ -17,10 +17,12 @@ serde = ["dep:serde", "metaheuristics-nature/serde"]
 mh-clap = ["metaheuristics-nature/clap"]
 rayon = ["metaheuristics-nature/rayon"]
 codebook = ["ndarray-npy"]
+csv = ["dep:csv", "serde"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 ndarray-npy = { version = "0.8", optional = true }
+csv = { version = "1", optional = true }
 metaheuristics-nature = "8"
 efd = "1.2"
 

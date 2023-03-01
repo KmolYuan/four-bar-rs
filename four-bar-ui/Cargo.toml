@@ -22,12 +22,11 @@ native = ["four-bar/rayon", "four-bar/mh-clap"]
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 ron = "0.8"
-csv = "1"
 
 [dependencies.four-bar]
 version = "4"
 path = "../four-bar"
-features = ["serde", "codebook", "plot"]
+features = ["csv", "codebook", "plot"]
 
 [dependencies.eframe]
 version = "0.21"

@@ -1,9 +1,11 @@
-use csv::{Error as CsvError, ReaderBuilder, Writer};
+//! Functions for reading/writing CSV format.
+pub use csv::Error;
+use csv::{ReaderBuilder, Writer};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{error::Error, io::Cursor};
+use std::io::Cursor;
 
 /// Parse CSV from string.
-pub(crate) fn parse_csv<D>(s: &str) -> Result<Vec<D>, CsvError>
+pub fn parse_csv<D>(s: &str) -> Result<Vec<D>, Error>
 where
     D: DeserializeOwned,
 {
@@ -16,7 +18,7 @@ where
 }
 
 /// Dump CSV to string.
-pub(crate) fn dump_csv<'a, C, S>(c: C) -> Result<String, Box<dyn Error>>
+pub fn dump_csv<'a, C, S>(c: C) -> Result<String, Box<dyn std::error::Error>>
 where
     C: Into<std::borrow::Cow<'a, [S]>>,
     S: Serialize + Clone + 'a,

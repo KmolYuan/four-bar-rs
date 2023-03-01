@@ -21,6 +21,8 @@ pub extern crate metaheuristics_nature as mh;
 
 #[cfg(feature = "codebook")]
 pub mod cb;
+#[cfg(feature = "csv")]
+pub mod csv;
 pub mod curve;
 mod defect;
 pub mod planar_syn;

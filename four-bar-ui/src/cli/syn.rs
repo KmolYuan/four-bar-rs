@@ -2,7 +2,7 @@ use super::{Syn, SynCfg};
 use crate::syn_cmd::*;
 use four_bar::{
     cb::FbCodebook,
-    efd,
+    csv, efd,
     mh::{self, rayon::single_thread},
     planar_syn, plot2d, FourBar,
 };
@@ -235,7 +235,7 @@ fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
             }
             "csv" | "txt" => std::fs::read_to_string(path)
                 .map_err(SynErr::Io)
-                .and_then(|s| crate::csv::parse_csv(&s).map_err(SynErr::CsvSer)),
+                .and_then(|s| csv::parse_csv(&s).map_err(SynErr::CsvSer)),
             _ => Err(SynErr::Format),
         })?;
     let f = || {
