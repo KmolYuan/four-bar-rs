@@ -5,6 +5,6 @@ Cargo.lock
 *.npy
 *.svg
 *.ron
-!*.close.ron
+!*.closed.ron
 !*.partial.ron
 !*.open.ron

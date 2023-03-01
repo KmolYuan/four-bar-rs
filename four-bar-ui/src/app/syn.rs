@@ -151,7 +151,7 @@ impl UiConfig {
     fn ui(&mut self, ui: &mut Ui) {
         ui.label("Support CSV or RON array only.");
         ui.horizontal(|ui| {
-            if ui.button("🖴 Open Curves").clicked() {
+            if ui.button("🖴 Load Curve").clicked() {
                 let curve_csv = self.curve_str.clone();
                 let changed = self.changed.clone();
                 io::open_csv_single(move |_, s| {
@@ -297,7 +297,7 @@ impl Synthesis {
                 url_btn(ui, "", "Downlod open curve dataset", OPEN_URL);
             });
         });
-        if ui.button("🖴 Open").clicked() {
+        if ui.button("🖴 Load").clicked() {
             let cb = self.cb.clone();
             io::open_cb(move |cb_new| {
                 cb.write()

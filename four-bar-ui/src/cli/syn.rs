@@ -244,7 +244,7 @@ fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
             .extension()
             .and_then(OsStr::to_str)
             .and_then(|mode| match mode {
-                "close" => Some(planar_syn::Mode::Closed),
+                "closed" => Some(planar_syn::Mode::Closed),
                 "partial" => Some(planar_syn::Mode::Partial),
                 "open" => Some(planar_syn::Mode::Open),
                 _ => None,
