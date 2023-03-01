@@ -17,7 +17,7 @@ const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 
 macro_rules! hotkey {
     ($ui:ident, $($mod:ident)|+, $key:ident) => {
-        $ui.ctx().input_mut().consume_key($(Modifiers::$mod)|+, Key::$key)
+        $ui.ctx().input_mut(|s| s.consume_key($(Modifiers::$mod)|+, Key::$key))
     };
 }
 
@@ -91,11 +91,11 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
             ui.horizontal(|ui| {
                 let s_str = format!("{start:.04}");
                 if ui.selectable_label(false, &s_str).clicked() {
-                    ui.output().copied_text = s_str;
+                    ui.output_mut(|s| s.copied_text = s_str);
                 }
                 let e_str = format!("{end:.04}");
                 if ui.selectable_label(false, &e_str).clicked() {
-                    ui.output().copied_text = e_str;
+                    ui.output_mut(|s| s.copied_text = e_str);
                 }
                 ui.label(suffix);
             });
@@ -341,7 +341,8 @@ impl ProjInner {
                 io::save_csv_ask(&get_curve(*pivot, &self.fb, cfg.res));
             }
             if small_btn(ui, "🗐", "Copy") {
-                ui.output().copied_text = dump_csv(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
+                let t = dump_csv(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
+                ui.output_mut(|s| s.copied_text = t);
             }
         });
         ui.separator();
@@ -631,11 +632,13 @@ impl Projects {
 
     pub(crate) fn poll(&mut self, ctx: &Context, n: usize) {
         #[cfg(not(target_arch = "wasm32"))]
-        for file in ctx.input().raw.dropped_files.iter() {
-            if let Some(path) = &file.path {
-                self.pre_open(path);
+        ctx.input(|s| {
+            for file in s.raw.dropped_files.iter() {
+                if let Some(path) = &file.path {
+                    self.pre_open(path);
+                }
             }
-        }
+        });
         let len = self.queue.0.read().unwrap().len();
         if len > 0 {
             self.list.reserve(len);

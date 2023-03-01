@@ -7,7 +7,7 @@ pub(crate) fn small_btn(ui: &mut Ui, icon: &str, tip: &str) -> bool {
 
 pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     if small_btn(ui, icon, tip) {
-        ui.ctx().output().open_url(url);
+        ui.ctx().output_mut(|s| s.open_url(url));
     }
 }
 

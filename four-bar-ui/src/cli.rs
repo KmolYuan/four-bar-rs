@@ -124,7 +124,7 @@ fn native(files: Vec<PathBuf>) {
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
-    eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files)));
+    eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files))).unwrap();
 }
 
 fn codebook(cb: CbCfg) {

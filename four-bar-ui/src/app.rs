@@ -162,7 +162,7 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         self.welcome(ctx);
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
-        if ctx.input().screen_rect.width() < 600. {
+        if ctx.input(|s| s.screen_rect.width()) < 600. {
             self.mobile_view(ctx);
         } else {
             self.pc_view(ctx);
