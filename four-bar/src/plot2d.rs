@@ -50,11 +50,6 @@ macro_rules! impl_opt {
                 Self::default()
             }
 
-            /// Set the linkage.
-            pub fn fb(self, fb: impl Into<$inner>) -> Self {
-                Self { fb: Some(fb.into()), ..self }
-            }
-
             /// Set the input angle of the linkage.
             ///
             /// If the angle value is not in the range of [`FourBar::angle_bound()`],

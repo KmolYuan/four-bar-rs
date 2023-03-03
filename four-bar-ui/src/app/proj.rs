@@ -402,8 +402,7 @@ impl ProjInner {
         ui.label("Plot linkage and its coupler curve.");
         if ui.button("💾 Save Linkage").clicked() {
             let curve = get_curve(Pivot::Coupler, &self.fb, cfg.res);
-            let opt = four_bar::plot2d::Opt::new()
-                .fb(self.fb.clone())
+            let opt = four_bar::plot2d::Opt::from(self.fb.clone())
                 .angle(self.angles.theta2)
                 .use_dot(cfg.plot_dot);
             io::save_curve_ask([("Coupler Curve", curve.as_slice())], opt, "fig.svg");
@@ -557,9 +556,7 @@ impl Project {
 
     fn four_bar_state(&self) -> four_bar::plot2d::Opt {
         let proj = self.0.read().unwrap();
-        four_bar::plot2d::Opt::new()
-            .fb(proj.fb.clone())
-            .angle(proj.angles.theta2)
+        four_bar::plot2d::Opt::from(proj.fb.clone()).angle(proj.angles.theta2)
     }
 
     pub(crate) fn clone_curve(&self) -> Vec<[f64; 2]> {

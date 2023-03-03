@@ -186,7 +186,7 @@ fn run<S>(
         {
             let path = root.join(format!("{title}_linkage.svg"));
             let svg = plot2d::SVGBackend::new(&path, (800, 800));
-            let opt = plot2d::Opt::new().fb(ans).use_dot(true);
+            let opt = plot2d::Opt::from(ans).use_dot(true);
             plot2d::plot(svg, curves.clone(), opt)?;
         }
         let refer = refer
@@ -269,7 +269,7 @@ fn draw_midway(
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));
         let svg = plot2d::SVGBackend::new(&path, (800, 800));
-        let opt = plot2d::Opt::new().fb(ans).use_dot(true);
+        let opt = plot2d::Opt::from(ans).use_dot(true);
         plot2d::plot(svg, curves, opt)?;
     }
     Ok(())
