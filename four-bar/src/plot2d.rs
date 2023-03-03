@@ -12,12 +12,24 @@ macro_rules! impl_opt {
         struct $ty_name:ident { $inner:ty, $coord:ty }
     )+) => {$(
         $(#[$meta])+
-        #[derive(Default)]
         pub struct $ty_name<'a> {
             fb: Option<$inner>,
             angle: Option<f64>,
             title: Option<&'a str>,
+            stroke: u32,
             dot: bool,
+        }
+
+        impl Default for $ty_name<'_> {
+            fn default() -> Self {
+                Self {
+                    fb: None,
+                    angle: None,
+                    title: None,
+                    stroke: 5,
+                    dot: false,
+                }
+            }
         }
 
         impl From<Option<Self>> for $ty_name<'_> {
@@ -54,6 +66,11 @@ macro_rules! impl_opt {
             /// Set the title.
             pub fn title(self, s: &'a str) -> Self {
                 Self { title: Some(s), ..self }
+            }
+
+            /// Set the line stroke/point size.
+            pub fn stroke(self, stroke: u32) -> Self {
+                Self { stroke, ..self }
             }
 
             /// Use dot in the curves.
@@ -151,26 +168,36 @@ where
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
+        let stroke = opt.stroke;
         if opt.dot {
             if i % 2 == 1 {
                 chart
-                    .draw_series(curve.iter().map(|&[x, y]| Circle::new((x, y), 5, &color)))?
+                    .draw_series(
+                        curve
+                            .iter()
+                            .map(|&[x, y]| Circle::new((x, y), stroke, &color)),
+                    )?
                     .label(label)
-                    .legend(move |(x, y)| Circle::new((x + 10, y), 5, &color));
+                    .legend(move |(x, y)| Circle::new((x + 10, y), stroke, &color));
             } else {
                 let series = curve
                     .iter()
-                    .map(|&[x, y]| TriangleMarker::new((x, y), 5, &color));
+                    .map(|&[x, y]| TriangleMarker::new((x, y), stroke, &color));
                 chart
                     .draw_series(series)?
                     .label(label)
-                    .legend(move |(x, y)| TriangleMarker::new((x + 10, y), 5, &color));
+                    .legend(move |(x, y)| TriangleMarker::new((x + 10, y), stroke, &color));
             }
         } else {
             chart
-                .draw_series(LineSeries::new(curve.iter().map(|&[x, y]| (x, y)), &color))?
+                .draw_series(LineSeries::new(
+                    curve.iter().map(|&[x, y]| (x, y)),
+                    color.stroke_width(stroke),
+                ))?
                 .label(label)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
+                .legend(move |(x, y)| {
+                    PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(stroke))
+                });
         }
     }
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {

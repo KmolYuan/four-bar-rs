@@ -66,32 +66,35 @@ where
     // Draw the curves
     for (i, (label, curve)) in curves.into_iter().enumerate() {
         let color = Palette99::pick(i);
+        let stroke = opt.stroke;
         if opt.dot {
             if i % 2 == 1 {
                 let series = curve
                     .iter()
-                    .map(|&[x, y, z]| Circle::new((x, y, z), 5, &color));
+                    .map(|&[x, y, z]| Circle::new((x, y, z), stroke, &color));
                 chart
                     .draw_series(series)?
                     .label(label)
-                    .legend(move |(x, y)| Circle::new((x + 10, y), 5, &color));
+                    .legend(move |(x, y)| Circle::new((x + 10, y), stroke, &color));
             } else {
                 let series = curve
                     .iter()
-                    .map(|&[x, y, z]| TriangleMarker::new((x, y, z), 5, &color));
+                    .map(|&[x, y, z]| TriangleMarker::new((x, y, z), stroke, &color));
                 chart
                     .draw_series(series)?
                     .label(label)
-                    .legend(move |(x, y)| TriangleMarker::new((x + 10, y), 5, &color));
+                    .legend(move |(x, y)| TriangleMarker::new((x + 10, y), stroke, &color));
             };
         } else {
             chart
                 .draw_series(LineSeries::new(
                     curve.iter().map(|&[x, y, z]| (x, y, z)),
-                    &color,
+                    color.stroke_width(stroke),
                 ))?
                 .label(label)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color));
+                .legend(move |(x, y)| {
+                    PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(stroke))
+                });
         }
     }
     if let Some(_joints) = joints {
