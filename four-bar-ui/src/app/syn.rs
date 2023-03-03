@@ -1,11 +1,7 @@
 use super::{io, linkages::Linkages, widgets::*};
 use crate::syn_cmd::SynCmd;
 use eframe::egui::*;
-use four_bar::{
-    cb::FbCodebook,
-    csv::{dump_csv, parse_csv},
-    curve, efd, mh, planar_syn,
-};
+use four_bar::{cb::FbCodebook, csv::*, *};
 use serde::{Deserialize, Serialize};
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
@@ -368,9 +364,15 @@ impl Synthesis {
                         let curve = lnk.projs[self.competitor - 1].clone_curve();
                         curves.push(("Competitor", curve));
                     }
-                    let opt = self
-                        .plot_linkage
-                        .then(|| lnk.projs.four_bar_state().use_dot(lnk.cfg.plot_dot));
+                    let opt = if self.plot_linkage {
+                        let (fb, angle) = lnk.projs.four_bar_state();
+                        plot2d::Opt::from(fb)
+                            .angle(angle)
+                            .stroke(lnk.cfg.plot_stroke)
+                            .use_dot(lnk.cfg.plot_dot)
+                    } else {
+                        Default::default()
+                    };
                     let curves = curves.iter().map(|(s, c)| (*s, c.as_slice()));
                     io::save_curve_ask(curves, opt, "fb.svg");
                 }

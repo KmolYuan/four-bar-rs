@@ -20,13 +20,15 @@ pub(crate) struct Cfg {
     pub(crate) int: f64,
     // resolution
     pub(crate) res: usize,
-    // Plot option
+    // Plot option - `stroke`
+    pub(crate) plot_stroke: u32,
+    // Plot option - `use_dot`
     pub(crate) plot_dot: bool,
 }
 
 impl Default for Cfg {
     fn default() -> Self {
-        Self { int: 1., res: 360, plot_dot: false }
+        Self { int: 1., res: 360, plot_stroke: 5, plot_dot: false }
     }
 }
 
@@ -45,21 +47,23 @@ impl Linkages {
         if unit(ui, "Curve resolution: ", &mut self.cfg.res, 1).changed() {
             self.projs.request_cache();
         }
-        ui.checkbox(&mut self.cfg.plot_dot, "Use dot curve in plots");
         ui.horizontal(|ui| {
             ui.group(|ui| {
+                ui.label("Theme");
                 let mut vis = ui.visuals().clone();
                 ui.selectable_value(&mut vis, Visuals::light(), "☀ Light");
                 ui.selectable_value(&mut vis, Visuals::dark(), "🌜 Dark");
                 ui.ctx().set_visuals(vis);
             });
         });
+        unit(ui, "Stroke in plots: ", &mut self.cfg.plot_stroke, 1);
+        ui.checkbox(&mut self.cfg.plot_dot, "Use dot curve in plots");
         ui.separator();
         ui.heading("Control Tips");
         ui.label("Pan move: Left-drag / Drag");
         ui.label("Zoom: Ctrl+wheel / Pinch+stretch");
         ui.label("Box Zoom: Right-drag");
-        ui.label("Reset: Right-click / Double-click");
+        ui.label("Reset: Double-click");
     }
 
     pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {

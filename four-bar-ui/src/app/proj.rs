@@ -404,6 +404,7 @@ impl ProjInner {
             let curve = get_curve(Pivot::Coupler, &self.fb, cfg.res);
             let opt = four_bar::plot2d::Opt::from(self.fb.clone())
                 .angle(self.angles.theta2)
+                .stroke(cfg.plot_stroke)
                 .use_dot(cfg.plot_dot);
             io::save_curve_ask([("Coupler Curve", curve.as_slice())], opt, "fig.svg");
         }
@@ -554,9 +555,9 @@ impl Project {
         self.0.read().unwrap().plot(ui, i, id);
     }
 
-    fn four_bar_state(&self) -> four_bar::plot2d::Opt {
+    fn four_bar_state(&self) -> (FourBar, f64) {
         let proj = self.0.read().unwrap();
-        four_bar::plot2d::Opt::from(proj.fb.clone()).angle(proj.angles.theta2)
+        (proj.fb.clone(), proj.angles.theta2)
     }
 
     pub(crate) fn clone_curve(&self) -> Vec<[f64; 2]> {
@@ -691,7 +692,7 @@ impl Projects {
         !self.is_empty()
     }
 
-    pub(crate) fn four_bar_state(&self) -> four_bar::plot2d::Opt {
+    pub(crate) fn four_bar_state(&self) -> (FourBar, f64) {
         self.list[self.curr].four_bar_state()
     }
 
