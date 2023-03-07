@@ -404,8 +404,7 @@ impl ProjInner {
             let curve = get_curve(Pivot::Coupler, &self.fb, cfg.res);
             let opt = four_bar::plot2d::Opt::from(self.fb.clone())
                 .angle(self.angles.theta2)
-                .stroke(cfg.plot_stroke)
-                .use_dot(cfg.plot_dot);
+                .inner(cfg.plot.clone());
             io::save_curve_ask([("Coupler Curve", curve.as_slice())], opt, "fig.svg");
         }
         self.cache(cfg.res);
