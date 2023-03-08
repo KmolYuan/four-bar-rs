@@ -165,23 +165,18 @@ where
         let color = Palette99::pick(i);
         let stroke = opt.stroke;
         if opt.dot {
-            if i % 2 == 1 {
-                chart
-                    .draw_series(
-                        curve
-                            .iter()
-                            .map(|&[x, y]| Circle::new((x, y), stroke, &color)),
-                    )?
-                    .label(label)
-                    .legend(move |(x, y)| Circle::new((x + 10, y), stroke, &color));
-            } else {
-                let series = curve
-                    .iter()
-                    .map(|&[x, y]| TriangleMarker::new((x, y), stroke, &color));
-                chart
-                    .draw_series(series)?
-                    .label(label)
-                    .legend(move |(x, y)| TriangleMarker::new((x + 10, y), stroke, &color));
+            macro_rules! draw_line {
+                ($ty:ident) => {{
+                    chart
+                        .draw_series(curve.iter().map(|&[x, y]| $ty::new((x, y), stroke, &color)))?
+                        .label(label)
+                        .legend(move |(x, y)| $ty::new((x + 10, y), stroke, &color));
+                }};
+            }
+            match i % 3 {
+                1 => draw_line!(TriangleMarker),
+                2 => draw_line!(Cross),
+                _ => draw_line!(Circle),
             }
         } else {
             chart
