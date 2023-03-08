@@ -6,30 +6,28 @@ pub use plotters::{prelude::*, *};
 
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 
+macro_rules! inner_opt {
+    ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
+        $(#[$meta])+
+        pub fn $name(mut self, $name: $ty) -> Self {
+            self.inner.$name = $name;
+            self
+        }
+    )+};
+}
+
 macro_rules! impl_opt {
     ($(
         $(#[$meta:meta])+
         struct $ty_name:ident { $inner:ty, $coord:ty }
     )+) => {$(
         $(#[$meta])+
+        #[derive(Default)]
         pub struct $ty_name<'a> {
             fb: Option<$inner>,
             angle: Option<f64>,
             title: Option<&'a str>,
-            stroke: u32,
-            dot: bool,
-        }
-
-        impl Default for $ty_name<'_> {
-            fn default() -> Self {
-                Self {
-                    fb: None,
-                    angle: None,
-                    title: None,
-                    stroke: 5,
-                    dot: false,
-                }
-            }
+            inner: OptInner,
         }
 
         impl From<Option<Self>> for $ty_name<'_> {
@@ -55,22 +53,28 @@ macro_rules! impl_opt {
             /// If the angle value is not in the range of [`FourBar::angle_bound()`],
             /// the actual angle will be the midpoint.
             pub fn angle(self, angle: f64) -> Self {
-                Self { angle: angle.into(), ..self }
+                Self { angle: Some(angle), ..self }
             }
 
             /// Set the title.
-            pub fn title(self, s: &'a str) -> Self {
-                Self { title: Some(s), ..self }
+            pub fn title(self, title: &'a str) -> Self {
+                Self { title: Some(title), ..self }
             }
 
-            /// Set the line stroke/point size.
-            pub fn stroke(self, stroke: u32) -> Self {
-                Self { stroke, ..self }
+            /// Set the inner options.
+            pub fn inner(self, inner: OptInner) -> Self {
+                Self { inner, ..self }
             }
 
-            /// Use dot in the curves.
-            pub fn use_dot(self, dot: bool) -> Self {
-                Self { dot, ..self }
+            inner_opt! {
+                /// Set the line stroke/point size.
+                fn stroke(u32)
+                /// Use grid in the plot.
+                fn grid(bool)
+                /// Show the axis in the plot.
+                fn axis(bool)
+                /// Use dot to present the curves.
+                fn dot(bool)
             }
 
             fn joints(&self) -> Option<[$coord; 5]> {
@@ -83,10 +87,42 @@ macro_rules! impl_opt {
                 Some(fb.pos(angle))
             }
         }
+
+        impl std::ops::Deref for Opt<'_> {
+            type Target = OptInner;
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
     )+};
 }
 
 pub(crate) use impl_opt;
+pub(crate) use inner_opt;
+
+/// 2D/3D plot option.
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
+#[derive(Clone, PartialEq)]
+pub struct OptInner {
+    /// Stroke size
+    pub stroke: u32,
+    /// Show grid
+    pub grid: bool,
+    /// Show axis
+    pub axis: bool,
+    /// Use dot (marker) line
+    pub dot: bool,
+}
+
+impl Default for OptInner {
+    fn default() -> Self {
+        Self { stroke: 5, grid: true, axis: true, dot: false }
+    }
+}
 
 #[inline]
 pub(crate) fn font() -> TextStyle<'static> {
@@ -155,11 +191,14 @@ where
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .margin((8).percent())
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart
-        .configure_mesh()
-        .x_label_style(font())
-        .y_label_style(font())
-        .draw()?;
+    let mut mesh = chart.configure_mesh();
+    if !opt.grid {
+        mesh.disable_mesh();
+    }
+    if !opt.axis {
+        mesh.disable_axes();
+    }
+    mesh.x_label_style(font()).y_label_style(font()).draw()?;
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);

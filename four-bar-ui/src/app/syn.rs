@@ -368,8 +368,7 @@ impl Synthesis {
                         let (fb, angle) = lnk.projs.four_bar_state();
                         plot2d::Opt::from(fb)
                             .angle(angle)
-                            .stroke(lnk.cfg.plot_stroke)
-                            .use_dot(lnk.cfg.plot_dot)
+                            .inner(lnk.cfg.plot.clone())
                     } else {
                         Default::default()
                     };

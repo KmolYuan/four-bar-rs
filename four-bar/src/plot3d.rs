@@ -35,14 +35,16 @@ where
         pb.scale = 0.9;
         pb.into_matrix()
     });
-    chart
-        .configure_axes()
-        .light_grid_style(BLACK.mix(0.15))
-        .label_style(font())
-        .max_light_lines(3)
-        .draw()?;
+    if opt.axis {
+        chart
+            .configure_axes()
+            .light_grid_style(BLACK.mix(0.15))
+            .label_style(font())
+            .max_light_lines(3)
+            .draw()?;
+    }
     // Draw the sphere
-    {
+    if opt.grid {
         let t = (0..=500).map(|t| t as f64 / 500. * TAU);
         let z = t.clone().map(|t| sr * t.cos());
         let y = t.map(|t| sr * t.sin());
@@ -55,11 +57,11 @@ where
             chart.draw_series(LineSeries::new(iter, BLACK.mix(0.1)))?;
         }
     }
-    // Draw axes
+    // Draw scale bar
     for (p, color) in [
-        ((0.3 * sr, 0., 0.), RED),
-        ((0., 0.3 * sr, 0.), GREEN),
-        ((0., 0., 0.3 * sr), BLUE),
+        ((0.1, 0., 0.), RED),
+        ((0., 0.1, 0.), GREEN),
+        ((0., 0., 0.1), BLUE),
     ] {
         chart.draw_series(LineSeries::new([(0., 0., 0.), p], color.stroke_width(5)))?;
     }
