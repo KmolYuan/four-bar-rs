@@ -43,7 +43,7 @@ where
             .max_light_lines(3)
             .draw()?;
     }
-    // Draw the sphere
+    // Draw grid
     if opt.grid {
         let t = (0..=500).map(|t| t as f64 / 500. * TAU);
         let z = t.clone().map(|t| sr * t.cos());
@@ -65,7 +65,7 @@ where
     ] {
         chart.draw_series(LineSeries::new([(0., 0., 0.), p], color.stroke_width(5)))?;
     }
-    // Draw the curves
+    // Draw curves
     for (i, (label, curve)) in curves.into_iter().enumerate() {
         let color = Palette99::pick(i);
         let stroke = opt.stroke;
@@ -99,6 +99,7 @@ where
                 });
         }
     }
+    // Draw linkage
     if let Some(_joints) = joints {
         // TODO
     }

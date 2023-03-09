@@ -192,6 +192,7 @@ where
         .margin((8).percent())
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
     let mut mesh = chart.configure_mesh();
+    // Draw mesh
     if !opt.grid {
         mesh.disable_mesh();
     }
@@ -199,6 +200,7 @@ where
         mesh.disable_axes();
     }
     mesh.x_label_style(font()).y_label_style(font()).draw()?;
+    // Draw curve
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let curve = curve::get_valid_part(curve);
         let color = Palette99::pick(i);
@@ -229,7 +231,12 @@ where
                 });
         }
     }
+    // Draw Linkage
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
+        // Draw scale bar
+        for (p, color) in [((p0[0] + 10., p0[1]), RED), ((p0[0], p0[1] + 10.), BLUE)] {
+            chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], color.stroke_width(5)))?;
+        }
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             chart.draw_series(LineSeries::new(line.iter().map(|&[x, y]| (x, y)), BLACK))?;
         }
