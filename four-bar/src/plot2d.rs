@@ -69,6 +69,8 @@ macro_rules! impl_opt {
             inner_opt! {
                 /// Set the line stroke/point size.
                 fn stroke(u32)
+                /// Set the scale bar size.
+                fn scale_bar(f64)
                 /// Use grid in the plot.
                 fn grid(bool)
                 /// Show the axis in the plot.
@@ -110,6 +112,8 @@ pub(crate) use inner_opt;
 pub struct OptInner {
     /// Stroke size
     pub stroke: u32,
+    /// Scale bar size
+    pub scale_bar: f64,
     /// Show grid
     pub grid: bool,
     /// Show axis
@@ -120,7 +124,13 @@ pub struct OptInner {
 
 impl Default for OptInner {
     fn default() -> Self {
-        Self { stroke: 5, grid: true, axis: true, dot: false }
+        Self {
+            stroke: 5,
+            scale_bar: 0.,
+            grid: true,
+            axis: true,
+            dot: false,
+        }
     }
 }
 
@@ -234,7 +244,7 @@ where
     // Draw Linkage
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
         // Draw scale bar
-        for (p, color) in [((p0[0] + 10., p0[1]), RED), ((p0[0], p0[1] + 10.), BLUE)] {
+        for (p, color) in [((p0[0] + opt.scale_bar, p0[1]), RED), ((p0[0], p0[1] + opt.scale_bar), BLUE)] {
             chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], color.stroke_width(5)))?;
         }
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {

@@ -59,9 +59,9 @@ where
     }
     // Draw scale bar
     for (p, color) in [
-        ((0.1, 0., 0.), RED),
-        ((0., 0.1, 0.), GREEN),
-        ((0., 0., 0.1), BLUE),
+        ((opt.scale_bar, 0., 0.), RED),
+        ((0., opt.scale_bar, 0.), GREEN),
+        ((0., 0., opt.scale_bar), BLUE),
     ] {
         chart.draw_series(LineSeries::new([(0., 0., 0.), p], color.stroke_width(5)))?;
     }
