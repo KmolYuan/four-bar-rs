@@ -5,8 +5,8 @@ const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
 const CSV_FMT: &str = "Delimiter-Separated Values (CSV)";
 const CSV_EXT: &[&str] = &["csv", "txt"];
-const CB_FMT: &str = "Numpy Array (NPY)";
-const CB_EXT: &[&str] = &["npy"];
+const CB_FMT: &str = "Numpy Array Zip (NPZ)";
+const CB_EXT: &[&str] = &["npz"];
 const SVG_FMT: &str = "Scalable Vector Graphics (SVG)";
 const SVG_EXT: &[&str] = &["svg"];
 

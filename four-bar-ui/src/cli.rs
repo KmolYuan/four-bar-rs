@@ -38,14 +38,14 @@ struct Syn {
     #[clap(long)]
     one_by_one: bool,
     /// Provide pre-generated codebook databases, support multiple paths as
-    #[cfg_attr(windows, doc = "\"a.npy;b.npy\"")]
-    #[cfg_attr(not(windows), doc = "\"a.npy:b.npy\"")]
+    #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
+    #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
     #[clap(long)]
     cb: Option<std::ffi::OsString>,
     /// Reference (competitor) path starting from file root with the same
     /// filename, support multiple paths as
-    #[cfg_attr(windows, doc = "\"a.npy;b.npy\"")]
-    #[cfg_attr(not(windows), doc = "\"a.npy:b.npy\"")]
+    #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
+    #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
     #[clap(short, long, default_value = "refer")]
     refer: std::ffi::OsString,
     #[clap(flatten)]
@@ -75,7 +75,7 @@ struct SynCfg {
 
 #[derive(clap::Args)]
 struct CbCfg {
-    /// Output path of the codebook (in NPY format)
+    /// Output path of the codebook (in NPZ format)
     file: PathBuf,
     /// Generate for open curve
     #[clap(long)]
@@ -130,8 +130,8 @@ fn native(files: Vec<PathBuf>) {
 fn codebook(cb: CbCfg) {
     let CbCfg { mut file, is_open, size, res, harmonic, seed } = cb;
     let ext = file.extension().and_then(std::ffi::OsStr::to_str);
-    if !matches!(ext, Some("npy")) {
-        file.set_extension("npy");
+    if !matches!(ext, Some("npz")) {
+        file.set_extension("npz");
     }
     println!("Generate to: {}", file.display());
     println!("open={is_open}, size={size}, res={res}, harmonic={harmonic}");
