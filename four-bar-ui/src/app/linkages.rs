@@ -54,6 +54,8 @@ impl Linkages {
                 ui.ctx().set_visuals(vis);
             });
         });
+        ui.separator();
+        ui.heading("Plot Options");
         unit(ui, "Stroke in plots: ", &mut self.cfg.plot.stroke, 1);
         unit(ui, "Scale bar in plots: ", &mut self.cfg.plot.scale_bar, 1);
         ui.checkbox(&mut self.cfg.plot.grid, "Show grid in plots");
