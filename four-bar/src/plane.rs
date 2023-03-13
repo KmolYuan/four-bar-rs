@@ -114,7 +114,7 @@ fn sort_link(mut fb: [f64; 4]) -> [f64; 4] {
     fb
 }
 
-fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
+pub(crate) fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
     match (l0 + l1 <= l2 + l3, (l0 - l1).abs() >= (l2 - l3).abs()) {
         (true, true) => [0., TAU],
         (true, false) => {

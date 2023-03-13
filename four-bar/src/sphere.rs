@@ -1,6 +1,6 @@
 use crate::plane::*;
-use std::f64::consts::TAU;
 use efd::na;
+use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
 macro_rules! impl_shared_method {
     ($self:ident, $v:expr, $norm:expr) => {
@@ -43,32 +43,39 @@ macro_rules! impl_shared_method {
             v[3] < v[..3].iter().sum()
         }
 
+        /// Reduce angles and spread out to planar coordinate.
+        pub fn to_planar_loop(&$self) -> [f64; 4] {
+            let ls = [$self.l0(), $self.l1(), $self.l2(), $self.l3()].map(|d| if d > PI { TAU - d } else { d });
+            match ls.iter().filter(|d| **d > FRAC_PI_2).count() {
+                0 | 1 => ls,
+                3 => {
+                    let mut ls = ls;
+                    ls.iter_mut()
+                        .filter(|d| **d > FRAC_PI_2)
+                        .take(2)
+                        .for_each(|d| *d = PI - *d);
+                    ls
+                }
+                _ => ls.map(|d| if d > FRAC_PI_2 { PI - d } else { d }),
+            }
+        }
+
+        /// Return the type of this linkage.
+        pub fn ty(&$self) -> FourBarTy {
+            FourBarTy::from($self.to_planar_loop())
+        }
+
         /// Input angle bounds of the linkage.
         ///
         /// Return `None` if unsupported.
-        pub fn angle_bound(&self) -> Option<[f64; 2]> {
-            self.is_valid()
-                .then(|| angle_bound([self.l0(), self.l1(), self.l2(), self.l3()]))
+        pub fn angle_bound(&$self) -> Option<[f64; 2]> {
+            $self.is_valid()
+                .then(|| angle_bound($self.to_planar_loop()))
         }
     };
 }
 
 impl_try_from_slice!(SNormFourBar, SFourBar);
-
-fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
-    // TODO
-    let min = ((l3 - l2).cos() >= (l0 - l1).cos())
-        .then(|| ((l3 - l2).cos() - l1.cos() * l0.cos()) / (l1.sin() * l0.sin()))
-        .filter(|c| (-1.0..1.).contains(c))
-        .map(|c| c.acos())
-        .unwrap_or(0.);
-    let max = ((l2 + l3).cos() <= (l1 + l0).cos())
-        .then(|| ((l2 + l3).cos() - l1.cos() * l0.cos()) / (l1.sin() * l0.sin()))
-        .filter(|c| (-1.0..1.).contains(c))
-        .map(|c| c.acos())
-        .unwrap_or(TAU);
-    [max, min]
-}
 
 /// Spherical normalized four-bar linkage.
 #[cfg_attr(
