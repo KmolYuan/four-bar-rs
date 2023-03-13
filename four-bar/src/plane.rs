@@ -230,7 +230,7 @@ impl FourBarTy {
     /// Name of the type.
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::GCCC => "Grashof double crank (GCCC)",
+            Self::GCCC => "Grashof double crank (Drag-link) (GCCC)",
             Self::GCRR => "Grashof crank rocker (GCRR)",
             Self::GRCR => "Grashof double rocker (GRCR)",
             Self::GRRC => "Grashof rocker crank (GRRC)",
