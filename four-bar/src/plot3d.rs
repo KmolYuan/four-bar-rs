@@ -31,7 +31,7 @@ where
         .margin((8).percent())
         .build_cartesian_3d(-sr..sr, -sr..sr, -sr..sr)?;
     chart.with_projection(|mut pb| {
-        pb.yaw = 0.9;
+        pb.yaw = 80f64.to_radians();
         pb.scale = 0.9;
         pb.into_matrix()
     });
@@ -100,8 +100,44 @@ where
         }
     }
     // Draw linkage
-    if let Some(_joints) = joints {
-        // TODO
+    if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
+        let to_sc = |[x, y, z]: [f64; 3]| [x.hypot(y).atan2(z), y.atan2(x)];
+        let to_cc = |(theta, psi): (f64, f64)| {
+            let x = sr * theta.sin() * psi.cos();
+            let y = sr * theta.sin() * psi.sin();
+            let z = sr * theta.cos();
+            (x, y, z)
+        };
+        let linspace = |start: f64, end: f64| {
+            const N: usize = 150;
+            let step = (end - start) / N as f64;
+            (0..N).map(move |i| start + i as f64 * step)
+        };
+        let link = |a: [f64; 3], b: [f64; 3]| {
+            let [[theta1, psi1], [theta2, psi2]] = [to_sc(a), to_sc(b)];
+            linspace(theta1, theta2)
+                .zip(linspace(psi1, psi2))
+                .map(to_cc)
+        };
+        for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
+            chart.draw_series(LineSeries::new(
+                line.windows(2).flat_map(|w| link(w[0], w[1])),
+                BLACK.stroke_width(3),
+            ))?;
+        }
+        let joints_iter = joints
+            .iter()
+            .map(|&[x, y, z]| Circle::new((x, y, z), 5, BLACK.filled()));
+        chart.draw_series(joints_iter)?;
+        let grounded = joints[..2].iter().map(|&[x, y, z]| {
+            let r = 3e-2;
+            Cubiod::new(
+                [(x - r, y - r, z - r), (x + r, y + r, z + r)],
+                BLACK.mix(0.2),
+                BLACK.filled(),
+            )
+        });
+        chart.draw_series(grounded)?;
     }
     chart
         .configure_series_labels()
