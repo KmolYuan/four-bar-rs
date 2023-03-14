@@ -26,12 +26,13 @@ type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
 /// The minimum input angle bound. (π/16)
 pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
+const BOUND_F: f64 = 6.;
 /// Boundary of the objective variables.
 pub const BOUND: [[f64; 2]; 7] = [
-    [1e-4, 10.],
-    [1e-4, 10.],
-    [1e-4, 10.],
-    [1e-4, 10.],
+    [1. / BOUND_F, BOUND_F],
+    [1. / BOUND_F, BOUND_F],
+    [1. / BOUND_F, BOUND_F],
+    [1. / BOUND_F, BOUND_F],
     [0., TAU],
     [0., TAU],
     [0., TAU],
