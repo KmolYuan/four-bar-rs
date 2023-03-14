@@ -114,6 +114,8 @@ pub struct OptInner {
     pub stroke: u32,
     /// Scale bar size
     pub scale_bar: f64,
+    /// Font size
+    pub font: f64,
     /// Show grid
     pub grid: bool,
     /// Show axis
@@ -127,16 +129,12 @@ impl Default for OptInner {
         Self {
             stroke: 5,
             scale_bar: 0.,
+            font: 24.,
             grid: true,
             axis: true,
             dot: false,
         }
     }
-}
-
-#[inline]
-pub(crate) fn font() -> TextStyle<'static> {
-    ("Times New Roman", 24).into_font().color(&BLACK)
 }
 
 /// Plot the synthesis history.
@@ -145,6 +143,11 @@ where
     B: DrawingBackend,
     H: AsRef<[f64]>,
 {
+    #[inline]
+    fn font() -> TextStyle<'static> {
+        ("Times New Roman", 24).into_font().color(&BLACK)
+    }
+
     let history = history.as_ref();
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
@@ -192,6 +195,7 @@ where
     let curves = curves.into_iter().collect::<Vec<_>>();
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
+    let font = || ("Times New Roman", opt.font).into_font().color(&BLACK);
     let mut chart = ChartBuilder::on(&root);
     if let Some(title) = opt.title {
         chart.caption(title, font());
@@ -244,7 +248,10 @@ where
     // Draw Linkage
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
         // Draw scale bar
-        for (p, color) in [((p0[0] + opt.scale_bar, p0[1]), RED), ((p0[0], p0[1] + opt.scale_bar), BLUE)] {
+        for (p, color) in [
+            ((p0[0] + opt.scale_bar, p0[1]), RED),
+            ((p0[0], p0[1] + opt.scale_bar), BLUE),
+        ] {
             chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], color.stroke_width(5)))?;
         }
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
