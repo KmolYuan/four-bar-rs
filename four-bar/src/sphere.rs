@@ -45,7 +45,9 @@ macro_rules! impl_shared_method {
 
         /// Reduce angles and spread out to planar coordinate.
         pub fn to_planar_loop(&$self) -> [f64; 4] {
-            let ls = [$self.l0(), $self.l1(), $self.l2(), $self.l3()].map(|d| if d > PI { TAU - d } else { d });
+            let ls = [$self.l0(), $self.l1(), $self.l2(), $self.l3()]
+                .map(|d| d.rem_euclid(TAU))
+                .map(|d| if d > PI { TAU - d } else { d });
             match ls.iter().filter(|d| **d > FRAC_PI_2).count() {
                 0 | 1 => ls,
                 3 => {
