@@ -32,7 +32,7 @@ where
         .margin((8).percent())
         .build_cartesian_3d(-sr..sr, -sr..sr, -sr..sr)?;
     chart.with_projection(|mut pb| {
-        pb.yaw = 80f64.to_radians();
+        pb.yaw = 45f64.to_radians();
         pb.scale = 0.9;
         pb.into_matrix()
     });
@@ -74,7 +74,7 @@ where
             if i % 2 == 1 {
                 let series = curve
                     .iter()
-                    .map(|&[x, y, z]| Circle::new((x, y, z), stroke, &color));
+                    .map(|&[x, y, z]| Circle::new((x, z, y), stroke, &color));
                 chart
                     .draw_series(series)?
                     .label(label)
@@ -82,7 +82,7 @@ where
             } else {
                 let series = curve
                     .iter()
-                    .map(|&[x, y, z]| TriangleMarker::new((x, y, z), stroke, &color));
+                    .map(|&[x, y, z]| TriangleMarker::new((x, z, y), stroke, &color));
                 chart
                     .draw_series(series)?
                     .label(label)
@@ -91,7 +91,7 @@ where
         } else {
             chart
                 .draw_series(LineSeries::new(
-                    curve.iter().map(|&[x, y, z]| (x, y, z)),
+                    curve.iter().map(|&[x, y, z]| (x, z, y)),
                     color.stroke_width(stroke),
                 ))?
                 .label(label)
@@ -122,18 +122,20 @@ where
         };
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             chart.draw_series(LineSeries::new(
-                line.windows(2).flat_map(|w| link(w[0], w[1])),
+                line.windows(2)
+                    .flat_map(|w| link(w[0], w[1]))
+                    .map(|(x, y, z)| (x, z, y)),
                 BLACK.stroke_width(3),
             ))?;
         }
         let joints_iter = joints
             .iter()
-            .map(|&[x, y, z]| Circle::new((x, y, z), 5, BLACK.filled()));
+            .map(|&[x, y, z]| Circle::new((x, z, y), 5, BLACK.filled()));
         chart.draw_series(joints_iter)?;
         let grounded = joints[..2].iter().map(|&[x, y, z]| {
             let r = 3e-2;
             Cubiod::new(
-                [(x - r, y - r, z - r), (x + r, y + r, z + r)],
+                [(x - r, z - r, y - r), (x + r, z + r, y + r)],
                 BLACK.mix(0.2),
                 BLACK.filled(),
             )

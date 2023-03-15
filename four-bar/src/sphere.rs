@@ -212,11 +212,15 @@ impl SFourBar {
     }
 
     /// Create a normalized linkage from a vector in radians.
+    ///
+    /// Order: `[l0, l1, l2, l3, l4, g]`
     pub const fn new_norm(v: [f64; 6], inv: bool) -> Self {
         Self::from_norm(SNormFourBar::new(v, inv))
     }
 
     /// Create a normalized linkage from a vector in degrees.
+    ///
+    /// Order: `[l0, l1, l2, l3, l4, g]`
     pub fn new_norm_degrees(v: [f64; 6], inv: bool) -> Self {
         Self::from_norm(SNormFourBar::new_degrees(v, inv))
     }

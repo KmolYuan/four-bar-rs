@@ -289,6 +289,8 @@ impl NormFourBar {
     pub const ZERO: Self = Self::new([0.; 5], false);
 
     /// Create a normalized linkage from a vector.
+    ///
+    /// Order: `[l0, l2, l3, l4, g]`
     pub const fn new(v: [f64; 5], inv: bool) -> Self {
         Self { v, inv }
     }
@@ -371,6 +373,8 @@ impl FourBar {
     }
 
     /// Create a normalized linkage from a vector.
+    ///
+    /// Order: `[l0, l2, l3, l4, g]`
     pub const fn new_norm(v: [f64; 5], inv: bool) -> Self {
         Self::from_norm(NormFourBar::new(v, inv))
     }
