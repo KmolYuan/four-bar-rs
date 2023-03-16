@@ -21,6 +21,7 @@ where
     root.fill(&WHITE)?;
     let opt = opt.into();
     let joints = opt.joints();
+    let curves = curves.into_iter().collect::<Vec<_>>();
     let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
     let font = || font.clone();
     let mut chart = ChartBuilder::on(&root);
@@ -68,7 +69,7 @@ where
         chart.draw_series(LineSeries::new([(0., 0., 0.), p], color.stroke_width(5)))?;
     }
     // Draw curves
-    for (i, (label, curve)) in curves.into_iter().enumerate() {
+    for (i, &(label, curve)) in curves.iter().enumerate() {
         let color = Palette99::pick(i);
         let stroke = opt.stroke;
         if opt.dot {
@@ -143,12 +144,14 @@ where
         });
         chart.draw_series(grounded)?;
     }
-    chart
-        .configure_series_labels()
-        .position(SeriesLabelPosition::LowerRight)
-        .background_style(WHITE)
-        .border_style(BLACK)
-        .label_font(font())
-        .draw()?;
+    if curves.len() > 1 {
+        chart
+            .configure_series_labels()
+            .position(SeriesLabelPosition::LowerRight)
+            .background_style(WHITE)
+            .border_style(BLACK)
+            .label_font(font())
+            .draw()?;
+    }
     Ok(())
 }

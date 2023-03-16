@@ -266,7 +266,7 @@ where
             .map(|&[x, y]| Circle::new((x, y), 5, BLACK.filled()));
         chart.draw_series(joints)?;
     }
-    if curves.iter().filter(|(_, c)| !c.is_empty()).count() > 1 {
+    if curves.len() > 1 {
         chart
             .configure_series_labels()
             .position(SeriesLabelPosition::MiddleMiddle)
