@@ -71,6 +71,8 @@ macro_rules! impl_opt {
                 fn stroke(u32)
                 /// Set the scale bar size.
                 fn scale_bar(f64)
+                /// Set font size.
+                fn font(f64)
                 /// Use grid in the plot.
                 fn grid(bool)
                 /// Show the axis in the plot.
@@ -143,11 +145,8 @@ where
     B: DrawingBackend,
     H: AsRef<[f64]>,
 {
-    #[inline]
-    fn font() -> TextStyle<'static> {
-        ("Times New Roman", 24).into_font().color(&BLACK)
-    }
-
+    let font = ("Times New Roman", 24).into_font().color(&BLACK);
+    let font = || font.clone();
     let history = history.as_ref();
     let root = backend.into_drawing_area();
     root.fill(&WHITE)?;
@@ -195,7 +194,8 @@ where
     let curves = curves.into_iter().collect::<Vec<_>>();
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
-    let font = || ("Times New Roman", opt.font).into_font().color(&BLACK);
+    let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
+    let font = || font.clone();
     let mut chart = ChartBuilder::on(&root);
     if let Some(title) = opt.title {
         chart.caption(title, font());
@@ -269,7 +269,7 @@ where
     if curves.iter().filter(|(_, c)| !c.is_empty()).count() > 1 {
         chart
             .configure_series_labels()
-            .position(SeriesLabelPosition::LowerRight)
+            .position(SeriesLabelPosition::MiddleMiddle)
             .background_style(WHITE)
             .border_style(BLACK)
             .label_font(font())

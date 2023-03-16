@@ -21,7 +21,8 @@ where
     root.fill(&WHITE)?;
     let opt = opt.into();
     let joints = opt.joints();
-    let font = || ("Times New Roman", opt.font).into_font().color(&BLACK);
+    let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
+    let font = || font.clone();
     let mut chart = ChartBuilder::on(&root);
     if let Some(title) = opt.title {
         chart.caption(title, font());

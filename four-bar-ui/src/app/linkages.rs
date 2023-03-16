@@ -58,6 +58,7 @@ impl Linkages {
         ui.heading("Plot Options");
         unit(ui, "Stroke in plots: ", &mut self.cfg.plot.stroke, 1);
         unit(ui, "Scale bar in plots: ", &mut self.cfg.plot.scale_bar, 1);
+        unit(ui, "Font size in plots: ", &mut self.cfg.plot.font, 1);
         ui.checkbox(&mut self.cfg.plot.grid, "Show grid in plots");
         ui.checkbox(&mut self.cfg.plot.axis, "Show axis in plots");
         ui.checkbox(&mut self.cfg.plot.dot, "Use dot curve in plots");
