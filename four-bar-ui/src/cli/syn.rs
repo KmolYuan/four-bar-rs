@@ -129,6 +129,7 @@ fn run<S>(
             std::fs::remove_dir_all(&root)?;
         }
         std::fs::create_dir(&root)?;
+        let t0 = Instant::now();
         let use_log = cfg.log > 0;
         let mut history = Vec::with_capacity(if use_log { cfg.gen } else { 0 });
         let mut s = mh::Solver::build(setting, func)
@@ -142,10 +143,15 @@ fn run<S>(
                 history.push(ctx.best_f);
                 pb.set_position(ctx.gen);
             });
+        let mut cb_fb = None;
         if let Some(candi) = matches!(mode, planar_syn::Mode::Closed | planar_syn::Mode::Open)
             .then(|| cb.fetch_raw(&target, cfg.pop))
             .filter(|candi| !candi.is_empty())
         {
+            {
+                let (err, fb) = &candi[0];
+                cb_fb.replace((format!("Catalog ({err:.04})"), fb.curve(cfg.res)));
+            }
             s = s.pop_num(candi.len());
             let fitness = candi.iter().map(|(f, _)| *f).collect();
             let pool = candi
@@ -156,7 +162,6 @@ fn run<S>(
         } else {
             s = s.pop_num(cfg.pop);
         }
-        let t0 = Instant::now();
         let s = s.solve_single_thread(false)?;
         let t1 = t0.elapsed();
         {
@@ -182,7 +187,7 @@ fn run<S>(
             _ => err,
         };
         let legend = format!("Synthesized ({err:.04})");
-        let mut curves = vec![("Target", target.as_slice()), (&legend, &curve)];
+        let mut curves = vec![("Target", target.as_slice())];
         {
             let path = root.join(format!("{title}_linkage.svg"));
             let svg = plot2d::SVGBackend::new(&path, (800, 800));
@@ -203,6 +208,12 @@ fn run<S>(
                 Ok((format!("Competitor ({err:.04})"), c))
             })
             .collect::<Result<Vec<_>, _>>()?;
+        let cb_fb = cb_fb.map(|(s, c)| {
+            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
+            (s, efd.as_trans().to(efd_target.as_trans()).transform(c))
+        });
+        curves.extend(cb_fb.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
+        curves.push((&legend, &curve));
         curves.extend(refer.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
         {
             let path = root.join(format!("{title}_result.svg"));

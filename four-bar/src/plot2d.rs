@@ -132,7 +132,7 @@ impl Default for OptInner {
             stroke: 5,
             scale_bar: 0.,
             font: 24.,
-            grid: true,
+            grid: false,
             axis: true,
             dot: false,
         }
