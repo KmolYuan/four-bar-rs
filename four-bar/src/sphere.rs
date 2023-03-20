@@ -91,9 +91,9 @@ fn planar_loop(ls: [f64; 4]) -> [f64; 4] {
                 *longest = PI - *longest;
             }
         }
-        3 => {
+        3 if *shorter[0] != FRAC_PI_2 => {
             longer.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-            longer.into_iter().rev().take(2).for_each(|d| *d = PI - *d);
+            longer.into_iter().skip(1).for_each(|d| *d = PI - *d);
         }
         _ => longer.into_iter().for_each(|d| *d = PI - *d),
     }
