@@ -81,7 +81,7 @@ fn planar_loop(ls: [f64; 4]) -> [f64; 4] {
     }
     match longer.len() {
         1 => {
-            let longest = longer.remove(0);
+            let longest = longer.into_iter().next().unwrap();
             let d = shorter
                 .into_iter()
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
