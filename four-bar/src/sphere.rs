@@ -38,7 +38,7 @@ macro_rules! impl_shared_method {
 
         /// Return true if the linkage length is valid.
         pub fn is_valid(&$self) -> bool {
-            let mut v = [$self.l0(), $self.l1(), $self.l2(), $self.l3()];
+            let mut v = $self.to_planar_loop();
             v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
             v[3] < v[..3].iter().sum()
         }
@@ -48,9 +48,9 @@ macro_rules! impl_shared_method {
             let ls = [$self.l0(), $self.l1(), $self.l2(), $self.l3()]
                 .map(|d| d.rem_euclid(TAU))
                 .map(|d| if d > PI { TAU - d } else { d });
-            match ls.iter().filter(|d| **d > FRAC_PI_2).count() {
-                0 | 1 => ls,
-                3 => {
+            match (ls.contains(&FRAC_PI_2), ls.iter().filter(|d| **d > FRAC_PI_2).count()) {
+                (false, 0 | 1) => ls,
+                (false, 3) => {
                     let mut ls = ls;
                     ls.iter_mut()
                         .filter(|d| **d > FRAC_PI_2)
@@ -71,8 +71,7 @@ macro_rules! impl_shared_method {
         ///
         /// Return `None` if unsupported.
         pub fn angle_bound(&$self) -> Option<[f64; 2]> {
-            $self.is_valid()
-                .then(|| angle_bound($self.to_planar_loop()))
+            $self.is_valid().then(|| angle_bound($self.to_planar_loop()))
         }
     };
 }
