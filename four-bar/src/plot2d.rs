@@ -269,7 +269,7 @@ where
     if curves.len() > 1 {
         chart
             .configure_series_labels()
-            .position(SeriesLabelPosition::MiddleMiddle)
+            .position(SeriesLabelPosition::LowerRight)
             .background_style(WHITE)
             .border_style(BLACK)
             .label_font(font())
