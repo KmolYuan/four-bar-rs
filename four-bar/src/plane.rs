@@ -162,7 +162,7 @@ where
 /// Type of the four-bar linkage.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FourBarTy {
-    /// Grashof double crank
+    /// Grashof double crank (Drag-link)
     GCCC,
     /// Grashof crank rocker
     GCRR,
@@ -258,6 +258,15 @@ impl FourBarTy {
 }
 
 /// Normalized four-bar linkage.
+///
+/// # Parameters
+///
+/// + Ground link `l0`
+/// + Driver link `l1=1`
+/// + Coupler link `l2`
+/// + Follower link `l3`
+/// + Extanded link `l4`
+/// + Coupler link angle `g`
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
@@ -332,6 +341,18 @@ impl NormFourBar {
 }
 
 /// Four-bar linkage with offset.
+///
+/// # Parameters
+///
+/// + X offset `p0x`
+/// + Y offset `p0y`
+/// + Angle offset `a`
+/// + Ground link `l0`
+/// + Driver link `l1`
+/// + Coupler link `l2`
+/// + Follower link `l3`
+/// + Extanded link `l4`
+/// + Coupler link angle `g`
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),

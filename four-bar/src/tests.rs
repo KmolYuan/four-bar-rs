@@ -1,9 +1,42 @@
 #[test]
-fn test_anti_symmetry_extension() {
+fn anti_symmetry_extension() {
     assert_eq!(
         crate::curve::closed_anti_sym_ext(OPEN_CURVE),
         OPEN_CURVE_ANS
     );
+}
+
+/* Chiang, C. H. (1984). ON THE CLASSIFICATION OF SPHERICAL FOUR-BAR LINKAGES
+ * (Vol. 19, Issue 3). */
+#[test]
+fn spherical_loop_reduce() {
+    use crate::{FourBarTy::*, SNormFourBar};
+    use approx::assert_abs_diff_eq;
+
+    macro_rules! assert_fb_eq {
+        ([$l0:literal, $l1:literal, $l2:literal, $l3:literal],
+         [$pl0:literal, $pl1:literal, $pl2:literal, $pl3:literal],
+         $ty:expr) => {
+            let fb = SNormFourBar::new_degrees([$l0, $l1, $l2, $l3, 0., 0.], false);
+            let [l0, l1, l2, l3] = fb.planar_loop();
+            assert_abs_diff_eq!(l0.to_degrees(), $pl0, epsilon = 1e-12);
+            assert_abs_diff_eq!(l1.to_degrees(), $pl1, epsilon = 1e-12);
+            assert_abs_diff_eq!(l2.to_degrees(), $pl2, epsilon = 1e-12);
+            assert_abs_diff_eq!(l3.to_degrees(), $pl3, epsilon = 1e-12);
+            assert_eq!(fb.ty(), $ty);
+        };
+    }
+
+    assert_fb_eq!([80., 20., 60., 75.], [80., 20., 60., 75.], GCRR);
+    assert_fb_eq!([30., 60., 60., 75.], [30., 60., 60., 75.], GCCC);
+    assert_fb_eq!([80., 75., 25., 70.], [80., 75., 25., 70.], GRCR);
+    assert_fb_eq!([85., 75., 65., 70.], [85., 75., 65., 70.], RRR1);
+    assert_fb_eq!([100., 160., 120., 105.], [80., 20., 60., 75.], GCRR);
+    assert_fb_eq!([120., 25., 110., 100.], [60., 25., 70., 100.], GCRR);
+    assert_fb_eq!([155., 60., 70., 80.], [25., 60., 70., 100.], GCCC);
+    assert_fb_eq!([155., 50., 65., 80.], [25., 50., 65., 100.], RRR4);
+    assert_fb_eq!([60., 80., 25., 110.], [60., 100., 25., 70.], GRCR);
+    assert_fb_eq!([100., 40., 90., 60.], [80., 40., 90., 60.], GCRR);
 }
 
 const OPEN_CURVE: &[[f64; 2]] = &[

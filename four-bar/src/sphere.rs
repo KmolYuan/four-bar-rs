@@ -1,3 +1,4 @@
+pub use crate::plane::FourBarTy;
 use crate::plane::*;
 use efd::na;
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
@@ -38,47 +39,80 @@ macro_rules! impl_shared_method {
 
         /// Return true if the linkage length is valid.
         pub fn is_valid(&$self) -> bool {
-            let mut v = $self.to_planar_loop();
+            let mut v = $self.planar_loop();
             v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
             v[3] < v[..3].iter().sum()
         }
 
         /// Reduce angles and spread out to planar coordinate.
-        pub fn to_planar_loop(&$self) -> [f64; 4] {
-            let ls = [$self.l0(), $self.l1(), $self.l2(), $self.l3()]
-                .map(|d| d.rem_euclid(TAU))
-                .map(|d| if d > PI { TAU - d } else { d });
-            match (ls.contains(&FRAC_PI_2), ls.iter().filter(|d| **d > FRAC_PI_2).count()) {
-                (false, 0 | 1) => ls,
-                (false, 3) => {
-                    let mut ls = ls;
-                    ls.iter_mut()
-                        .filter(|d| **d > FRAC_PI_2)
-                        .take(2)
-                        .for_each(|d| *d = PI - *d);
-                    ls
-                }
-                _ => ls.map(|d| if d > FRAC_PI_2 { PI - d } else { d }),
-            }
+        pub fn planar_loop(&$self) -> [f64; 4] {
+            planar_loop([$self.l0(), $self.l1(), $self.l2(), $self.l3()])
         }
 
         /// Return the type of this linkage.
         pub fn ty(&$self) -> FourBarTy {
-            FourBarTy::from($self.to_planar_loop())
+            FourBarTy::from($self.planar_loop())
         }
 
         /// Input angle bounds of the linkage.
         ///
         /// Return `None` if unsupported.
         pub fn angle_bound(&$self) -> Option<[f64; 2]> {
-            $self.is_valid().then(|| angle_bound($self.to_planar_loop()))
+            $self.is_valid().then(|| angle_bound($self.planar_loop()))
         }
     };
 }
 
 impl_try_from_slice!(SNormFourBar, SFourBar);
 
+fn planar_loop(ls: [f64; 4]) -> [f64; 4] {
+    let ls = ls
+        .map(|d| d.rem_euclid(TAU))
+        .map(|d| if d > PI { TAU - d } else { d });
+    match ls.iter().filter(|d| **d > FRAC_PI_2).count() {
+        0 => ls,
+        1 | 3 if !ls.contains(&FRAC_PI_2) => {
+            let mut ls = ls;
+            let mut longer = Vec::new();
+            let mut shorter = Vec::new();
+            for d in ls.iter_mut() {
+                if *d > FRAC_PI_2 {
+                    longer.push(d);
+                } else {
+                    shorter.push(d);
+                }
+            }
+            if longer.len() == 1 {
+                let longest = longer.remove(0);
+                let d = shorter
+                    .into_iter()
+                    .max_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap();
+                let d_changed = PI - *d;
+                if d_changed < *longest {
+                    *d = d_changed;
+                    *longest = PI - *longest;
+                }
+            } else {
+                longer.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+                longer.into_iter().rev().take(2).for_each(|d| *d = PI - *d);
+            }
+            ls
+        }
+        _ => ls.map(|d| if d > FRAC_PI_2 { PI - d } else { d }),
+    }
+}
+
 /// Spherical normalized four-bar linkage.
+///
+/// # Parameters
+///
+/// + Ground link `l0`
+/// + Driver link `l1`
+/// + Coupler link `l2`
+/// + Follower link `l3`
+/// + Extanded link `l4`
+/// + Coupler link angle `g`
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),

@@ -32,6 +32,9 @@ default-features = false
 features = ["svg_backend", "all_series", "all_elements"]
 optional = true
 
+[dev-dependencies]
+approx = "0.5"
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
