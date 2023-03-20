@@ -66,41 +66,38 @@ macro_rules! impl_shared_method {
 impl_try_from_slice!(SNormFourBar, SFourBar);
 
 fn planar_loop(ls: [f64; 4]) -> [f64; 4] {
-    let ls = ls
+    let mut ls = ls
         .map(|d| d.rem_euclid(TAU))
         .map(|d| if d > PI { TAU - d } else { d });
-    match ls.iter().filter(|d| **d > FRAC_PI_2).count() {
-        0 => ls,
-        1 | 3 if !ls.contains(&FRAC_PI_2) => {
-            let mut ls = ls;
-            let mut longer = Vec::new();
-            let mut shorter = Vec::new();
-            for d in ls.iter_mut() {
-                if *d > FRAC_PI_2 {
-                    longer.push(d);
-                } else {
-                    shorter.push(d);
-                }
-            }
-            if longer.len() == 1 {
-                let longest = longer.remove(0);
-                let d = shorter
-                    .into_iter()
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap();
-                let d_changed = PI - *d;
-                if d_changed < *longest {
-                    *d = d_changed;
-                    *longest = PI - *longest;
-                }
-            } else {
-                longer.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-                longer.into_iter().rev().take(2).for_each(|d| *d = PI - *d);
-            }
-            ls
+    let mut longer = Vec::new();
+    let mut shorter = Vec::new();
+    for d in ls.iter_mut() {
+        if *d > FRAC_PI_2 {
+            longer.push(d);
+        } else {
+            shorter.push(d);
         }
-        _ => ls.map(|d| if d > FRAC_PI_2 { PI - d } else { d }),
     }
+    match longer.len() {
+        1 => {
+            let longest = longer.remove(0);
+            let d = shorter
+                .into_iter()
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap();
+            let d_changed = PI - *d;
+            if d_changed < *longest {
+                *d = d_changed;
+                *longest = PI - *longest;
+            }
+        }
+        3 => {
+            longer.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+            longer.into_iter().rev().take(2).for_each(|d| *d = PI - *d);
+        }
+        _ => longer.into_iter().for_each(|d| *d = PI - *d),
+    }
+    ls
 }
 
 /// Spherical normalized four-bar linkage.
