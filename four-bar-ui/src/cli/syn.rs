@@ -150,7 +150,8 @@ fn run<S>(
         {
             {
                 let (err, fb) = &candi[0];
-                cb_fb.replace((format!("Catalog ({err:.04})"), fb.curve(cfg.res)));
+                let legend = format!("Catalog ({err:.04}, harmonic={})", cb.harmonic());
+                cb_fb.replace((legend, fb.curve(cfg.res)));
             }
             s = s.pop_num(candi.len());
             let fitness = candi.iter().map(|(f, _)| *f).collect();
