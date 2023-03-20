@@ -65,6 +65,7 @@ macro_rules! impl_shared_method {
 
 impl_try_from_slice!(SNormFourBar, SFourBar);
 
+/* Unit test at: `crate::tests::spherical_loop_reduce()` */
 fn planar_loop(ls: [f64; 4]) -> [f64; 4] {
     let mut ls = ls
         .map(|d| d.rem_euclid(TAU))
