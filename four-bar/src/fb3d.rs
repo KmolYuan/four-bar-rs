@@ -1,7 +1,7 @@
-pub use crate::plane::FourBarTy;
-use crate::plane::*;
+pub use crate::fb2d::FourBarTy;
+use crate::fb2d::*;
 use efd::na;
-use std::f64::consts::{FRAC_PI_2, PI, TAU};
+use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
 macro_rules! impl_shared_method {
     ($self:ident, $v:expr, $norm:expr) => {
@@ -285,6 +285,21 @@ impl SFourBar {
     pub const fn with_inv(mut self, inv: bool) -> Self {
         self.norm.inv = inv;
         self
+    }
+
+    /// An example crank rocker.
+    pub const fn example() -> Self {
+        Self::from_norm(SNormFourBar::new(
+            [
+                FRAC_PI_2,
+                0.6108652381980153,
+                1.2217304763960306,
+                1.2217304763960306,
+                FRAC_PI_4,
+                0.5235987755982988,
+            ],
+            false,
+        ))
     }
 
     impl_parm_method! {

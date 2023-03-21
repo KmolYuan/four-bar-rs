@@ -204,6 +204,14 @@ where
 
 impl_opt! {
     /// Drawing option of four-bar linkage and its input angle.
+    ///
+    /// ```
+    /// use four_bar::{plot2d::Opt, FourBar};
+    /// // From linkage
+    /// let opt = Opt::from(FourBar::example());
+    /// // Without linkage
+    /// let opt = Opt::new();
+    /// ```
     struct Opt { FourBar, [f64; 2] }
 }
 
