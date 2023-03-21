@@ -13,7 +13,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::semicolon_if_nothing_returned)]
 
-pub use crate::{defect::*, fb2d::*, fb3d::*};
+pub use crate::{fb2d::*, fb3d::*};
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
@@ -24,7 +24,6 @@ pub mod cb;
 #[cfg(feature = "csv")]
 pub mod csv;
 pub mod curve;
-mod defect;
 mod fb2d;
 mod fb3d;
 #[cfg(feature = "plot")]
