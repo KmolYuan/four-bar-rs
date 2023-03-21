@@ -27,11 +27,11 @@ pub mod curve;
 mod defect;
 mod fb2d;
 mod fb3d;
-pub mod planar_syn;
 #[cfg(feature = "plot")]
 pub mod plot2d;
 #[cfg(feature = "plot")]
 pub mod plot3d;
-pub mod spherical_syn;
+pub mod syn2d;
+pub mod syn3d;
 #[cfg(test)]
 mod tests;

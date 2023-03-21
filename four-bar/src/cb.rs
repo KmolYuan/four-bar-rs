@@ -1,6 +1,6 @@
 //! Create a codebook database for four-bar linkages.
 use self::distr::Code;
-use super::{planar_syn::Mode, NormFourBar};
+use super::{syn2d::Mode, NormFourBar};
 use efd::{Efd, EfdDim, Trans, Transform, D2};
 use mh::{
     random::{Rng, SeedOption},
