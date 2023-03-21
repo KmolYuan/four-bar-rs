@@ -248,7 +248,7 @@ where
     let mut chart = chart
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
-        .margin((8).percent())
+        .margin((2).percent())
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
     let mut mesh = chart.configure_mesh();
     // Draw mesh
