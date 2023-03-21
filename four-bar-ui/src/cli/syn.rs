@@ -4,7 +4,9 @@ use four_bar::{
     cb::FbCodebook,
     csv, efd,
     mh::{self, rayon::single_thread},
-    planar_syn, plot2d, FourBar,
+    planar_syn,
+    plot2d::{self, IntoDrawingArea as _},
+    FourBar,
 };
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
@@ -168,7 +170,7 @@ fn run<S>(
         {
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot2d::SVGBackend::new(&path, (800, 600));
-            plot2d::history(svg, history)?;
+            plot2d::history(&svg.into_drawing_area(), history)?;
         }
         let (err, ans) = s.result();
         {
@@ -187,14 +189,6 @@ fn run<S>(
             }
             _ => err,
         };
-        let legend = format!("Synthesized ({err:.04})");
-        let mut curves = vec![("Target", target.as_slice())];
-        {
-            let path = root.join(format!("{title}_linkage.svg"));
-            let svg = plot2d::SVGBackend::new(&path, (800, 800));
-            let opt = plot2d::Opt::from(ans).dot(true);
-            plot2d::plot(svg, curves.clone(), opt)?;
-        }
         let refer = refer
             .iter()
             .map(|f| file.parent().unwrap().join(f).join(format!("{title}.ron")))
@@ -213,16 +207,19 @@ fn run<S>(
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             (s, efd.as_trans().to(efd_target.as_trans()).transform(c))
         });
+        let mut curves = vec![("Target", target.as_slice())];
+        let path = root.join(format!("{title}_result.svg"));
+        let svg = plot2d::SVGBackend::new(&path, (1600, 800));
+        let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
+        let opt = plot2d::Opt::from(ans).dot(true).axis(false).scale_bar(10.);
+        plot2d::plot(&root_l, curves.clone(), opt)?;
         curves.extend(cb_fb.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
+        let legend = format!("Synthesized ({err:.04})");
         curves.push((&legend, &curve));
         curves.extend(refer.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
-        {
-            let path = root.join(format!("{title}_result.svg"));
-            let svg = plot2d::SVGBackend::new(&path, (800, 800));
-            let title = format!("Harmonic: {h} | Time: {t1:?}");
-            let opt = plot2d::Opt::new().dot(true).title(&title);
-            plot2d::plot(svg, curves, opt)?;
-        }
+        let title = format!("Harmonic: {h} | Time: {t1:?}");
+        let opt = plot2d::Opt::new().dot(true).title(&title);
+        plot2d::plot(&root_r, curves, opt)?;
         pb.finish();
         Ok(())
     };
@@ -282,7 +279,7 @@ fn draw_midway(
         let path = root.join(format!("{title}_{i}_linkage.svg"));
         let svg = plot2d::SVGBackend::new(&path, (800, 800));
         let opt = plot2d::Opt::from(ans).dot(true);
-        plot2d::plot(svg, curves, opt)?;
+        plot2d::plot(&svg.into_drawing_area(), curves, opt)?;
     }
     Ok(())
 }
