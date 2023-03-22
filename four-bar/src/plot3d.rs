@@ -19,22 +19,24 @@ impl_opt! {
 /// let opt = Opt::new().axis(false).scale_bar(10.);
 /// let mut buf = String::new();
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
-/// plot(&svg.into_drawing_area(), 1., curves, opt).unwrap();
+/// plot(svg, 1., curves, opt).unwrap();
 /// ```
-pub fn plot<'a, B, C, O>(root: &Canvas<B>, sr: f64, curves: C, opt: O) -> PResult<(), B>
+pub fn plot<'a, B, R, C, O>(root: R, sr: f64, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
+    Canvas<B>: From<R>,
     C: IntoIterator<Item = (&'a str, &'a [[f64; 3]])>,
-    O: Into<Opt<'a>>,
+    Opt<'a>: From<O>,
 {
     debug_assert!(sr > 0.);
+    let root = Canvas::from(root);
     root.fill(&WHITE)?;
-    let opt = opt.into();
+    let opt = Opt::from(opt);
     let joints = opt.joints();
     let curves = curves.into_iter().collect::<Vec<_>>();
     let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
     let font = || font.clone();
-    let mut chart = ChartBuilder::on(root);
+    let mut chart = ChartBuilder::on(&root);
     if let Some(title) = opt.title {
         chart.caption(title, font());
     }

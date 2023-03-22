@@ -1,10 +1,5 @@
 use self::impl_io::*;
-use four_bar::{
-    cb::FbCodebook,
-    csv::dump_csv,
-    plot2d::{self, IntoDrawingArea},
-    FourBar,
-};
+use four_bar::{cb::FbCodebook, csv::dump_csv, plot2d, FourBar};
 
 const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
@@ -197,17 +192,17 @@ pub(crate) fn save_ron(fb: &FourBar, path: &str) {
 pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     let mut buf = String::new();
     let svg = plot2d::SVGBackend::with_string(&mut buf, (800, 600));
-    plot2d::history(&svg.into_drawing_area(), history).unwrap();
+    plot2d::history(svg, history).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }
 
 pub(crate) fn save_curve_ask<'a, C, O>(curves: C, opt: O, name: &str)
 where
     C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
-    O: Into<plot2d::Opt<'a>>,
+    plot2d::Opt<'a>: From<O>,
 {
     let mut buf = String::new();
     let svg = plot2d::SVGBackend::with_string(&mut buf, (800, 800));
-    plot2d::plot(&svg.into_drawing_area(), curves, opt).unwrap();
+    plot2d::plot(svg, curves, opt).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }

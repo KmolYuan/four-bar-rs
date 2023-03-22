@@ -8,7 +8,7 @@
 //! # let opt = None;
 //! let mut buf = String::new();
 //! let svg = SVGBackend::with_string(&mut buf, (800, 800));
-//! plot(&svg.into_drawing_area(), curves, opt).unwrap();
+//! plot(svg, curves, opt).unwrap();
 //! ```
 //!
 //! # Sub-plots Example
@@ -20,19 +20,18 @@
 //! let mut buf = String::new();
 //! let svg = SVGBackend::with_string(&mut buf, (800, 800));
 //! let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
-//! plot(&root_l, curves, opt).unwrap();
+//! plot(root_l, curves, opt).unwrap();
 //! # let curves = [("", [[0.; 2]].as_slice())];
 //! # let opt = None;
-//! plot(&root_r, curves, opt).unwrap();
+//! plot(root_r, curves, opt).unwrap();
 //! ```
 
 use crate::*;
-use plotters::coord::Shift;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
-pub(crate) type Canvas<B> = DrawingArea<B, Shift>;
+pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
 
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
@@ -168,14 +167,16 @@ impl Default for OptInner {
 }
 
 /// Plot the synthesis history.
-pub fn history<B, H>(root: &Canvas<B>, history: H) -> PResult<(), B>
+pub fn history<B, R, H>(root: R, history: H) -> PResult<(), B>
 where
     B: DrawingBackend,
+    Canvas<B>: From<R>,
     H: AsRef<[f64]>,
 {
     let font = ("Times New Roman", 24).into_font().color(&BLACK);
     let font = || font.clone();
     let history = history.as_ref();
+    let root = Canvas::from(root);
     root.fill(&WHITE)?;
     let best_f = history.last().unwrap();
     let cap = format!("Convergence Plot (Best Fitness: {best_f:.04})");
@@ -183,7 +184,7 @@ where
         .iter()
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
-    let mut chart = ChartBuilder::on(root)
+    let mut chart = ChartBuilder::on(&root)
         .caption(cap, font())
         .set_label_area_size(LabelAreaPosition::Left, (10).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (6).percent())
@@ -225,23 +226,25 @@ impl_opt! {
 /// let opt = Opt::new().axis(false).scale_bar(10.);
 /// let mut buf = String::new();
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
-/// plot(&svg.into_drawing_area(), curves, opt).unwrap();
+/// plot(svg, curves, opt).unwrap();
 /// ```
-pub fn plot<'a, B, C, O>(root: &Canvas<B>, curves: C, opt: O) -> PResult<(), B>
+pub fn plot<'a, B, R, C, O>(root: R, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
+    Canvas<B>: From<R>,
     C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
-    O: Into<Opt<'a>>,
+    Opt<'a>: From<O>,
 {
+    let root = Canvas::from(root);
     root.fill(&WHITE)?;
-    let opt = opt.into();
+    let opt = Opt::from(opt);
     let joints = opt.joints();
     let curves = curves.into_iter().collect::<Vec<_>>();
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
     let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
     let font = || font.clone();
-    let mut chart = ChartBuilder::on(root);
+    let mut chart = ChartBuilder::on(&root);
     if let Some(title) = opt.title {
         chart.caption(title, font());
     }
