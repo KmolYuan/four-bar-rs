@@ -85,7 +85,7 @@ where
     }
     // Draw curves
     for (i, &(label, curve)) in curves.iter().enumerate() {
-        let color = Palette99::pick(i);
+        let color = Palette99::pick(Palette99::COLORS.len() - i);
         let stroke = opt.stroke;
         if opt.dot {
             if i % 2 == 1 {
