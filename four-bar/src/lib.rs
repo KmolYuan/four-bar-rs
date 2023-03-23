@@ -32,5 +32,3 @@ pub mod plot2d;
 pub mod plot3d;
 pub mod syn2d;
 pub mod syn3d;
-#[cfg(test)]
-mod tests;
