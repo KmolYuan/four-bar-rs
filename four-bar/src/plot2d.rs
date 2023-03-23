@@ -221,9 +221,9 @@ impl_opt! {
 /// Please see [`Opt`] for more options.
 ///
 /// ```
-/// use four_bar::plot2d::*;
+/// use four_bar::{plot2d::*, FourBar};
 /// let curves = [("First Curve", [[0.; 2]].as_slice())];
-/// let opt = Opt::new().axis(false).scale_bar(10.);
+/// let opt = Opt::from(FourBar::example()).axis(false).scale_bar(true);
 /// let mut buf = String::new();
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
 /// plot(svg, curves, opt).unwrap();

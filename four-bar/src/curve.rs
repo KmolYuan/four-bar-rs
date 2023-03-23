@@ -16,9 +16,9 @@ pub fn is_closed<A: PartialEq>(curve: &[A]) -> bool {
 /// Input a curve, split out the longest finite parts to a continuous curve.
 pub fn get_valid_part<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<Cow<'a, [[f64; 2]]>>,
+    Cow<'a, [[f64; 2]]>: From<C>,
 {
-    let curve = curve.into();
+    let curve = Cow::from(curve);
     let mut iter = curve.iter();
     let mut last = Vec::new();
     while iter.len() > 0 {
@@ -40,9 +40,9 @@ where
 pub fn remove_last<'a, A, C>(curve: C) -> Vec<A>
 where
     A: Clone + 'a,
-    C: Into<Cow<'a, [A]>>,
+    Cow<'a, [A]>: From<C>,
 {
-    let mut curve = curve.into().into_owned();
+    let mut curve = Cow::from(curve).into_owned();
     curve.pop();
     curve
 }
@@ -52,9 +52,9 @@ where
 /// Panic with empty curve.
 pub fn closed_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<Cow<'a, [[f64; 2]]>>,
+    Cow<'a, [[f64; 2]]>: From<C>,
 {
-    let mut curve = curve.into().into_owned();
+    let mut curve = Cow::from(curve).into_owned();
     let first = &curve[0];
     let end = &curve[curve.len() - 1];
     let curve2 = curve
@@ -83,9 +83,9 @@ where
 /// Panic with empty curve.
 pub fn closed_anti_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<Cow<'a, [[f64; 2]]>>,
+    Cow<'a, [[f64; 2]]>: From<C>,
 {
-    let mut curve = curve.into().into_owned();
+    let mut curve = Cow::from(curve).into_owned();
     let [ox, oy] = {
         let first = &curve[0];
         let end = &curve[curve.len() - 1];
@@ -110,9 +110,9 @@ where
 /// Panic with empty curve.
 pub fn closed_anti_sym_ext<'a, C>(curve: C) -> Vec<[f64; 2]>
 where
-    C: Into<Cow<'a, [[f64; 2]]>>,
+    Cow<'a, [[f64; 2]]>: From<C>,
 {
-    let curve = curve.into().into_owned();
+    let curve = Cow::from(curve).into_owned();
     let n = curve.len() - 1;
     let [x0, y0] = curve[0];
     let [xn, yn] = curve[n];

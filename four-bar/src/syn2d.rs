@@ -1,13 +1,13 @@
 //! The synthesis implementation of planar four-bar linkage mechanisms.
 //!
 //! ```
-//! use four_bar::*;
+//! use four_bar::{mh, syn2d};
 //!
 //! # let curve = vec![[0., 0.], [1., 0.], [2., 0.]];
 //! # let gen = 0;
 //! # let pop = 2;
 //! # let res = 3;
-//! let func = planar_syn::PlanarSyn::from_curve(curve, planar_syn::Mode::Closed)
+//! let func = syn2d::PlanarSyn::from_curve(curve, syn2d::Mode::Closed)
 //!     .expect("invalid curve")
 //!     .res(res);
 //! let s = mh::Solver::build(mh::Rga::default(), func)
@@ -21,8 +21,6 @@ use std::{
     borrow::Cow,
     f64::consts::{FRAC_PI_8, TAU},
 };
-
-type CowCurve<'a> = std::borrow::Cow<'a, [[f64; 2]]>;
 
 /// The minimum input angle bound. (π/16)
 pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
@@ -76,9 +74,9 @@ impl Mode {
     pub fn regularize<'a, A, C>(&self, curve: C) -> Vec<A>
     where
         A: PartialEq + Clone + 'a,
-        C: Into<Cow<'a, [A]>>,
+        Cow<'a, [A]>: From<C>,
     {
-        let curve = curve.into();
+        let curve = Cow::from(curve);
         match self {
             _ if curve::is_closed(&curve) => curve.into_owned(),
             Self::Closed => curve::closed_lin(curve),
@@ -103,9 +101,10 @@ impl PlanarSyn {
     /// Return none if harmonic is zero or the curve is less than 1.
     pub fn from_curve<'a, C>(curve: C, mode: Mode) -> Option<Self>
     where
-        C: Into<CowCurve<'a>>,
+        Cow<'a, [[f64; 2]]>: From<C>,
     {
-        efd::Efd2::from_curve(mode.regularize(curve)).map(|efd| Self::from_efd(efd, mode))
+        let efd = efd::Efd2::from_curve(mode.regularize(curve))?;
+        Some(Self::from_efd(efd, mode))
     }
 
     /// Create a new task from target curve and harmonic number.
@@ -113,8 +112,8 @@ impl PlanarSyn {
     /// Return none if harmonic is zero or the curve is less than 1.
     pub fn from_curve_harmonic<'a, C, H>(curve: C, harmonic: H, mode: Mode) -> Option<Self>
     where
-        C: Into<CowCurve<'a>>,
-        H: Into<Option<usize>>,
+        Cow<'a, [[f64; 2]]>: From<C>,
+        Option<usize>: From<H>,
     {
         efd::Efd2::from_curve_harmonic(mode.regularize(curve), harmonic)
             .map(|efd| Self::from_efd(efd, mode))
@@ -125,8 +124,8 @@ impl PlanarSyn {
     /// Return none if the curve length is less than 1.
     pub fn from_curve_gate<'a, C, T>(curve: C, threshold: T, mode: Mode) -> Option<Self>
     where
-        C: Into<CowCurve<'a>>,
-        T: Into<Option<f64>>,
+        Cow<'a, [[f64; 2]]>: From<C>,
+        Option<f64>: From<T>,
     {
         efd::Efd2::from_curve_gate(mode.regularize(curve), threshold)
             .map(|efd| Self::from_efd(efd, mode))

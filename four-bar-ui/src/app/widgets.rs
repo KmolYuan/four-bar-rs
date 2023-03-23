@@ -11,10 +11,9 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     }
 }
 
-pub(crate) fn unit<V, N>(ui: &mut Ui, label: &str, val: &mut V, int: N) -> Response
+pub(crate) fn unit<V>(ui: &mut Ui, label: &str, val: &mut V, int: impl Into<f64>) -> Response
 where
     V: emath::Numeric,
-    N: Into<f64>,
 {
     ui.add(DragValue::new(val).prefix(label).speed(int))
 }
