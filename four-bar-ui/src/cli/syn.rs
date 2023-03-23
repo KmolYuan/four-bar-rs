@@ -2,8 +2,7 @@ use super::{Syn, SynCfg};
 use crate::syn_cmd::*;
 use four_bar::{
     cb::FbCodebook,
-    csv, efd,
-    mh::{self, rayon::single_thread},
+    csv, efd, mh,
     plot2d::{self, IntoDrawingArea as _},
     syn2d, FourBar,
 };
@@ -73,8 +72,12 @@ pub(super) fn syn(syn: Syn) {
         SynCmd::Rga(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
         SynCmd::Tlbo(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
     };
-    use mh::rayon::prelude::*;
-    single_thread(one_by_one, || files.into_par_iter().for_each(run));
+    if one_by_one {
+        files.into_iter().for_each(run);
+    } else {
+        use mh::rayon::prelude::*;
+        files.into_par_iter().for_each(run);
+    }
 }
 
 fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<FbCodebook> {
