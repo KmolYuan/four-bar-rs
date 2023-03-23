@@ -96,13 +96,13 @@ macro_rules! impl_opt {
             inner_opt! {
                 /// Set the line stroke/point size.
                 fn stroke(u32)
-                /// Set the scale bar size.
-                fn scale_bar(f64)
                 /// Set font size.
                 fn font(f64)
+                /// Show the scale bar when the linkage is specified.
+                fn scale_bar(bool)
                 /// Use grid in the plot.
                 fn grid(bool)
-                /// Show the axis in the plot.
+                /// Show the axis.
                 fn axis(bool)
                 /// Use dot to present the curves.
                 fn dot(bool)
@@ -141,10 +141,10 @@ pub(crate) use inner_opt;
 pub struct OptInner {
     /// Stroke size
     pub stroke: u32,
-    /// Scale bar size
-    pub scale_bar: f64,
     /// Font size
     pub font: f64,
+    /// Show scale bar
+    pub scale_bar: bool,
     /// Show grid
     pub grid: bool,
     /// Show axis
@@ -157,8 +157,8 @@ impl Default for OptInner {
     fn default() -> Self {
         Self {
             stroke: 5,
-            scale_bar: 0.,
             font: 24.,
+            scale_bar: false,
             grid: false,
             axis: true,
             dot: false,
@@ -296,11 +296,14 @@ where
     // Draw Linkage
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
         // Draw scale bar
-        for (p, color) in [
-            ((p0[0] + opt.scale_bar, p0[1]), RED),
-            ((p0[0], p0[1] + opt.scale_bar), BLUE),
-        ] {
-            chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], color.stroke_width(5)))?;
+        if opt.scale_bar {
+            let scale_bar = scale_bar_size((x_max - x_min).min(y_max - y_min));
+            for (p, color) in [
+                ((p0[0] + scale_bar, p0[1]), RED),
+                ((p0[0], p0[1] + scale_bar), BLUE),
+            ] {
+                chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], color.stroke_width(5)))?;
+            }
         }
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             chart.draw_series(LineSeries::new(line.iter().map(|&[x, y]| (x, y)), BLACK))?;
@@ -355,4 +358,9 @@ pub fn bounding_box<'a>(pts: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4]
         let r = dy * 0.5;
         [cen - r, cen + r, *y_min, *y_max]
     }
+}
+
+/// Calculate the scale bar size.
+pub fn scale_bar_size(x: f64) -> f64 {
+    10f64.powi(x.log10().floor() as i32 - 1)
 }
