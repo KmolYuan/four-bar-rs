@@ -16,11 +16,11 @@
 //!     .solve()
 //!     .unwrap();
 //! ```
-use crate::{curve, efd, mh, FourBar, NormFourBar};
-use std::{
-    borrow::Cow,
-    f64::consts::{FRAC_PI_8, TAU},
+use crate::{
+    efd::{self, Curve},
+    mh, FourBar, NormFourBar,
 };
+use std::f64::consts::{FRAC_PI_8, TAU};
 
 /// The minimum input angle bound. (π/16)
 pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
@@ -71,16 +71,15 @@ impl Mode {
     }
 
     /// Regularize curve with the mode.
-    pub fn regularize<'a, A, C>(&self, curve: C) -> Vec<A>
+    pub fn regularize<A, C>(&self, curve: C) -> Vec<A>
     where
-        A: PartialEq + Clone + 'a,
-        Cow<'a, [A]>: From<C>,
+        A: PartialEq + Clone,
+        C: Curve<A>,
     {
-        let curve = Cow::from(curve);
         match self {
-            _ if curve::is_closed(&curve) => curve.into_owned(),
-            Self::Closed => curve::closed_lin(curve),
-            Self::Partial | Self::Open => curve::closed_rev(curve),
+            _ if curve.is_closed() => curve.to_curve(),
+            Self::Closed => curve.closed_lin(),
+            Self::Partial | Self::Open => curve.closed_rev(),
         }
     }
 }
@@ -99,9 +98,9 @@ impl PlanarSyn {
     /// automatically.
     ///
     /// Return none if harmonic is zero or the curve is less than 1.
-    pub fn from_curve<'a, C>(curve: C, mode: Mode) -> Option<Self>
+    pub fn from_curve<C>(curve: C, mode: Mode) -> Option<Self>
     where
-        Cow<'a, [[f64; 2]]>: From<C>,
+        C: Curve<[f64; 2]>,
     {
         let efd = efd::Efd2::from_curve(mode.regularize(curve))?;
         Some(Self::from_efd(efd, mode))
@@ -110,9 +109,9 @@ impl PlanarSyn {
     /// Create a new task from target curve and harmonic number.
     ///
     /// Return none if harmonic is zero or the curve is less than 1.
-    pub fn from_curve_harmonic<'a, C, H>(curve: C, harmonic: H, mode: Mode) -> Option<Self>
+    pub fn from_curve_harmonic<C, H>(curve: C, harmonic: H, mode: Mode) -> Option<Self>
     where
-        Cow<'a, [[f64; 2]]>: From<C>,
+        C: Curve<[f64; 2]>,
         Option<usize>: From<H>,
     {
         efd::Efd2::from_curve_harmonic(mode.regularize(curve), harmonic)
@@ -122,9 +121,9 @@ impl PlanarSyn {
     /// Create a new task from target curve and Fourier power gate.
     ///
     /// Return none if the curve length is less than 1.
-    pub fn from_curve_gate<'a, C, T>(curve: C, threshold: T, mode: Mode) -> Option<Self>
+    pub fn from_curve_gate<C, T>(curve: C, threshold: T, mode: Mode) -> Option<Self>
     where
-        Cow<'a, [[f64; 2]]>: From<C>,
+        C: Curve<[f64; 2]>,
         Option<f64>: From<T>,
     {
         efd::Efd2::from_curve_gate(mode.regularize(curve), threshold)

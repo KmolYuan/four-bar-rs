@@ -2,16 +2,8 @@
 //!
 //! The input curve can be both a owned type `Vec<[f64; 2]>` or a pointer type
 //! `&[[f64; 2]]` since the generic are copy-on-write (COW) compatible.
-pub use efd::{closed_lin, closed_rev, curve_diff};
+pub use efd::{curve_diff, Curve};
 use std::borrow::Cow;
-
-/// Check if a curve's first and end points are very close.
-pub fn is_closed<A: PartialEq>(curve: &[A]) -> bool {
-    match (curve.first(), curve.last()) {
-        (Some(a), Some(b)) => a == b,
-        _ => false,
-    }
-}
 
 /// Input a curve, split out the longest finite parts to a continuous curve.
 pub fn get_valid_part<'a, C>(curve: C) -> Vec<[f64; 2]>
@@ -37,12 +29,12 @@ where
 /// Remove the last point.
 ///
 /// This function allows empty curve.
-pub fn remove_last<'a, A, C>(curve: C) -> Vec<A>
+pub fn remove_last<A, C>(curve: C) -> Vec<A>
 where
-    A: Clone + 'a,
-    Cow<'a, [A]>: From<C>,
+    A: Clone,
+    C: Curve<A>,
 {
-    let mut curve = Cow::from(curve).into_owned();
+    let mut curve = curve.to_curve();
     curve.pop();
     curve
 }
@@ -50,11 +42,11 @@ where
 /// Close the open curve with a symmetry part.
 ///
 /// Panic with empty curve.
-pub fn closed_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn closed_symmetric<C>(curve: C) -> Vec<[f64; 2]>
 where
-    Cow<'a, [[f64; 2]]>: From<C>,
+    C: Curve<[f64; 2]>,
 {
-    let mut curve = Cow::from(curve).into_owned();
+    let mut curve = curve.to_curve();
     let first = &curve[0];
     let end = &curve[curve.len() - 1];
     let curve2 = curve
@@ -75,17 +67,17 @@ where
         })
         .collect::<Vec<_>>();
     curve.extend(curve2);
-    closed_lin(curve)
+    curve.closed_lin()
 }
 
 /// Close the open curve with an anti-symmetry part.
 ///
 /// Panic with empty curve.
-pub fn closed_anti_symmetric<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn closed_anti_symmetric<C>(curve: C) -> Vec<[f64; 2]>
 where
-    Cow<'a, [[f64; 2]]>: From<C>,
+    C: Curve<[f64; 2]>,
 {
-    let mut curve = Cow::from(curve).into_owned();
+    let mut curve = curve.to_curve();
     let [ox, oy] = {
         let first = &curve[0];
         let end = &curve[curve.len() - 1];
@@ -102,17 +94,17 @@ where
         })
         .collect::<Vec<_>>();
     curve.extend(curve2);
-    closed_lin(curve)
+    curve.closed_lin()
 }
 
 /// Close the open curve with anti-symmetric extension function.
 ///
 /// Panic with empty curve.
-pub fn closed_anti_sym_ext<'a, C>(curve: C) -> Vec<[f64; 2]>
+pub fn closed_anti_sym_ext<C>(curve: C) -> Vec<[f64; 2]>
 where
-    Cow<'a, [[f64; 2]]>: From<C>,
+    C: Curve<[f64; 2]>,
 {
-    let curve = Cow::from(curve).into_owned();
+    let curve = curve.to_curve();
     let n = curve.len() - 1;
     let [x0, y0] = curve[0];
     let [xn, yn] = curve[n];
