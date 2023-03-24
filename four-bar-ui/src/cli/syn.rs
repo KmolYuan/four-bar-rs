@@ -209,15 +209,16 @@ fn run<S>(
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             (s, efd.as_trans().to(efd_target.as_trans()).transform(c))
         });
-        let mut curves = vec![("Target", target.as_slice())];
+        let legend = format!("Synthesized ({err:.04})");
+        let mut curves = vec![("Target", target.as_slice()), (&legend, &curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
         let opt = plot2d::Opt::from(ans).dot(true).axis(false).scale_bar(true);
         plot2d::plot(root_l, curves.clone(), opt)?;
-        curves.extend(cb_fb.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
-        let legend = format!("Synthesized ({err:.04})");
-        curves.push((&legend, &curve));
+        if let Some((s, c)) = &cb_fb {
+            curves.push((s, c));
+        }
         curves.extend(refer.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
         let title = format!("Harmonic: {h} | Time: {t1:?}");
         let opt = plot2d::Opt::new().dot(true).title(&title);
