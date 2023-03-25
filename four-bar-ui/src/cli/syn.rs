@@ -167,7 +167,7 @@ fn run<S>(
         } else {
             s = s.pop_num(cfg.pop);
         }
-        let s = s.solve_single_thread(false)?;
+        let s = s.solve()?;
         let t1 = t0.elapsed();
         {
             let path = root.join(format!("{title}_history.svg"));
