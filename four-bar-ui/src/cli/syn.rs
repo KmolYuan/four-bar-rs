@@ -130,9 +130,18 @@ fn run<S>(
             .res(cfg.res);
         let root = file.parent().unwrap().join(title);
         if root.is_dir() {
-            std::fs::remove_dir_all(&root)?;
+            // Avoid file browser missing opening folders
+            for e in std::fs::read_dir(&root)? {
+                let path = e?.path();
+                if path.is_dir() {
+                    std::fs::remove_dir_all(path)?;
+                } else {
+                    std::fs::remove_file(path)?;
+                }
+            }
+        } else {
+            std::fs::create_dir(&root)?;
         }
-        std::fs::create_dir(&root)?;
         let t0 = Instant::now();
         let use_log = cfg.log > 0;
         let mut history = Vec::with_capacity(if use_log { cfg.gen } else { 0 });
