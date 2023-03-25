@@ -9,6 +9,7 @@ use four_bar::{
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     ffi::OsStr,
+    io::Write as _,
     path::{Path, PathBuf},
     time::Instant,
 };
@@ -62,7 +63,6 @@ pub(super) fn syn(syn: Syn) {
         .map(|cb| std::env::split_paths(&cb).collect())
         .unwrap_or_default();
     let cb = load_codebook(cb).expect("Load codebook failed!");
-    let refer = std::env::split_paths(&refer).collect::<Vec<_>>();
     let mpb = MultiProgress::new();
     let method_cmd = method_cmd.unwrap_or_default();
     let run: Box<dyn Fn(PathBuf) + Send + Sync> = match &method_cmd {
@@ -94,7 +94,7 @@ fn run<S>(
     file: PathBuf,
     cfg: &SynCfg,
     cb: &FbCodebook,
-    refer: &[PathBuf],
+    refer: &Path,
     setting: S,
 ) where
     S: mh::Setting + Send,
@@ -163,8 +163,7 @@ fn run<S>(
         {
             {
                 let (err, fb) = &candi[0];
-                let legend = format!("Catalog ({err:.04}, harmonic={})", cb.harmonic());
-                cb_fb.replace((legend, fb.curve(cfg.res)));
+                cb_fb.replace((*err, fb.curve(cfg.res)));
             }
             s = s.pop_num(candi.len());
             let fitness = candi.iter().map(|(f, _)| *f).collect();
@@ -200,38 +199,46 @@ fn run<S>(
             }
             _ => err,
         };
-        let refer = refer
-            .iter()
-            .map(|f| file.parent().unwrap().join(f).join(format!("{title}.ron")))
-            .filter(|f| f.is_file())
-            .map(std::fs::read_to_string)
-            .map(|s| -> Result<_, SynErr> {
-                let s = s.map_err(SynErr::Io)?;
+        let mut w = std::fs::File::create(root.join(format!("{title}.log")))?;
+        writeln!(w, "title={title}")?;
+        writeln!(w, "#==========#")?;
+        writeln!(w, "harmonic={h}")?;
+        writeln!(w, "time={t1:?}")?;
+        writeln!(w, "error={err}")?;
+        let refer = root
+            .parent()
+            .unwrap()
+            .join(refer)
+            .join(format!("{title}.ron"));
+        let refer = match std::fs::read_to_string(refer) {
+            Ok(s) => {
                 let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
-                let c = fb.curve(cfg.res);
-                let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
-                let err = efd_target.l1_norm(&efd);
-                Ok((format!("Competitor ({err:.04})"), c))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+                Some(fb.curve(cfg.res))
+            }
+            _ => None,
+        };
         let cb_fb = cb_fb.map(|(s, c)| {
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             (s, efd.as_trans().to(efd_target.as_trans()).transform(c))
         });
-        let legend = format!("Synthesized ({err:.04})");
-        let mut curves = vec![("Target", target.as_slice()), (&legend, &curve)];
+        let mut curves = vec![("Target", target.as_slice()), ("Synthesized", &curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
         let opt = plot2d::Opt::from(ans).dot(true).axis(false).scale_bar(true);
         plot2d::plot(root_l, curves.clone(), opt)?;
-        if let Some((s, c)) = &cb_fb {
-            curves.push((s, c));
+        if let Some((err, c)) = &cb_fb {
+            writeln!(w, "catalog harmonic={}", cb.harmonic())?;
+            writeln!(w, "catalog error={err}")?;
+            curves.push(("Catalog", c));
         }
-        curves.extend(refer.iter().map(|(s, c)| (s.as_str(), c.as_slice())));
-        let title = format!("Harmonic: {h} | Time: {t1:?}");
-        let opt = plot2d::Opt::new().dot(true).title(&title);
-        plot2d::plot(root_r, curves, opt)?;
+        if let Some(c) = &refer {
+            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(c), h).unwrap();
+            writeln!(w, "competitor error={}", efd_target.l1_norm(&efd))?;
+            curves.push(("Competitor", c));
+        }
+        plot2d::plot(root_r, curves, plot2d::Opt::new().dot(true))?;
+        w.flush()?;
         pb.finish();
         Ok(())
     };

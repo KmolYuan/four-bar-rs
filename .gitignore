@@ -5,6 +5,7 @@ Cargo.lock
 *.npz
 *.svg
 *.ron
+*.log
 !*.closed.ron
 !*.partial.ron
 !*.open.ron

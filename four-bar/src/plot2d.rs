@@ -178,14 +178,11 @@ where
     let history = history.as_ref();
     let root = Canvas::from(root);
     root.fill(&WHITE)?;
-    let best_f = history.last().unwrap();
-    let cap = format!("Convergence Plot (Best Fitness: {best_f:.04})");
     let max_fitness = history
         .iter()
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     let mut chart = ChartBuilder::on(&root)
-        .caption(cap, font())
         .set_label_area_size(LabelAreaPosition::Left, (10).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (6).percent())
         .margin((8).percent())

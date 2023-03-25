@@ -43,11 +43,9 @@ struct Syn {
     #[clap(long)]
     cb: Option<std::ffi::OsString>,
     /// Reference (competitor) path starting from file root with the same
-    /// filename, support multiple paths as
-    #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
-    #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
+    /// filename
     #[clap(short, long, default_value = "refer")]
-    refer: std::ffi::OsString,
+    refer: PathBuf,
     #[clap(flatten)]
     cfg: SynCfg,
     #[clap(subcommand)]
