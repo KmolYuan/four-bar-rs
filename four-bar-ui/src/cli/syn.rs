@@ -155,10 +155,7 @@ fn run<S>(
             .then(|| cb.fetch_raw(&target, cfg.pop))
             .filter(|candi| !candi.is_empty())
         {
-            {
-                let (err, fb) = &candi[0];
-                cb_fb.replace((*err, fb.curve(cfg.res)));
-            }
+            cb_fb.replace(candi[0].clone());
             s = s.pop_num(candi.len());
             let fitness = candi.iter().map(|(f, _)| *f).collect();
             let pool = candi
@@ -194,28 +191,13 @@ fn run<S>(
             _ => err,
         };
         let mut w = std::fs::File::create(root.join(format!("{title}.log")))?;
-        writeln!(w, "title={title}")?;
-        writeln!(w, "#==========#")?;
-        writeln!(w, "harmonic={h}")?;
+        writeln!(w, "[{title}]")?;
         writeln!(w, "time={t1:?}")?;
+        writeln!(w, "harmonic={h}")?;
         writeln!(w, "error={err}")?;
-        let refer = root
-            .parent()
-            .unwrap()
-            .join(refer)
-            .join(format!("{title}.ron"));
-        let refer = match std::fs::read_to_string(refer) {
-            Ok(s) => {
-                let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
-                Some(fb.curve(cfg.res))
-            }
-            _ => None,
-        };
-        let cb_fb = cb_fb.map(|(s, c)| {
-            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
-            (s, efd.as_trans().to(efd_target.as_trans()).transform(c))
-        });
-        let mut curves = vec![("Target", target.as_slice()), ("Synthesized", &curve)];
+        writeln!(w, "\n[synthesized]")?;
+        log_fb(&mut w, &ans)?;
+        let mut curves = vec![("Target", target), ("Synthesized", curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
@@ -224,18 +206,37 @@ fn run<S>(
             .axis(false)
             .font(cfg.font)
             .scale_bar(true);
-        plot2d::plot(root_l, curves.clone(), opt)?;
-        if let Some((err, c)) = &cb_fb {
-            writeln!(w, "catalog harmonic={}", cb.harmonic())?;
-            writeln!(w, "catalog error={err}")?;
-            curves.push(("Catalog", c));
+        plot2d::plot(root_l, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
+        if let Some((err, fb)) = cb_fb {
+            let c = fb.curve(cfg.res);
+            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
+            let trans = efd.as_trans().to(efd_target.as_trans());
+            let fb = FourBar::from(fb).transform(&trans);
+            writeln!(w, "\n[catalog]")?;
+            writeln!(w, "harmonic={}", cb.harmonic())?;
+            writeln!(w, "error={err}")?;
+            log_fb(&mut w, &fb)?;
+            curves.push(("Catalog", trans.transform(c)));
         }
-        if let Some(c) = &refer {
-            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(c), h).unwrap();
-            writeln!(w, "competitor error={}", efd_target.l1_norm(&efd))?;
+        let refer = root
+            .parent()
+            .unwrap()
+            .join(refer)
+            .join(format!("{title}.ron"));
+        if let Ok(s) = std::fs::read_to_string(refer) {
+            let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
+            let c = fb.curve(cfg.res);
+            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
+            writeln!(w, "\n[competitor]")?;
+            writeln!(w, "error={}", efd_target.l1_norm(&efd))?;
+            log_fb(&mut w, &fb)?;
             curves.push(("Competitor", c));
         }
-        plot2d::plot(root_r, curves, plot2d::Opt::new().dot(true).font(cfg.font))?;
+        plot2d::plot(
+            root_r,
+            curves.iter().map(|(s, c)| (*s, c.as_slice())),
+            plot2d::Opt::new().dot(true).font(cfg.font),
+        )?;
         w.flush()?;
         pb.finish();
         Ok(())
@@ -252,6 +253,7 @@ fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
         .ok_or(SynErr::Format)
         .and_then(|s| match s {
             "ron" => {
+                // TODO: log this linkage!
                 let fb = std::fs::read_to_string(path)
                     .map_err(SynErr::Io)
                     .and_then(|s| ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer))?;
@@ -298,5 +300,15 @@ fn draw_midway(
         let opt = plot2d::Opt::from(ans).dot(true).font(cfg.font);
         plot2d::plot(svg, curves, opt)?;
     }
+    Ok(())
+}
+
+fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
+    macro_rules! impl_fmt {
+        ($($field:ident),+) => {$(
+            writeln!(w, concat![stringify!($field), "={}"], fb.$field())?;
+        )+};
+    }
+    impl_fmt!(p0x, p0y, a, l0, l1, l2, l3, l4, g, inv);
     Ok(())
 }
