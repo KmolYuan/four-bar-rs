@@ -69,6 +69,21 @@ struct SynCfg {
     /// Plot and save the changes with log interval, default to disabled
     #[clap(long, default_value_t = 0)]
     log: usize,
+    /// Plot font size.
+    #[clap(long, default_value_t = 24.)]
+    font: f64,
+}
+
+impl std::fmt::Display for SynCfg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        macro_rules! impl_fmt {
+            ($($field:ident, $fmt:literal),+) => {$(
+                write!(f, concat![stringify!($field), $fmt], self.$field)?;
+            )+};
+        }
+        impl_fmt!(res, "={} ", gen, "={} ", pop, "={} ", seed, "={:?} ", log, "={} ", font, "={}");
+        Ok(())
+    }
 }
 
 #[derive(clap::Args)]

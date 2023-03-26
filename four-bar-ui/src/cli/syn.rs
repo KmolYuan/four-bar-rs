@@ -52,13 +52,7 @@ struct Info<'a> {
 
 pub(super) fn syn(syn: Syn) {
     let Syn { files, one_by_one, cfg, cb, refer, method_cmd } = syn;
-    {
-        let SynCfg { res, gen, pop, seed, log } = cfg;
-        if let Some(seed) = seed {
-            print!("seed={seed} ");
-        }
-        println!("res={res}, gen={gen}, pop={pop}, log={log}");
-    }
+    println!("{cfg}");
     let cb = cb
         .map(|cb| std::env::split_paths(&cb).collect())
         .unwrap_or_default();
@@ -151,7 +145,7 @@ fn run<S>(
             .callback(|ctx| {
                 if use_log && ctx.gen % cfg.log as u64 == 0 {
                     let (_, ans) = ctx.result();
-                    let _ = draw_midway(ctx.gen, &root, title, &target, ans, cfg.res);
+                    let _ = draw_midway(ctx.gen, &root, title, &target, ans, cfg);
                 }
                 history.push(ctx.best_f);
                 pb.set_position(ctx.gen);
@@ -225,7 +219,11 @@ fn run<S>(
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
-        let opt = plot2d::Opt::from(ans).dot(true).axis(false).scale_bar(true);
+        let opt = plot2d::Opt::from(ans)
+            .dot(true)
+            .axis(false)
+            .font(cfg.font)
+            .scale_bar(true);
         plot2d::plot(root_l, curves.clone(), opt)?;
         if let Some((err, c)) = &cb_fb {
             writeln!(w, "catalog harmonic={}", cb.harmonic())?;
@@ -237,7 +235,7 @@ fn run<S>(
             writeln!(w, "competitor error={}", efd_target.l1_norm(&efd))?;
             curves.push(("Competitor", c));
         }
-        plot2d::plot(root_r, curves, plot2d::Opt::new().dot(true))?;
+        plot2d::plot(root_r, curves, plot2d::Opt::new().dot(true).font(cfg.font))?;
         w.flush()?;
         pb.finish();
         Ok(())
@@ -288,16 +286,16 @@ fn draw_midway(
     title: &str,
     target: &[[f64; 2]],
     ans: FourBar,
-    res: usize,
+    cfg: &SynCfg,
 ) -> AnyResult {
-    let curve = Some(ans.curve(res))
+    let curve = Some(ans.curve(cfg.res))
         .filter(|c| c.len() > 1)
         .ok_or(format!("solved error: {:?}", &ans))?;
     let curves = [("Target", target), ("Synthesized", &curve)];
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));
         let svg = plot2d::SVGBackend::new(&path, (800, 800));
-        let opt = plot2d::Opt::from(ans).dot(true);
+        let opt = plot2d::Opt::from(ans).dot(true).font(cfg.font);
         plot2d::plot(svg, curves, opt)?;
     }
     Ok(())
