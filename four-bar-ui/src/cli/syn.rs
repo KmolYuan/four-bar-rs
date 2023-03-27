@@ -24,21 +24,13 @@ macro_rules! impl_err_from {
 
 #[derive(Debug)]
 enum SynErr {
-    // Unsupported format
     Format,
-    // Reading file error
     Io(std::io::Error),
-    // Plot error
     Plot(plot2d::DrawingAreaErrorKind<std::io::Error>),
-    // Serialization error
     CsvSer(csv::Error),
-    // Serialization error
     RonSer(ron::error::SpannedError),
-    // Deserialization error
     RonDe(ron::error::Error),
-    // Invalid linkage
     Linkage,
-    // Solved error
     Solver,
 }
 
