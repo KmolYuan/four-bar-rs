@@ -14,14 +14,10 @@ use std::{
     time::Instant,
 };
 
-type AnyResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
-
 macro_rules! impl_err_from {
     ($(impl $ty:ty => $kind:ident)+) => {$(
         impl From<$ty> for SynErr {
-            fn from(e: $ty) -> Self {
-                Self::$kind(e)
-            }
+            fn from(e: $ty) -> Self { Self::$kind(e) }
         }
     )+};
 }
@@ -32,12 +28,18 @@ enum SynErr {
     Format,
     // Reading file error
     Io(std::io::Error),
+    // Plot error
+    Plot(plot2d::DrawingAreaErrorKind<std::io::Error>),
     // Serialization error
     CsvSer(csv::Error),
     // Serialization error
     RonSer(ron::error::SpannedError),
+    // Deserialization error
+    RonDe(ron::error::Error),
     // Invalid linkage
     Linkage,
+    // Solved error
+    Solver,
 }
 
 impl std::fmt::Display for SynErr {
@@ -45,9 +47,12 @@ impl std::fmt::Display for SynErr {
         match self {
             Self::Format => write!(f, "unsupported format"),
             Self::Io(e) => write!(f, "reading file error: {e}"),
+            Self::Plot(e) => write!(f, "drawing plot error: {e}"),
             Self::CsvSer(e) => write!(f, "csv serialization error: {e}"),
             Self::RonSer(e) => write!(f, "ron serialization error: {e}"),
-            Self::Linkage => write!(f, "invalid linkage"),
+            Self::RonDe(e) => write!(f, "ron deserialization error: {e}"),
+            Self::Linkage => write!(f, "invalid linkage input"),
+            Self::Solver => write!(f, "solved error"),
         }
     }
 }
@@ -56,17 +61,26 @@ impl std::error::Error for SynErr {}
 
 impl_err_from! {
     impl std::io::Error => Io
+    impl plot2d::DrawingAreaErrorKind<std::io::Error> => Plot
     impl csv::Error => CsvSer
     impl ron::error::SpannedError => RonSer
+    impl ron::error::Error => RonDe
 }
 
 pub(super) fn syn(syn: Syn) {
     let Syn { files, one_by_one, cfg, cb, refer, method_cmd } = syn;
     println!("{cfg}");
     let cb = cb
-        .map(|cb| std::env::split_paths(&cb).collect())
+        .map(|cb| std::env::split_paths(&cb).collect::<Vec<_>>())
         .unwrap_or_default();
-    let cb = load_codebook(cb).expect("Load codebook failed!");
+    if !cb.is_empty() {
+        println!("Loading codebook database...");
+    }
+    let cb = cb
+        .into_iter()
+        .map(|path| Ok(FbCodebook::read(std::fs::File::open(path)?)?))
+        .collect::<Result<FbCodebook, Box<dyn std::error::Error>>>()
+        .expect("Load codebook failed!");
     let mpb = MultiProgress::new();
     let method_cmd = method_cmd.unwrap_or_default();
     let run: Box<dyn Fn(PathBuf) + Send + Sync> = match &method_cmd {
@@ -82,15 +96,6 @@ pub(super) fn syn(syn: Syn) {
         use mh::rayon::prelude::*;
         files.into_par_iter().for_each(run);
     }
-}
-
-fn load_codebook(cb: Vec<PathBuf>) -> AnyResult<FbCodebook> {
-    if !cb.is_empty() {
-        println!("Loading codebook database...");
-    }
-    cb.into_iter()
-        .map(|path| Ok(FbCodebook::read(std::fs::File::open(path)?)?))
-        .collect()
 }
 
 fn run<S>(
@@ -156,7 +161,7 @@ fn run<S>(
     const STYLE: &str = "[{prefix}] {elapsed_precise} {wide_bar} {pos}/{len} {msg}";
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(title.to_string());
-    let f = || -> AnyResult {
+    let f = || -> Result<(), SynErr> {
         let func = syn2d::PlanarSyn::from_curve(&target, mode)
             .ok_or(SynErr::Linkage)?
             .res(cfg.res);
@@ -183,7 +188,12 @@ fn run<S>(
             .callback(|ctx| {
                 if use_log && ctx.gen % cfg.log as u64 == 0 {
                     let (_, ans) = ctx.result();
-                    let _ = draw_midway(ctx.gen, &root, title, &target, &ans, cfg);
+                    let curve = ans.curve(cfg.res);
+                    let path = root.join(format!("{title}_{}_linkage.svg", ctx.gen));
+                    let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                    let curves = [("Target", target.as_slice()), ("Synthesized", &curve)];
+                    let opt = plot2d::Opt::from(&ans).dot(true).font(cfg.font);
+                    plot2d::plot(svg, curves, opt).unwrap();
                 }
                 history.push(ctx.best_f);
                 pb.set_position(ctx.gen);
@@ -204,22 +214,23 @@ fn run<S>(
         } else {
             s = s.pop_num(cfg.pop);
         }
-        let s = s.solve()?;
+        let s = s.solve().unwrap();
         let t1 = t0.elapsed();
+        let (err, ans) = s.result();
+        if !ans.is_valid() {
+            return Err(SynErr::Solver);
+        }
         {
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot2d::SVGBackend::new(&path, (800, 600));
             plot2d::history(svg, history)?;
         }
-        let (err, ans) = s.result();
         {
             let path = root.join(format!("{title}_result.ron"));
             std::fs::write(path, ron::to_string(&ans)?)?;
         }
-        let curve = Some(ans.curve(cfg.res))
-            .filter(|c| c.len() > 1)
-            .ok_or(format!("solved error: {ans:?}"))?;
         let h = s.func().harmonic();
+        let curve = ans.curve(cfg.res);
         let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
         let err = match mode {
             syn2d::Mode::Partial => {
@@ -286,27 +297,6 @@ fn run<S>(
     if let Err(e) = f() {
         pb.finish_with_message(format!("| error: {e}"));
     }
-}
-
-fn draw_midway(
-    i: u64,
-    root: &Path,
-    title: &str,
-    target: &[[f64; 2]],
-    ans: &FourBar,
-    cfg: &SynCfg,
-) -> AnyResult {
-    let curve = Some(ans.curve(cfg.res))
-        .filter(|c| c.len() > 1)
-        .ok_or(format!("solved error: {ans:?}"))?;
-    let curves = [("Target", target), ("Synthesized", &curve)];
-    {
-        let path = root.join(format!("{title}_{i}_linkage.svg"));
-        let svg = plot2d::SVGBackend::new(&path, (800, 800));
-        let opt = plot2d::Opt::from(ans).dot(true).font(cfg.font);
-        plot2d::plot(svg, curves, opt)?;
-    }
-    Ok(())
 }
 
 fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
