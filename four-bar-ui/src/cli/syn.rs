@@ -145,7 +145,7 @@ fn run<S>(
             .callback(|ctx| {
                 if use_log && ctx.gen % cfg.log as u64 == 0 {
                     let (_, ans) = ctx.result();
-                    let _ = draw_midway(ctx.gen, &root, title, &target, ans, cfg);
+                    let _ = draw_midway(ctx.gen, &root, title, &target, &ans, cfg);
                 }
                 history.push(ctx.best_f);
                 pb.set_position(ctx.gen);
@@ -180,7 +180,7 @@ fn run<S>(
         }
         let curve = Some(ans.curve(cfg.res))
             .filter(|c| c.len() > 1)
-            .ok_or(format!("solved error: {:?}", &ans))?;
+            .ok_or(format!("solved error: {ans:?}"))?;
         let h = s.func().harmonic();
         let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
         let err = match mode {
@@ -190,23 +190,24 @@ fn run<S>(
             }
             _ => err,
         };
-        let mut w = std::fs::File::create(root.join(format!("{title}.log")))?;
-        writeln!(w, "[{title}]")?;
-        writeln!(w, "time={t1:?}")?;
-        writeln!(w, "harmonic={h}")?;
-        writeln!(w, "error={err}")?;
-        writeln!(w, "\n[synthesized]")?;
-        log_fb(&mut w, &ans)?;
         let mut curves = vec![("Target", target), ("Synthesized", curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
-        let opt = plot2d::Opt::from(ans)
+        let opt = plot2d::Opt::from(&ans)
             .dot(true)
             .axis(false)
             .font(cfg.font)
             .scale_bar(true);
         plot2d::plot(root_l, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
+        let mut w = std::fs::File::create(root.join(format!("{title}.log")))?;
+        writeln!(w, "[{title}]")?;
+        writeln!(w, "\n[synthesized]")?;
+        writeln!(w, "time={t1:?}")?;
+        writeln!(w, "harmonic={h}")?;
+        writeln!(w, "error={err}")?;
+        writeln!(w, "\n[synthesized.fb]")?;
+        log_fb(&mut w, &ans)?;
         if let Some((err, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
@@ -215,6 +216,7 @@ fn run<S>(
             writeln!(w, "\n[catalog]")?;
             writeln!(w, "harmonic={}", cb.harmonic())?;
             writeln!(w, "error={err}")?;
+            writeln!(w, "\n[catalog.fb]")?;
             log_fb(&mut w, &fb)?;
             curves.push(("Catalog", trans.transform(c)));
         }
@@ -229,14 +231,12 @@ fn run<S>(
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             writeln!(w, "\n[competitor]")?;
             writeln!(w, "error={}", efd_target.l1_norm(&efd))?;
+            writeln!(w, "\n[competitor.fb]")?;
             log_fb(&mut w, &fb)?;
             curves.push(("Competitor", c));
         }
-        plot2d::plot(
-            root_r,
-            curves.iter().map(|(s, c)| (*s, c.as_slice())),
-            plot2d::Opt::new().dot(true).font(cfg.font),
-        )?;
+        let opt = plot2d::Opt::new().dot(true).font(cfg.font);
+        plot2d::plot(root_r, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
         w.flush()?;
         pb.finish();
         Ok(())
@@ -287,12 +287,12 @@ fn draw_midway(
     root: &Path,
     title: &str,
     target: &[[f64; 2]],
-    ans: FourBar,
+    ans: &FourBar,
     cfg: &SynCfg,
 ) -> AnyResult {
     let curve = Some(ans.curve(cfg.res))
         .filter(|c| c.len() > 1)
-        .ok_or(format!("solved error: {:?}", &ans))?;
+        .ok_or(format!("solved error: {ans:?}"))?;
     let curves = [("Target", target), ("Synthesized", &curve)];
     {
         let path = root.join(format!("{title}_{i}_linkage.svg"));

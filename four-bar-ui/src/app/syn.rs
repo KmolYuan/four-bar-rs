@@ -360,13 +360,13 @@ impl Synthesis {
                         let curve = lnk.projs[self.competitor - 1].clone_curve();
                         curves.push(("Competitor", curve));
                     }
+                    let (fb, angle) = lnk.projs.four_bar_state();
                     let opt = if self.plot_linkage {
-                        let (fb, angle) = lnk.projs.four_bar_state();
-                        plot2d::Opt::from(fb)
+                        plot2d::Opt::from(&fb)
                             .angle(angle)
                             .inner(lnk.cfg.plot.clone())
                     } else {
-                        Default::default()
+                        plot2d::Opt::new().inner(lnk.cfg.plot.clone())
                     };
                     let curves = curves.iter().map(|(s, c)| (*s, c.as_slice()));
                     io::save_curve_ask(curves, opt, "fb.svg");

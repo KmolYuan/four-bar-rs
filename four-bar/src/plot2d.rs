@@ -46,30 +46,30 @@ macro_rules! inner_opt {
 macro_rules! impl_opt {
     ($(
         $(#[$meta:meta])+
-        struct $ty_name:ident { $inner:ty, $coord:ty }
+        struct $ty:ident { $fb:ty, $coord:ty }
     )+) => {$(
         $(#[$meta])+
         #[derive(Default)]
-        pub struct $ty_name<'a> {
-            fb: Option<$inner>,
+        pub struct $ty<'a, 'b> {
+            fb: Option<&'a $fb>,
             angle: Option<f64>,
-            title: Option<&'a str>,
+            title: Option<&'b str>,
             inner: OptInner,
         }
 
-        impl From<Option<Self>> for $ty_name<'_> {
+        impl From<Option<Self>> for $ty<'_, '_> {
             fn from(opt: Option<Self>) -> Self {
                 opt.unwrap_or_default()
             }
         }
 
-        impl<F: Into<$inner>> From<F> for $ty_name<'_> {
-            fn from(fb: F) -> Self {
-                Self { fb: Some(fb.into()), ..Self::default() }
+        impl<'a> From<&'a $fb> for $ty<'a, '_> {
+            fn from(fb: &'a $fb) -> Self {
+                Self { fb: Some(fb), ..Self::default() }
             }
         }
 
-        impl<'a> $ty_name<'a> {
+        impl<'a, 'b> $ty<'a, 'b> {
             /// Create a default option, enables nothing.
             pub fn new() -> Self {
                 Self::default()
@@ -84,7 +84,7 @@ macro_rules! impl_opt {
             }
 
             /// Set the title.
-            pub fn title(self, title: &'a str) -> Self {
+            pub fn title(self, title: &'b str) -> Self {
                 Self { title: Some(title), ..self }
             }
 
@@ -119,7 +119,7 @@ macro_rules! impl_opt {
             }
         }
 
-        impl std::ops::Deref for Opt<'_> {
+        impl std::ops::Deref for Opt<'_, '_> {
             type Target = OptInner;
             fn deref(&self) -> &Self::Target {
                 &self.inner
@@ -225,12 +225,12 @@ impl_opt! {
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
 /// plot(svg, curves, opt).unwrap();
 /// ```
-pub fn plot<'a, B, R, C, O>(root: R, curves: C, opt: O) -> PResult<(), B>
+pub fn plot<'a, 'b, B, R, C, O>(root: R, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
     Canvas<B>: From<R>,
-    C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
-    Opt<'a>: From<O>,
+    C: IntoIterator<Item = (&'b str, &'b [[f64; 2]])>,
+    Opt<'a, 'b>: From<O>,
 {
     let root = Canvas::from(root);
     root.fill(&WHITE)?;

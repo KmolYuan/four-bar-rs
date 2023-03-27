@@ -196,10 +196,10 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }
 
-pub(crate) fn save_curve_ask<'a, C, O>(curves: C, opt: O, name: &str)
+pub(crate) fn save_curve_ask<'a, 'b, C, O>(curves: C, opt: O, name: &str)
 where
-    C: IntoIterator<Item = (&'a str, &'a [[f64; 2]])>,
-    plot2d::Opt<'a>: From<O>,
+    C: IntoIterator<Item = (&'b str, &'b [[f64; 2]])>,
+    plot2d::Opt<'a, 'b>: From<O>,
 {
     let mut buf = String::new();
     let svg = plot2d::SVGBackend::with_string(&mut buf, (800, 800));

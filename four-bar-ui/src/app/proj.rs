@@ -402,7 +402,7 @@ impl ProjInner {
         ui.label("Plot linkage and its coupler curve.");
         if ui.button("💾 Save Linkage").clicked() {
             let curve = get_curve(Pivot::Coupler, &self.fb, cfg.res);
-            let opt = four_bar::plot2d::Opt::from(self.fb.clone())
+            let opt = four_bar::plot2d::Opt::from(&self.fb)
                 .angle(self.angles.theta2)
                 .inner(cfg.plot.clone());
             io::save_curve_ask([("Coupler Curve", curve.as_slice())], opt, "fig.svg");

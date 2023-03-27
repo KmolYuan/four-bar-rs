@@ -21,12 +21,12 @@ impl_opt! {
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
 /// plot(svg, 1., curves, opt).unwrap();
 /// ```
-pub fn plot<'a, B, R, C, O>(root: R, sr: f64, curves: C, opt: O) -> PResult<(), B>
+pub fn plot<'a, 'b, B, R, C, O>(root: R, sr: f64, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
     Canvas<B>: From<R>,
-    C: IntoIterator<Item = (&'a str, &'a [[f64; 3]])>,
-    Opt<'a>: From<O>,
+    C: IntoIterator<Item = (&'b str, &'b [[f64; 3]])>,
+    Opt<'a, 'b>: From<O>,
 {
     debug_assert!(sr > 0.);
     let root = Canvas::from(root);
