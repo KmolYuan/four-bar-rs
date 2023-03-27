@@ -207,11 +207,11 @@ fn run<S>(
             s = s.pop_num(cfg.pop);
         }
         let s = s.solve().unwrap();
-        let t1 = t0.elapsed();
         let (err, ans) = s.result();
         if !ans.is_valid() {
             return Err(SynErr::Solver);
         }
+        let t1 = t0.elapsed();
         {
             let path = root.join(format!("{title}_history.svg"));
             let svg = plot2d::SVGBackend::new(&path, (800, 600));
@@ -271,7 +271,7 @@ fn run<S>(
             .join(refer)
             .join(format!("{title}.ron"));
         if let Ok(s) = std::fs::read_to_string(refer) {
-            let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
+            let fb = ron::from_str::<FourBar>(&s)?;
             let c = fb.curve(cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             writeln!(log, "\n[competitor]")?;
