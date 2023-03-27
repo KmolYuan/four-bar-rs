@@ -16,6 +16,16 @@ use std::{
 
 type AnyResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
+macro_rules! impl_err_from {
+    ($(impl $ty:ty => $kind:ident)+) => {$(
+        impl From<$ty> for SynErr {
+            fn from(e: $ty) -> Self {
+                Self::$kind(e)
+            }
+        }
+    )+};
+}
+
 #[derive(Debug)]
 enum SynErr {
     // Unsupported format
@@ -44,10 +54,10 @@ impl std::fmt::Display for SynErr {
 
 impl std::error::Error for SynErr {}
 
-struct Info<'a> {
-    target: Vec<[f64; 2]>,
-    title: &'a str,
-    mode: syn2d::Mode,
+impl_err_from! {
+    impl std::io::Error => Io
+    impl csv::Error => CsvSer
+    impl ron::error::SpannedError => RonSer
 }
 
 pub(super) fn syn(syn: Syn) {
@@ -103,7 +113,35 @@ fn run<S>(
             return;
         }
     };
-    let Info { target, title, mode } = match info(&file, cfg.res) {
+    let mut target_fb = None;
+    let mut f = || -> Result<_, SynErr> {
+        let target = file
+            .extension()
+            .and_then(OsStr::to_str)
+            .ok_or(SynErr::Format)
+            .and_then(|s| match s {
+                "ron" => {
+                    let fb = ron::from_str::<FourBar>(&std::fs::read_to_string(&file)?)?;
+                    let curve = fb.curve(cfg.res);
+                    target_fb.replace(fb);
+                    Ok(curve)
+                }
+                "csv" | "txt" => Ok(csv::parse_csv(&std::fs::read_to_string(&file)?)?),
+                _ => Err(SynErr::Format),
+            })?;
+        let title = file
+            .file_stem()
+            .and_then(OsStr::to_str)
+            .ok_or(SynErr::Format)?;
+        let mode = match Path::new(title).extension().and_then(OsStr::to_str) {
+            Some("closed") => Ok(syn2d::Mode::Closed),
+            Some("partial") => Ok(syn2d::Mode::Partial),
+            Some("open") => Ok(syn2d::Mode::Open),
+            _ => Err(SynErr::Format),
+        }?;
+        Ok((mode.regularize(target), title, mode))
+    };
+    let (target, title, mode) = match f() {
         Ok(info) => info,
         Err(e) => {
             if !matches!(e, SynErr::Format) {
@@ -120,7 +158,7 @@ fn run<S>(
     pb.set_prefix(title.to_string());
     let f = || -> AnyResult {
         let func = syn2d::PlanarSyn::from_curve(&target, mode)
-            .ok_or("invalid target")?
+            .ok_or(SynErr::Linkage)?
             .res(cfg.res);
         let root = file.parent().unwrap().join(title);
         if root.is_dir() {
@@ -200,24 +238,28 @@ fn run<S>(
             .font(cfg.font)
             .scale_bar(true);
         plot2d::plot(root_l, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
-        let mut w = std::fs::File::create(root.join(format!("{title}.log")))?;
-        writeln!(w, "[{title}]")?;
-        writeln!(w, "\n[synthesized]")?;
-        writeln!(w, "time={t1:?}")?;
-        writeln!(w, "harmonic={h}")?;
-        writeln!(w, "error={err}")?;
-        writeln!(w, "\n[synthesized.fb]")?;
-        log_fb(&mut w, &ans)?;
+        let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
+        writeln!(log, "[{title}]")?;
+        if let Some(fb) = target_fb {
+            writeln!(log, "\n[target.fb]")?;
+            log_fb(&mut log, &fb)?;
+        }
+        writeln!(log, "\n[synthesized]")?;
+        writeln!(log, "time={t1:?}")?;
+        writeln!(log, "harmonic={h}")?;
+        writeln!(log, "error={err}")?;
+        writeln!(log, "\n[synthesized.fb]")?;
+        log_fb(&mut log, &ans)?;
         if let Some((err, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             let trans = efd.as_trans().to(efd_target.as_trans());
             let fb = FourBar::from(fb).transform(&trans);
-            writeln!(w, "\n[catalog]")?;
-            writeln!(w, "harmonic={}", cb.harmonic())?;
-            writeln!(w, "error={err}")?;
-            writeln!(w, "\n[catalog.fb]")?;
-            log_fb(&mut w, &fb)?;
+            writeln!(log, "\n[catalog]")?;
+            writeln!(log, "harmonic={}", cb.harmonic())?;
+            writeln!(log, "error={err}")?;
+            writeln!(log, "\n[catalog.fb]")?;
+            log_fb(&mut log, &fb)?;
             curves.push(("Catalog", trans.transform(c)));
         }
         let refer = root
@@ -229,57 +271,21 @@ fn run<S>(
             let fb = ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer)?;
             let c = fb.curve(cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
-            writeln!(w, "\n[competitor]")?;
-            writeln!(w, "error={}", efd_target.l1_norm(&efd))?;
-            writeln!(w, "\n[competitor.fb]")?;
-            log_fb(&mut w, &fb)?;
+            writeln!(log, "\n[competitor]")?;
+            writeln!(log, "error={}", efd_target.l1_norm(&efd))?;
+            writeln!(log, "\n[competitor.fb]")?;
+            log_fb(&mut log, &fb)?;
             curves.push(("Competitor", c));
         }
         let opt = plot2d::Opt::new().dot(true).font(cfg.font);
         plot2d::plot(root_r, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
-        w.flush()?;
+        log.flush()?;
         pb.finish();
         Ok(())
     };
     if let Err(e) = f() {
         pb.finish_with_message(format!("| error: {e}"));
     }
-}
-
-fn info(path: &Path, res: usize) -> Result<Info, SynErr> {
-    let target = path
-        .extension()
-        .and_then(OsStr::to_str)
-        .ok_or(SynErr::Format)
-        .and_then(|s| match s {
-            "ron" => {
-                // TODO: log this linkage!
-                let fb = std::fs::read_to_string(path)
-                    .map_err(SynErr::Io)
-                    .and_then(|s| ron::from_str::<FourBar>(&s).map_err(SynErr::RonSer))?;
-                Some(fb.curve(res))
-                    .filter(|c| c.len() > 1)
-                    .ok_or(SynErr::Linkage)
-            }
-            "csv" | "txt" => std::fs::read_to_string(path)
-                .map_err(SynErr::Io)
-                .and_then(|s| csv::parse_csv(&s).map_err(SynErr::CsvSer)),
-            _ => Err(SynErr::Format),
-        })?;
-    let f = || {
-        let title = path.file_stem().and_then(OsStr::to_str)?;
-        let mode = Path::new(title)
-            .extension()
-            .and_then(OsStr::to_str)
-            .and_then(|mode| match mode {
-                "closed" => Some(syn2d::Mode::Closed),
-                "partial" => Some(syn2d::Mode::Partial),
-                "open" => Some(syn2d::Mode::Open),
-                _ => None,
-            })?;
-        Some(Info { target: mode.regularize(target), title, mode })
-    };
-    f().ok_or(SynErr::Format)
 }
 
 fn draw_midway(
