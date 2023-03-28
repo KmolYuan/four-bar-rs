@@ -24,7 +24,7 @@ serde = { version = "1", features = ["derive"], optional = true }
 ndarray-npy = { version = "0.8", optional = true }
 csv = { version = "1", optional = true }
 metaheuristics-nature = "8"
-efd = "2"
+efd = "2.1"
 
 [dependencies.plotters]
 version = "0.3"

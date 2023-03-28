@@ -207,7 +207,7 @@ fn run<S>(
             s = s.pop_num(cfg.pop);
         }
         let s = s.solve().unwrap();
-        let (err, ans) = s.result();
+        let (cost, ans) = s.result();
         if !ans.is_valid() {
             return Err(SynErr::Solver);
         }
@@ -217,20 +217,12 @@ fn run<S>(
             let svg = plot2d::SVGBackend::new(&path, (800, 600));
             plot2d::history(svg, history)?;
         }
-        {
-            let path = root.join(format!("{title}_result.ron"));
-            std::fs::write(path, ron::to_string(&ans)?)?;
-        }
+        let path = root.join(format!("{title}_result.ron"));
+        std::fs::write(path, ron::to_string(&ans)?)?;
         let h = s.func().harmonic();
         let curve = ans.curve(cfg.res);
         let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
-        let err = match mode {
-            syn2d::Mode::Partial => {
-                let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&curve), h).unwrap();
-                efd_target.l1_norm(&efd)
-            }
-            _ => err,
-        };
+        let err = efd::curve_diff(&target, &curve, cfg.res);
         let mut curves = vec![("Target", target), ("Synthesized", curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
@@ -251,16 +243,19 @@ fn run<S>(
         writeln!(log, "time={t1:?}")?;
         writeln!(log, "harmonic={h}")?;
         writeln!(log, "error={err}")?;
+        writeln!(log, "cost={cost}")?;
         writeln!(log, "\n[synthesized.fb]")?;
         log_fb(&mut log, &ans)?;
-        if let Some((err, fb)) = cb_fb {
+        if let Some((cost, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
+            let err = efd::curve_diff(&curves[0].1, &c, cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             let trans = efd.as_trans().to(efd_target.as_trans());
             let fb = FourBar::from(fb).transform(&trans);
             writeln!(log, "\n[catalog]")?;
             writeln!(log, "harmonic={}", cb.harmonic())?;
             writeln!(log, "error={err}")?;
+            writeln!(log, "cost={cost}")?;
             writeln!(log, "\n[catalog.fb]")?;
             log_fb(&mut log, &fb)?;
             curves.push(("Catalog", trans.transform(c)));
@@ -273,9 +268,9 @@ fn run<S>(
         if let Ok(s) = std::fs::read_to_string(refer) {
             let fb = ron::from_str::<FourBar>(&s)?;
             let c = fb.curve(cfg.res);
-            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
+            let err = efd::curve_diff(&curves[0].1, &c, cfg.res);
             writeln!(log, "\n[competitor]")?;
-            writeln!(log, "error={}", efd_target.l1_norm(&efd))?;
+            writeln!(log, "error={err}")?;
             writeln!(log, "\n[competitor.fb]")?;
             log_fb(&mut log, &fb)?;
             curves.push(("Competitor", c));
