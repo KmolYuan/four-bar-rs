@@ -23,7 +23,6 @@ pub extern crate metaheuristics_nature as mh;
 pub mod cb;
 #[cfg(feature = "csv")]
 pub mod csv;
-pub mod curve;
 mod fb2d;
 mod fb3d;
 #[cfg(feature = "plot")]

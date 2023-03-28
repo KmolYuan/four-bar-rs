@@ -184,10 +184,11 @@ impl UiConfig {
             if let Some(h) = self.efd_h {
                 if ui.button(format!("🔀 Re-describe ({h})")).clicked() {
                     self.write_curve_str(|c| {
+                        use efd::Curve as _;
                         let c = self.syn.mode.regularize(c);
                         let len = c.len();
                         let efd = efd::Efd2::from_curve_harmonic(c, h).unwrap();
-                        dump_csv(curve::remove_last(efd.generate(len))).unwrap()
+                        dump_csv(efd.generate(len).pop_last()).unwrap()
                     });
                 }
                 if ui.button("🔀 Reverse").clicked() {
