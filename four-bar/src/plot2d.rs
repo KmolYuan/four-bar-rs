@@ -285,7 +285,7 @@ where
                 ))?
                 .label(label)
                 .legend(move |(x, y)| {
-                    PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(stroke))
+                    PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
                 });
         }
     }
