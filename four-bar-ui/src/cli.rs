@@ -55,7 +55,7 @@ struct Syn {
 #[derive(clap::Args)]
 struct SynCfg {
     /// Number of the points (resolution) in curve production
-    #[clap(long, default_value_t = 90)]
+    #[clap(long, default_value_t = 180)]
     res: usize,
     /// Number of generation
     #[clap(short, long, default_value_t = 50)]

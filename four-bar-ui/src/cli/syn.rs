@@ -222,7 +222,7 @@ fn run<S>(
         let h = s.func().harmonic();
         let curve = ans.curve(cfg.res);
         let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
-        let err = efd::curve_diff(&target, &curve, cfg.res);
+        let err = efd::curve_diff(&target, &curve);
         let mut curves = vec![("Target", target), ("Synthesized", curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
@@ -248,7 +248,7 @@ fn run<S>(
         log_fb(&mut log, &ans)?;
         if let Some((cost, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
-            let err = efd::curve_diff(&curves[0].1, &c, cfg.res);
+            let err = efd::curve_diff(&curves[0].1, &c);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
             let trans = efd.as_trans().to(efd_target.as_trans());
             let fb = FourBar::from(fb).transform(&trans);
@@ -268,7 +268,7 @@ fn run<S>(
         if let Ok(s) = std::fs::read_to_string(refer) {
             let fb = ron::from_str::<FourBar>(&s)?;
             let c = fb.curve(cfg.res);
-            let err = efd::curve_diff(&curves[0].1, &c, cfg.res);
+            let err = efd::curve_diff(&curves[0].1, &c);
             writeln!(log, "\n[competitor]")?;
             writeln!(log, "error={err}")?;
             writeln!(log, "\n[competitor.fb]")?;
