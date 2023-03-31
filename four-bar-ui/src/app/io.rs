@@ -10,6 +10,8 @@ const CB_FMT: &str = "Numpy Array Zip (NPZ)";
 const CB_EXT: &[&str] = &["npz"];
 const SVG_FMT: &str = "Scalable Vector Graphics (SVG)";
 const SVG_EXT: &[&str] = &["svg"];
+const IMG_FMT: &str = "Supported Image Format (PNG & JPEG)";
+const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
@@ -19,8 +21,7 @@ mod impl_io {
     #[wasm_bindgen]
     extern "C" {
         fn alert(s: &str);
-        fn open_file(ext: &str, done: JsValue, multiple: bool);
-        fn open_bfile(ext: &str, done: JsValue);
+        fn open_file(ext: &str, done: JsValue, is_multiple: bool, is_bin: bool);
         fn save_file(s: &str, path: &str);
     }
 
@@ -41,7 +42,7 @@ mod impl_io {
     {
         let done = move |path, s| done(PathBuf::from(path), s);
         let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done)).into_js_value();
-        open_file(&js_ext(ext), done, true);
+        open_file(&js_ext(ext), done, true, false);
     }
 
     pub(super) fn open_bin<C>(_fmt: &str, ext: &[&str], done: C)
@@ -49,7 +50,7 @@ mod impl_io {
         C: Fn(Vec<u8>) + 'static,
     {
         let done = Closure::<dyn Fn(Vec<u8>)>::wrap(Box::new(done)).into_js_value();
-        open_bfile(&js_ext(ext), done);
+        open_file(&js_ext(ext), done, true, true);
     }
 
     pub(super) fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
@@ -57,7 +58,15 @@ mod impl_io {
         C: FnOnce(PathBuf, String) + 'static,
     {
         let done = |path: String, s| done(PathBuf::from(path), s);
-        open_file(&js_ext(ext), Closure::once_into_js(done), false);
+        open_file(&js_ext(ext), Closure::once_into_js(done), false, false);
+    }
+
+    pub(super) fn open_bin_single<C>(_fmt: &str, ext: &[&str], done: C)
+    where
+        C: FnOnce(PathBuf, Vec<u8>) + 'static,
+    {
+        let done = |path: String, s| done(PathBuf::from(path), s);
+        open_file(&js_ext(ext), Closure::once_into_js(done), false, true);
     }
 
     pub(super) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], done: C)
@@ -92,11 +101,9 @@ mod impl_io {
         C: Fn(PathBuf, String) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
-            for path in paths {
-                alert(std::fs::read_to_string(&path), |s| {
-                    done(path, s);
-                });
-            }
+            paths
+                .into_iter()
+                .for_each(|path| alert(std::fs::read_to_string(&path), |s| done(path, s)));
         }
     }
 
@@ -105,9 +112,9 @@ mod impl_io {
         C: Fn(Vec<u8>) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
-            for path in paths {
-                alert(std::fs::read(path), &done);
-            }
+            paths
+                .into_iter()
+                .for_each(|path| alert(std::fs::read(path), &done));
         }
     }
 
@@ -117,6 +124,15 @@ mod impl_io {
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
             alert(std::fs::read_to_string(&path), |s| done(path, s));
+        }
+    }
+
+    pub(super) fn open_bin_single<C>(fmt: &str, ext: &[&str], done: C)
+    where
+        C: FnOnce(PathBuf, Vec<u8>) + 'static,
+    {
+        if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
+            alert(std::fs::read(&path), |s| done(path, s));
         }
     }
 
@@ -170,6 +186,21 @@ where
 {
     let done = move |b| alert(FbCodebook::read(std::io::Cursor::new(b)), &done);
     open_bin(CB_FMT, CB_EXT, done);
+}
+
+pub(crate) fn open_img<C>(done: C)
+where
+    C: FnOnce(PathBuf, eframe::egui::ColorImage) + 'static,
+{
+    let done = move |path, b: Vec<u8>| {
+        let r = image::load_from_memory(&b).map(|img| {
+            let img = img.to_rgba8();
+            let size = [img.width(), img.height()].map(|s| s as _);
+            eframe::egui::ColorImage::from_rgba_unmultiplied(size, img.as_raw())
+        });
+        alert(r, |img| done(path, img));
+    };
+    open_bin_single(IMG_FMT, IMG_EXT, done);
 }
 
 pub(crate) fn save_csv_ask<S>(curve: &[S])

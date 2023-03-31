@@ -18,7 +18,10 @@ where
     ui.add(DragValue::new(val).prefix(label).speed(int))
 }
 
-pub(crate) fn link(ui: &mut Ui, label: &str, val: &mut f64, int: f64) -> Response {
+pub(crate) fn link<V>(ui: &mut Ui, label: &str, val: &mut V, int: f64) -> Response
+where
+    V: emath::Numeric,
+{
     let dv = DragValue::new(val)
         .prefix(label)
         .speed(int)

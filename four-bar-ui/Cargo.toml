@@ -33,11 +33,15 @@ version = "0.21"
 default-features = false
 features = ["persistence", "glow", "dark-light"]
 
+[dependencies.image]
+version = "0.24"
+default-features = false
+features = ["ico", "jpeg"]
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
 indicatif = { version = "0.17", features = ["improved_unicode"] }
 clap = { version = "4", features = ["derive"] }
-image = "0.24"
 rfd = "0.11"
 wild = "2"
 

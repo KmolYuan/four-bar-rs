@@ -291,15 +291,20 @@ impl Synthesis {
                 url_btn(ui, "", "Downlod open curve dataset", OPEN_URL);
             });
         });
-        if ui.button("🖴 Load").clicked() {
-            let cb = self.cb.clone();
-            io::open_cb(move |cb_new| {
-                cb.write()
-                    .unwrap()
-                    .merge_inplace(&cb_new)
-                    .unwrap_or_default();
-            });
-        }
+        ui.horizontal(|ui| {
+            if ui.button("🖴 Load").clicked() {
+                let cb = self.cb.clone();
+                io::open_cb(move |cb_new| {
+                    cb.write()
+                        .unwrap()
+                        .merge_inplace(&cb_new)
+                        .unwrap_or_default();
+                });
+            }
+            if ui.button("🗑 Clear").clicked() {
+                self.cb.write().unwrap().clear();
+            }
+        });
         ui.separator();
         ui.heading("Optimization");
         if ui.button("📉 Convergence Plot").clicked() {

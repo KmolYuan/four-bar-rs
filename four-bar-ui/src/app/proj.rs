@@ -21,17 +21,14 @@ macro_rules! hotkey {
     };
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn pre_open(file: impl AsRef<Path>) -> Option<FourBar> {
-    std::fs::read_to_string(file)
-        .ok()
-        .and_then(|s| ron::from_str(&s).ok())
-}
-
-#[cfg(target_arch = "wasm32")]
-#[inline]
-fn pre_open<F>(_file: F) -> Option<FourBar> {
-    None
+    if cfg!(target_arch = "wasm32") {
+        None
+    } else {
+        std::fs::read_to_string(file)
+            .ok()
+            .and_then(|s| ron::from_str(&s).ok())
+    }
 }
 
 fn filename(path: &Path) -> Cow<str> {

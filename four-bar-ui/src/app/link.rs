@@ -74,7 +74,7 @@ impl Linkages {
         self.projs.plot(ui);
     }
 
-    pub(crate) fn pre_open_proj(&mut self, files: Vec<std::path::PathBuf>, res: usize) {
+    pub(crate) fn preload(&mut self, files: Vec<std::path::PathBuf>, res: usize) {
         self.projs.iter().for_each(Project::pre_open);
         self.projs.retain(|p| p.path().is_some());
         files.into_iter().for_each(|file| self.projs.pre_open(file));

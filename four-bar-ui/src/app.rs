@@ -85,7 +85,8 @@ impl App {
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
-        app.linkage.pre_open_proj(files, app.linkage.cfg.res);
+        app.bp.preload(&ctx.egui_ctx);
+        app.linkage.preload(files, app.linkage.cfg.res);
         Box::new(app)
     }
 
@@ -138,6 +139,7 @@ impl App {
             .legend(Default::default())
             .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
             .show(ui, |ui| {
+                self.bp.plot(ui);
                 self.linkage.plot(ui);
                 self.syn.plot(ui);
             });
