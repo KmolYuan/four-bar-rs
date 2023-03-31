@@ -1,5 +1,6 @@
 use self::impl_io::*;
 use four_bar::{cb::FbCodebook, csv::dump_csv, plot2d, FourBar};
+use std::path::{Path, PathBuf};
 
 const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
@@ -12,6 +13,7 @@ const SVG_EXT: &[&str] = &["svg"];
 
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
+    use std::path::{Path, PathBuf};
     use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
     #[wasm_bindgen]
@@ -35,8 +37,9 @@ mod impl_io {
 
     pub(super) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(String, String) + 'static,
+        C: Fn(PathBuf, String) + 'static,
     {
+        let done = move |path, s| done(PathBuf::from(path), s);
         let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done)).into_js_value();
         open_file(&js_ext(ext), done, true);
     }
@@ -51,27 +54,30 @@ mod impl_io {
 
     pub(super) fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(String, String) + 'static,
+        C: FnOnce(PathBuf, String) + 'static,
     {
+        let done = |path: String, s| done(PathBuf::from(path), s);
         open_file(&js_ext(ext), Closure::once_into_js(done), false);
     }
 
     pub(super) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], done: C)
     where
-        C: FnOnce(String) + 'static,
+        C: FnOnce(PathBuf) + 'static,
     {
-        save(s, file_name);
-        done(file_name.to_string());
+        let file_name = PathBuf::from(file_name);
+        save(s, &file_name);
+        done(file_name);
     }
 
-    pub(super) fn save(s: &str, path: &str) {
-        save_file(s, path);
+    pub(super) fn save(s: &str, path: &Path) {
+        save_file(s, path.to_str().unwrap());
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod impl_io {
     use super::alert;
+    use std::path::{Path, PathBuf};
 
     pub(super) fn alert_dialog(s: &str) {
         rfd::MessageDialog::new()
@@ -83,12 +89,12 @@ mod impl_io {
 
     pub(super) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(String, String) + 'static,
+        C: Fn(PathBuf, String) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             for path in paths {
                 alert(std::fs::read_to_string(&path), |s| {
-                    done(path.to_str().unwrap().to_string(), s);
+                    done(path, s);
                 });
             }
         }
@@ -107,31 +113,27 @@ mod impl_io {
 
     pub(super) fn open_single<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(String, String) + 'static,
+        C: Fn(PathBuf, String) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            alert(std::fs::read_to_string(&path), |s| {
-                done(path.to_str().unwrap().to_string(), s);
-            });
+            alert(std::fs::read_to_string(&path), |s| done(path, s));
         }
     }
 
     pub(super) fn save_ask<C>(s: &str, name: &str, fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(String) + 'static,
+        C: FnOnce(PathBuf) + 'static,
     {
         if let Some(file_name) = rfd::FileDialog::new()
             .set_file_name(name)
             .add_filter(fmt, ext)
             .save_file()
         {
-            alert(std::fs::write(&file_name, s), |_| {
-                done(file_name.to_str().unwrap().to_string());
-            });
+            alert(std::fs::write(&file_name, s), |_| done(file_name));
         }
     }
 
-    pub(super) fn save(s: &str, path: &str) {
+    pub(super) fn save(s: &str, path: &Path) {
         alert(std::fs::write(path, s), |_| ());
     }
 }
@@ -149,15 +151,15 @@ where
 
 pub(crate) fn open_ron<C>(done: C)
 where
-    C: Fn(String, FourBar) + 'static,
+    C: Fn(PathBuf, FourBar) + 'static,
 {
-    let done = move |path: String, s: String| alert(ron::from_str(&s), |fb| done(path, fb));
+    let done = move |path, s: String| alert(ron::from_str(&s), |fb| done(path, fb));
     open(FMT, EXT, done);
 }
 
 pub(crate) fn open_csv_single<C>(done: C)
 where
-    C: Fn(String, String) + 'static,
+    C: Fn(PathBuf, String) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, done);
 }
@@ -180,12 +182,12 @@ where
 
 pub(crate) fn save_ron_ask<C>(fb: &FourBar, name: &str, done: C)
 where
-    C: FnOnce(String) + 'static,
+    C: FnOnce(PathBuf) + 'static,
 {
     save_ask(&ron::to_string(fb).unwrap(), name, FMT, EXT, done);
 }
 
-pub(crate) fn save_ron(fb: &FourBar, path: &str) {
+pub(crate) fn save_ron(fb: &FourBar, path: &Path) {
     save(&ron::to_string(fb).unwrap(), path);
 }
 

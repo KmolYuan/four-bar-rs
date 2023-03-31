@@ -1,4 +1,4 @@
-use super::{io, linkages::Linkages, widgets::*};
+use super::{io, link::Linkages, widgets::*};
 use crate::syn_cmd::SynCmd;
 use eframe::egui::*;
 use four_bar::{cb::FbCodebook, csv::*, *};

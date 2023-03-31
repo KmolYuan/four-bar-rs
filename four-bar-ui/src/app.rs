@@ -1,11 +1,12 @@
-use self::{linkages::*, syn::*, widgets::*};
+use self::widgets::*;
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod atomic;
+mod blueprint;
 mod io;
-mod linkages;
+mod link;
 mod proj;
 mod syn;
 mod widgets;
@@ -29,6 +30,7 @@ enum Panel {
     #[default]
     Linkages,
     Synthesis,
+    BluePrint,
     Options,
     Off,
 }
@@ -38,8 +40,9 @@ enum Panel {
 #[serde(default)]
 pub(crate) struct App {
     welcome_off: bool,
-    linkage: Linkages,
-    syn: Synthesis,
+    linkage: link::Linkages,
+    syn: syn::Synthesis,
+    bp: blueprint::BluePrint,
     #[serde(skip)]
     panel: Panel,
 }
@@ -116,6 +119,8 @@ impl App {
             .on_hover_text("Linkages");
         ui.selectable_value(&mut self.panel, Panel::Synthesis, "💡")
             .on_hover_text("Synthesis");
+        ui.selectable_value(&mut self.panel, Panel::BluePrint, "🖻")
+            .on_hover_text("Blue Print");
         ui.selectable_value(&mut self.panel, Panel::Options, "🛠")
             .on_hover_text("Options");
         ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
@@ -142,6 +147,7 @@ impl App {
         CentralPanel::default().show(ctx, |ui| match self.panel {
             Panel::Linkages => pan_panel(ui, |ui| self.linkage.show(ui)),
             Panel::Synthesis => pan_panel(ui, |ui| self.syn.show(ui, &mut self.linkage)),
+            Panel::BluePrint => pan_panel(ui, |ui| self.bp.show(ui)),
             Panel::Options => pan_panel(ui, |ui| self.linkage.option(ui)),
             Panel::Off => self.canvas(ui),
         });
@@ -151,6 +157,7 @@ impl App {
         match self.panel {
             Panel::Linkages => side_panel(ctx, |ui| self.linkage.show(ui)),
             Panel::Synthesis => side_panel(ctx, |ui| self.syn.show(ui, &mut self.linkage)),
+            Panel::BluePrint => side_panel(ctx, |ui| self.bp.show(ui)),
             Panel::Options => side_panel(ctx, |ui| self.linkage.option(ui)),
             Panel::Off => (),
         }

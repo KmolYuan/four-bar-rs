@@ -1,11 +1,12 @@
-use super::{io, widgets::*};
+use super::{io, link::Cfg, widgets::*};
 use eframe::egui::*;
 use four_bar::{csv::dump_csv, FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{
+    borrow::Cow,
     f64::consts::TAU,
     ops::{Deref, DerefMut},
-    path::Path,
+    path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
 
@@ -33,20 +34,8 @@ fn pre_open<F>(_file: F) -> Option<FourBar> {
     None
 }
 
-fn with_ext(name: &str) -> String {
-    if name.ends_with(".ron") {
-        name.to_string()
-    } else {
-        name.to_string() + ".ron"
-    }
-}
-
-fn filename(path: &str) -> String {
-    Path::new(path)
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .to_string()
+fn filename(path: &Path) -> Cow<str> {
+    path.file_name().unwrap().to_string_lossy()
 }
 
 fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
@@ -152,33 +141,6 @@ impl Pivot {
     }
 }
 
-#[derive(Default, Deserialize, Serialize, Clone)]
-enum ProjName {
-    Path(String),
-    Named(String),
-    #[default]
-    Untitled,
-}
-
-impl ProjName {
-    fn name(&self) -> String {
-        match self {
-            Self::Path(path) => filename(path),
-            Self::Named(name) => with_ext(name),
-            Self::Untitled => "untitled.ron".to_string(),
-        }
-    }
-}
-
-impl From<Option<String>> for ProjName {
-    fn from(path: Option<String>) -> Self {
-        match path {
-            Some(path) => Self::Path(path),
-            None => Self::Untitled,
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize, Clone, PartialEq, Default)]
 #[serde(default)]
 struct Angles {
@@ -200,7 +162,7 @@ struct Cache {
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 struct ProjInner {
-    path: ProjName,
+    path: Option<PathBuf>,
     fb: FourBar,
     angles: Angles,
     hide: bool,
@@ -228,26 +190,12 @@ impl Default for ProjInner {
 }
 
 impl ProjInner {
-    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
-        ui.horizontal(|ui| match &mut self.path {
-            ProjName::Path(path) => {
-                let filename = filename(path);
-                if small_btn(ui, "🖊", "Rename path") {
-                    self.path = ProjName::Named(filename);
-                } else {
-                    ui.label(&filename);
-                }
-            }
-            ProjName::Named(name) => {
-                ui.colored_label(Color32::RED, "Unsaved path");
-                ui.text_edit_singleline(name);
-            }
-            ProjName::Untitled => {
-                ui.colored_label(Color32::RED, "Unsaved path");
-                let mut name = "untitled".to_string();
-                if ui.text_edit_singleline(&mut name).changed() {
-                    self.path = ProjName::Named(name);
-                }
+    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
+        ui.horizontal(|ui| {
+            ui.label("🖹");
+            match &self.path {
+                Some(path) => ui.label(path.to_string_lossy()),
+                None => ui.colored_label(Color32::RED, "Untitled"),
             }
         });
         ui.label("Linkage type:");
@@ -318,13 +266,13 @@ impl ProjInner {
         self.undo.fetch(&self.fb);
     }
 
-    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
+    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
         fn get_curve(pivot: Pivot, fb: &FourBar, n: usize) -> Vec<[f64; 2]> {
             let curve = fb.curves(n).into_iter();
             match pivot {
-                Pivot::Driver => curve.map(|[c, _, _]| c).collect::<Vec<_>>(),
-                Pivot::Follower => curve.map(|[_, c, _]| c).collect::<Vec<_>>(),
-                Pivot::Coupler => curve.map(|[_, _, c]| c).collect::<Vec<_>>(),
+                Pivot::Driver => curve.map(|[c, _, _]| c).collect(),
+                Pivot::Follower => curve.map(|[_, c, _]| c).collect(),
+                Pivot::Coupler => curve.map(|[_, _, c]| c).collect(),
             }
         }
         ui.heading("Curve");
@@ -492,44 +440,46 @@ impl ProjInner {
 pub(crate) struct Project(Arc<RwLock<ProjInner>>);
 
 impl Project {
-    fn new(path: Option<String>, fb: FourBar) -> Self {
-        let inner = ProjInner {
-            path: ProjName::from(path),
-            fb,
-            ..Default::default()
-        };
+    fn new(path: Option<PathBuf>, fb: FourBar) -> Self {
+        let inner = ProjInner { path, fb, ..Default::default() };
         Self(Arc::new(RwLock::new(inner)))
     }
 
-    fn set_path(&self, path: String) {
-        self.0.write().unwrap().path = ProjName::Path(path);
+    fn set_path(&self, path: PathBuf) {
+        self.0.write().unwrap().path = Some(path);
     }
 
-    pub(crate) fn path(&self) -> Option<String> {
-        match &self.0.read().unwrap().path {
-            ProjName::Path(path) => Some(path.clone()),
-            _ => None,
-        }
+    pub(crate) fn path(&self) -> Option<PathBuf> {
+        self.0.read().unwrap().path.clone()
     }
 
     pub(crate) fn pre_open(&self) {
         let mut proj = self.0.write().unwrap();
-        if let ProjName::Path(path) = &proj.path {
+        if let Some(path) = &proj.path {
             if let Some(fb) = pre_open(path) {
                 proj.fb = fb;
             } else {
-                proj.path = ProjName::Named(path.clone());
+                proj.path = None;
             }
         }
     }
 
     pub(crate) fn name(&self) -> String {
-        self.0.read().unwrap().path.name()
+        if let Some(path) = &self.0.read().unwrap().path {
+            let name = filename(path);
+            if name.ends_with(".ron") {
+                name.to_string()
+            } else {
+                name.to_string() + ".ron"
+            }
+        } else {
+            "untitled.ron".to_string()
+        }
     }
 
     fn save(&self) {
         let proj = self.0.read().unwrap();
-        if let ProjName::Path(path) = &proj.path {
+        if let Some(path) = &proj.path {
             io::save_ron(&proj.fb, path);
         } else {
             drop(proj);
@@ -538,15 +488,13 @@ impl Project {
     }
 
     fn save_as(&self) {
-        let proj = self.0.read().unwrap();
-        let name = proj.path.name();
-        let fb = proj.fb.clone();
-        drop(proj);
+        let name = self.name();
+        let (fb, _) = self.four_bar_state();
         let proj_cloned = self.clone();
         io::save_ron_ask(&fb, &name, move |path| proj_cloned.set_path(path));
     }
 
-    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, cfg: &super::Cfg) {
+    fn show(&self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
         self.0.write().unwrap().show(ui, pivot, cfg);
     }
 
@@ -583,7 +531,7 @@ impl Project {
 pub(crate) struct Queue(Arc<RwLock<Vec<Project>>>);
 
 impl Queue {
-    pub(crate) fn push(&self, path: Option<String>, fb: FourBar) {
+    pub(crate) fn push(&self, path: Option<PathBuf>, fb: FourBar) {
         self.0.write().unwrap().push(Project::new(path, fb));
     }
 }
@@ -598,7 +546,7 @@ pub(crate) struct Projects {
 }
 
 impl Projects {
-    pub(crate) fn push(&mut self, path: Option<String>, fb: FourBar) {
+    pub(crate) fn push(&mut self, path: Option<PathBuf>, fb: FourBar) {
         // Prevent opening duplicate project
         if match &path {
             None => true,
@@ -615,10 +563,9 @@ impl Projects {
         self.queue.0.write().unwrap().push(Project::default());
     }
 
-    pub(crate) fn pre_open(&mut self, file: impl AsRef<Path>) {
-        let path = file.as_ref().to_str().unwrap().to_string();
-        if let Some(fb) = pre_open(file) {
-            self.push(Some(path), fb);
+    pub(crate) fn pre_open(&mut self, file: PathBuf) {
+        if let Some(fb) = pre_open(&file) {
+            self.push(Some(file), fb);
         }
     }
 
@@ -631,7 +578,7 @@ impl Projects {
         ctx.input(|s| {
             for file in s.raw.dropped_files.iter() {
                 if let Some(path) = &file.path {
-                    self.pre_open(path);
+                    self.pre_open(path.clone());
                 }
             }
         });
@@ -647,7 +594,7 @@ impl Projects {
         }
     }
 
-    pub(crate) fn show(&mut self, ui: &mut Ui, cfg: &super::Cfg) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, cfg: &Cfg) {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() || hotkey!(ui, CTRL, O) {
                 let q = self.queue();
