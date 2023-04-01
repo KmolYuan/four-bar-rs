@@ -335,13 +335,13 @@ impl ProjInner {
         if let Some([start, end]) = self.fb.angle_bound() {
             res |= angle_bound_btns(ui, &mut self.angles.theta2, start, end);
         }
-        res |= ui
-            .group(|ui| angle(ui, "Theta: ", &mut self.angles.theta2, ""))
-            .inner;
-        self.cache.changed |= res.changed();
-        if ui.button("⚽ Dynamics").clicked() {
-            self.angle_open = !self.angle_open;
-        }
+        ui.horizontal(|ui| {
+            res |= ui
+                .group(|ui| angle(ui, "Theta: ", &mut self.angles.theta2, ""))
+                .inner;
+            self.cache.changed |= res.changed();
+            toggle_btn(ui, &mut self.angle_open, "⚽ Dynamics");
+        });
         ui.separator();
         ui.heading("Figure");
         ui.label("Plot linkage and its coupler curve.");

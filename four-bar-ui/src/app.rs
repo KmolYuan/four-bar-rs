@@ -136,7 +136,7 @@ impl App {
         });
     }
 
-    fn canvas(&self, ui: &mut Ui) {
+    fn canvas(&mut self, ui: &mut Ui) {
         plot::Plot::new("canvas")
             .data_aspect(1.)
             .legend(Default::default())

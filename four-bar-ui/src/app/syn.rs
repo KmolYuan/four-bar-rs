@@ -86,6 +86,8 @@ pub(crate) struct Synthesis {
     tasks: Vec<Task>,
     csv_open: bool,
     conv_open: bool,
+    #[serde(skip)]
+    from_plot_open: bool,
     plot_linkage: bool,
     competitor: usize,
 }
@@ -268,9 +270,11 @@ impl Synthesis {
         unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
         unit(ui, "Population: ", &mut self.config.syn.pop, 1);
         ui.label("Edit target curve then click refresh button to update the task.");
-        if ui.button("🛠 Target Curve").clicked() {
-            self.csv_open = !self.csv_open;
-        }
+        ui.horizontal(|ui| {
+            toggle_btn(ui, &mut self.csv_open, "🛠 Target Curve");
+            toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas");
+        });
+        ui.label("Click 🖊 and click canvas to add target point drictly!");
         ui.separator();
         ui.horizontal(|ui| {
             ui.heading("Codebook");
@@ -307,9 +311,7 @@ impl Synthesis {
         });
         ui.separator();
         ui.heading("Optimization");
-        if ui.button("📉 Convergence Plot").clicked() {
-            self.conv_open = !self.conv_open;
-        }
+        toggle_btn(ui, &mut self.conv_open, "📉 Convergence Plot");
         self.tasks.retain(|task| {
             let mut keep = true;
             ui.horizontal(|ui| {
@@ -456,9 +458,13 @@ impl Synthesis {
             .show(ui.ctx(), |ui| self.config.ui(ui));
     }
 
-    pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
+    pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi) {
+        if self.from_plot_open && ui.plot_clicked() {
+            // Add target curve from canvas
+            let plot::PlotPoint { x, y } = ui.pointer_coordinate().unwrap();
+            self.config.syn.target.push([x, y]);
+        }
         if !self.config.syn.target.is_empty() {
-            // TODO: Add target curve
             let line = plot::Line::new(self.config.syn.target.clone())
                 .name("Synthesis target")
                 .style(plot::LineStyle::dotted_loose())

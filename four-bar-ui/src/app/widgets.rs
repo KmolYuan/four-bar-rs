@@ -1,6 +1,14 @@
 use eframe::egui::*;
 use std::f64::consts::TAU;
 
+pub(crate) fn toggle_btn(ui: &mut Ui, on: &mut bool, label: &str) {
+    ui.group(|ui| {
+        if ui.selectable_label(*on, label).clicked() {
+            *on = !*on;
+        }
+    });
+}
+
 pub(crate) fn small_btn(ui: &mut Ui, icon: &str, tip: &str) -> bool {
     ui.small_button(icon).on_hover_text(tip).clicked()
 }
