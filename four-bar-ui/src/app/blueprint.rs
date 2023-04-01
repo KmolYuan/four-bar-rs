@@ -83,8 +83,8 @@ impl BluePrint {
         });
         if self.inner.read().unwrap().h.is_some() {
             let mut inner = self.inner.write().unwrap();
-            unit(ui, "X coordinate: ", &mut inner.x, 1.);
-            unit(ui, "Y coordinate: ", &mut inner.y, 1.);
+            unit(ui, "X coordinate: ", &mut inner.x, 1);
+            unit(ui, "Y coordinate: ", &mut inner.y, 1);
             link(ui, "Scale: ", &mut inner.s, 1e-2);
         }
     }

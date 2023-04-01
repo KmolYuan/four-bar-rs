@@ -4,11 +4,9 @@ use eframe::egui::*;
 use four_bar::{cb::FbCodebook, csv::*, *};
 use serde::{Deserialize, Serialize};
 use std::sync::{
-    atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
     Arc, RwLock,
 };
-
-mod curve_painter;
 
 const CLOSED_URL: &str =
     "https://drive.google.com/file/d/1xOgypg2fCWgfAPVneuDO-cnPdc_GHCsK/view?usp=sharing";
@@ -80,7 +78,7 @@ where
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Synthesis {
-    config: UiConfig,
+    cfg: UiConfig,
     #[serde(skip)]
     cb: Arc<RwLock<FbCodebook>>,
     tasks: Vec<Task>,
@@ -89,139 +87,20 @@ pub(crate) struct Synthesis {
     // competitor
     cpt: usize,
     #[serde(skip)]
-    csv_open: bool,
+    tmp_target: Arc<RwLock<Vec<[f64; 2]>>>,
     #[serde(skip)]
     conv_open: bool,
     #[serde(skip)]
     from_plot_open: bool,
 }
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize, PartialEq)]
 #[serde(default)]
 struct UiConfig {
-    painter: curve_painter::Painter,
     method: SynCmd,
     syn: SynConfig,
-    curve_str: Arc<RwLock<String>>,
-    #[serde(skip)]
-    changed: Arc<AtomicU8>,
     #[serde(skip)]
     efd_h: Option<usize>,
-    #[serde(skip)]
-    paint_input: bool,
-}
-
-impl PartialEq for UiConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.syn == other.syn && *self.curve_str.read().unwrap() == *other.curve_str.read().unwrap()
-    }
-}
-
-impl UiConfig {
-    const TICK: u8 = 30;
-
-    fn init_poll(&mut self) {
-        let curve_str = self.curve_str.read().unwrap();
-        if self.syn.target.is_empty() && !curve_str.is_empty() {
-            if let Some(curve) = parse_curve(&curve_str) {
-                self.efd_h = efd::Efd2::gate(&curve, None);
-                self.syn.target = curve;
-            }
-        }
-    }
-
-    fn poll(&mut self) {
-        if self.changed.load(Ordering::Relaxed) >= Self::TICK {
-            if let Some(curve) = parse_curve(&self.curve_str.read().unwrap()) {
-                self.efd_h = efd::Efd2::gate(&curve, None);
-                self.syn.target = curve;
-            }
-            self.changed.store(0, Ordering::Relaxed);
-        }
-        self.changed.fetch_add(1, Ordering::Relaxed);
-    }
-
-    fn set_target(&mut self, target: Vec<[f64; 2]>) {
-        *self.curve_str.write().unwrap() = dump_csv(&target).unwrap();
-        self.efd_h = efd::Efd2::gate(&target, None);
-        self.syn.target = target;
-    }
-
-    fn write_curve_str(&self, f: impl FnOnce(&[[f64; 2]]) -> String) {
-        *self.curve_str.write().unwrap() = f(&self.syn.target);
-    }
-
-    fn ui(&mut self, ui: &mut Ui) {
-        ui.label("Support CSV or RON array only.");
-        ui.horizontal(|ui| {
-            if ui.button("🖴 Load Curve").clicked() {
-                let curve_csv = self.curve_str.clone();
-                let changed = self.changed.clone();
-                io::open_csv_single(move |_, s| {
-                    *curve_csv.write().unwrap() = s;
-                    changed.store(UiConfig::TICK, Ordering::Relaxed);
-                });
-            }
-            if ui.button("💾 Save CSV").clicked() {
-                io::save_csv_ask(&self.syn.target);
-            }
-            if ui.button("🗑 Clear").clicked() {
-                self.curve_str.write().unwrap().clear();
-            }
-        });
-        let mode = &mut self.syn.mode;
-        ui.radio_value(mode, syn2d::Mode::Closed, "Closed path matching");
-        ui.radio_value(mode, syn2d::Mode::Partial, "Closed path match open path");
-        ui.radio_value(mode, syn2d::Mode::Open, "Open path matching");
-        ui.label("Transform:");
-        ui.horizontal_wrapped(|ui| {
-            if ui.button("🔀 To CSV").clicked() {
-                self.write_curve_str(|c| dump_csv(c).unwrap());
-            }
-            if ui.button("🔀 To array of tuple").clicked() {
-                self.write_curve_str(ron_pretty);
-            }
-            if ui.button("🔀 To array of array").clicked() {
-                self.write_curve_str(|c| {
-                    let c = c.iter().copied().map(Vec::from).collect::<Vec<_>>();
-                    ron_pretty(&c)
-                });
-            }
-            if let Some(h) = self.efd_h {
-                if ui.button(format!("🔀 Re-describe ({h})")).clicked() {
-                    self.write_curve_str(|c| {
-                        use efd::Curve as _;
-                        let c = self.syn.mode.regularize(c);
-                        let len = c.len();
-                        let efd = efd::Efd2::from_curve_harmonic(c, h).unwrap();
-                        dump_csv(efd.generate(len).pop_last()).unwrap()
-                    });
-                }
-                if ui.button("🔀 Reverse").clicked() {
-                    self.write_curve_str(|c| dump_csv(c.iter().rev().collect::<Vec<_>>()).unwrap());
-                }
-            }
-        });
-        ui.separator();
-        ui.radio_value(&mut self.paint_input, false, "Input with text");
-        ui.radio_value(&mut self.paint_input, true, "Input with painting");
-        if !self.paint_input {
-            ui.label("Past curve data here:");
-            ScrollArea::both().show(ui, |ui| {
-                let mut s = self.curve_str.write().unwrap();
-                let w = TextEdit::multiline(&mut *s)
-                    .code_editor()
-                    .desired_width(f32::INFINITY);
-                ui.add(w);
-            });
-        } else if self.painter.ui(ui, &mut self.syn.target).changed() {
-            self.efd_h = efd::Efd2::gate(&self.syn.target, None);
-            *self.curve_str.write().unwrap() = dump_csv(&self.syn.target).unwrap();
-        }
-        self.poll();
-        self.changed.fetch_add(1, Ordering::Relaxed);
-        ui.ctx().request_repaint();
-    }
 }
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
@@ -230,7 +109,6 @@ struct SynConfig {
     gen: u64,
     pop: usize,
     mode: syn2d::Mode,
-    #[serde(skip)]
     target: Vec<[f64; 2]>,
 }
 
@@ -268,17 +146,51 @@ impl Synthesis {
     pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
-            reset_button(ui, &mut self.config);
+            reset_button(ui, &mut self.cfg);
         });
         ui.group(|ui| self.opt_setting(ui));
-        unit(ui, "Generation: ", &mut self.config.syn.gen, 1);
-        unit(ui, "Population: ", &mut self.config.syn.pop, 1);
-        ui.label("Edit target curve then click refresh button to update the task.");
+        unit(ui, "Generation: ", &mut self.cfg.syn.gen, 1);
+        unit(ui, "Population: ", &mut self.cfg.syn.pop, 1);
+        ui.separator();
+        ui.heading("Target Curve");
+        if !self.tmp_target.read().unwrap().is_empty() {
+            let mut g = self.tmp_target.write().unwrap();
+            std::mem::swap(&mut self.cfg.syn.target, &mut g);
+        }
+        toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas")
+            .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
-            toggle_btn(ui, &mut self.csv_open, "🛠 Target Curve");
-            toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas");
+            if ui.button("🖴 Load").clicked() {
+                let target = self.tmp_target.clone();
+                io::open_csv_single(move |_, s| {
+                    if let Some(c) = parse_curve(&s) {
+                        *target.write().unwrap() = c;
+                    }
+                });
+            }
+            if ui.button("💾 Save CSV").clicked() {
+                io::save_csv_ask(&self.cfg.syn.target);
+            }
         });
-        ui.label("Click 🖊 and click canvas to add target point drictly!");
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("🗐 Copy CSV").clicked() {
+                ui.output_mut(|s| s.copied_text = dump_csv(&self.cfg.syn.target).unwrap());
+            }
+            if ui.button("🗐 Copy Array of Tuple").clicked() {
+                ui.output_mut(|s| s.copied_text = ron_pretty(&self.cfg.syn.target));
+            }
+            if ui.button("🗐 Copy Array of Array").clicked() {
+                let c = self
+                    .cfg
+                    .syn
+                    .target
+                    .iter()
+                    .map(|c| Vec::from(*c))
+                    .collect::<Vec<_>>();
+                ui.output_mut(|s| s.copied_text = ron_pretty(&c));
+            }
+        });
+        ui.group(|ui| table(ui, &mut self.cfg.syn.target));
         ui.separator();
         ui.horizontal(|ui| {
             ui.heading("Codebook");
@@ -338,7 +250,7 @@ impl Synthesis {
         #[cfg(target_arch = "wasm32")]
         ui.label("WARNING: Web platform will freeze UI when start solving!");
         ui.horizontal(|ui| {
-            let enabled = !self.config.syn.target.is_empty();
+            let enabled = !self.cfg.syn.target.is_empty();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
                 self.start_syn(lnk.projs.queue());
             }
@@ -362,7 +274,7 @@ impl Synthesis {
             ui.horizontal(|ui| {
                 if ui.button("💾 Save Comparison").clicked() {
                     let mut curves = vec![
-                        ("Target", self.config.syn.target.clone()),
+                        ("Target", self.cfg.syn.target.clone()),
                         ("Synthesized", lnk.projs.current_curve()),
                     ];
                     if self.cpt > 0 {
@@ -383,23 +295,22 @@ impl Synthesis {
                 ui.checkbox(&mut self.plot_linkage, "With linkage");
             });
             if ui.button("🗐 Copy Coupler Curve").clicked() {
-                self.config.set_target(lnk.projs.current_curve());
+                self.cfg.syn.target = lnk.projs.current_curve();
             }
         }
         self.convergence_plot(ui);
-        self.target_curve_editor(ui);
     }
 
     fn opt_setting(&mut self, ui: &mut Ui) {
         ui.horizontal_wrapped(|ui| {
             for &(name, abbr, f) in SynCmd::LIST {
-                let c = self.config.method.abbr() == abbr;
+                let c = self.cfg.method.abbr() == abbr;
                 if ui.selectable_label(c, abbr).on_hover_text(name).clicked() && !c {
-                    self.config.method = f();
+                    self.cfg.method = f();
                 }
             }
         });
-        let m = &mut self.config.method;
+        let m = &mut self.cfg.method;
         ui.horizontal_wrapped(|ui| {
             ui.hyperlink_to(m.name(), m.link())
                 .on_hover_text(format!("More about {}", m.name()));
@@ -451,27 +362,21 @@ impl Synthesis {
             });
     }
 
-    fn target_curve_editor(&mut self, ui: &mut Ui) {
-        Window::new("🛠 Target Curve")
-            .open(&mut self.csv_open)
-            .vscroll(false)
-            .show(ui.ctx(), |ui| self.config.ui(ui));
-    }
-
     pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi) {
-        self.config.init_poll();
         if self.from_plot_open && ui.plot_clicked() {
             // Add target curve from canvas
             let plot::PlotPoint { x, y } = ui.pointer_coordinate().unwrap();
-            self.config.syn.target.push([x, y]);
+            self.cfg.syn.target.push([x, y]);
         }
-        if !self.config.syn.target.is_empty() {
-            let line = plot::Line::new(self.config.syn.target.clone())
-                .name("Synthesis target")
+        if !self.cfg.syn.target.is_empty() {
+            const NAME: &str = "Synthesis target";
+            let line = plot::Line::new(self.cfg.syn.target.clone())
+                .name(NAME)
                 .style(plot::LineStyle::dashed_loose())
                 .width(3.);
             ui.line(line);
-            let points = plot::Points::new(self.config.syn.target.clone())
+            let points = plot::Points::new(self.cfg.syn.target.clone())
+                .name(NAME)
                 .filled(false)
                 .radius(5.);
             ui.points(points);
@@ -481,8 +386,8 @@ impl Synthesis {
     fn start_syn(&mut self, queue: super::proj::Queue) {
         #[cfg(not(target_arch = "wasm32"))]
         use four_bar::mh::rayon::spawn;
-        let method = self.config.method.clone();
-        let config = self.config.syn.clone();
+        let method = self.cfg.method.clone();
+        let config = self.cfg.syn.clone();
         let task = Task {
             total_gen: config.gen,
             start: Arc::new(AtomicBool::new(true)),

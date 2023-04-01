@@ -1,12 +1,15 @@
 use eframe::egui::*;
 use std::f64::consts::TAU;
 
-pub(crate) fn toggle_btn(ui: &mut Ui, on: &mut bool, label: &str) {
+pub(crate) fn toggle_btn(ui: &mut Ui, on: &mut bool, label: &str) -> Response {
     ui.group(|ui| {
-        if ui.selectable_label(*on, label).clicked() {
+        let res = ui.selectable_label(*on, label);
+        if res.clicked() {
             *on = !*on;
         }
-    });
+        res
+    })
+    .inner
 }
 
 pub(crate) fn small_btn(ui: &mut Ui, icon: &str, tip: &str) -> bool {
@@ -70,4 +73,28 @@ pub(crate) fn percent(ui: &mut Ui, label: &str, val: &mut f64) -> Response {
         .clamp_range(1e-4..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
+}
+
+pub(crate) fn table(ui: &mut Ui, xs: &mut Vec<[f64; 2]>) {
+    ScrollArea::vertical()
+        .max_height(100.)
+        .auto_shrink([false; 2])
+        .show(ui, |ui| {
+            if xs.is_empty() {
+                ui.colored_label(Color32::GRAY, "Empty");
+                return;
+            }
+            if ui.button("🗑 Clear").clicked() {
+                xs.clear();
+            }
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| xs.retain(|_| !ui.button("✖").clicked()));
+                ui.vertical(|ui| {
+                    xs.iter_mut().for_each(|[x, _]| drop(unit(ui, "x: ", x, 1)));
+                });
+                ui.vertical(|ui| {
+                    xs.iter_mut().for_each(|[_, y]| drop(unit(ui, "y: ", y, 1)));
+                });
+            });
+        });
 }
