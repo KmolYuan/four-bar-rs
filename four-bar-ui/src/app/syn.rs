@@ -84,12 +84,16 @@ pub(crate) struct Synthesis {
     #[serde(skip)]
     cb: Arc<RwLock<FbCodebook>>,
     tasks: Vec<Task>,
+    // plot with linkage
+    plot_linkage: bool,
+    // competitor
+    cpt: usize,
+    #[serde(skip)]
     csv_open: bool,
+    #[serde(skip)]
     conv_open: bool,
     #[serde(skip)]
     from_plot_open: bool,
-    plot_linkage: bool,
-    competitor: usize,
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -283,10 +287,7 @@ impl Synthesis {
             }
         });
         ui.label("Use pre-searched dataset to increase the speed.");
-        {
-            let size = self.cb.read().unwrap().size();
-            ui.label(format!("Number of data: {size}"));
-        }
+        ui.label(format!("Number of data: {}", self.cb.read().unwrap().len()));
         ui.collapsing("Help", |ui| {
             ui.label("Run \"four-bar cb\" in command line window to generate codebook file.");
             ui.horizontal(|ui| {
@@ -348,10 +349,10 @@ impl Synthesis {
         ui.label("Compare results from a project's coupler curve.");
         if lnk.projs.select(ui, false) {
             let len = lnk.projs.len() + 1;
-            if self.competitor >= len {
-                self.competitor = len - 1;
+            if self.cpt >= len {
+                self.cpt = len - 1;
             }
-            ComboBox::from_label("").show_index(ui, &mut self.competitor, len, |i| {
+            ComboBox::from_label("").show_index(ui, &mut self.cpt, len, |i| {
                 if i == 0 {
                     "None".to_string()
                 } else {
@@ -364,8 +365,8 @@ impl Synthesis {
                         ("Target", self.config.syn.target.clone()),
                         ("Synthesized", lnk.projs.current_curve()),
                     ];
-                    if self.competitor > 0 {
-                        let curve = lnk.projs[self.competitor - 1].clone_curve();
+                    if self.cpt > 0 {
+                        let curve = lnk.projs[self.cpt - 1].clone_curve();
                         curves.push(("Competitor", curve));
                     }
                     let (fb, angle) = lnk.projs.four_bar_state();
@@ -451,7 +452,6 @@ impl Synthesis {
     }
 
     fn target_curve_editor(&mut self, ui: &mut Ui) {
-        self.config.init_poll();
         Window::new("🛠 Target Curve")
             .open(&mut self.csv_open)
             .vscroll(false)
@@ -459,6 +459,7 @@ impl Synthesis {
     }
 
     pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi) {
+        self.config.init_poll();
         if self.from_plot_open && ui.plot_clicked() {
             // Add target curve from canvas
             let plot::PlotPoint { x, y } = ui.pointer_coordinate().unwrap();
@@ -467,9 +468,13 @@ impl Synthesis {
         if !self.config.syn.target.is_empty() {
             let line = plot::Line::new(self.config.syn.target.clone())
                 .name("Synthesis target")
-                .style(plot::LineStyle::dotted_loose())
+                .style(plot::LineStyle::dashed_loose())
                 .width(3.);
             ui.line(line);
+            let points = plot::Points::new(self.config.syn.target.clone())
+                .filled(false)
+                .radius(5.);
+            ui.points(points);
         }
     }
 

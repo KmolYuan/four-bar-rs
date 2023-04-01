@@ -199,8 +199,8 @@ where
         w.finish()
     }
 
-    /// Total size.
-    pub fn size(&self) -> usize {
+    /// Length, total size.
+    pub fn len(&self) -> usize {
         self.fb.nrows()
     }
 
@@ -302,7 +302,7 @@ where
         let dis = iter
             .map(|efd| target.l1_norm(&Efd::<D>::try_from_coeffs(efd.to_owned()).unwrap()))
             .collect::<Vec<_>>();
-        let mut ind = (0..self.size()).collect::<Vec<_>>();
+        let mut ind = (0..self.len()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
             .take(size)
