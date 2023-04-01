@@ -124,8 +124,11 @@ impl App {
             .on_hover_text("Blue Print");
         ui.selectable_value(&mut self.panel, Panel::Options, "🛠")
             .on_hover_text("Options");
-        ui.selectable_value(&mut self.panel, Panel::Off, "⛶")
-            .on_hover_text("Focus on Canvas");
+        if !matches!(self.panel, Panel::Off)
+            && ui.small_button("⬅").on_hover_text("Close Panel").clicked()
+        {
+            self.panel = Panel::Off;
+        }
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
             if small_btn(ui, "❓", "Welcome") {
                 self.welcome_off = !self.welcome_off;

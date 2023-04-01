@@ -458,9 +458,10 @@ impl Synthesis {
 
     pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
         if !self.config.syn.target.is_empty() {
+            // TODO: Add target curve
             let line = plot::Line::new(self.config.syn.target.clone())
                 .name("Synthesis target")
-                .style(plot::LineStyle::dashed_loose())
+                .style(plot::LineStyle::dotted_loose())
                 .width(3.);
             ui.line(line);
         }
