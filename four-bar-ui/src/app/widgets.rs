@@ -81,7 +81,7 @@ pub(crate) fn table(ui: &mut Ui, xs: &mut Vec<[f64; 2]>) {
         .auto_shrink([false; 2])
         .show(ui, |ui| {
             if xs.is_empty() {
-                ui.colored_label(Color32::GRAY, "Empty");
+                ui.label("No curve");
                 return;
             }
             if ui.button("🗑 Clear").clicked() {
