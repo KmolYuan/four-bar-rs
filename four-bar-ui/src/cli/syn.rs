@@ -223,11 +223,11 @@ fn run<S>(
         let curve = ans.curve(cfg.res);
         let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
         let curve_diff = if matches!(mode, syn2d::Mode::Partial) {
-            efd::curve_diff as fn(&[[f64; 2]], &[[f64; 2]]) -> f64
-        } else {
             efd::partial_curve_diff
+        } else {
+            efd::curve_diff
         };
-        let err = curve_diff(&target, &curve);
+        let err = curve_diff(&target, &mode.regularize(&curve));
         let mut curves = vec![("Target", target), ("Synthesized", curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
@@ -253,17 +253,18 @@ fn run<S>(
         log_fb(&mut log, &ans)?;
         if let Some((cost, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
-            let err = curve_diff(&curves[0].1, &c);
-            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
+            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(c), h).unwrap();
             let trans = efd.as_trans().to(efd_target.as_trans());
             let fb = FourBar::from(fb).transform(&trans);
+            let c = fb.curve(cfg.res);
+            let err = curve_diff(&curves[0].1, &mode.regularize(&c));
             writeln!(log, "\n[catalog]")?;
             writeln!(log, "harmonic={}", cb.harmonic())?;
             writeln!(log, "error={err}")?;
             writeln!(log, "cost={cost}")?;
             writeln!(log, "\n[catalog.fb]")?;
             log_fb(&mut log, &fb)?;
-            curves.push(("Catalog", trans.transform(c)));
+            curves.push(("Catalog", c));
         }
         let refer = root
             .parent()
@@ -273,7 +274,7 @@ fn run<S>(
         if let Ok(s) = std::fs::read_to_string(refer) {
             let fb = ron::from_str::<FourBar>(&s)?;
             let c = fb.curve(cfg.res);
-            let err = curve_diff(&curves[0].1, &c);
+            let err = curve_diff(&curves[0].1, &mode.regularize(&c));
             writeln!(log, "\n[competitor]")?;
             writeln!(log, "error={err}")?;
             if !matches!(mode, syn2d::Mode::Partial) {
