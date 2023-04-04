@@ -1,5 +1,5 @@
 use eframe::egui::*;
-use std::f64::consts::TAU;
+use std::{f64::consts::TAU, path::PathBuf};
 
 pub(crate) fn toggle_btn(ui: &mut Ui, on: &mut bool, label: &str) -> Response {
     ui.group(|ui| {
@@ -73,6 +73,24 @@ pub(crate) fn percent(ui: &mut Ui, label: &str, val: &mut f64) -> Response {
         .clamp_range(1e-4..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
+}
+
+pub(crate) fn path_label(ui: &mut Ui, icon: &str, path: Option<&PathBuf>, warn: &str) -> Response {
+    ui.horizontal(|ui| {
+        ui.label(icon);
+        if let Some(path) = path {
+            let path_str = path.to_string_lossy();
+            if path.as_os_str().len() < 30 {
+                ui.label(path_str)
+            } else {
+                let path = std::path::Path::new("...").join(path.file_name().unwrap());
+                ui.label(path.to_string_lossy()).on_hover_text(path_str)
+            }
+        } else {
+            ui.colored_label(Color32::RED, warn)
+        }
+    })
+    .inner
 }
 
 pub(crate) fn table(ui: &mut Ui, xs: &mut Vec<[f64; 2]>) {

@@ -73,14 +73,7 @@ impl BluePrint {
                 *self.inner.write().unwrap() = Default::default();
             }
         });
-        ui.horizontal(|ui| {
-            ui.label("🖻");
-            if let Some(path) = self.path.read().unwrap().as_ref() {
-                ui.label(path.to_string_lossy());
-            } else {
-                ui.colored_label(Color32::RED, "No image yet.");
-            }
-        });
+        path_label(ui, "🖻", self.path.read().unwrap().as_ref(), "No image");
         if self.inner.read().unwrap().h.is_some() {
             let mut inner = self.inner.write().unwrap();
             unit(ui, "X coordinate: ", &mut inner.x, 1);

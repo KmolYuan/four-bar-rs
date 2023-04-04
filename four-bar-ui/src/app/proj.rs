@@ -188,13 +188,7 @@ impl Default for ProjInner {
 
 impl ProjInner {
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
-        ui.horizontal(|ui| {
-            ui.label("🖹");
-            match &self.path {
-                Some(path) => ui.label(path.to_string_lossy()),
-                None => ui.colored_label(Color32::RED, "Untitled"),
-            }
-        });
+        path_label(ui, "🖹", self.path.as_ref(), "Untitled");
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
         if self.cache.defect {
