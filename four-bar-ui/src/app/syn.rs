@@ -275,7 +275,7 @@ impl Synthesis {
                 if ui.button("💾 Save Comparison").clicked() {
                     let mut curves = vec![
                         ("Target", self.cfg.syn.target.clone()),
-                        ("Synthesized", lnk.projs.current_curve()),
+                        ("Optimized", lnk.projs.current_curve()),
                     ];
                     if self.cpt > 0 {
                         let curve = lnk.projs[self.cpt - 1].clone_curve();

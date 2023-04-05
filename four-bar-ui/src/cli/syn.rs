@@ -183,7 +183,7 @@ fn run<S>(
                     let curve = ans.curve(cfg.res);
                     let path = root.join(format!("{title}_{}_linkage.svg", ctx.gen));
                     let svg = plot2d::SVGBackend::new(&path, (800, 800));
-                    let curves = [("Target", target.as_slice()), ("Synthesized", &curve)];
+                    let curves = [("Target", target.as_slice()), ("Optimized", &curve)];
                     let opt = plot2d::Opt::from(&ans).dot(true).font(cfg.font);
                     plot2d::plot(svg, curves, opt).unwrap();
                 }
@@ -228,7 +228,7 @@ fn run<S>(
             efd::curve_diff
         };
         let err = curve_diff(&target, &mode.regularize(&curve));
-        let mut curves = vec![("Target", target), ("Synthesized", curve)];
+        let mut curves = vec![("Target", target), ("Optimized", curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
@@ -244,12 +244,12 @@ fn run<S>(
             writeln!(log, "\n[target.fb]")?;
             log_fb(&mut log, &fb)?;
         }
-        writeln!(log, "\n[synthesized]")?;
+        writeln!(log, "\n[optimized]")?;
         writeln!(log, "time={t1:?}")?;
         writeln!(log, "harmonic={h}")?;
         writeln!(log, "error={err}")?;
         writeln!(log, "cost={cost}")?;
-        writeln!(log, "\n[synthesized.fb]")?;
+        writeln!(log, "\n[optimized.fb]")?;
         log_fb(&mut log, &ans)?;
         if let Some((cost, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
