@@ -186,7 +186,7 @@ fn run<S>(
                     let curves = [("Target", target.as_slice()), ("Optimized", &curve)];
                     let mut opt = plot2d::Opt::from(&ans).dot(true).font(cfg.font);
                     if let Some(angle) = cfg.angle {
-                        opt = opt.angle(angle);
+                        opt = opt.angle(angle.to_radians());
                     }
                     plot2d::plot(svg, curves, opt).unwrap();
                 }
@@ -241,7 +241,7 @@ fn run<S>(
             .font(cfg.font)
             .scale_bar(true);
         if let Some(angle) = cfg.angle {
-            opt = opt.angle(angle);
+            opt = opt.angle(angle.to_radians());
         }
         plot2d::plot(root_l, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
         let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
@@ -250,13 +250,6 @@ fn run<S>(
             writeln!(log, "\n[target.fb]")?;
             log_fb(&mut log, &fb)?;
         }
-        writeln!(log, "\n[optimized]")?;
-        writeln!(log, "time={t1:?}")?;
-        writeln!(log, "harmonic={h}")?;
-        writeln!(log, "error={err}")?;
-        writeln!(log, "cost={cost}")?;
-        writeln!(log, "\n[optimized.fb]")?;
-        log_fb(&mut log, &ans)?;
         if let Some((cost, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(c), h).unwrap();
@@ -272,6 +265,13 @@ fn run<S>(
             log_fb(&mut log, &fb)?;
             curves.push(("Catalog", c));
         }
+        writeln!(log, "\n[optimized]")?;
+        writeln!(log, "time={t1:?}")?;
+        writeln!(log, "harmonic={h}")?;
+        writeln!(log, "error={err}")?;
+        writeln!(log, "cost={cost}")?;
+        writeln!(log, "\n[optimized.fb]")?;
+        log_fb(&mut log, &ans)?;
         let refer = root
             .parent()
             .unwrap()
