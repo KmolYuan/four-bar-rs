@@ -184,7 +184,10 @@ fn run<S>(
                     let path = root.join(format!("{title}_{}_linkage.svg", ctx.gen));
                     let svg = plot2d::SVGBackend::new(&path, (800, 800));
                     let curves = [("Target", target.as_slice()), ("Optimized", &curve)];
-                    let opt = plot2d::Opt::from(&ans).dot(true).font(cfg.font);
+                    let mut opt = plot2d::Opt::from(&ans).dot(true).font(cfg.font);
+                    if let Some(angle) = cfg.angle {
+                        opt = opt.angle(angle);
+                    }
                     plot2d::plot(svg, curves, opt).unwrap();
                 }
                 history.push(ctx.best_f);
@@ -232,11 +235,14 @@ fn run<S>(
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
-        let opt = plot2d::Opt::from(&ans)
+        let mut opt = plot2d::Opt::from(&ans)
             .dot(true)
             .axis(false)
             .font(cfg.font)
             .scale_bar(true);
+        if let Some(angle) = cfg.angle {
+            opt = opt.angle(angle);
+        }
         plot2d::plot(root_l, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
         let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
         writeln!(log, "[{title}]")?;

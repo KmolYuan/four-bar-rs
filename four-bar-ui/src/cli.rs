@@ -69,9 +69,12 @@ struct SynCfg {
     /// Plot and save the changes with log interval, default to disabled
     #[clap(long, default_value_t = 0)]
     log: usize,
-    /// Plot font size.
+    /// Font size in the plot
     #[clap(long, default_value_t = 24.)]
     font: f64,
+    /// Linkage input angle in the plot
+    #[clap(long)]
+    angle: Option<f64>,
 }
 
 impl std::fmt::Display for SynCfg {
