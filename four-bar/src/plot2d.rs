@@ -49,7 +49,7 @@ macro_rules! impl_opt {
         struct $ty:ident { $fb:ty, $coord:ty }
     )+) => {$(
         $(#[$meta])+
-        #[derive(Default)]
+        #[derive(Default, Clone)]
         pub struct $ty<'a, 'b> {
             fb: Option<&'a $fb>,
             angle: Option<f64>,
