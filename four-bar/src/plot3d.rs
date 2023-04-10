@@ -32,7 +32,8 @@ where
     let root = Canvas::from(root);
     root.fill(&WHITE)?;
     let opt = Opt::from(opt);
-    let joints = opt.joints();
+    let joints = opt.get_joints();
+    let (stroke, dot_size) = opt.get_stroke();
     let curves = curves.into_iter().collect::<Vec<_>>();
     let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
     let font = || font.clone();
@@ -80,37 +81,36 @@ where
             ((0., scale_bar, 0.), GREEN),
             ((0., 0., scale_bar), BLUE),
         ] {
-            chart.draw_series(LineSeries::new([(0., 0., 0.), p], color.stroke_width(5)))?;
+            chart.draw_series(LineSeries::new(
+                [(0., 0., 0.), p],
+                color.stroke_width(stroke),
+            ))?;
         }
     }
     // Draw curves
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let color = Palette99::pick(Palette99::COLORS.len() - i);
-        let stroke = opt.stroke;
         if opt.dot {
-            if i % 2 == 1 {
-                let series = curve
-                    .iter()
-                    .map(|&[x, y, z]| Circle::new((x, z, y), stroke, &color));
-                chart
-                    .draw_series(series)?
-                    .label(label)
-                    .legend(move |(x, y)| Circle::new((x + 10, y), stroke, &color));
-            } else {
-                let series = curve
-                    .iter()
-                    .map(|&[x, y, z]| TriangleMarker::new((x, z, y), stroke, &color));
-                chart
-                    .draw_series(series)?
-                    .label(label)
-                    .legend(move |(x, y)| TriangleMarker::new((x + 10, y), stroke, &color));
-            };
+            macro_rules! draw_dots {
+                ($ty:ident) => {{
+                    let line = curve
+                        .iter()
+                        .map(|&[x, y, z]| $ty::new((x, z, y), dot_size, &color));
+                    chart
+                        .draw_series(line)?
+                        .label(label)
+                        .legend(move |(x, y)| $ty::new((x + 10, y), dot_size, &color));
+                }};
+            }
+            match i % 3 {
+                1 => draw_dots!(TriangleMarker),
+                2 => draw_dots!(Cross),
+                _ => draw_dots!(Circle),
+            }
         } else {
+            let line = curve.iter().map(|&[x, y, z]| (x, z, y));
             chart
-                .draw_series(LineSeries::new(
-                    curve.iter().map(|&[x, y, z]| (x, z, y)),
-                    color.stroke_width(stroke),
-                ))?
+                .draw_series(LineSeries::new(line, color.stroke_width(stroke)))?
                 .label(label)
                 .legend(move |(x, y)| {
                     PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
@@ -142,15 +142,15 @@ where
                 line.windows(2)
                     .flat_map(|w| link(w[0], w[1]))
                     .map(|(x, y, z)| (x, z, y)),
-                BLACK.stroke_width(3),
+                BLACK.stroke_width(stroke),
             ))?;
         }
         let joints_iter = joints
             .iter()
-            .map(|&[x, y, z]| Circle::new((x, z, y), 5, BLACK.filled()));
+            .map(|&[x, y, z]| Circle::new((x, z, y), dot_size, BLACK.filled()));
         chart.draw_series(joints_iter)?;
         let grounded = joints[..2].iter().map(|&[x, y, z]| {
-            let r = 3e-2;
+            let r = 0.03;
             Cubiod::new(
                 [(x - r, z - r, y - r), (x + r, z + r, y + r)],
                 BLACK.mix(0.2),

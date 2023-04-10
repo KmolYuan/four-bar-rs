@@ -108,7 +108,7 @@ macro_rules! impl_opt {
                 fn dot(bool)
             }
 
-            fn joints(&self) -> Option<[$coord; 5]> {
+            fn get_joints(&self) -> Option<[$coord; 5]> {
                 let fb = self.fb.as_ref()?;
                 let [start, end] = fb.angle_bound().expect("invalid linkage");
                 let angle = match self.angle {
@@ -116,6 +116,11 @@ macro_rules! impl_opt {
                     _ => start + (end - start) * 0.25,
                 };
                 Some(fb.pos(angle))
+            }
+
+            // (stroke, dot_size)
+            fn get_stroke(&self) -> (u32, u32) {
+                (self.stroke, self.stroke + 3)
             }
         }
 
@@ -235,7 +240,8 @@ where
     let root = Canvas::from(root);
     root.fill(&WHITE)?;
     let opt = Opt::from(opt);
-    let joints = opt.joints();
+    let joints = opt.get_joints();
+    let (stroke, dot_size) = opt.get_stroke();
     let curves = curves.into_iter().collect::<Vec<_>>();
     let iter = curves.iter().flat_map(|(_, curve)| curve.iter());
     let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
@@ -262,27 +268,27 @@ where
     // Draw curve
     for (i, &(label, curve)) in curves.iter().enumerate() {
         let color = Palette99::pick(Palette99::COLORS.len() - i);
-        let stroke = opt.stroke;
         if opt.dot {
-            macro_rules! draw_line {
+            macro_rules! draw_dots {
                 ($ty:ident) => {{
+                    let line = curve
+                        .iter()
+                        .map(|&[x, y]| $ty::new((x, y), dot_size, &color));
                     chart
-                        .draw_series(curve.iter().map(|&[x, y]| $ty::new((x, y), stroke, &color)))?
+                        .draw_series(line)?
                         .label(label)
-                        .legend(move |(x, y)| $ty::new((x + 10, y), stroke, &color));
+                        .legend(move |(x, y)| $ty::new((x + 10, y), dot_size, &color));
                 }};
             }
             match i % 3 {
-                1 => draw_line!(TriangleMarker),
-                2 => draw_line!(Cross),
-                _ => draw_line!(Circle),
+                1 => draw_dots!(TriangleMarker),
+                2 => draw_dots!(Cross),
+                _ => draw_dots!(Circle),
             }
         } else {
+            let line = curve.iter().map(|&[x, y]| (x, y));
             chart
-                .draw_series(LineSeries::new(
-                    curve.iter().map(|&[x, y]| (x, y)),
-                    color.stroke_width(stroke),
-                ))?
+                .draw_series(LineSeries::new(line, color.stroke_width(stroke)))?
                 .label(label)
                 .legend(move |(x, y)| {
                     PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
@@ -298,19 +304,21 @@ where
                 ((p0[0] + scale_bar, p0[1]), RED),
                 ((p0[0], p0[1] + scale_bar), BLUE),
             ] {
-                chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], color.stroke_width(5)))?;
+                let style = color.stroke_width(stroke);
+                chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], style))?;
             }
         }
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
-            chart.draw_series(LineSeries::new(line.iter().map(|&[x, y]| (x, y)), BLACK))?;
+            let line = line.iter().map(|&[x, y]| (x, y));
+            chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
         }
         let grounded = joints[..2].iter().map(|&[x, y]| {
-            EmptyElement::at((x, y)) + TriangleMarker::new((0, 10), 10, BLACK.filled())
+            EmptyElement::at((x, y)) + TriangleMarker::new((0, 10), dot_size, BLACK.filled())
         });
         chart.draw_series(grounded)?;
         let joints = joints
             .iter()
-            .map(|&[x, y]| Circle::new((x, y), 5, BLACK.filled()));
+            .map(|&[x, y]| Circle::new((x, y), dot_size, BLACK.filled()));
         chart.draw_series(joints)?;
     }
     if curves.len() > 1 {
