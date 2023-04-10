@@ -22,6 +22,10 @@ macro_rules! impl_err_from {
     )+};
 }
 
+fn ref2(curves: &[(String, Vec<[f64; 2]>)]) -> impl Iterator<Item = (&str, &[[f64; 2]])> {
+    curves.iter().map(|(s, c)| (s.as_str(), c.as_slice()))
+}
+
 #[derive(Debug)]
 enum SynErr {
     Format,
@@ -231,7 +235,11 @@ fn run<S>(
             efd::curve_diff
         };
         let err = curve_diff(&target, &mode.regularize(&curve));
-        let mut curves = vec![("Target", target), ("Optimized", curve)];
+        let target_str = cfg
+            .ref_num
+            .map(|n| format!("Target, Ref. [{n}]"))
+            .unwrap_or("Target".to_string());
+        let mut curves = vec![(target_str, target), ("Optimized".to_string(), curve)];
         let path = root.join(format!("{title}_result.svg"));
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
@@ -243,7 +251,7 @@ fn run<S>(
         if let Some(angle) = cfg.angle {
             opt = opt.angle(angle.to_radians());
         }
-        plot2d::plot(root_l, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
+        plot2d::plot(root_l, ref2(&curves), opt)?;
         let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
         writeln!(log, "[{title}]")?;
         if let Some(fb) = target_fb {
@@ -257,13 +265,13 @@ fn run<S>(
             let fb = FourBar::from(fb).transform(&trans);
             let c = fb.curve(cfg.res);
             let err = curve_diff(&curves[0].1, &mode.regularize(&c));
-            writeln!(log, "\n[catalog]")?;
+            writeln!(log, "\n[atlas]")?;
             writeln!(log, "harmonic={}", cb.harmonic())?;
             writeln!(log, "error={err}")?;
             writeln!(log, "cost={cost}")?;
-            writeln!(log, "\n[catalog.fb]")?;
+            writeln!(log, "\n[atlas.fb]")?;
             log_fb(&mut log, &fb)?;
-            curves.push(("Catalog", c));
+            curves.push(("Atlas".to_string(), c));
         }
         writeln!(log, "\n[optimized]")?;
         writeln!(log, "time={t1:?}")?;
@@ -290,10 +298,14 @@ fn run<S>(
             }
             writeln!(log, "\n[competitor.fb]")?;
             log_fb(&mut log, &fb)?;
-            curves.push(("Competitor", c));
+            let competitor_str = cfg
+                .ref_num
+                .map(|n| format!("Ref. [{n}]"))
+                .unwrap_or("Competitor".to_string());
+            curves.push((competitor_str, c));
         }
         let opt = plot2d::Opt::new().dot(true).font(cfg.font);
-        plot2d::plot(root_r, curves.iter().map(|(s, c)| (*s, c.as_slice())), opt)?;
+        plot2d::plot(root_r, ref2(&curves), opt)?;
         log.flush()?;
         pb.finish();
         Ok(())

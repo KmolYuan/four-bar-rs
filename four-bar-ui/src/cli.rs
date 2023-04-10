@@ -42,8 +42,7 @@ struct Syn {
     #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
     #[clap(long)]
     cb: Option<std::ffi::OsString>,
-    /// Reference (competitor) path starting from file root with the same
-    /// filename
+    /// Competitor path starting from file root with the same filename
     #[clap(short, long, default_value = "refer")]
     refer: PathBuf,
     #[clap(flatten)]
@@ -72,6 +71,9 @@ struct SynCfg {
     /// Font size in the plot
     #[clap(long, default_value_t = 24.)]
     font: f64,
+    /// Reference number
+    #[clap(long)]
+    ref_num: Option<u8>,
     /// Linkage input angle in the plot
     #[clap(long)]
     angle: Option<f64>,
