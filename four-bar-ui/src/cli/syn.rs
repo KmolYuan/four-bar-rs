@@ -275,6 +275,8 @@ fn run<S>(
             writeln!(log, "cost={cost}")?;
             writeln!(log, "\n[atlas.fb]")?;
             log_fb(&mut log, &fb)?;
+            let path = root.join(format!("{title}_atlas.ron"));
+            std::fs::write(path, ron::to_string(&fb)?)?;
             curves.push(("Atlas".to_string(), c));
         }
         writeln!(log, "\n[optimized]")?;
