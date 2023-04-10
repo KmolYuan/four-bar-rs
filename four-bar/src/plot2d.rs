@@ -353,7 +353,7 @@ where
             chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
         }
         let grounded = joints[..2].iter().map(|&[x, y]| {
-            EmptyElement::at((x, y)) + TriangleMarker::new((0, 10), dot_size, BLACK.filled())
+            EmptyElement::at((x, y)) + TriangleMarker::new((0, 10), dot_size + 3, BLACK.filled())
         });
         chart.draw_series(grounded)?;
         let joints = joints
