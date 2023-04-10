@@ -188,7 +188,10 @@ fn run<S>(
                     let path = root.join(format!("{title}_{}_linkage.svg", ctx.gen));
                     let svg = plot2d::SVGBackend::new(&path, (800, 800));
                     let curves = [("Target", target.as_slice()), ("Optimized", &curve)];
-                    let mut opt = plot2d::Opt::from(&ans).dot(true).font(cfg.font);
+                    let mut opt = plot2d::Opt::from(&ans)
+                        .dot(true)
+                        .font(cfg.font)
+                        .legend(cfg.legend_pos.unwrap_or_default());
                     if let Some(angle) = cfg.angle {
                         opt = opt.angle(angle.to_radians());
                     }
@@ -247,6 +250,7 @@ fn run<S>(
             .dot(true)
             .axis(false)
             .font(cfg.font)
+            .legend(cfg.legend_pos.unwrap_or_default())
             .scale_bar(true);
         if let Some(angle) = cfg.angle {
             opt = opt.angle(angle.to_radians());
@@ -304,7 +308,10 @@ fn run<S>(
                 .unwrap_or("Competitor".to_string());
             curves.push((competitor_str, c));
         }
-        let opt = plot2d::Opt::new().dot(true).font(cfg.font);
+        let opt = plot2d::Opt::new()
+            .dot(true)
+            .font(cfg.font)
+            .legend(cfg.legend_pos.unwrap_or_default());
         plot2d::plot(root_r, ref2(&curves), opt)?;
         log.flush()?;
         pb.finish();

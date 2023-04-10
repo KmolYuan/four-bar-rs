@@ -77,6 +77,9 @@ struct SynCfg {
     /// Linkage input angle in the plot
     #[clap(long)]
     angle: Option<f64>,
+    /// Legend position
+    #[clap(long)]
+    legend_pos: Option<four_bar::plot2d::LegendPos>,
 }
 
 impl std::fmt::Display for SynCfg {

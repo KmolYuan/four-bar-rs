@@ -106,6 +106,8 @@ macro_rules! impl_opt {
                 fn axis(bool)
                 /// Use dot to present the curves.
                 fn dot(bool)
+                /// Set legend position.
+                fn legend(LegendPos)
             }
 
             fn get_joints(&self) -> Option<[$coord; 5]> {
@@ -136,6 +138,52 @@ macro_rules! impl_opt {
 pub(crate) use impl_opt;
 pub(crate) use inner_opt;
 
+/// Legend position option.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[derive(Clone, Copy, PartialEq, Default)]
+pub enum LegendPos {
+    /// Upper Left
+    UL,
+    /// Middle Left
+    ML,
+    /// Lower Left
+    LL,
+    /// Upper Middle
+    UM,
+    /// Middle Middle
+    MM,
+    /// Lower Middle
+    LM,
+    /// Upper Right
+    UR,
+    /// Middle Right
+    MR,
+    /// Lower Right
+    #[default]
+    LR,
+    /// Coordinate
+    #[cfg_attr(feature = "clap", clap(skip))]
+    Coord(i32, i32),
+}
+
+impl From<LegendPos> for SeriesLabelPosition {
+    fn from(pos: LegendPos) -> Self {
+        match pos {
+            LegendPos::UL => Self::UpperLeft,
+            LegendPos::ML => Self::MiddleLeft,
+            LegendPos::LL => Self::LowerLeft,
+            LegendPos::UM => Self::UpperMiddle,
+            LegendPos::MM => Self::MiddleMiddle,
+            LegendPos::LM => Self::LowerMiddle,
+            LegendPos::UR => Self::UpperRight,
+            LegendPos::MR => Self::MiddleRight,
+            LegendPos::LR => Self::LowerRight,
+            LegendPos::Coord(x, y) => Self::Coordinate(x, y),
+        }
+    }
+}
+
 /// 2D/3D plot option.
 #[cfg_attr(
     feature = "serde",
@@ -156,6 +204,8 @@ pub struct OptInner {
     pub axis: bool,
     /// Use dot (marker) line
     pub dot: bool,
+    /// Legend position
+    pub legend: LegendPos,
 }
 
 impl Default for OptInner {
@@ -167,6 +217,7 @@ impl Default for OptInner {
             grid: false,
             axis: true,
             dot: false,
+            legend: LegendPos::LR,
         }
     }
 }
@@ -297,17 +348,6 @@ where
     }
     // Draw Linkage
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
-        // Draw scale bar
-        if opt.scale_bar {
-            let scale_bar = scale_bar_size((x_max - x_min).min(y_max - y_min));
-            for (p, color) in [
-                ((p0[0] + scale_bar, p0[1]), RED),
-                ((p0[0], p0[1] + scale_bar), BLUE),
-            ] {
-                let style = color.stroke_width(stroke);
-                chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], style))?;
-            }
-        }
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             let line = line.iter().map(|&[x, y]| (x, y));
             chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
@@ -320,11 +360,22 @@ where
             .iter()
             .map(|&[x, y]| Circle::new((x, y), dot_size, BLACK.filled()));
         chart.draw_series(joints)?;
+        // Draw scale bar
+        if opt.scale_bar {
+            let scale_bar = scale_bar_size((x_max - x_min).min(y_max - y_min));
+            for (p, color) in [
+                ((p0[0] + scale_bar, p0[1]), RED),
+                ((p0[0], p0[1] + scale_bar), BLUE),
+            ] {
+                let style = color.stroke_width(stroke);
+                chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], style))?;
+            }
+        }
     }
     if curves.len() > 1 {
         chart
             .configure_series_labels()
-            .position(SeriesLabelPosition::LowerRight)
+            .position(opt.legend.into())
             .background_style(WHITE)
             .border_style(BLACK)
             .label_font(font())

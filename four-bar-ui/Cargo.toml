@@ -17,7 +17,7 @@ path = "src/main.rs"
 [features]
 # Turn of default in WASM
 default = ["native"]
-native = ["four-bar/rayon", "four-bar/mh-clap"]
+native = ["four-bar/rayon", "four-bar/clap"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
