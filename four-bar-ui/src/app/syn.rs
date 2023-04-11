@@ -145,6 +145,12 @@ impl Synthesis {
         toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas")
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
+            if ui.button("🖊 Add from").clicked() {
+                *self.tmp_target.write().unwrap() = lnk.projs.current_curve();
+            }
+            lnk.projs.select(ui, false);
+        });
+        ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let target = self.tmp_target.clone();
                 io::open_csv_single(move |_, c| *target.write().unwrap() = c);
@@ -237,48 +243,6 @@ impl Synthesis {
             }
             ui.add(ProgressBar::new(0.).show_percentage());
         });
-        ui.separator();
-        ui.heading("Projects");
-        ui.label("Compare results from a project's coupler curve.");
-        if lnk.projs.select(ui, false) {
-            let len = lnk.projs.len() + 1;
-            if self.cpt >= len {
-                self.cpt = len - 1;
-            }
-            ComboBox::from_label("").show_index(ui, &mut self.cpt, len, |i| {
-                if i == 0 {
-                    "None".to_string()
-                } else {
-                    lnk.projs[i - 1].name()
-                }
-            });
-            ui.horizontal(|ui| {
-                if ui.button("💾 Save Comparison").clicked() {
-                    let mut curves = vec![
-                        ("Target", self.cfg.syn.target.clone()),
-                        ("Optimized", lnk.projs.current_curve()),
-                    ];
-                    if self.cpt > 0 {
-                        let curve = lnk.projs[self.cpt - 1].clone_curve();
-                        curves.push(("Competitor", curve));
-                    }
-                    let (fb, angle) = lnk.projs.four_bar_state();
-                    let opt = if self.plot_linkage {
-                        plot2d::Opt::from(&fb)
-                            .angle(angle)
-                            .inner(lnk.cfg.plot.clone())
-                    } else {
-                        plot2d::Opt::new().inner(lnk.cfg.plot.clone())
-                    };
-                    let curves = curves.iter().map(|(s, c)| (*s, c.as_slice()));
-                    io::save_curve_ask(curves, opt, "fb.svg");
-                }
-                ui.checkbox(&mut self.plot_linkage, "With linkage");
-            });
-            if ui.button("🗐 Copy Coupler Curve").clicked() {
-                self.cfg.syn.target = lnk.projs.current_curve();
-            }
-        }
         self.convergence_plot(ui);
     }
 

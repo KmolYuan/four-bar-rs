@@ -336,16 +336,6 @@ impl ProjInner {
             self.cache.changed |= res.changed();
             toggle_btn(ui, &mut self.angle_open, "⚽ Dynamics");
         });
-        ui.separator();
-        ui.heading("Figure");
-        ui.label("Plot linkage and its coupler curve.");
-        if ui.button("💾 Save Linkage").clicked() {
-            let curve = get_curve(Pivot::Coupler, &self.fb, cfg.res);
-            let opt = four_bar::plot2d::Opt::from(&self.fb)
-                .angle(self.angles.theta2)
-                .inner(cfg.plot.clone());
-            io::save_curve_ask([("Coupler Curve", curve.as_slice())], opt, "fig.svg");
-        }
         self.cache(cfg.res);
     }
 
@@ -480,7 +470,7 @@ impl Project {
 
     fn save_as(&self) {
         let name = self.name();
-        let (fb, _) = self.four_bar_state();
+        let fb = self.0.read().unwrap().fb.clone();
         let proj_cloned = self.clone();
         io::save_ron_ask(&fb, &name, move |path| proj_cloned.set_path(path));
     }

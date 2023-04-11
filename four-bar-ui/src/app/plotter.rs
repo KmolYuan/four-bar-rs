@@ -26,6 +26,14 @@ impl PlotOpt {
                 opt_fb.borrow_mut().replace(fb);
             });
         }
+        ui.horizontal(|ui| {
+            if ui.button("🖴 Add from").clicked() {
+                let (fb, angle) = lnk.projs.four_bar_state();
+                self.fb.borrow_mut().replace(fb);
+                self.angle.replace(angle);
+            }
+            lnk.projs.select(ui, false);
+        });
         if self.fb.borrow().is_some() {
             ui.horizontal(|ui| {
                 let mut enable = self.angle.is_some();
@@ -39,6 +47,10 @@ impl PlotOpt {
                     angle(ui, "", angle_val, "");
                 }
             });
+            if ui.button("✖ Remove Linkage").clicked() {
+                self.fb.borrow_mut().take();
+                self.angle.take();
+            }
         } else {
             ui.label("No Linkage");
         }
