@@ -7,6 +7,7 @@ mod atomic;
 mod blueprint;
 mod io;
 mod link;
+mod plotter;
 mod proj;
 mod syn;
 mod widgets;
@@ -31,6 +32,7 @@ enum Panel {
     Linkages,
     Synthesis,
     BluePrint,
+    Plotter,
     Options,
     Off,
 }
@@ -40,9 +42,10 @@ enum Panel {
 #[serde(default)]
 pub(crate) struct App {
     welcome_off: bool,
-    linkage: link::Linkages,
+    link: link::Linkages,
     syn: syn::Synthesis,
     bp: blueprint::BluePrint,
+    plotter: plotter::Plotter,
     #[serde(skip)]
     panel: Panel,
 }
@@ -86,7 +89,7 @@ impl App {
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
         app.bp.preload(&ctx.egui_ctx);
-        app.linkage.preload(files, app.linkage.cfg.res);
+        app.link.preload(files, app.link.cfg.res);
         Box::new(app)
     }
 
@@ -116,14 +119,16 @@ impl App {
     }
 
     fn menu(&mut self, ui: &mut Ui) {
-        ui.selectable_value(&mut self.panel, Panel::Linkages, "🍀")
-            .on_hover_text("Linkages");
-        ui.selectable_value(&mut self.panel, Panel::Synthesis, "💡")
-            .on_hover_text("Synthesis");
-        ui.selectable_value(&mut self.panel, Panel::BluePrint, "🖻")
-            .on_hover_text("Blue Print");
-        ui.selectable_value(&mut self.panel, Panel::Options, "🛠")
-            .on_hover_text("Options");
+        for (value, icon, text) in [
+            (Panel::Linkages, "🍀", "Linkages"),
+            (Panel::Synthesis, "💡", "Synthesis"),
+            (Panel::BluePrint, "🖻", "Blue Print"),
+            (Panel::Plotter, "", "Plotter"),
+            (Panel::Options, "🛠", "Options"),
+        ] {
+            ui.selectable_value(&mut self.panel, value, icon)
+                .on_hover_text(text);
+        }
         if !matches!(self.panel, Panel::Off)
             && ui.small_button("⬅").on_hover_text("Close Panel").clicked()
         {
@@ -143,27 +148,29 @@ impl App {
             .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
             .show(ui, |ui| {
                 self.bp.plot(ui);
-                self.linkage.plot(ui);
+                self.link.plot(ui);
                 self.syn.plot(ui);
             });
     }
 
     fn mobile_view(&mut self, ctx: &Context) {
         CentralPanel::default().show(ctx, |ui| match self.panel {
-            Panel::Linkages => pan_panel(ui, |ui| self.linkage.show(ui)),
-            Panel::Synthesis => pan_panel(ui, |ui| self.syn.show(ui, &mut self.linkage)),
+            Panel::Linkages => pan_panel(ui, |ui| self.link.show(ui)),
+            Panel::Synthesis => pan_panel(ui, |ui| self.syn.show(ui, &mut self.link)),
             Panel::BluePrint => pan_panel(ui, |ui| self.bp.show(ui)),
-            Panel::Options => pan_panel(ui, |ui| self.linkage.option(ui)),
+            Panel::Plotter => pan_panel(ui, |ui| self.plotter.show(ui, &mut self.link)),
+            Panel::Options => pan_panel(ui, |ui| self.link.option(ui)),
             Panel::Off => self.canvas(ui),
         });
     }
 
     fn pc_view(&mut self, ctx: &Context) {
         match self.panel {
-            Panel::Linkages => side_panel(ctx, |ui| self.linkage.show(ui)),
-            Panel::Synthesis => side_panel(ctx, |ui| self.syn.show(ui, &mut self.linkage)),
+            Panel::Linkages => side_panel(ctx, |ui| self.link.show(ui)),
+            Panel::Synthesis => side_panel(ctx, |ui| self.syn.show(ui, &mut self.link)),
             Panel::BluePrint => side_panel(ctx, |ui| self.bp.show(ui)),
-            Panel::Options => side_panel(ctx, |ui| self.linkage.option(ui)),
+            Panel::Plotter => side_panel(ctx, |ui| self.plotter.show(ui, &mut self.link)),
+            Panel::Options => side_panel(ctx, |ui| self.link.option(ui)),
             Panel::Off => (),
         }
         CentralPanel::default().show(ctx, |ui| self.canvas(ui));
@@ -179,7 +186,7 @@ impl eframe::App for App {
         } else {
             self.pc_view(ctx);
         }
-        self.linkage.poll(ctx);
+        self.link.poll(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

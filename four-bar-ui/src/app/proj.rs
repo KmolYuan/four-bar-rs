@@ -308,11 +308,11 @@ impl ProjInner {
             | angle(ui, "Rotation: ", self.fb.a_mut(), "");
         ui.separator();
         ui.heading("Parameters");
-        res |= link(ui, "Ground: ", self.fb.l0_mut(), cfg.int)
-            | link(ui, "Driver: ", self.fb.l1_mut(), cfg.int)
-            | link(ui, "Coupler: ", self.fb.l2_mut(), cfg.int)
-            | link(ui, "Follower: ", self.fb.l3_mut(), cfg.int)
-            | link(ui, "Extended: ", self.fb.l4_mut(), cfg.int)
+        res |= nonzero_f(ui, "Ground: ", self.fb.l0_mut(), cfg.int)
+            | nonzero_f(ui, "Driver: ", self.fb.l1_mut(), cfg.int)
+            | nonzero_f(ui, "Coupler: ", self.fb.l2_mut(), cfg.int)
+            | nonzero_f(ui, "Follower: ", self.fb.l3_mut(), cfg.int)
+            | nonzero_f(ui, "Extended: ", self.fb.l4_mut(), cfg.int)
             | angle(ui, "Angle: ", self.fb.g_mut(), "")
             | ui.checkbox(self.fb.inv_mut(), "Invert follower and coupler");
         ui.separator();

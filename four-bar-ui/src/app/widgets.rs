@@ -22,14 +22,25 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     }
 }
 
-pub(crate) fn unit<V>(ui: &mut Ui, label: &str, val: &mut V, int: impl Into<f64>) -> Response
+pub(crate) fn unit<V>(ui: &mut Ui, label: &str, val: &mut V, int: f64) -> Response
 where
     V: emath::Numeric,
 {
-    ui.add(DragValue::new(val).prefix(label).speed(int))
+    ui.add(DragValue::new(val).prefix(label).speed(int).min_decimals(2))
 }
 
-pub(crate) fn link<V>(ui: &mut Ui, label: &str, val: &mut V, int: f64) -> Response
+pub(crate) fn nonzero_i<V>(ui: &mut Ui, label: &str, val: &mut V, int: u32) -> Response
+where
+    V: emath::Numeric,
+{
+    let dv = DragValue::new(val)
+        .prefix(label)
+        .speed(int)
+        .clamp_range(1..=usize::MAX);
+    ui.add(dv)
+}
+
+pub(crate) fn nonzero_f<V>(ui: &mut Ui, label: &str, val: &mut V, int: f64) -> Response
 where
     V: emath::Numeric,
 {
@@ -108,10 +119,12 @@ pub(crate) fn table(ui: &mut Ui, xs: &mut Vec<[f64; 2]>) {
             ui.horizontal(|ui| {
                 ui.vertical(|ui| xs.retain(|_| !ui.button("✖").clicked()));
                 ui.vertical(|ui| {
-                    xs.iter_mut().for_each(|[x, _]| drop(unit(ui, "x: ", x, 1)));
+                    xs.iter_mut()
+                        .for_each(|[x, _]| drop(unit(ui, "x: ", x, 0.01)));
                 });
                 ui.vertical(|ui| {
-                    xs.iter_mut().for_each(|[_, y]| drop(unit(ui, "y: ", y, 1)));
+                    xs.iter_mut()
+                        .for_each(|[_, y]| drop(unit(ui, "y: ", y, 0.01)));
                 });
             });
         });

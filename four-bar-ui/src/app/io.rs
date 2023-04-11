@@ -1,5 +1,9 @@
 use self::impl_io::*;
-use four_bar::{cb::FbCodebook, csv::dump_csv, plot2d, FourBar};
+use four_bar::{
+    cb::FbCodebook,
+    csv::{dump_csv, parse_csv},
+    plot2d, FourBar,
+};
 use std::path::{Path, PathBuf};
 
 const FMT: &str = "Rusty Object Notation (RON)";
@@ -120,7 +124,7 @@ mod impl_io {
 
     pub(super) fn open_single<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(PathBuf, String) + 'static,
+        C: FnOnce(PathBuf, String) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
             alert(std::fs::read_to_string(&path), |s| done(path, s));
@@ -173,11 +177,24 @@ where
     open(FMT, EXT, done);
 }
 
-pub(crate) fn open_csv_single<C>(done: C)
+pub(crate) fn open_csv_single<D, C>(done: C)
 where
-    C: Fn(PathBuf, String) + 'static,
+    D: serde::de::DeserializeOwned,
+    C: FnOnce(PathBuf, Vec<D>) + 'static,
 {
-    open_single(CSV_FMT, CSV_EXT, done);
+    open_single(CSV_FMT, CSV_EXT, move |p, s| {
+        alert(parse_csv(&s), |d| done(p, d));
+    });
+}
+
+pub(crate) fn open_csv<D, C>(done: C)
+where
+    D: serde::de::DeserializeOwned,
+    C: Fn(PathBuf, Vec<D>) + 'static,
+{
+    open(CSV_FMT, CSV_EXT, move |p, s| {
+        alert(parse_csv(&s), |d| done(p, d));
+    });
 }
 
 pub(crate) fn open_cb<C>(done: C)
@@ -220,6 +237,10 @@ where
 
 pub(crate) fn save_ron(fb: &FourBar, path: &Path) {
     save(&ron::to_string(fb).unwrap(), path);
+}
+
+pub(crate) fn save_svg_ask(buf: &str, name: &str) {
+    save_ask(buf, name, SVG_FMT, SVG_EXT, |_| ());
 }
 
 pub(crate) fn save_history_ask(history: &[f64], name: &str) {

@@ -1,4 +1,4 @@
-use super::{io, link::Linkages, widgets::*};
+use super::{io, widgets::*};
 use crate::syn_cmd::SynCmd;
 use eframe::egui::*;
 use four_bar::{cb::FbCodebook, csv::*, *};
@@ -12,21 +12,6 @@ const CLOSED_URL: &str =
     "https://drive.google.com/file/d/1xOgypg2fCWgfAPVneuDO-cnPdc_GHCsK/view?usp=sharing";
 const OPEN_URL: &str =
     "https://drive.google.com/file/d/1vPPK4KzyAiaC25m1MiJGiSpxbl9ZDEW4/view?usp=sharing";
-
-fn parse_curve(s: &str) -> Option<Vec<[f64; 2]>> {
-    if let Ok(curve) = parse_csv(s) {
-        // CSV
-        Some(curve)
-    } else if let Ok(curve) = ron::from_str::<Vec<Vec<f64>>>(s) {
-        // Nested array
-        Some(curve.into_iter().map(|c| [c[0], c[1]]).collect())
-    } else if let Ok(curve) = ron::from_str(s) {
-        // Tuple array
-        Some(curve)
-    } else {
-        None
-    }
-}
 
 #[inline]
 fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
@@ -143,14 +128,14 @@ struct Task {
 }
 
 impl Synthesis {
-    pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut Linkages) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut super::link::Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.cfg);
         });
         ui.group(|ui| self.opt_setting(ui));
-        unit(ui, "Generation: ", &mut self.cfg.syn.gen, 1);
-        unit(ui, "Population: ", &mut self.cfg.syn.pop, 1);
+        nonzero_i(ui, "Generation: ", &mut self.cfg.syn.gen, 1);
+        nonzero_i(ui, "Population: ", &mut self.cfg.syn.pop, 1);
         ui.separator();
         ui.heading("Target Curve");
         if !self.tmp_target.read().unwrap().is_empty() {
@@ -162,11 +147,7 @@ impl Synthesis {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let target = self.tmp_target.clone();
-                io::open_csv_single(move |_, s| {
-                    if let Some(c) = parse_curve(&s) {
-                        *target.write().unwrap() = c;
-                    }
-                });
+                io::open_csv_single(move |_, c| *target.write().unwrap() = c);
             }
             if ui.button("💾 Save CSV").clicked() {
                 io::save_csv_ask(&self.cfg.syn.target);

@@ -57,9 +57,12 @@ macro_rules! impl_opt {
             inner: OptInner,
         }
 
-        impl From<Option<Self>> for $ty<'_, '_> {
-            fn from(opt: Option<Self>) -> Self {
-                opt.unwrap_or_default()
+        impl<'a> From<Option<&'a $fb>> for $ty<'a, '_> {
+            fn from(opt: Option<&'a $fb>) -> Self {
+                match opt {
+                    Some(fb) => Self::from(fb),
+                    None => Self::new(),
+                }
             }
         }
 
@@ -112,7 +115,7 @@ macro_rules! impl_opt {
 
             fn get_joints(&self) -> Option<[$coord; 5]> {
                 let fb = self.fb.as_ref()?;
-                let [start, end] = fb.angle_bound().expect("invalid linkage");
+                let [start, end] = fb.angle_bound()?;
                 let angle = match self.angle {
                     Some(angle) if (start..end).contains(&angle) => angle,
                     _ => start + (end - start) * 0.25,

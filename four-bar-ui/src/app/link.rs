@@ -1,6 +1,6 @@
 use super::{
     proj::{Project, Projects},
-    widgets::{link, unit},
+    widgets::*,
 };
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
@@ -41,8 +41,8 @@ impl Linkages {
             ui.heading("Options");
             reset_button(ui, &mut self.cfg);
         });
-        link(ui, "Drag interval: ", &mut self.cfg.int, 0.01);
-        if unit(ui, "Curve resolution: ", &mut self.cfg.res, 1).changed() {
+        nonzero_f(ui, "Drag interval: ", &mut self.cfg.int, 0.01);
+        if nonzero_i(ui, "Curve resolution: ", &mut self.cfg.res, 1).changed() {
             self.projs.request_cache();
         }
         ui.horizontal(|ui| {
@@ -56,8 +56,8 @@ impl Linkages {
         });
         ui.separator();
         ui.heading("Plot Options");
-        unit(ui, "Stroke in plots: ", &mut self.cfg.plot.stroke, 1);
-        unit(ui, "Font size in plots: ", &mut self.cfg.plot.font, 1);
+        nonzero_i(ui, "Stroke in plots: ", &mut self.cfg.plot.stroke, 1);
+        nonzero_i(ui, "Font size in plots: ", &mut self.cfg.plot.font, 1);
         ui.checkbox(&mut self.cfg.plot.scale_bar, "Show scale bar in plots");
         ui.checkbox(&mut self.cfg.plot.grid, "Show grid in plots");
         ui.checkbox(&mut self.cfg.plot.axis, "Show axis in plots");
