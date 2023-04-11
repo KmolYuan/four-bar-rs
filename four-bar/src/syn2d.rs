@@ -16,10 +16,7 @@
 //!     .solve()
 //!     .unwrap();
 //! ```
-use crate::{
-    efd::{self, Curve},
-    mh, FourBar, NormFourBar,
-};
+use crate::{efd::Curve, *};
 use std::f64::consts::{FRAC_PI_8, TAU};
 
 /// The minimum input angle bound. (π/16)

@@ -3,10 +3,7 @@ use crate::syn_cmd::SynCmd;
 use eframe::egui::*;
 use four_bar::{cb::FbCodebook, csv::*, *};
 use serde::{Deserialize, Serialize};
-use std::sync::{
-    atomic::{AtomicBool, AtomicU64, Ordering},
-    Arc, RwLock,
-};
+use std::sync::{atomic::*, Arc, RwLock};
 
 const CLOSED_URL: &str =
     "https://drive.google.com/file/d/1xOgypg2fCWgfAPVneuDO-cnPdc_GHCsK/view?usp=sharing";

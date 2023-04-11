@@ -66,7 +66,7 @@ impl App {
             font_data.insert(name.to_string(), FontData::from_static(font));
             families.push(name.to_string());
         }
-        let families = BTreeMap::from_iter([
+        let families = BTreeMap::from([
             (FontFamily::Proportional, families.clone()),
             (FontFamily::Monospace, families),
         ]);

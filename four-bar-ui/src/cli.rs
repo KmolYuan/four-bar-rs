@@ -1,4 +1,4 @@
-use crate::{app::App, syn_cmd::SynCmd};
+use crate::app::App;
 use clap::Parser;
 use four_bar::cb;
 use std::path::PathBuf;
@@ -48,7 +48,7 @@ struct Syn {
     #[clap(flatten)]
     cfg: SynCfg,
     #[clap(subcommand)]
-    method_cmd: Option<SynCmd>,
+    method_cmd: Option<crate::syn_cmd::SynCmd>,
 }
 
 #[derive(clap::Args)]

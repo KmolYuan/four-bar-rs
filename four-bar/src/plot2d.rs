@@ -25,7 +25,6 @@
 //! # let opt = None;
 //! plot(root_r, curves, opt).unwrap();
 //! ```
-
 use crate::*;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};

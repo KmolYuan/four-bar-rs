@@ -1,16 +1,12 @@
 //! Create a codebook database for four-bar linkages.
 use self::distr::Code;
 use super::{syn2d::Mode, NormFourBar};
-use efd::{Efd, EfdDim, Trans, Transform, D2};
+use crate::efd::{Efd, EfdDim, Trans, Transform, D2};
 use mh::{
     random::{Rng, SeedOption},
     utility::prelude::*,
 };
-use std::{
-    io::{Read, Seek, Write},
-    marker::PhantomData,
-    sync::Mutex,
-};
+use std::{marker::PhantomData, sync::Mutex};
 
 mod distr;
 
@@ -172,7 +168,10 @@ where
     }
 
     /// Read codebook from NPZ file.
-    pub fn read(r: impl Read + Seek) -> Result<Self, ndarray_npy::ReadNpzError> {
+    pub fn read<R>(r: R) -> Result<Self, ndarray_npy::ReadNpzError>
+    where
+        R: std::io::Read + std::io::Seek,
+    {
         let mut r = ndarray_npy::NpzReader::new(r)?;
         macro_rules! impl_read {
             ($r:ident, $($field:ident),+) => {{
@@ -186,7 +185,7 @@ where
     /// Write codebook to NPZ file.
     pub fn write<W>(&self, w: W) -> Result<W, ndarray_npy::WriteNpzError>
     where
-        W: Write + Seek,
+        W: std::io::Write + std::io::Seek,
     {
         let mut w = ndarray_npy::NpzWriter::new_compressed(w);
         macro_rules! impl_write {

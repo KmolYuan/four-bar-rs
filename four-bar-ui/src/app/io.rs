@@ -1,9 +1,5 @@
 use self::impl_io::*;
-use four_bar::{
-    cb::FbCodebook,
-    csv::{dump_csv, parse_csv},
-    plot2d, FourBar,
-};
+use four_bar::{cb::FbCodebook, csv, plot2d, FourBar};
 use std::path::{Path, PathBuf};
 
 const FMT: &str = "Rusty Object Notation (RON)";
@@ -183,7 +179,7 @@ where
     C: FnOnce(PathBuf, Vec<D>) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(parse_csv(&s), |d| done(p, d));
+        alert(csv::parse_csv(&s), |d| done(p, d));
     });
 }
 
@@ -193,7 +189,7 @@ where
     C: Fn(PathBuf, Vec<D>) + 'static,
 {
     open(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(parse_csv(&s), |d| done(p, d));
+        alert(csv::parse_csv(&s), |d| done(p, d));
     });
 }
 
@@ -224,7 +220,7 @@ pub(crate) fn save_csv_ask<S>(curve: &[S])
 where
     S: serde::Serialize + Clone,
 {
-    let s = dump_csv(curve).unwrap();
+    let s = csv::dump_csv(curve).unwrap();
     save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
 }
 

@@ -1,5 +1,3 @@
-use four_bar::FourBar;
-
 macro_rules! impl_undo_redo {
     (@$(fn $method:ident($self:ident) { $ind:expr } => $($f:ident, $m:ident);+)+) => {$(
         fn $method(&$self, state: &mut Self::State) {
@@ -50,7 +48,7 @@ enum Field {
 pub(crate) struct FourBarDelta(Field, f64, f64);
 
 impl Delta for FourBarDelta {
-    type State = FourBar;
+    type State = four_bar::FourBar;
 
     fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
         macro_rules! branch {

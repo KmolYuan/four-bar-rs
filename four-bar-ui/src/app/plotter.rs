@@ -1,9 +1,6 @@
 use super::widgets::*;
 use eframe::egui::*;
-use four_bar::{
-    plot2d::{self, IntoDrawingArea, OptInner},
-    FourBar,
-};
+use four_bar::{plot2d, FourBar};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
@@ -15,7 +12,7 @@ struct PlotOpt {
     fb: Rc<RefCell<Option<FourBar>>>,
     angle: Option<f64>,
     curves: Rc<RefCell<Curves>>,
-    inner: OptInner,
+    inner: plot2d::OptInner,
 }
 
 impl PlotOpt {
@@ -135,6 +132,7 @@ impl Plotter {
         }
         ui.separator();
         if ui.button("💾 Save Plot").clicked() {
+            use plot2d::IntoDrawingArea as _;
             let mut buf = String::new();
             let size = (
                 self.size * self.shape.0 as u32,

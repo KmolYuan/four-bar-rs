@@ -1,5 +1,4 @@
-use crate::*;
-use efd::*;
+use crate::{efd::*, *};
 use mh::rand::{Distribution, Rng};
 
 /// Uniform distribution of the [`NormFourBar`] type.

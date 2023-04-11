@@ -1,17 +1,11 @@
 use super::{Syn, SynCfg};
 use crate::syn_cmd::*;
-use four_bar::{
-    cb::FbCodebook,
-    csv, efd, mh,
-    plot2d::{self, IntoDrawingArea as _},
-    syn2d, FourBar,
-};
+use four_bar::{cb::FbCodebook, csv, efd, mh, plot2d, syn2d, FourBar};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     ffi::OsStr,
     io::Write as _,
     path::{Path, PathBuf},
-    time::Instant,
 };
 
 macro_rules! impl_err_from {
@@ -175,7 +169,7 @@ fn run<S>(
         } else {
             std::fs::create_dir(&root)?;
         }
-        let t0 = Instant::now();
+        let t0 = std::time::Instant::now();
         let use_log = cfg.log > 0;
         let mut history = Vec::with_capacity(if use_log { cfg.gen } else { 0 });
         let mut s = mh::Solver::build(setting, func)
@@ -244,6 +238,7 @@ fn run<S>(
             .unwrap_or("Target".to_string());
         let mut curves = vec![(target_str, target), ("Optimized".to_string(), curve)];
         let path = root.join(format!("{title}_result.svg"));
+        use plot2d::IntoDrawingArea as _;
         let svg = plot2d::SVGBackend::new(&path, (1600, 800));
         let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
         let mut opt = plot2d::Opt::from(&ans)

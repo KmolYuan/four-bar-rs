@@ -1,13 +1,9 @@
 use super::widgets::*;
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
-use std::{
-    cell::RefCell,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::{cell::RefCell, rc::Rc};
 
-fn pre_open(file: impl AsRef<Path>) -> Option<ColorImage> {
+fn pre_open(file: impl AsRef<std::path::Path>) -> Option<ColorImage> {
     if cfg!(target_arch = "wasm32") {
         None
     } else {
@@ -21,7 +17,7 @@ fn pre_open(file: impl AsRef<Path>) -> Option<ColorImage> {
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct BluePrint {
-    path: Rc<RefCell<Option<PathBuf>>>,
+    path: Rc<RefCell<Option<std::path::PathBuf>>>,
     inner: Rc<RefCell<BpInner>>,
 }
 

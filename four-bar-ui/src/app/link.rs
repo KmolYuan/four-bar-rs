@@ -1,7 +1,4 @@
-use super::{
-    proj::{Project, Projects},
-    widgets::*,
-};
+use super::widgets::*;
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub(crate) struct Linkages {
     pub(crate) cfg: Cfg,
-    pub(crate) projs: Projects,
+    pub(crate) projs: super::proj::Projects,
 }
 
 #[derive(Deserialize, Serialize, PartialEq)]
@@ -65,7 +62,7 @@ impl Linkages {
     }
 
     pub(crate) fn preload(&mut self, files: Vec<std::path::PathBuf>, res: usize) {
-        self.projs.iter().for_each(Project::pre_open);
+        self.projs.iter().for_each(|p| p.pre_open());
         self.projs.retain(|p| p.path().is_some());
         files.into_iter().for_each(|file| self.projs.pre_open(file));
         if self.projs.is_empty() {

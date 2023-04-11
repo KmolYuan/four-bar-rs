@@ -1,4 +1,5 @@
 //! The functions used to plot the 3D curve and synthesis result.
+pub use crate::plot2d::{LegendPos, OptInner};
 use crate::{plot2d::*, *};
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};

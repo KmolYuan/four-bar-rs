@@ -1,6 +1,5 @@
 pub use crate::fb2d::FourBarTy;
-use crate::fb2d::*;
-use efd::na;
+use crate::{efd::na, fb2d::*};
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
 macro_rules! impl_shared_method {

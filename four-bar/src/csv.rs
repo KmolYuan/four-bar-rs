@@ -1,9 +1,8 @@
 //! Functions for reading/writing CSV format.
-use std::borrow::Cow;
-
 pub use csv::Error;
 use csv::{ReaderBuilder, Writer};
 use serde::{de::DeserializeOwned, Serialize};
+use std::borrow::Cow;
 
 /// Parse CSV from string.
 pub fn parse_csv<D>(s: &str) -> Result<Vec<D>, Error>

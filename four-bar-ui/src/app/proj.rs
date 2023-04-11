@@ -3,9 +3,7 @@ use eframe::egui::*;
 use four_bar::{csv::dump_csv, FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{
-    borrow::Cow,
     f64::consts::TAU,
-    ops::{Deref, DerefMut},
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
@@ -31,7 +29,7 @@ fn pre_open(file: impl AsRef<Path>) -> Option<FourBar> {
     }
 }
 
-fn filename(path: &Path) -> Cow<str> {
+fn filename(path: &Path) -> std::borrow::Cow<str> {
     path.file_name().unwrap().to_string_lossy()
 }
 
@@ -638,7 +636,7 @@ impl Projects {
     }
 }
 
-impl Deref for Projects {
+impl std::ops::Deref for Projects {
     type Target = Vec<Project>;
 
     fn deref(&self) -> &Self::Target {
@@ -646,7 +644,7 @@ impl Deref for Projects {
     }
 }
 
-impl DerefMut for Projects {
+impl std::ops::DerefMut for Projects {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.list
     }
