@@ -20,13 +20,11 @@ pub(crate) struct Cfg {
     pub(crate) int: f64,
     // resolution
     pub(crate) res: usize,
-    // Plot option
-    pub(crate) plot: four_bar::plot2d::OptInner,
 }
 
 impl Default for Cfg {
     fn default() -> Self {
-        Self { int: 1., res: 360, plot: Default::default() }
+        Self { int: 1., res: 360 }
     }
 }
 
@@ -54,14 +52,6 @@ impl Linkages {
                 ui.ctx().set_visuals(vis);
             });
         });
-        ui.separator();
-        ui.heading("Plot Options");
-        nonzero_i(ui, "Stroke in plots: ", &mut self.cfg.plot.stroke, 1);
-        nonzero_i(ui, "Font size in plots: ", &mut self.cfg.plot.font, 1);
-        ui.checkbox(&mut self.cfg.plot.scale_bar, "Show scale bar in plots");
-        ui.checkbox(&mut self.cfg.plot.grid, "Show grid in plots");
-        ui.checkbox(&mut self.cfg.plot.axis, "Show axis in plots");
-        ui.checkbox(&mut self.cfg.plot.dot, "Use dot curve in plots");
         ui.separator();
         ui.heading("Control Tips");
         ui.label("Pan move: Left-drag / Drag");
