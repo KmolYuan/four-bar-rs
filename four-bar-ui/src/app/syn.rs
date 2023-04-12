@@ -23,7 +23,7 @@ where
     use instant::Instant;
     #[cfg(not(target_arch = "wasm32"))]
     use std::time::Instant;
-    let start_time = Instant::now();
+    let t0 = Instant::now();
     let SynConfig { gen, pop, mode, target } = config;
     let mut s = four_bar::mh::Solver::build(
         setting,
@@ -48,8 +48,7 @@ where
         .callback(|ctx| {
             task.conv.write().unwrap().push(ctx.best_f);
             task.gen.store(ctx.gen, Ordering::Relaxed);
-            let time = (Instant::now() - start_time).as_secs();
-            task.time.store(time, Ordering::Relaxed);
+            task.time.store(t0.elapsed().as_secs(), Ordering::Relaxed);
         })
         .solve()
         .unwrap()
@@ -225,14 +224,15 @@ impl Synthesis {
                         io::save_history_ask(&task.conv.read().unwrap(), "history.svg");
                     }
                 }
-                ui.label(format!("{}s", task.time.load(Ordering::Relaxed)));
+                let t = std::time::Duration::from_secs(task.time.load(Ordering::Relaxed));
+                ui.label(format!("{t:?}"));
                 let pb = task.gen.load(Ordering::Relaxed) as f32 / task.total_gen as f32;
                 ui.add(ProgressBar::new(pb).show_percentage().animate(start));
             });
             keep
         });
         #[cfg(target_arch = "wasm32")]
-        ui.label("WARNING: Web platform will freeze UI when start solving!");
+        ui.colored_label(Color32::RED, "Web version freezes UI when solving starts!");
         ui.horizontal(|ui| {
             let enabled = !self.cfg.syn.target.is_empty();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
