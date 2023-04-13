@@ -46,9 +46,9 @@ pub const BOUND3D: [[f64; 2]; 8] = [
 ];
 
 /// Path generation task of planar four-bar linkage.
-pub type PlanarSyn = Syn<efd::D2>;
+pub type Syn2 = Syn<efd::D2>;
 /// Path generation task of spherical four-bar linkage.
-pub type SphericalSyn = Syn<efd::D3>;
+pub type Syn3 = Syn<efd::D3>;
 
 /// Path generation task of four-bar linkage.
 pub struct Syn<D: efd::EfdDim> {
@@ -243,13 +243,5 @@ impl Mode {
     }
 }
 
-impl_obj!(PlanarSyn, Efd2, FourBar, NormFourBar, [f64; 2], BOUND2D, 5);
-impl_obj!(
-    SphericalSyn,
-    Efd3,
-    SFourBar,
-    SNormFourBar,
-    [f64; 3],
-    BOUND3D,
-    6
-);
+impl_obj!(Syn2, Efd2, FourBar, NormFourBar, [f64; 2], BOUND2D, 5);
+impl_obj!(Syn3, Efd3, SFourBar, SNormFourBar, [f64; 3], BOUND3D, 6);
