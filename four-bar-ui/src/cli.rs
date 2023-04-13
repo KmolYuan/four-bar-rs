@@ -73,7 +73,7 @@ struct SynCfg {
     font: f64,
     /// Reference number
     #[clap(long)]
-    ref_num: Option<u8>,
+    ref_num: Option<std::num::NonZeroU8>,
     /// Linkage input angle in the plot
     #[clap(long)]
     angle: Option<f64>,
