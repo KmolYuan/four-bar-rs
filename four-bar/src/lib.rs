@@ -29,5 +29,4 @@ mod fb3d;
 pub mod plot2d;
 #[cfg(feature = "plot")]
 pub mod plot3d;
-pub mod syn2d;
-pub mod syn3d;
+pub mod syn;

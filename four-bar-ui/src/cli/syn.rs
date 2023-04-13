@@ -1,6 +1,6 @@
 use super::{Syn, SynCfg};
 use crate::syn_cmd::*;
-use four_bar::{cb::FbCodebook, csv, efd, mh, plot2d, syn2d, FourBar};
+use four_bar::{cb::FbCodebook, csv, efd, mh, plot2d, syn, FourBar};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     ffi::OsStr,
@@ -129,9 +129,9 @@ fn run<S>(
             .and_then(OsStr::to_str)
             .ok_or(SynErr::Format)?;
         let mode = match Path::new(title).extension().and_then(OsStr::to_str) {
-            Some("closed") => Ok(syn2d::Mode::Closed),
-            Some("partial") => Ok(syn2d::Mode::Partial),
-            Some("open") => Ok(syn2d::Mode::Open),
+            Some("closed") => Ok(syn::Mode::Closed),
+            Some("partial") => Ok(syn::Mode::Partial),
+            Some("open") => Ok(syn::Mode::Open),
             _ => Err(SynErr::Format),
         }?;
         Ok((mode.regularize(target), title, mode))
@@ -152,7 +152,7 @@ fn run<S>(
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(title.to_string());
     let f = || -> Result<(), SynErr> {
-        let func = syn2d::PlanarSyn::from_curve(&target, mode)
+        let func = syn::PlanarSyn::from_curve(&target, mode)
             .ok_or(SynErr::Linkage)?
             .res(cfg.res);
         let root = file.parent().unwrap().join(title);
@@ -195,7 +195,7 @@ fn run<S>(
                 pb.set_position(ctx.gen);
             });
         let mut cb_fb = None;
-        if let Some(candi) = matches!(mode, syn2d::Mode::Closed | syn2d::Mode::Open)
+        if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
             .then(|| cb.fetch_raw(&target, cfg.pop))
             .filter(|candi| !candi.is_empty())
         {
@@ -226,7 +226,7 @@ fn run<S>(
         let h = s.func().harmonic();
         let curve = ans.curve(cfg.res);
         let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
-        let curve_diff = if matches!(mode, syn2d::Mode::Partial) {
+        let curve_diff = if matches!(mode, syn::Mode::Partial) {
             efd::partial_curve_diff
         } else {
             efd::curve_diff
@@ -292,7 +292,7 @@ fn run<S>(
             let err = curve_diff(&curves[0].1, &mode.regularize(&c));
             writeln!(log, "\n[competitor]")?;
             writeln!(log, "error={err}")?;
-            if !matches!(mode, syn2d::Mode::Partial) {
+            if !matches!(mode, syn::Mode::Partial) {
                 let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
                 let cost = efd.l1_norm(&efd_target);
                 writeln!(log, "cost={cost}")?;

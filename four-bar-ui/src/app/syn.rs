@@ -25,11 +25,9 @@ where
     use std::time::Instant;
     let t0 = Instant::now();
     let SynConfig { gen, pop, mode, target } = config;
-    let mut s = four_bar::mh::Solver::build(
-        setting,
-        syn2d::PlanarSyn::from_curve(&target, mode).unwrap(),
-    );
-    if let Some(candi) = matches!(mode, syn2d::Mode::Closed | syn2d::Mode::Open)
+    let mut s =
+        four_bar::mh::Solver::build(setting, syn::PlanarSyn::from_curve(&target, mode).unwrap());
+    if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
         .then(|| cb.fetch_raw(&target, pop))
         .filter(|candi| !candi.is_empty())
     {
@@ -89,7 +87,7 @@ struct UiConfig {
 struct SynConfig {
     gen: u64,
     pop: usize,
-    mode: syn2d::Mode,
+    mode: syn::Mode,
     target: Vec<[f64; 2]>,
 }
 
@@ -98,7 +96,7 @@ impl Default for SynConfig {
         Self {
             gen: 50,
             pop: 200,
-            mode: syn2d::Mode::Closed,
+            mode: syn::Mode::Closed,
             target: Vec::new(),
         }
     }

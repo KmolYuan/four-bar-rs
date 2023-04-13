@@ -6,7 +6,7 @@ pub struct NormFbDistr;
 
 impl Distribution<[NormFourBar; 2]> for NormFbDistr {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> [NormFourBar; 2] {
-        let v = crate::syn2d::BOUND[..5]
+        let v = crate::syn::BOUND2D[..5]
             .iter()
             .map(|&[u, l]| rng.gen_range(u..l))
             .collect::<Vec<_>>();
@@ -19,7 +19,7 @@ pub struct SNormFbDistr;
 
 impl Distribution<[SNormFourBar; 2]> for SNormFbDistr {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> [SNormFourBar; 2] {
-        let v = crate::syn3d::BOUND[..6]
+        let v = crate::syn::BOUND3D[..6]
             .iter()
             .map(|&[u, l]| rng.gen_range(u..l))
             .collect::<Vec<_>>();
@@ -63,7 +63,7 @@ impl Code<5, 2> for NormFourBar {
 
     fn curve(&self, res: usize) -> Option<Vec<[f64; 2]>> {
         self.angle_bound()
-            .filter(|[t1, t2]| t2 - t1 > crate::syn2d::MIN_ANGLE)
+            .filter(|[t1, t2]| t2 - t1 > crate::syn::MIN_ANGLE)
             .map(|[t1, t2]| self.curve_in(t1, t2, res))
     }
 
