@@ -2,6 +2,7 @@ pub use crate::fb2d::FourBarTy;
 use crate::{efd::na, fb2d::*};
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
+// FIXME
 macro_rules! impl_shared_method {
     ($self:ident, $v:expr, $norm:expr) => {
         /// Return the position of the input angle.

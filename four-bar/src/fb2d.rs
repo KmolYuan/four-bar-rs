@@ -14,6 +14,7 @@ macro_rules! impl_parm_method {
     )+};
 }
 
+// FIXME
 macro_rules! impl_shared_method {
     ($self:ident, $v:expr, $norm:expr) => {
         /// Return the position of the input angle.
