@@ -400,6 +400,16 @@ impl FourBar {
         Self::from_norm(NormFourBar::new(v, inv))
     }
 
+    /// Create with linkage lengths.
+    ///
+    /// Order: `[l0, l1, l2, l3, l4, g]`
+    pub const fn new_lengths(v: [f64; 6], inv: bool) -> Self {
+        let [l0, l1, l2, l3, l4, g] = v;
+        let norm = NormFourBar::new([l0, l2, l3, l4, g], inv);
+        let v = [0., 0., 0., l1];
+        Self { v, norm }
+    }
+
     /// Create from normalized linkage.
     pub const fn from_norm(norm: NormFourBar) -> Self {
         Self { v: [0., 0., 0., 1.], norm }
@@ -410,16 +420,6 @@ impl FourBar {
         Self::from_norm(norm).transform(trans)
     }
 
-    /// Create with linkage lengths.
-    ///
-    /// Order: `[l0, l1, l2, l3, l4, g]`
-    pub const fn from_lengths(v: [f64; 6], inv: bool) -> Self {
-        let [l0, l1, l2, l3, l4, g] = v;
-        let norm = NormFourBar::new([l0, l2, l3, l4, g], inv);
-        let v = [0., 0., 0., l1];
-        Self { v, norm }
-    }
-
     /// Construct with `inv` option.
     pub const fn with_inv(mut self, inv: bool) -> Self {
         self.norm.inv = inv;
@@ -428,7 +428,7 @@ impl FourBar {
 
     /// An example crank rocker.
     pub const fn example() -> Self {
-        Self::from_lengths([90., 35., 70., 70., 45., FRAC_PI_6], false)
+        Self::new_lengths([90., 35., 70., 70., 45., FRAC_PI_6], false)
     }
 
     /// Transform linkage.

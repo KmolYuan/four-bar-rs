@@ -279,6 +279,11 @@ impl SFourBar {
         Self { v: [0., 0., 0., 1., 0., 0., 0.], norm }
     }
 
+    /// Transform a normalized linkage from a vector.
+    pub fn from_norm_trans(norm: SNormFourBar, trans: &efd::Transform3) -> Self {
+        Self::from_norm(norm).transform(trans)
+    }
+
     /// Construct with `inv` option.
     pub const fn with_inv(mut self, inv: bool) -> Self {
         self.norm.inv = inv;
@@ -298,6 +303,19 @@ impl SFourBar {
             ],
             false,
         ))
+    }
+
+    /// Transform linkage.
+    pub fn transform(mut self, trans: &efd::Transform3) -> Self {
+        self.transform_inplace(trans);
+        self
+    }
+
+    /// Transform linkage in placed.
+    #[allow(unused_variables)]
+    pub fn transform_inplace(&mut self, trans: &efd::Transform3) {
+        // TODO
+        unimplemented!()
     }
 
     impl_parm_method! {
