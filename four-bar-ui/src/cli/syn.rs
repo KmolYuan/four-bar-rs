@@ -152,7 +152,7 @@ fn run<S>(
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(title.to_string());
     let f = || -> Result<(), SynErr> {
-        let func = syn::Syn2::from_curve(&target, mode)
+        let func = syn::FbSyn::from_curve(&target, mode)
             .ok_or(SynErr::Linkage)?
             .res(cfg.res);
         let root = file.parent().unwrap().join(title);
