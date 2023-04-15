@@ -2,4 +2,4 @@
    Modified Krill Herd (MKH) algorithm and its application in dimensional
    synthesis of a four-bar linkage. Mechanism and Machine Theory, 95, 1–21.
    https://doi.org/10.1016/j.mechmachtheory.2015.08.004 */
-(v:(1.14265,0.48237,0.16502,1.14644),norm:(v:(2.87645,4.40713,4.75773,2.6666,-1.1364),inv:false))
+(buf:(1.14265,0.48237,0.16502,1.14644),norm:(buf:(2.87645,4.40713,4.75773,2.6666,-1.1364),inv:false))

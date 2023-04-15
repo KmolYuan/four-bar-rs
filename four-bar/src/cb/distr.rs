@@ -54,7 +54,7 @@ impl Code<5, 2> for NormFourBar {
     }
 
     fn to_code(self) -> ([f64; 5], bool) {
-        (self.as_array(), self.inv)
+        (self.buf, self.inv)
     }
 
     fn is_open(&self) -> bool {
@@ -68,6 +68,7 @@ impl Code<5, 2> for NormFourBar {
     }
 
     fn unnorm(self, trans: Transform<Self::Trans>) -> Self::UnNorm {
-        FourBar::from_norm_trans(self, &trans)
+        use crate::{Normalized as _, Transformable as _};
+        self.denormalize().transform(&trans)
     }
 }

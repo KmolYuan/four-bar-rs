@@ -13,7 +13,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::semicolon_if_nothing_returned)]
 
-pub use crate::{fb2d::*, fb3d::*};
+pub use crate::fb::*;
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
@@ -23,8 +23,7 @@ pub extern crate metaheuristics_nature as mh;
 pub mod cb;
 #[cfg(feature = "csv")]
 pub mod csv;
-mod fb2d;
-mod fb3d;
+mod fb;
 #[cfg(feature = "plot")]
 pub mod plot2d;
 #[cfg(feature = "plot")]

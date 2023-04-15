@@ -1,6 +1,6 @@
 use super::{io, link::Cfg, widgets::*};
 use eframe::egui::*;
-use four_bar::{csv::dump_csv, FourBar, SFourBar};
+use four_bar::{csv::dump_csv, CurveGen as _, FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,
@@ -147,9 +147,8 @@ struct Angles {
 #[derive(Default)]
 struct Cache {
     changed: bool,
-    defect: bool,
     has_closed_curve: bool,
-    joints: [[f64; 2]; 5],
+    joints: Option<[[f64; 2]; 5]>,
     curves: Vec<[[f64; 2]; 3]>,
     dynamics: Vec<(f64, [[f64; 3]; 3])>,
 }
@@ -189,9 +188,6 @@ impl ProjInner {
         path_label(ui, "🖹", self.path.as_ref(), "Untitled");
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
-        if self.cache.defect {
-            ui.label(RichText::new("This linkage has defect!").color(Color32::RED));
-        }
         if self.cache.has_closed_curve {
             ui.label(RichText::new("This linkage has a closed curve.").color(Color32::GREEN));
         }
@@ -285,11 +281,11 @@ impl ProjInner {
         ui.horizontal(|ui| {
             ui.heading("Offset");
             if ui
-                .add_enabled(!self.fb.is_aligned(), Button::new("Reset"))
+                .add_enabled(self.fb.buf[..3] != [0.; 3], Button::new("Reset"))
                 .on_hover_text("Reset the translation and rotation offset")
                 .clicked()
             {
-                self.fb.align();
+                self.fb.buf[..3].iter_mut().for_each(|x| *x = 0.);
                 self.cache.changed = true;
             }
             if ui
@@ -297,7 +293,9 @@ impl ProjInner {
                 .on_hover_text("Remove offset, then scale by the driver link")
                 .clicked()
             {
-                self.fb.normalize();
+                let l1 = self.fb.l1();
+                self.fb.buf = [0., 0., 0., 1.];
+                self.fb.norm.buf[..4].iter_mut().for_each(|x| *x *= l1);
                 self.cache.changed = true;
             }
         });
@@ -347,8 +345,7 @@ impl ProjInner {
         // Recalculation
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angles.theta2);
-        self.cache.defect = self.fb.has_defect();
-        self.cache.has_closed_curve = self.fb.has_closed_curve();
+        self.cache.has_closed_curve = self.fb.ty().is_closed_curve();
         self.cache.curves = self.fb.curves(res);
         let step = TAU / res as f64;
         self.cache.dynamics = self
@@ -357,8 +354,7 @@ impl ProjInner {
             .iter()
             .enumerate()
             .map(|(i, [[x2, y2], [x3, y3], _])| {
-                let [x0, y0] = self.cache.joints[0];
-                let [x1, y1] = self.cache.joints[1];
+                let [[x0, y0], [x1, y1], ..] = self.cache.joints.unwrap();
                 let theta2 = (y2 - y0).atan2(x2 - x0);
                 let theta3 = (y3 - y2).atan2(x3 - x2);
                 let theta4 = (y3 - y1).atan2(x3 - x1);
@@ -392,14 +388,15 @@ impl ProjInner {
         if self.hide {
             return;
         }
+        let Some(joints) = self.cache.joints else { return };
         let is_main = ind == id;
-        draw_link(ui, &[self.cache.joints[0], self.cache.joints[2]], is_main);
-        draw_link(ui, &[self.cache.joints[1], self.cache.joints[3]], is_main);
-        draw_link(ui, &self.cache.joints[2..], is_main);
-        let float_j = plot::Points::new(self.cache.joints[2..].to_vec())
+        draw_link(ui, &[joints[0], joints[2]], is_main);
+        draw_link(ui, &[joints[1], joints[3]], is_main);
+        draw_link(ui, &joints[2..], is_main);
+        let float_j = plot::Points::new(joints[2..].to_vec())
             .radius(5.)
             .color(JOINT_COLOR);
-        let fixed_j = plot::Points::new(self.cache.joints[..2].to_vec())
+        let fixed_j = plot::Points::new(joints[..2].to_vec())
             .radius(10.)
             .shape(plot::MarkerShape::Up)
             .color(JOINT_COLOR);

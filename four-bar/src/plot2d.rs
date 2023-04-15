@@ -119,7 +119,7 @@ macro_rules! impl_opt {
                     Some(angle) if (start..end).contains(&angle) => angle,
                     _ => start + (end - start) * 0.25,
                 };
-                Some(fb.pos(angle))
+                fb.pos(angle)
             }
 
             // (stroke, dot_size)
@@ -264,7 +264,7 @@ impl_opt! {
     /// ```
     /// use four_bar::{plot2d::Opt, FourBar};
     /// // From linkage
-    /// let opt = Opt::from(FourBar::example());
+    /// let opt = Opt::from(&FourBar::example());
     /// // Without linkage
     /// let opt = Opt::new();
     /// ```
@@ -278,7 +278,8 @@ impl_opt! {
 /// ```
 /// use four_bar::{plot2d::*, FourBar};
 /// let curves = [("First Curve", [[0.; 2]].as_slice())];
-/// let opt = Opt::from(FourBar::example()).axis(false).scale_bar(true);
+/// let fb = FourBar::example();
+/// let opt = Opt::from(&fb).axis(false).scale_bar(true);
 /// let mut buf = String::new();
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
 /// plot(svg, curves, opt).unwrap();

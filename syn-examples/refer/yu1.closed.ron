@@ -1,4 +1,4 @@
 /* H. Yu, D. Tang, and Z. Wang. Apr. 2007. “Study on a new computer path
    synthesis method of a four-bar linkage.” Mechanism and Machine Theory,
    vol. 42, no. 4, pp. 383–392. */
-(v:(-11.55,-20.14,2.981022362406315,17.43),norm:(v:(65.87,25.46,64.57,23.47,2.834414705238791),inv:false))
+(buf:(-11.55,-20.14,2.981022362406315,17.43),norm:(buf:(65.87,25.46,64.57,23.47,2.834414705238791),inv:false))

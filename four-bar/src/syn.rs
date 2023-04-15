@@ -17,50 +17,32 @@
 //!     .unwrap();
 //! ```
 use crate::{efd::Curve, *};
-use std::f64::consts::{FRAC_PI_8, PI, TAU};
+use std::{f64::consts::*, marker::PhantomData};
 
 /// The minimum input angle bound. (π/16)
 pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
-const BOUND_F: f64 = 6.;
-const BOUND_FF: f64 = 1. / BOUND_F;
 /// Boundary of the planar objective variables.
-pub const BOUND2D: [[f64; 2]; 7] = [
-    [BOUND_FF, BOUND_F],
-    [BOUND_FF, BOUND_F],
-    [BOUND_FF, BOUND_F],
-    [BOUND_FF, BOUND_F],
-    [0., TAU],
-    [0., TAU],
-    [0., TAU],
-];
+pub const BOUND2D: &[[f64; 2]] = <NormFourBar as SynBound>::BOUND;
 /// Boundary of the spherical objective variables.
-pub const BOUND3D: [[f64; 2]; 8] = [
-    [0., PI],
-    [0., PI],
-    [0., PI],
-    [0., PI],
-    [0., PI],
-    [0., PI],
-    [0., PI],
-    [0., PI],
-];
+pub const BOUND3D: &[[f64; 2]] = <SNormFourBar as SynBound>::BOUND;
 
 /// Path generation task of planar four-bar linkage.
-pub type FbSyn = Syn<efd::D2>;
+pub type FbSyn = Syn<efd::D2, NormFourBar>;
 /// Path generation task of spherical four-bar linkage.
-pub type SFbSyn = Syn<efd::D3>;
+pub type SFbSyn = Syn<efd::D3, SNormFourBar>;
 
 /// Path generation task of four-bar linkage.
-pub struct Syn<D: efd::EfdDim> {
+pub struct Syn<D: efd::EfdDim, M> {
     /// Target coefficients
     pub efd: efd::Efd<D>,
     // Mode
     mode: Mode,
     // How many points need to be generated or compared
     res: usize,
+    _marker: PhantomData<M>,
 }
 
-impl<D: efd::EfdDim> Syn<D> {
+impl<D: efd::EfdDim, M> Syn<D, M> {
     /// Create a new task from target curve. The harmonic number is selected
     /// automatically.
     ///
@@ -103,7 +85,7 @@ impl<D: efd::EfdDim> Syn<D> {
     /// must preprocess with [`Mode::regularize()`] method before turned into
     /// EFD.
     pub fn from_efd(efd: efd::Efd<D>, mode: Mode) -> Self {
-        Self { efd, mode, res: 720 }
+        Self { efd, mode, res: 720, _marker: PhantomData }
     }
 
     /// Set the resolution during synthesis.
@@ -118,83 +100,151 @@ impl<D: efd::EfdDim> Syn<D> {
     }
 }
 
-// FIXME
-macro_rules! impl_obj {
-    ($ty:ident, $efd:ident, $fb:ident, $fb_norm:ident, $coord:ty, $bound:ident, $bound_num:literal) => {
-        impl mh::Bounded for $ty {
-            #[inline]
-            fn bound(&self) -> &[[f64; 2]] {
-                if matches!(self.mode, Mode::Partial) {
-                    &$bound
-                } else {
-                    &$bound[..$bound_num]
-                }
-            }
-        }
+/// Synthesis bounds.
+pub trait SynBound: Clone {
+    /// Lower & upper bounds
+    const BOUND: &'static [[f64; 2]];
+    /// Bound number for non-partial matching
+    const BOUND_NUM: usize;
 
-        impl mh::ObjFactory for $ty {
-            type Product = (f64, $fb);
-            type Eval = f64;
-
-            fn produce(&self, xs: &[f64]) -> Self::Product {
-                #[cfg(feature = "rayon")]
-                use mh::rayon::prelude::*;
-                const INFEASIBLE: (f64, $fb) = (1e10, $fb::ZERO);
-                let fb = $fb_norm::try_from(&xs[..$bound_num]).unwrap();
-                if self.mode.is_result_open() != fb.ty().is_open_curve() {
-                    return INFEASIBLE;
-                }
-                let f = |[t1, t2]: [f64; 2]| {
-                    let fb = &fb;
-                    #[cfg(feature = "rayon")]
-                    let iter = [false, true].into_par_iter();
-                    #[cfg(not(feature = "rayon"))]
-                    let iter = [false, true].into_iter();
-                    iter.map(move |inv| {
-                        let fb = fb.clone().with_inv(inv);
-                        let curve = fb.curve_in(t1, t2, self.res);
-                        (curve, fb)
-                    })
-                    .filter(|(c, _)| c.len() > 1)
-                    .map(|(c, fb)| {
-                        let c = self.mode.regularize(c);
-                        let efd = efd::$efd::from_curve_harmonic(c, self.efd.harmonic()).unwrap();
-                        let fb = $fb::from_norm_trans(fb, &efd.as_trans().to(self.efd.as_trans()));
-                        (efd.l1_norm(&self.efd), fb)
-                    })
-                };
-                match self.mode {
-                    Mode::Closed | Mode::Open => fb
-                        .angle_bound()
-                        .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
-                        .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
-                        .unwrap_or(INFEASIBLE),
-                    Mode::Partial => {
-                        let bound = [
-                            [xs[$bound_num], xs[$bound_num + 1]],
-                            [xs[$bound_num + 1], xs[$bound_num]],
-                        ];
-                        #[cfg(feature = "rayon")]
-                        let iter = bound.into_par_iter();
-                        #[cfg(not(feature = "rayon"))]
-                        let iter = bound.into_iter();
-                        iter.map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
-                            .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
-                            .flat_map(f)
-                            .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                            .unwrap_or(INFEASIBLE)
-                    }
-                }
-            }
-
-            fn evaluate(&self, (f, _): Self::Product) -> Self::Eval {
-                f
-            }
-        }
-    };
+    /// Create entity from slice.
+    fn from_slice(xs: &[f64]) -> Self;
+    /// Change inverse symbol.
+    fn with_inv(self, inv: bool) -> Self;
 }
 
-pub(crate) use impl_obj;
+impl SynBound for NormFourBar {
+    const BOUND: &'static [[f64; 2]] = {
+        const BOUND_F: f64 = 6.;
+        const BOUND_FF: f64 = 1. / BOUND_F;
+        &[
+            [BOUND_FF, BOUND_F],
+            [BOUND_FF, BOUND_F],
+            [BOUND_FF, BOUND_F],
+            [BOUND_FF, BOUND_F],
+            [0., TAU],
+            [0., TAU],
+            [0., TAU],
+        ]
+    };
+    const BOUND_NUM: usize = 5;
+
+    fn from_slice(xs: &[f64]) -> Self {
+        Self::try_from(xs).unwrap()
+    }
+
+    fn with_inv(self, inv: bool) -> Self {
+        self.with_inv(inv)
+    }
+}
+
+impl SynBound for SNormFourBar {
+    const BOUND: &'static [[f64; 2]] = &[
+        [0., PI],
+        [0., PI],
+        [0., PI],
+        [0., PI],
+        [0., PI],
+        [0., PI],
+        [0., PI],
+        [0., PI],
+    ];
+    const BOUND_NUM: usize = 6;
+
+    fn from_slice(xs: &[f64]) -> Self {
+        Self::try_from(xs).unwrap()
+    }
+
+    fn with_inv(self, inv: bool) -> Self {
+        self.with_inv(inv)
+    }
+}
+
+impl<D, M> mh::Bounded for Syn<D, M>
+where
+    D: efd::EfdDim + Sync + Send,
+    D::Trans: Sync + Send,
+    efd::Coord<D>: Sync + Send,
+    M: SynBound + Sync + Send,
+{
+    #[inline]
+    fn bound(&self) -> &[[f64; 2]] {
+        if matches!(self.mode, Mode::Partial) {
+            M::BOUND
+        } else {
+            &M::BOUND[..M::BOUND_NUM]
+        }
+    }
+}
+
+impl<D, M> mh::ObjFactory for Syn<D, M>
+where
+    D: efd::EfdDim + Sync + Send,
+    D::Trans: Sync + Send,
+    efd::Coord<D>: Sync + Send,
+    M: SynBound + Normalized + CurveGen<D> + Sync + Send,
+    <M as Normalized>::Target: Default + CurveGen<D> + Transformable<D> + Sync + Send,
+{
+    type Product = (f64, <M as Normalized>::Target);
+    type Eval = f64;
+
+    fn produce(&self, xs: &[f64]) -> Self::Product {
+        #[cfg(feature = "rayon")]
+        use mh::rayon::prelude::*;
+        const INFEASIBLE: f64 = 1e10;
+        let fb = M::from_slice(&xs[..M::BOUND_NUM]);
+        if self.mode.is_result_open() != fb.is_open_curve() {
+            return (INFEASIBLE, Default::default());
+        }
+        let f = |[t1, t2]: [f64; 2]| {
+            let fb = &fb;
+            #[cfg(feature = "rayon")]
+            let iter = [false, true].into_par_iter();
+            #[cfg(not(feature = "rayon"))]
+            let iter = [false, true].into_iter();
+            iter.map(move |inv| {
+                let fb = fb.clone().with_inv(inv);
+                let curve = fb.curve_in(t1, t2, self.res);
+                (curve, fb)
+            })
+            .filter(|(c, _)| c.len() > 1)
+            .map(|(c, fb)| {
+                let c = self.mode.regularize(c);
+                let efd = efd::Efd::<D>::from_curve_harmonic(c, self.efd.harmonic()).unwrap();
+                let fb = fb
+                    .denormalize()
+                    .transform(&efd.as_trans().to(self.efd.as_trans()));
+                (efd.l1_norm(&self.efd), fb)
+            })
+        };
+        match self.mode {
+            Mode::Closed | Mode::Open => fb
+                .angle_bound()
+                .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
+                .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
+                .unwrap_or((INFEASIBLE, Default::default())),
+            Mode::Partial => {
+                let bound = [
+                    [xs[M::BOUND_NUM], xs[M::BOUND_NUM + 1]],
+                    [xs[M::BOUND_NUM + 1], xs[M::BOUND_NUM]],
+                ];
+                #[cfg(feature = "rayon")]
+                let iter = bound.into_par_iter();
+                #[cfg(not(feature = "rayon"))]
+                let iter = bound.into_iter();
+                iter.map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
+                    .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
+                    .flat_map(f)
+                    .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
+                    .unwrap_or((INFEASIBLE, Default::default()))
+            }
+        }
+    }
+
+    fn evaluate(&self, (f, _): Self::Product) -> Self::Eval {
+        f
+    }
+}
 
 /// Synthesis mode.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -242,6 +292,3 @@ impl Mode {
         }
     }
 }
-
-impl_obj!(FbSyn, Efd2, FourBar, NormFourBar, [f64; 2], BOUND2D, 5);
-impl_obj!(SFbSyn, Efd3, SFourBar, SNormFourBar, [f64; 3], BOUND3D, 6);

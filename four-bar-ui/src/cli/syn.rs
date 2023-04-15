@@ -1,6 +1,6 @@
 use super::{Syn, SynCfg};
 use crate::syn_cmd::*;
-use four_bar::{cb::FbCodebook, csv, efd, mh, plot2d, syn, FourBar};
+use four_bar::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     ffi::OsStr,
@@ -68,8 +68,8 @@ pub(super) fn syn(syn: Syn) {
     }
     let cb = cb
         .into_iter()
-        .map(|path| Ok(FbCodebook::read(std::fs::File::open(path)?)?))
-        .collect::<Result<FbCodebook, Box<dyn std::error::Error>>>()
+        .map(|path| Ok(cb::FbCodebook::read(std::fs::File::open(path)?)?))
+        .collect::<Result<cb::FbCodebook, Box<dyn std::error::Error>>>()
         .expect("Load codebook failed!");
     let mpb = MultiProgress::new();
     let method_cmd = method_cmd.unwrap_or_default();
@@ -92,7 +92,7 @@ fn run<S>(
     mpb: &MultiProgress,
     file: PathBuf,
     cfg: &SynCfg,
-    cb: &FbCodebook,
+    cb: &cb::FbCodebook,
     refer: &Path,
     setting: S,
 ) where
@@ -202,10 +202,7 @@ fn run<S>(
             cb_fb.replace(candi[0].clone());
             s = s.pop_num(candi.len());
             let fitness = candi.iter().map(|(f, _)| *f).collect();
-            let pool = candi
-                .into_iter()
-                .map(|(_, fb)| fb.as_array())
-                .collect::<Vec<_>>();
+            let pool = candi.into_iter().map(|(_, fb)| fb.buf).collect::<Vec<_>>();
             s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
         } else {
             s = s.pop_num(cfg.pop);
@@ -261,7 +258,7 @@ fn run<S>(
             let c = fb.curve(cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(c), h).unwrap();
             let trans = efd.as_trans().to(efd_target.as_trans());
-            let fb = FourBar::from(fb).transform(&trans);
+            let fb = fb.denormalize().transform(&trans);
             let c = fb.curve(cfg.res);
             let err = curve_diff(&curves[0].1, &mode.regularize(&c));
             writeln!(log, "\n[atlas]")?;

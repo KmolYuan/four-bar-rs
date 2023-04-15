@@ -17,7 +17,8 @@ impl_opt! {
 /// ```
 /// use four_bar::{plot3d::*, SFourBar};
 /// let curves = [("First Curve", [[0.; 3]].as_slice())];
-/// let opt = Opt::from(SFourBar::example()).axis(false).scale_bar(true);
+/// let fb = SFourBar::example();
+/// let opt = Opt::from(&fb).axis(false).scale_bar(true);
 /// let mut buf = String::new();
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
 /// plot(svg, 1., curves, opt).unwrap();
