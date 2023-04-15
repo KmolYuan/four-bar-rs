@@ -42,7 +42,7 @@ impl Normalized for NormFourBar {
     fn normalize(mut de: Self::Target) -> Self {
         let l1 = de.l1();
         de.norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
-        Self { buf: de.norm.buf, inv: de.norm.inv }
+        de.norm
     }
 }
 

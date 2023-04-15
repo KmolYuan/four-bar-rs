@@ -37,6 +37,23 @@ pub type SNormFourBar = NormFourBarBase<[f64; 6]>;
 /// + Coupler link angle `g`
 pub type SFourBar = FourBarBase<[f64; 7], [f64; 6]>;
 
+impl Normalized for SNormFourBar {
+    type Target = SFourBar;
+
+    fn denormalize(&self) -> Self::Target {
+        SFourBar {
+            buf: [0., 0., 0., 1., 0., 0., 0.],
+            norm: self.clone(),
+        }
+    }
+
+    fn normalize(mut de: Self::Target) -> Self {
+        let l1 = de.l1();
+        de.norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
+        de.norm
+    }
+}
+
 impl SNormFourBar {
     /// Create with linkage lengths in degrees.
     pub fn new_degrees(buf: [f64; 6], inv: bool) -> Self {
@@ -145,7 +162,7 @@ impl SFourBar {
     /// An example crank rocker.
     pub const fn example() -> Self {
         Self::new_norm(
-            [0.; 7],
+            [0., 0., 0., 1., 0., 0., 0.],
             [
                 FRAC_PI_2,
                 0.6108652381980153,

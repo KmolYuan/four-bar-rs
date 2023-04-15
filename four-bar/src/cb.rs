@@ -1,7 +1,8 @@
 //! Create a codebook database for four-bar linkages.
 use self::distr::Code;
-use super::{syn::Mode, NormFourBar};
+use super::{syn::Mode, NormFourBar, SNormFourBar};
 use crate::efd::{Efd, EfdDim, Trans, Transform, D2};
+use efd::D3;
 use mh::{
     random::{Rng, SeedOption},
     utility::prelude::*,
@@ -10,8 +11,10 @@ use std::{marker::PhantomData, sync::Mutex};
 
 mod distr;
 
-/// Four-bar codebook type.
+/// Planar four-bar codebook type.
 pub type FbCodebook = Codebook<NormFourBar, D2, 5, 2>;
+/// Spherical four-bar codebook type.
+pub type SFbCodebook = Codebook<SNormFourBar, D3, 6, 3>;
 
 fn to_arr<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
 where
