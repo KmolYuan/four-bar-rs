@@ -190,6 +190,8 @@ impl ProjInner {
         ui.label(self.fb.ty().name());
         if self.cache.has_closed_curve {
             ui.label(RichText::new("This linkage has a closed curve.").color(Color32::GREEN));
+        } else {
+            ui.label(RichText::new("This linkage has a open curve.").color(Color32::BLUE));
         }
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
