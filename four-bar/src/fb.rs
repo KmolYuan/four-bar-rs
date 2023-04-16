@@ -32,13 +32,13 @@ pub enum FourBarTy {
     GRCR,
     /// Grashof rocker crank
     GRRC,
-    /// Non-Grashof Double rocker (type 1)
+    /// Non-Grashof Double rocker (ground link is the longest)
     RRR1,
-    /// Non-Grashof Double rocker (type 2)
+    /// Non-Grashof Double rocker (driver link is the longest)
     RRR2,
-    /// Non-Grashof Double rocker (type 3)
+    /// Non-Grashof Double rocker (coupler link is the longest)
     RRR3,
-    /// Non-Grashof Double rocker (type 4)
+    /// Non-Grashof Double rocker (follower link is the longest)
     RRR4,
 }
 
