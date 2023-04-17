@@ -39,10 +39,11 @@ impl Normalized<efd::D2> for NormFourBar {
         FourBar { buf: [0., 0., 0., self.l1()], norm: self.clone() }
     }
 
-    fn normalize(mut de: Self::De) -> Self {
+    fn normalize(de: &Self::De) -> Self {
         let l1 = de.l1();
-        de.norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
-        de.norm
+        let mut norm = de.norm.clone();
+        norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
+        norm
     }
 }
 

@@ -193,12 +193,28 @@ impl<B> NormFourBarBase<B> {
         self
     }
 
+    /// Denormalization.
+    pub fn denormalize<D: EfdDim>(&self) -> <Self as Normalized<D>>::De
+    where
+        Self: Normalized<D>,
+    {
+        <Self as Normalized<D>>::denormalize(self)
+    }
+
     /// Generator for coupler curve.
     pub fn curve<D: EfdDim>(&self, res: usize) -> Vec<efd::Coord<D>>
     where
         Self: CurveGen<D>,
     {
         <Self as CurveGen<D>>::curve(self, res)
+    }
+
+    /// Check if the data is valid.
+    pub fn is_valid<D: EfdDim>(&self) -> bool
+    where
+        Self: CurveGen<D>,
+    {
+        <Self as CurveGen<D>>::is_valid(self)
     }
 }
 
@@ -214,12 +230,28 @@ impl<B, NB> FourBarBase<B, NB> {
         self
     }
 
-    /// Generator for coupler curve.
+    /// Normalization.
+    pub fn normalize<D: EfdDim, N>(&self) -> N
+    where
+        N: Normalized<D, De = Self>,
+    {
+        N::normalize(self)
+    }
+
+    /// Curve generation for coupler curve.
     pub fn curve<D: EfdDim>(&self, res: usize) -> Vec<efd::Coord<D>>
     where
         Self: CurveGen<D>,
     {
         <Self as CurveGen<D>>::curve(self, res)
+    }
+
+    /// Check if the data is valid.
+    pub fn is_valid<D: EfdDim>(&self) -> bool
+    where
+        Self: CurveGen<D>,
+    {
+        <Self as CurveGen<D>>::is_valid(self)
     }
 }
 
@@ -230,7 +262,7 @@ pub trait Normalized<D: efd::EfdDim>: Sized {
     /// Method to convert types.
     fn denormalize(&self) -> Self::De;
     /// Inverse method to convert types.
-    fn normalize(de: Self::De) -> Self;
+    fn normalize(de: &Self::De) -> Self;
 
     /// Denormalized with transformation.
     fn trans_denorm(&self, trans: &efd::Transform<D::Trans>) -> Self::De {

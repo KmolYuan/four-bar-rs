@@ -47,10 +47,11 @@ impl Normalized<efd::D3> for SNormFourBar {
         }
     }
 
-    fn normalize(mut de: Self::De) -> Self {
+    fn normalize(de: &Self::De) -> Self {
         let l1 = de.l1();
-        de.norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
-        de.norm
+        let mut norm = de.norm.clone();
+        norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
+        norm
     }
 }
 
