@@ -37,17 +37,17 @@ pub type SNormFourBar = NormFourBarBase<[f64; 6]>;
 /// + Coupler link angle `g`
 pub type SFourBar = FourBarBase<[f64; 7], [f64; 6]>;
 
-impl Normalized for SNormFourBar {
-    type Target = SFourBar;
+impl Normalized<efd::D3> for SNormFourBar {
+    type De = SFourBar;
 
-    fn denormalize(&self) -> Self::Target {
+    fn denormalize(&self) -> Self::De {
         SFourBar {
             buf: [0., 0., 0., 1., 0., 0., 0.],
             norm: self.clone(),
         }
     }
 
-    fn normalize(mut de: Self::Target) -> Self {
+    fn normalize(mut de: Self::De) -> Self {
         let l1 = de.l1();
         de.norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
         de.norm

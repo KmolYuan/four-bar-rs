@@ -258,7 +258,7 @@ fn run<S>(
             let c = fb.curve(cfg.res);
             let efd = efd::Efd2::from_curve_harmonic(mode.regularize(c), h).unwrap();
             let trans = efd.as_trans().to(efd_target.as_trans());
-            let fb = fb.denormalize().transform(&trans);
+            let fb = fb.trans_denorm(&trans);
             let c = fb.curve(cfg.res);
             let err = curve_diff(&curves[0].1, &mode.regularize(&c));
             writeln!(log, "\n[atlas]")?;

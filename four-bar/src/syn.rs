@@ -17,7 +17,7 @@
 //!     .unwrap();
 //! ```
 use crate::{efd::Curve, *};
-use std::{f64::consts::*, marker::PhantomData};
+use std::{borrow::Cow, f64::consts::*, marker::PhantomData};
 
 /// The minimum input angle bound. (π/16)
 pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
@@ -31,7 +31,7 @@ pub type FbSyn = Syn<efd::D2, NormFourBar>;
 /// Path generation task of spherical four-bar linkage.
 pub type SFbSyn = Syn<efd::D3, SNormFourBar>;
 
-/// Path generation task of four-bar linkage.
+/// Path generation task of a mechanism.
 pub struct Syn<D: efd::EfdDim, M> {
     /// Target coefficients
     pub efd: efd::Efd<D>,
@@ -39,6 +39,7 @@ pub struct Syn<D: efd::EfdDim, M> {
     mode: Mode,
     // How many points need to be generated or compared
     res: usize,
+    // Marker of the mechanism
     _marker: PhantomData<M>,
 }
 
@@ -101,7 +102,7 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
 }
 
 /// Synthesis bounds.
-pub trait SynBound: Clone {
+pub trait SynBound: Clone + Sync + Send {
     /// Lower & upper bounds
     const BOUND: &'static [[f64; 2]];
     /// Bound number for non-partial matching
@@ -109,8 +110,8 @@ pub trait SynBound: Clone {
 
     /// Create entity from slice.
     fn from_slice(xs: &[f64]) -> Self;
-    /// Change inverse symbol.
-    fn with_inv(self, inv: bool) -> Self;
+    /// List all the states of the design.
+    fn get_states(&self) -> Vec<Cow<Self>>;
 }
 
 impl SynBound for NormFourBar {
@@ -133,8 +134,8 @@ impl SynBound for NormFourBar {
         Self::try_from(xs).unwrap()
     }
 
-    fn with_inv(self, inv: bool) -> Self {
-        self.with_inv(inv)
+    fn get_states(&self) -> Vec<Cow<Self>> {
+        vec![Cow::Borrowed(self), Cow::Owned(self.clone().with_inv(true))]
     }
 }
 
@@ -155,8 +156,8 @@ impl SynBound for SNormFourBar {
         Self::try_from(xs).unwrap()
     }
 
-    fn with_inv(self, inv: bool) -> Self {
-        self.with_inv(inv)
+    fn get_states(&self) -> Vec<Cow<Self>> {
+        vec![Cow::Borrowed(self), Cow::Owned(self.clone().with_inv(true))]
     }
 }
 
@@ -165,7 +166,7 @@ where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
     efd::Coord<D>: Sync + Send,
-    M: SynBound + Sync + Send,
+    M: SynBound,
 {
     #[inline]
     fn bound(&self) -> &[[f64; 2]] {
@@ -182,10 +183,10 @@ where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
     efd::Coord<D>: Sync + Send,
-    M: SynBound + Normalized + CurveGen<D> + Sync + Send,
-    <M as Normalized>::Target: Default + CurveGen<D> + Transformable<D> + Sync + Send,
+    M: SynBound + Normalized<D> + CurveGen<D>,
+    M::De: Default + CurveGen<D> + Sync + Send,
 {
-    type Product = (f64, <M as Normalized>::Target);
+    type Product = (f64, M::De);
     type Eval = f64;
 
     fn produce(&self, xs: &[f64]) -> Self::Product {
@@ -197,25 +198,19 @@ where
             return (INFEASIBLE, Default::default());
         }
         let f = |[t1, t2]: [f64; 2]| {
-            let fb = &fb;
+            let states = fb.get_states();
             #[cfg(feature = "rayon")]
-            let iter = [false, true].into_par_iter();
+            let iter = states.into_par_iter();
             #[cfg(not(feature = "rayon"))]
-            let iter = [false, true].into_iter();
-            iter.map(move |inv| {
-                let fb = fb.clone().with_inv(inv);
-                let curve = fb.curve_in(t1, t2, self.res);
-                (curve, fb)
-            })
-            .filter(|(c, _)| c.len() > 1)
-            .map(|(c, fb)| {
-                let c = self.mode.regularize(c);
-                let efd = efd::Efd::<D>::from_curve_harmonic(c, self.efd.harmonic()).unwrap();
-                let fb = fb
-                    .denormalize()
-                    .transform(&efd.as_trans().to(self.efd.as_trans()));
-                (efd.l1_norm(&self.efd), fb)
-            })
+            let iter = states.into_iter();
+            iter.map(move |fb| (fb.curve_in(t1, t2, self.res), fb))
+                .filter(|(c, _)| c.len() > 1)
+                .map(|(c, fb)| {
+                    let c = self.mode.regularize(c);
+                    let efd = efd::Efd::<D>::from_curve_harmonic(c, self.efd.harmonic()).unwrap();
+                    let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
+                    (efd.l1_norm(&self.efd), fb)
+                })
         };
         match self.mode {
             Mode::Closed | Mode::Open => fb

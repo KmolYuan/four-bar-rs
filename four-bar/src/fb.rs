@@ -223,14 +223,19 @@ impl<B, NB> FourBarBase<B, NB> {
     }
 }
 
-/// A normalize relationship.
-pub trait Normalized: Sized {
+/// A normalized data type. This type can denormalized to another.
+pub trait Normalized<D: efd::EfdDim>: Sized {
     /// Denormalized target.
-    type Target;
+    type De: Transformable<D>;
     /// Method to convert types.
-    fn denormalize(&self) -> Self::Target;
+    fn denormalize(&self) -> Self::De;
     /// Inverse method to convert types.
-    fn normalize(de: Self::Target) -> Self;
+    fn normalize(de: Self::De) -> Self;
+
+    /// Denormalized with transformation.
+    fn trans_denorm(&self, trans: &efd::Transform<D::Trans>) -> Self::De {
+        self.denormalize().transform(trans)
+    }
 }
 
 /// Transformation ability.
@@ -238,7 +243,7 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
     /// Transform in placed.
     fn transform_inplace(&mut self, trans: &efd::Transform<D::Trans>);
 
-    /// Build with transformation
+    /// Build with transformation.
     fn transform(mut self, trans: &efd::Transform<D::Trans>) -> Self {
         self.transform_inplace(trans);
         self
@@ -292,8 +297,8 @@ pub trait CurveGen<D: efd::EfdDim>: Sized {
 impl<D, N> CurveGen<D> for N
 where
     D: efd::EfdDim,
-    N: Normalized,
-    N::Target: CurveGen<D>,
+    N: Normalized<D>,
+    N::De: CurveGen<D>,
 {
     fn is_valid(&self) -> bool {
         self.denormalize().is_valid()

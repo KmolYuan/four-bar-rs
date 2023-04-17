@@ -68,7 +68,7 @@ impl Code<5, 2> for NormFourBar {
     }
 
     fn unnorm(self, trans: Transform<Self::Trans>) -> Self::UnNorm {
-        use crate::{Normalized as _, Transformable as _};
-        self.denormalize().transform(&trans)
+        use crate::Normalized as _;
+        self.trans_denorm(&trans)
     }
 }
