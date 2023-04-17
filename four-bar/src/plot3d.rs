@@ -79,9 +79,9 @@ where
     if opt.scale_bar {
         let scale_bar = scale_bar_size(sr);
         for (p, color) in [
-            ((scale_bar, 0., 0.), RED),
+            ((scale_bar, 0., 0.), BLUE),
             ((0., scale_bar, 0.), GREEN),
-            ((0., 0., scale_bar), BLUE),
+            ((0., 0., scale_bar), RED),
         ] {
             chart.draw_series(LineSeries::new(
                 [(0., 0., 0.), p],
@@ -97,7 +97,7 @@ where
                 ($ty:ident) => {{
                     let line = curve
                         .iter()
-                        .map(|&[x, y, z]| $ty::new((x, z, y), dot_size, &color));
+                        .map(|&[x, y, z]| $ty::new((y, z, x), dot_size, &color));
                     chart
                         .draw_series(line)?
                         .label(label)
@@ -110,7 +110,7 @@ where
                 _ => draw_dots!(Circle),
             }
         } else {
-            let line = curve.iter().map(|&[x, y, z]| (x, z, y));
+            let line = curve.iter().map(|&[x, y, z]| (y, z, x));
             chart
                 .draw_series(LineSeries::new(line, color.stroke_width(stroke)))?
                 .label(label)
@@ -121,13 +121,6 @@ where
     }
     // Draw linkage
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
-        let to_sc = |[x, y, z]: [f64; 3]| [x.hypot(y).atan2(z), y.atan2(x)];
-        let to_cc = |(theta, psi): (f64, f64)| {
-            let x = sr * theta.sin() * psi.cos();
-            let y = sr * theta.sin() * psi.sin();
-            let z = sr * theta.cos();
-            (x, y, z)
-        };
         let linspace = |start: f64, end: f64| {
             const N: usize = 150;
             let step = (end - start) / N as f64;
@@ -137,24 +130,24 @@ where
             let [[theta1, psi1], [theta2, psi2]] = [to_sc(a), to_sc(b)];
             linspace(theta1, theta2)
                 .zip(linspace(psi1, psi2))
-                .map(to_cc)
+                .map(|(theta, psi)| to_cc([theta, psi], sr))
         };
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             chart.draw_series(LineSeries::new(
                 line.windows(2)
                     .flat_map(|w| link(w[0], w[1]))
-                    .map(|(x, y, z)| (x, z, y)),
+                    .map(|[x, y, z]| (y, z, x)),
                 BLACK.stroke_width(stroke),
             ))?;
         }
         let joints_iter = joints
             .iter()
-            .map(|&[x, y, z]| Circle::new((x, z, y), dot_size, BLACK.filled()));
+            .map(|&[x, y, z]| Circle::new((y, z, x), dot_size, BLACK.filled()));
         chart.draw_series(joints_iter)?;
         let grounded = joints[..2].iter().map(|&[x, y, z]| {
             let r = 0.03;
             Cubiod::new(
-                [(x - r, z - r, y - r), (x + r, z + r, y + r)],
+                [(y - r, z - r, x - r), (y + r, z + r, x + r)],
                 BLACK.mix(0.2),
                 BLACK.filled(),
             )

@@ -80,7 +80,7 @@ impl NormFourBar {
 impl FourBar {
     /// An example crank rocker.
     pub const fn example() -> Self {
-        Self::new_norm([0., 0., 0., 35.], [90., 70., 70., 45., FRAC_PI_6], false)
+        Self::new([0., 0., 0., 35.], [90., 70., 70., 45., FRAC_PI_6], false)
     }
 
     impl_parm_method! {

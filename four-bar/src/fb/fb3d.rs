@@ -143,6 +143,8 @@ impl SNormFourBar {
 }
 
 impl SFourBar {
+    const ORIGIN: [f64; 7] = [0., 0., 0., 1., FRAC_PI_2, 0., 0.];
+
     /// Create with linkage lengths in degrees.
     pub fn new_degrees(mut buf: [f64; 7], buf_norm: [f64; 6], inv: bool) -> Self {
         buf[4..].iter_mut().for_each(|x| *x = x.to_radians());
@@ -152,18 +154,22 @@ impl SFourBar {
 
     /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
     pub fn new_wrap(fb: &FourBar, center: [f64; 3], r: f64, w: f64) -> Self {
+        assert!(r > 0.);
         let [p0x, p0y, a, l1] = fb.buf;
         let NormFourBar { buf: [l0, l2, l3, l4, g], inv } = fb.norm;
         let [p0i, p0j, l0, l1, l2, l3, l4] = [p0x, p0y, l0, l1, l2, l3, l4].map(|x| x / w * TAU);
         let norm = SNormFourBar { buf: [l0, l1, l2, l3, l4, g], inv };
         let [ox, oy, oz] = center;
-        Self { buf: [ox, oy, oz, r, p0i, p0j, a], norm }
+        Self {
+            buf: [ox, oy, oz, r, FRAC_PI_2 - p0j, p0i, a],
+            norm,
+        }
     }
 
     /// An example crank rocker.
     pub const fn example() -> Self {
-        Self::new_norm(
-            [0., 0., 0., 1., 0., 0., 0.],
+        Self::new(
+            Self::ORIGIN,
             [
                 FRAC_PI_2,
                 0.6108652381980153,
@@ -219,7 +225,11 @@ impl Transformable<efd::D3> for SFourBar {
         *self.ox_mut() += ox;
         *self.oy_mut() += oy;
         *self.oz_mut() += oz;
-        // *self.a_mut() += trans.rot().angle();
+        let axis = na::Vector3::from(to_cc([self.p0i(), self.p0j()], 1.)) * self.a();
+        let rot = trans.rot() * na::Rotation3::from_scaled_axis(axis);
+        let (axis, angle) = rot.axis_angle().unwrap_or((na::Vector3::x_axis(), 0.));
+        [*self.p0i_mut(), *self.p0j_mut()] = to_sc([axis.x, axis.y, axis.z]);
+        *self.a_mut() = angle;
         *self.r_mut() *= trans.scale();
     }
 }
@@ -285,12 +295,7 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         let rot2 = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l3);
         rot1 * rot2 * op1
     };
-    let rot = {
-        let rot1 = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), p0j);
-        let rot2 = na::Rotation3::from_axis_angle(&na::Vector3::y_axis(), p0i);
-        let rot3 = na::Rotation3::from_axis_angle(&na::Vector3::x_axis(), a);
-        rot1 * rot2 * rot3
-    };
+    let rot = na::Rotation3::from_scaled_axis(na::Vector3::from(to_cc([p0i, p0j], 1.)) * a);
     let o = na::Point3::new(ox, oy, oz);
     let p0 = o + rot * op0;
     let p1 = o + rot * op1;
@@ -308,6 +313,19 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     }
     let js = build_coords![p0, p1, p2, p3, p4];
     js.iter().flatten().all(|x| x.is_finite()).then_some(js)
+}
+
+// To spherical coordinate
+pub(crate) fn to_sc([x, y, z]: [f64; 3]) -> [f64; 2] {
+    [x.hypot(y).atan2(z), y.atan2(x)]
+}
+
+// To Cartesian coordinate
+pub(crate) fn to_cc([theta, psi]: [f64; 2], sr: f64) -> [f64; 3] {
+    let x = sr * theta.sin() * psi.cos();
+    let y = sr * theta.sin() * psi.sin();
+    let z = sr * theta.cos();
+    [x, y, z]
 }
 
 /* Chiang, C. H. (1984). ON THE CLASSIFICATION OF SPHERICAL FOUR-BAR LINKAGES

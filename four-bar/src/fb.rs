@@ -220,7 +220,7 @@ impl<B> NormFourBarBase<B> {
 
 impl<B, NB> FourBarBase<B, NB> {
     /// Create a new value from buffer.
-    pub const fn new_norm(buf: B, buf_norm: NB, inv: bool) -> Self {
+    pub const fn new(buf: B, buf_norm: NB, inv: bool) -> Self {
         Self { buf, norm: NormFourBarBase { buf: buf_norm, inv } }
     }
 
