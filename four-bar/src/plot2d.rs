@@ -88,7 +88,7 @@ impl<'a, FB> From<&'a FB> for OptBase<'a, '_, FB> {
 }
 
 impl<'a, 'b, FB> OptBase<'a, 'b, FB> {
-    /// Create a default option, enables nothing.
+    /// Create a default option.
     pub fn new() -> Self {
         Self::default()
     }
