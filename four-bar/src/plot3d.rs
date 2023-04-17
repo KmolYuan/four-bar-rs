@@ -5,10 +5,16 @@ use crate::{plot2d::*, *};
 pub use plotters::{prelude::*, *};
 use std::f64::consts::TAU;
 
-impl_opt! {
-    /// Drawing option of spherical four-bar linkage and its input angle.
-    struct Opt { SFourBar, [f64; 3] }
-}
+/// Drawing option of spherical four-bar linkage and its input angle.
+///
+/// ```
+/// use four_bar::{plot3d::Opt, SFourBar};
+/// // From linkage
+/// let opt = Opt::from(&SFourBar::example());
+/// // Without linkage
+/// let opt = Opt::new();
+/// ```
+pub type Opt<'a, 'b> = OptBase<'a, 'b, SFourBar>;
 
 /// Plot 3D spherical linkage.
 ///
@@ -40,7 +46,7 @@ where
     let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
     let font = || font.clone();
     let mut chart = ChartBuilder::on(&root);
-    if let Some(title) = opt.title {
+    if let Some(title) = opt.get_title() {
         chart.caption(title, font());
     }
     let mut chart = chart

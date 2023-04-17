@@ -29,6 +29,16 @@ use crate::*;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
+/// Drawing option of four-bar linkage and its input angle.
+///
+/// ```
+/// use four_bar::{plot2d::Opt, FourBar};
+/// // From linkage
+/// let opt = Opt::from(&FourBar::example());
+/// // Without linkage
+/// let opt = Opt::new();
+/// ```
+pub type Opt<'a, 'b> = OptBase<'a, 'b, FourBar>;
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
 
@@ -42,103 +52,111 @@ macro_rules! inner_opt {
     )+};
 }
 
-macro_rules! impl_opt {
-    ($(
-        $(#[$meta:meta])+
-        struct $ty:ident { $fb:ty, $coord:ty }
-    )+) => {$(
-        $(#[$meta])+
-        #[derive(Default, Clone)]
-        pub struct $ty<'a, 'b> {
-            fb: Option<&'a $fb>,
-            angle: Option<f64>,
-            title: Option<&'b str>,
-            inner: OptInner,
-        }
-
-        impl<'a> From<Option<&'a $fb>> for $ty<'a, '_> {
-            fn from(opt: Option<&'a $fb>) -> Self {
-                match opt {
-                    Some(fb) => Self::from(fb),
-                    None => Self::new(),
-                }
-            }
-        }
-
-        impl<'a> From<&'a $fb> for $ty<'a, '_> {
-            fn from(fb: &'a $fb) -> Self {
-                Self { fb: Some(fb), ..Self::default() }
-            }
-        }
-
-        impl<'a, 'b> $ty<'a, 'b> {
-            /// Create a default option, enables nothing.
-            pub fn new() -> Self {
-                Self::default()
-            }
-
-            /// Set the input angle of the linkage.
-            ///
-            /// If the angle value is not in the range of [`FourBar::angle_bound()`],
-            /// the actual angle will be the midpoint.
-            pub fn angle(self, angle: f64) -> Self {
-                Self { angle: Some(angle), ..self }
-            }
-
-            /// Set the title.
-            pub fn title(self, title: &'b str) -> Self {
-                Self { title: Some(title), ..self }
-            }
-
-            /// Set the inner options.
-            pub fn inner(self, inner: OptInner) -> Self {
-                Self { inner, ..self }
-            }
-
-            inner_opt! {
-                /// Set the line stroke/point size.
-                fn stroke(u32)
-                /// Set font size.
-                fn font(f64)
-                /// Show the scale bar when the linkage is specified.
-                fn scale_bar(bool)
-                /// Use grid in the plot.
-                fn grid(bool)
-                /// Show the axis.
-                fn axis(bool)
-                /// Use dot to present the curves.
-                fn dot(bool)
-                /// Set legend position.
-                fn legend(LegendPos)
-            }
-
-            fn get_joints(&self) -> Option<[$coord; 5]> {
-                let fb = self.fb.as_ref()?;
-                let [start, end] = fb.angle_bound()?;
-                let angle = match self.angle {
-                    Some(angle) if (start..end).contains(&angle) => angle,
-                    _ => start + (end - start) * 0.25,
-                };
-                fb.pos(angle)
-            }
-
-            // (stroke, dot_size)
-            fn get_stroke(&self) -> (u32, u32) {
-                (self.stroke, self.stroke + 3)
-            }
-        }
-
-        impl std::ops::Deref for Opt<'_, '_> {
-            type Target = OptInner;
-            fn deref(&self) -> &Self::Target {
-                &self.inner
-            }
-        }
-    )+};
+/// Option type base.
+#[derive(Clone)]
+pub struct OptBase<'a, 'b, FB> {
+    fb: Option<&'a FB>,
+    angle: Option<f64>,
+    title: Option<&'b str>,
+    inner: OptInner,
 }
 
-pub(crate) use impl_opt;
-pub(crate) use inner_opt;
+impl<FB> Default for OptBase<'_, '_, FB> {
+    fn default() -> Self {
+        Self {
+            fb: None,
+            angle: None,
+            title: None,
+            inner: OptInner::default(),
+        }
+    }
+}
+
+impl<'a, FB> From<Option<&'a FB>> for OptBase<'a, '_, FB> {
+    fn from(opt: Option<&'a FB>) -> Self {
+        match opt {
+            Some(fb) => Self::from(fb),
+            None => Self::new(),
+        }
+    }
+}
+
+impl<'a, FB> From<&'a FB> for OptBase<'a, '_, FB> {
+    fn from(fb: &'a FB) -> Self {
+        Self { fb: Some(fb), ..Self::default() }
+    }
+}
+
+impl<'a, 'b, FB> OptBase<'a, 'b, FB> {
+    /// Create a default option, enables nothing.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the input angle of the linkage.
+    ///
+    /// If the angle value is not in the range of [`FourBar::angle_bound()`],
+    /// the actual angle will be the midpoint.
+    pub fn angle(self, angle: f64) -> Self {
+        Self { angle: Some(angle), ..self }
+    }
+
+    /// Set the title.
+    pub fn title(self, title: &'b str) -> Self {
+        Self { title: Some(title), ..self }
+    }
+
+    /// Set the inner options.
+    pub fn inner(self, inner: OptInner) -> Self {
+        Self { inner, ..self }
+    }
+
+    inner_opt! {
+        /// Set the line stroke/point size.
+        fn stroke(u32)
+        /// Set font size.
+        fn font(f64)
+        /// Show the scale bar when the linkage is specified.
+        fn scale_bar(bool)
+        /// Use grid in the plot.
+        fn grid(bool)
+        /// Show the axis.
+        fn axis(bool)
+        /// Use dot to present the curves.
+        fn dot(bool)
+        /// Set legend position.
+        fn legend(LegendPos)
+    }
+
+    pub(crate) fn get_title(&self) -> Option<&str> {
+        self.title
+    }
+
+    pub(crate) fn get_joints<D: efd::EfdDim>(&self) -> Option<[efd::Coord<D>; 5]>
+    where
+        FB: CurveGen<D>,
+    {
+        let fb = self.fb.as_ref()?;
+        let [start, end] = fb.angle_bound()?;
+        let angle = match self.angle {
+            Some(angle) if (start..end).contains(&angle) => angle,
+            _ => start + (end - start) * 0.25,
+        };
+        fb.pos(angle)
+    }
+
+    // (stroke, dot_size)
+    pub(crate) fn get_stroke(&self) -> (u32, u32) {
+        (self.stroke, self.stroke + 3)
+    }
+}
+
+impl<FB> std::ops::Deref for OptBase<'_, '_, FB> {
+    type Target = OptInner;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
 
 /// Legend position option.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -256,19 +274,6 @@ where
         .draw()?;
     chart.draw_series(LineSeries::new(history.iter().copied().enumerate(), BLUE))?;
     Ok(())
-}
-
-impl_opt! {
-    /// Drawing option of four-bar linkage and its input angle.
-    ///
-    /// ```
-    /// use four_bar::{plot2d::Opt, FourBar};
-    /// // From linkage
-    /// let opt = Opt::from(&FourBar::example());
-    /// // Without linkage
-    /// let opt = Opt::new();
-    /// ```
-    struct Opt { FourBar, [f64; 2] }
 }
 
 /// Plot 2D curves and linkages.
