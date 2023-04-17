@@ -214,10 +214,13 @@ impl SFourBar {
 }
 
 impl Transformable<efd::D3> for SFourBar {
-    #[allow(unused_variables)]
     fn transform_inplace(&mut self, trans: &efd::Transform<<efd::D3 as EfdDim>::Trans>) {
-        // TODO
-        todo!()
+        let [ox, oy, oz] = trans.trans();
+        *self.ox_mut() += ox;
+        *self.oy_mut() += oy;
+        *self.oz_mut() += oz;
+        // *self.a_mut() += trans.rot().angle();
+        *self.r_mut() *= trans.scale();
     }
 }
 
@@ -301,12 +304,10 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         o + rot * op4
     };
     macro_rules! build_coords {
-        ($($p:ident),+) => { [$([$p.x, $p.y, $p.z]),+] }
+        [$($p:ident),+] => { [$([$p.x, $p.y, $p.z]),+] }
     }
-    Some(build_coords!(p0, p1, p2, p3, p4)).filter(|js| {
-        js.iter()
-            .all(|[x, y, z]| x.is_finite() && y.is_finite() && z.is_finite())
-    })
+    let js = build_coords![p0, p1, p2, p3, p4];
+    js.iter().flatten().all(|x| x.is_finite()).then_some(js)
 }
 
 /* Chiang, C. H. (1984). ON THE CLASSIFICATION OF SPHERICAL FOUR-BAR LINKAGES

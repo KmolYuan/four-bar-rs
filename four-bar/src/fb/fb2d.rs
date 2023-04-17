@@ -118,10 +118,9 @@ impl Transformable<efd::D2> for FourBar {
         *self.p0x_mut() += p0x;
         *self.p0y_mut() += p0y;
         *self.a_mut() += trans.rot().angle();
-        *self.l1_mut() *= trans.scale();
-        self.norm.buf[..4]
-            .iter_mut()
-            .for_each(|x| *x *= trans.scale());
+        let scale = trans.scale();
+        *self.l1_mut() *= scale;
+        self.norm.buf[..4].iter_mut().for_each(|x| *x *= scale);
     }
 }
 
@@ -155,12 +154,18 @@ fn angle_with([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d: f64, a: f64) -> [f64; 2
     [x1 + d * a.cos(), y1 + d * a.sin()]
 }
 
-fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) -> [f64; 2] {
+fn circle2(
+    [x1, y1]: [f64; 2],
+    [x2, y2]: [f64; 2],
+    r1: f64,
+    r2: f64,
+    inv: bool,
+) -> Option<[f64; 2]> {
     let dx = x2 - x1;
     let dy = y2 - y1;
     let r = dx.hypot(dy);
     if r > r1 + r2 || r < (r1 - r2).abs() || (r < f64::EPSILON && (r1 - r2).abs() < f64::EPSILON) {
-        return [f64::NAN, f64::NAN];
+        return None;
     }
     let a = 0.5 * (r1 * r1 - r2 * r2 + r * r) / r;
     let h = (r1 * r1 - a * a).sqrt();
@@ -168,19 +173,11 @@ fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) 
     let s = dy / r;
     let xm = x1 + a * c;
     let ym = y1 + a * s;
-    if inv {
+    Some(if inv {
         [xm + h * s, ym - h * c]
     } else {
         [xm - h * s, ym + h * c]
-    }
-}
-
-fn parallel([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], [x3, y3]: [f64; 2]) -> [f64; 2] {
-    let dx = x2 - x1;
-    let dy = y2 - y1;
-    let d = dx.hypot(dy);
-    let a = dy.atan2(dx);
-    [x3 + d * a.cos(), y3 + d * a.sin()]
+    })
 }
 
 fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
@@ -191,10 +188,17 @@ fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
     let p2 = angle(p0, l1, a + b);
     let p3 = if (l0 - l2).abs() < f64::EPSILON && (l1 - l3).abs() < f64::EPSILON {
         // Special case
-        parallel(p0, p2, p1)
+        let [p0x, p0y] = p0;
+        let [p1x, p1y] = p1;
+        let [p2x, p2y] = p2;
+        let dx = p2x - p0x;
+        let dy = p2y - p0y;
+        let d = dx.hypot(dy);
+        let a = dy.atan2(dx);
+        [p1x + d * a.cos(), p1y + d * a.sin()]
     } else {
-        circle2(p2, p1, l2, l3, inv)
+        circle2(p2, p1, l2, l3, inv)?
     };
     let p4 = angle_with(p2, p3, l4, g);
-    Some([p0, p1, p2, p3, p4]).filter(|js| js.iter().all(|[x, y]| x.is_finite() && y.is_finite()))
+    Some([p0, p1, p2, p3, p4])
 }
