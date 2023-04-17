@@ -26,8 +26,8 @@ pub type SNormFourBar = NormFourBarBase<[f64; 6]>;
 /// + Sphere Y offset `oy`
 /// + Sphere Z offset `oz`
 /// + Sphere radius `r`
-/// + Sphere polar offset `p0i`
-/// + Sphere azimuth offset `p0j`
+/// + Sphere polar offset `p0i` (theta)
+/// + Sphere azimuth offset `p0j` (phi)
 /// + Angle offset `a`
 /// + Ground link `l0`
 /// + Driver link `l1`
@@ -35,6 +35,10 @@ pub type SNormFourBar = NormFourBarBase<[f64; 6]>;
 /// + Follower link `l3`
 /// + Extanded link `l4`
 /// + Coupler link angle `g`
+///
+/// # Spherical Coordinate System
+///
+/// ![](https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/3D_Spherical.svg/512px-3D_Spherical.svg.png)
 pub type SFourBar = FourBarBase<[f64; 7], [f64; 6]>;
 
 impl Normalized<efd::D3> for SNormFourBar {
@@ -191,9 +195,9 @@ impl SFourBar {
         fn oz, oz_mut(self) -> f64 { self.buf[2] }
         /// Radius of the sphere.
         fn r, r_mut(self) -> f64 { self.buf[3] }
-        /// Sphere polar angle offset of the driver link pivot.
+        /// Sphere polar angle offset of the driver link pivot. (theta)
         fn p0i, p0i_mut(self) -> f64 { self.buf[4] }
-        /// Sphere azimuth angle offset of the driver link pivot.
+        /// Sphere azimuth angle offset of the driver link pivot. (phi)
         fn p0j, p0j_mut(self) -> f64 { self.buf[5] }
         /// Angle offset of the ground link.
         fn a, a_mut(self) -> f64 { self.buf[6] }
@@ -321,9 +325,9 @@ pub(crate) fn to_sc([x, y, z]: [f64; 3]) -> [f64; 2] {
 }
 
 // To Cartesian coordinate
-pub(crate) fn to_cc([theta, psi]: [f64; 2], sr: f64) -> [f64; 3] {
-    let x = sr * theta.sin() * psi.cos();
-    let y = sr * theta.sin() * psi.sin();
+pub(crate) fn to_cc([theta, phi]: [f64; 2], sr: f64) -> [f64; 3] {
+    let x = sr * theta.sin() * phi.cos();
+    let y = sr * theta.sin() * phi.sin();
     let z = sr * theta.cos();
     [x, y, z]
 }

@@ -127,10 +127,10 @@ where
             (0..N).map(move |i| start + i as f64 * step)
         };
         let link = |a: [f64; 3], b: [f64; 3]| {
-            let [[theta1, psi1], [theta2, psi2]] = [to_sc(a), to_sc(b)];
+            let [[theta1, phi1], [theta2, phi2]] = [to_sc(a), to_sc(b)];
             linspace(theta1, theta2)
-                .zip(linspace(psi1, psi2))
-                .map(|(theta, psi)| to_cc([theta, psi], sr))
+                .zip(linspace(phi1, phi2))
+                .map(|(theta, phi)| to_cc([theta, phi], sr))
         };
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
             chart.draw_series(LineSeries::new(
