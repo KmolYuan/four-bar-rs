@@ -321,12 +321,12 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
 }
 
 // To spherical coordinate
-pub(crate) fn to_sc([x, y, z]: [f64; 3]) -> [f64; 2] {
+fn to_sc([x, y, z]: [f64; 3]) -> [f64; 2] {
     [x.hypot(y).atan2(z), y.atan2(x)]
 }
 
 // To Cartesian coordinate
-pub(crate) fn to_cc([theta, phi]: [f64; 2], sr: f64) -> [f64; 3] {
+fn to_cc([theta, phi]: [f64; 2], sr: f64) -> [f64; 3] {
     let x = sr * theta.sin() * phi.cos();
     let y = sr * theta.sin() * phi.sin();
     let z = sr * theta.cos();
