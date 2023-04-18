@@ -54,14 +54,14 @@ macro_rules! inner_opt {
 
 /// Option type base.
 #[derive(Clone)]
-pub struct OptBase<'a, 'b, FB> {
-    fb: Option<&'a FB>,
+pub struct OptBase<'a, 'b, M> {
+    fb: Option<&'a M>,
     angle: Option<f64>,
     title: Option<&'b str>,
     inner: OptInner,
 }
 
-impl<FB> Default for OptBase<'_, '_, FB> {
+impl<M> Default for OptBase<'_, '_, M> {
     fn default() -> Self {
         Self {
             fb: None,
@@ -72,8 +72,8 @@ impl<FB> Default for OptBase<'_, '_, FB> {
     }
 }
 
-impl<'a, FB> From<Option<&'a FB>> for OptBase<'a, '_, FB> {
-    fn from(opt: Option<&'a FB>) -> Self {
+impl<'a, M> From<Option<&'a M>> for OptBase<'a, '_, M> {
+    fn from(opt: Option<&'a M>) -> Self {
         match opt {
             Some(fb) => Self::from(fb),
             None => Self::new(),
@@ -81,13 +81,13 @@ impl<'a, FB> From<Option<&'a FB>> for OptBase<'a, '_, FB> {
     }
 }
 
-impl<'a, FB> From<&'a FB> for OptBase<'a, '_, FB> {
-    fn from(fb: &'a FB) -> Self {
+impl<'a, M> From<&'a M> for OptBase<'a, '_, M> {
+    fn from(fb: &'a M) -> Self {
         Self { fb: Some(fb), ..Self::default() }
     }
 }
 
-impl<'a, 'b, FB> OptBase<'a, 'b, FB> {
+impl<'a, 'b, M> OptBase<'a, 'b, M> {
     /// Create a default option.
     pub fn new() -> Self {
         Self::default()
@@ -134,7 +134,7 @@ impl<'a, 'b, FB> OptBase<'a, 'b, FB> {
 
     pub(crate) fn get_joints<D: efd::EfdDim>(&self) -> Option<[efd::Coord<D>; 5]>
     where
-        FB: CurveGen<D>,
+        M: CurveGen<D>,
     {
         let fb = self.fb?;
         let [start, end] = fb.angle_bound()?;
@@ -151,7 +151,7 @@ impl<'a, 'b, FB> OptBase<'a, 'b, FB> {
     }
 }
 
-impl<FB> std::ops::Deref for OptBase<'_, '_, FB> {
+impl<M> std::ops::Deref for OptBase<'_, '_, M> {
     type Target = OptInner;
     fn deref(&self) -> &Self::Target {
         &self.inner

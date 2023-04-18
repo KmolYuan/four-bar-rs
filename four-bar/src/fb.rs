@@ -257,7 +257,7 @@ impl<B, NB> FourBarBase<B, NB> {
 
 /// A normalized data type. This type can denormalized to another.
 pub trait Normalized<D: efd::EfdDim>: Sized {
-    /// Denormalized target.
+    /// Denormalized target, which should be transformable.
     type De: Transformable<D>;
     /// Method to convert types.
     fn denormalize(&self) -> Self::De;

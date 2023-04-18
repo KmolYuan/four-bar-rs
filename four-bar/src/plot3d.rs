@@ -85,9 +85,9 @@ where
     if opt.scale_bar {
         let scale_bar = scale_bar_size(sr);
         for (p, color) in [
-            ((scale_bar, 0., 0.), BLUE),
-            ((0., scale_bar, 0.), GREEN),
-            ((0., 0., scale_bar), RED),
+            ((scale_bar, 0., 0.), BLUE),  // Y
+            ((0., scale_bar, 0.), GREEN), // Z
+            ((0., 0., scale_bar), RED),   // X
         ] {
             chart.draw_series(LineSeries::new(
                 [(0., 0., 0.), p],
