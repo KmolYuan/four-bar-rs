@@ -1,6 +1,7 @@
 //! The functions used to plot the 3D curve and synthesis result.
 pub use crate::plot2d::{LegendPos, OptInner};
 use crate::{plot2d::*, *};
+use efd::na;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 use std::f64::consts::TAU;
@@ -16,6 +17,17 @@ use std::f64::consts::TAU;
 /// ```
 pub type Opt<'a, 'b> = OptBase<'a, 'b, SFourBar>;
 
+impl Opt<'_, '_> {
+    fn get_sphere_center(&self) -> Option<[f64; 3]> {
+        let fb = self.fb?;
+        Some([fb.ox(), fb.oy(), fb.oz()])
+    }
+
+    fn get_sphere_radius(&self) -> Option<f64> {
+        Some(self.fb?.r())
+    }
+}
+
 /// Plot 3D spherical linkage.
 ///
 /// Please see [`Opt`] for more options.
@@ -29,18 +41,20 @@ pub type Opt<'a, 'b> = OptBase<'a, 'b, SFourBar>;
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
 /// plot(svg, 1., curves, opt).unwrap();
 /// ```
-pub fn plot<'a, 'b, B, R, C, O>(root: R, sr: f64, curves: C, opt: O) -> PResult<(), B>
+pub fn plot<'a, 'b, B, R, C, O>(root: R, curves: C, opt: O) -> PResult<(), B>
 where
     B: DrawingBackend,
     Canvas<B>: From<R>,
     C: IntoIterator<Item = (&'b str, &'b [[f64; 3]])>,
     Opt<'a, 'b>: From<O>,
 {
-    debug_assert!(sr > 0.);
     let root = Canvas::from(root);
     root.fill(&WHITE)?;
     let opt = Opt::from(opt);
     let joints = opt.get_joints();
+    let sc = na::Vector3::from(opt.get_sphere_center().unwrap_or_default());
+    let sr = opt.get_sphere_radius().unwrap_or(1.);
+    debug_assert!(sr > 0.);
     let (stroke, dot_size) = opt.get_stroke();
     let curves = curves.into_iter().collect::<Vec<_>>();
     let font = ("Times New Roman", opt.font).into_font().color(&BLACK);
@@ -53,7 +67,11 @@ where
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .margin((8).percent())
-        .build_cartesian_3d(-sr..sr, -sr..sr, -sr..sr)?;
+        .build_cartesian_3d(
+            sc.y - sr..sc.y + sr,
+            sc.z - sr..sc.z + sr,
+            sc.x - sr..sc.x + sr,
+        )?;
     chart.with_projection(|mut pb| {
         pb.yaw = 45f64.to_radians();
         pb.scale = 0.9;
@@ -77,7 +95,10 @@ where
             let phi = i as f64 / N as f64 * TAU;
             let x = z.clone().map(|z| z * phi.sin());
             let z = z.clone().map(|z| z * phi.cos());
-            let iter = x.zip(y.clone()).zip(z).map(|((x, y), z)| (x, y, z));
+            let iter = x
+                .zip(y.clone())
+                .zip(z)
+                .map(|((x, y), z)| (sc.y + x, sc.z + y, sc.x + z));
             chart.draw_series(LineSeries::new(iter, BLACK.mix(0.1)))?;
         }
     }
@@ -85,12 +106,13 @@ where
     if opt.scale_bar {
         let scale_bar = scale_bar_size(sr);
         for (p, color) in [
-            ((scale_bar, 0., 0.), BLUE),  // Y
-            ((0., scale_bar, 0.), GREEN), // Z
-            ((0., 0., scale_bar), RED),   // X
+            ([scale_bar, 0., 0.], BLUE),  // Y
+            ([0., scale_bar, 0.], GREEN), // Z
+            ([0., 0., scale_bar], RED),   // X
         ] {
+            let p = na::Vector3::from(p) + sc;
             chart.draw_series(LineSeries::new(
-                [(0., 0., 0.), p],
+                [(sc.y, sc.z, sc.x), (p.y, p.z, p.x)],
                 color.stroke_width(stroke),
             ))?;
         }
@@ -127,24 +149,27 @@ where
     }
     // Draw linkage
     if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
-        let linspace = |start: f64, end: f64| {
-            const N: usize = 150;
-            let step = (end - start) / N as f64;
-            (0..N).map(move |i| start + i as f64 * step)
-        };
-        let link = |a: [f64; 3], b: [f64; 3]| {
-            let [[theta1, phi1], [theta2, phi2]] = [to_sc(a), to_sc(b)];
-            linspace(theta1, theta2)
-                .zip(linspace(phi1, phi2))
-                .map(|(theta, phi)| to_cc([theta, phi], sr))
-        };
         for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
-            chart.draw_series(LineSeries::new(
-                line.windows(2)
-                    .flat_map(|w| link(w[0], w[1]))
-                    .map(|[x, y, z]| (y, z, x)),
-                BLACK.stroke_width(stroke),
-            ))?;
+            let line = line
+                .windows(2)
+                .flat_map(|w| {
+                    let sc = na::Point3::from(sc);
+                    let a = na::Point3::from(w[0]) - sc;
+                    let b = na::Point3::from(w[1]) - sc;
+                    let (axis, angle) = (
+                        a.cross(&b).normalize(),
+                        a.normalize().dot(&b.normalize()).acos(),
+                    );
+                    const N: usize = 150;
+                    let step = angle / N as f64;
+                    (0..=N).map(move |i| {
+                        let p = na::UnitQuaternion::from_scaled_axis(axis * i as f64 * step)
+                            * na::Point3::from(a);
+                        [sc.x + p.x, sc.y + p.y, sc.z + p.z]
+                    })
+                })
+                .map(|[x, y, z]| (y, z, x));
+            chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
         }
         let joints_iter = joints
             .iter()

@@ -55,7 +55,7 @@ macro_rules! inner_opt {
 /// Option type base.
 #[derive(Clone)]
 pub struct OptBase<'a, 'b, M> {
-    fb: Option<&'a M>,
+    pub(crate) fb: Option<&'a M>,
     angle: Option<f64>,
     title: Option<&'b str>,
     inner: OptInner,

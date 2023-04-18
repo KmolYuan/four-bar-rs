@@ -123,7 +123,7 @@ pub(crate) fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
 
 /// Normalized four-bar base.
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct NormFourBarBase<B> {
     /// Buffer
     pub buf: B,
@@ -133,7 +133,7 @@ pub struct NormFourBarBase<B> {
 
 /// Four-bar base.
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct FourBarBase<B, NB> {
     /// Buffer
     pub buf: B,

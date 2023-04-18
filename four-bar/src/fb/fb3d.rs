@@ -147,7 +147,8 @@ impl SNormFourBar {
 }
 
 impl SFourBar {
-    const ORIGIN: [f64; 7] = [0., 0., 0., 1., FRAC_PI_2, 0., 0.];
+    /// A unit sphere without offset.
+    pub const ORIGIN: [f64; 7] = [0., 0., 0., 1., FRAC_PI_2, 0., 0.];
 
     /// Create with linkage lengths in degrees.
     pub fn new_degrees(mut buf: [f64; 7], buf_norm: [f64; 6], inv: bool) -> Self {
@@ -230,7 +231,7 @@ impl Transformable<efd::D3> for SFourBar {
         *self.oy_mut() += oy;
         *self.oz_mut() += oz;
         let axis = na::Vector3::from(to_cc([self.p0i(), self.p0j()], 1.)) * self.a();
-        let rot = trans.rot() * na::Rotation3::from_scaled_axis(axis);
+        let rot = trans.rot() * na::UnitQuaternion::from_scaled_axis(axis);
         let (axis, angle) = rot.axis_angle().unwrap_or((na::Vector3::x_axis(), 0.));
         [*self.p0i_mut(), *self.p0j_mut()] = to_sc([axis.x, axis.y, axis.z]);
         *self.a_mut() = angle;
@@ -263,8 +264,8 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     let [ox, oy, oz, r, p0i, p0j, a] = fb.buf;
     let SNormFourBar { buf: [l0, l1, l2, l3, l4, g], inv } = fb.norm;
     let e1 = {
-        let rx1v = na::Rotation3::from_axis_angle(&na::Vector3::x_axis(), g);
-        let rx1m = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l4);
+        let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), g);
+        let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l4);
         let p1 = na::Vector3::new(r, 0., 0.);
         rx1v * rx1m * p1
     };
@@ -284,22 +285,22 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
             2. * (-h3 - (h3 * h3 - h1 * h1 + h2 * h2).sqrt()).atan2(h1 - h2)
         }
     };
-    let op0 = na::Vector3::new(1., 0., 0.);
+    let op0 = na::Vector3::new(r, 0., 0.);
     let op1 = {
-        let rot = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l0);
+        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l0);
         rot * op0
     };
     let op2 = {
-        let rot1 = na::Rotation3::from_axis_angle(&na::Vector3::x_axis(), b);
-        let rot2 = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l1);
+        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), b);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l1);
         rot1 * rot2 * op0
     };
     let op3 = {
-        let rot1 = na::Rotation3::from_axis_angle(&na::Unit::new_normalize(op1), d);
-        let rot2 = na::Rotation3::from_axis_angle(&na::Vector3::z_axis(), l3);
+        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Unit::new_normalize(op1), d);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l3);
         rot1 * rot2 * op1
     };
-    let rot = na::Rotation3::from_scaled_axis(na::Vector3::from(to_cc([p0i, p0j], 1.)) * a);
+    let rot = na::UnitQuaternion::from_scaled_axis(na::Vector3::from(to_cc([p0i, p0j], 1.)) * a);
     let o = na::Point3::new(ox, oy, oz);
     let p0 = o + rot * op0;
     let p1 = o + rot * op1;
@@ -309,7 +310,7 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         let i = op2.normalize();
         let k = (op2.cross(&op3) / l2.sin()).normalize();
         let j = k.cross(&i);
-        let op4 = na::Rotation3::from_basis_unchecked(&[i, j, k]) * e1;
+        let op4 = na::UnitQuaternion::from_basis_unchecked(&[i, j, k]) * e1;
         o + rot * op4
     };
     macro_rules! build_coords {
