@@ -1,6 +1,6 @@
 use super::{io, link::Cfg, widgets::*};
 use eframe::egui::*;
-use four_bar::{csv::dump_csv, CurveGen as _, FourBar, SFourBar};
+use four_bar::{csv::dump_csv, CurveGen as _, FourBar, NormFourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{
     f64::consts::TAU,
@@ -295,9 +295,7 @@ impl ProjInner {
                 .on_hover_text("Remove offset, then scale by the driver link")
                 .clicked()
             {
-                let l1 = self.fb.l1();
-                self.fb.buf = [0., 0., 0., 1.];
-                self.fb.norm.buf[..4].iter_mut().for_each(|x| *x *= l1);
+                self.fb = self.fb.normalize::<_, NormFourBar>().denormalize();
                 self.cache.changed = true;
             }
         });

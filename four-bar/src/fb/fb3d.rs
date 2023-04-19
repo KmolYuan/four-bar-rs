@@ -45,10 +45,7 @@ impl Normalized<efd::D3> for SNormFourBar {
     type De = SFourBar;
 
     fn denormalize(&self) -> Self::De {
-        SFourBar {
-            buf: [0., 0., 0., 1., 0., 0., 0.],
-            norm: self.clone(),
-        }
+        SFourBar { buf: SFourBar::ORIGIN, norm: self.clone() }
     }
 
     fn normalize(de: &Self::De) -> Self {
@@ -105,8 +102,7 @@ impl SNormFourBar {
 
     /// Reduce angles and spread out to planar coordinate.
     pub fn planar_loop(&self) -> [f64; 4] {
-        let ls = [self.l0(), self.l1(), self.l2(), self.l3()];
-        let mut ls = ls
+        let mut ls = [self.l0(), self.l1(), self.l2(), self.l3()]
             .map(|d| d.rem_euclid(TAU))
             .map(|d| if d > PI { TAU - d } else { d });
         let mut longer = Vec::new();
@@ -147,8 +143,7 @@ impl SNormFourBar {
 }
 
 impl SFourBar {
-    /// A unit sphere without offset.
-    pub const ORIGIN: [f64; 7] = [0., 0., 0., 1., FRAC_PI_2, 0., 0.];
+    const ORIGIN: [f64; 7] = [0., 0., 0., 1., FRAC_PI_2, 0., 0.];
 
     /// Create with linkage lengths in degrees.
     pub fn new_degrees(mut buf: [f64; 7], buf_norm: [f64; 6], inv: bool) -> Self {
