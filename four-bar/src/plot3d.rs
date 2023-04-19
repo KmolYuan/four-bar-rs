@@ -171,19 +171,14 @@ where
                 .map(|[x, y, z]| (y, z, x));
             chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
         }
-        let joints_iter = joints
-            .iter()
-            .map(|&[x, y, z]| Circle::new((y, z, x), dot_size, BLACK.filled()));
-        chart.draw_series(joints_iter)?;
         let grounded = joints[..2].iter().map(|&[x, y, z]| {
-            let r = 0.03;
-            Cubiod::new(
-                [(y - r, z - r, x - r), (y + r, z + r, x + r)],
-                BLACK.mix(0.2),
-                BLACK.filled(),
-            )
+            EmptyElement::at((y, z, x)) + TriangleMarker::new((0, 10), dot_size + 3, BLACK.filled())
         });
         chart.draw_series(grounded)?;
+        let joints = joints
+            .iter()
+            .map(|&[x, y, z]| Circle::new((y, z, x), dot_size, BLACK.filled()));
+        chart.draw_series(joints)?;
     }
     if curves.len() > 1 {
         chart
