@@ -39,7 +39,7 @@ impl Opt<'_, '_> {
 /// let opt = Opt::from(&fb).axis(false).scale_bar(true);
 /// let mut buf = String::new();
 /// let svg = SVGBackend::with_string(&mut buf, (800, 800));
-/// plot(svg, 1., curves, opt).unwrap();
+/// plot(svg, curves, opt).unwrap();
 /// ```
 pub fn plot<'a, 'b, B, R, C, O>(root: R, curves: C, opt: O) -> PResult<(), B>
 where
