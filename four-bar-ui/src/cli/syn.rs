@@ -134,7 +134,7 @@ fn run<S>(
             Some("open") => Ok(syn::Mode::Open),
             _ => Err(SynErr::Format),
         }?;
-        Ok((mode.regularize(target), title, mode))
+        Ok((target, title, mode))
     };
     let (target, title, mode) = match f() {
         Ok(info) => info,
@@ -152,8 +152,7 @@ fn run<S>(
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     pb.set_prefix(title.to_string());
     let f = || -> Result<(), SynErr> {
-        let func = syn::FbSyn::from_curve(&target, mode)
-            .ok_or(SynErr::Linkage)?
+        let func = syn::FbSyn::from_curve(efd::valid_curve(&target).ok_or(SynErr::Linkage)?, mode)
             .res(cfg.res);
         let root = file.parent().unwrap().join(title);
         if root.is_dir() {
@@ -196,7 +195,7 @@ fn run<S>(
             });
         let mut cb_fb = None;
         if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
-            .then(|| cb.fetch_raw(&target, cfg.pop))
+            .then(|| cb.fetch_raw(&target, mode.is_target_open(), cfg.pop))
             .filter(|candi| !candi.is_empty())
         {
             cb_fb.replace(candi[0].clone());
@@ -222,13 +221,13 @@ fn run<S>(
         std::fs::write(path, ron::to_string(&ans)?)?;
         let h = s.func().harmonic();
         let curve = ans.curve(cfg.res);
-        let efd_target = efd::Efd2::from_curve_harmonic(&target, h).unwrap();
+        let efd_target = efd::Efd2::from_curve_harmonic(&target, mode.is_target_open(), h);
         let curve_diff = if matches!(mode, syn::Mode::Partial) {
             efd::partial_curve_diff
         } else {
             efd::curve_diff
         };
-        let err = curve_diff(&target, &mode.regularize(&curve));
+        let err = curve_diff(&target, &curve);
         let target_str = cfg
             .ref_num
             .map(|n| format!("Target, Ref. [{n}]"))
@@ -256,11 +255,11 @@ fn run<S>(
         }
         if let Some((cost, fb)) = cb_fb {
             let c = fb.curve(cfg.res);
-            let efd = efd::Efd2::from_curve_harmonic(mode.regularize(c), h).unwrap();
+            let efd = efd::Efd2::from_curve_harmonic(c, mode.is_result_open(), h);
             let trans = efd.as_trans().to(efd_target.as_trans());
             let fb = fb.trans_denorm(&trans);
             let c = fb.curve(cfg.res);
-            let err = curve_diff(&curves[0].1, &mode.regularize(&c));
+            let err = curve_diff(&curves[0].1, &c);
             writeln!(log, "\n[atlas]")?;
             writeln!(log, "harmonic={}", cb.harmonic())?;
             writeln!(log, "error={err}")?;
@@ -286,11 +285,11 @@ fn run<S>(
         if let Ok(s) = std::fs::read_to_string(refer) {
             let fb = ron::from_str::<FourBar>(&s)?;
             let c = fb.curve(cfg.res);
-            let err = curve_diff(&curves[0].1, &mode.regularize(&c));
+            let err = curve_diff(&curves[0].1, &c);
             writeln!(log, "\n[competitor]")?;
             writeln!(log, "error={err}")?;
             if !matches!(mode, syn::Mode::Partial) {
-                let efd = efd::Efd2::from_curve_harmonic(mode.regularize(&c), h).unwrap();
+                let efd = efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), h);
                 let cost = efd.l1_norm(&efd_target);
                 writeln!(log, "cost={cost}")?;
             }

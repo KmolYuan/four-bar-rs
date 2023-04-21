@@ -1,6 +1,6 @@
 //! Create a codebook database for four-bar linkages.
 use self::distr::Code;
-use super::{syn::Mode, NormFourBar, SNormFourBar};
+use super::{NormFourBar, SNormFourBar};
 use crate::efd::{Efd, EfdDim, Trans, Transform, D2};
 use efd::D3;
 use mh::{
@@ -150,9 +150,7 @@ where
                 .filter_map(|fb| fb.curve(res).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
-                    let mode = if is_open { Mode::Open } else { Mode::Closed };
-                    let curve = mode.regularize(curve);
-                    let efd = Efd::<D>::from_curve_harmonic(curve, harmonic).unwrap();
+                    let efd = Efd::<D>::from_curve_harmonic(curve, is_open, harmonic);
                     efd_stack.lock().unwrap().push(efd.into_inner());
                     let (code, inv) = fb.to_code();
                     let mut stack = fb_stack.lock().unwrap();
@@ -224,14 +222,19 @@ where
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// This method will keep the dimensional variables without transform.
-    pub fn fetch_raw(&self, target: &[<C::Trans as Trans>::Coord], size: usize) -> Vec<(f64, C)>
+    pub fn fetch_raw(
+        &self,
+        target: &[<C::Trans as Trans>::Coord],
+        is_open: bool,
+        size: usize,
+    ) -> Vec<(f64, C)>
     where
         Efd<D>: Sync,
     {
         if self.is_empty() {
             return Vec::new();
         }
-        let target = Efd::<D>::from_curve_harmonic(target, self.harmonic()).unwrap();
+        let target = Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
@@ -260,6 +263,7 @@ where
     pub fn fetch_1st(
         &self,
         target: &[<C::Trans as Trans>::Coord],
+        is_open: bool,
         res: usize,
     ) -> Option<(f64, C::UnNorm)>
     where
@@ -268,7 +272,7 @@ where
         if self.is_empty() {
             return None;
         }
-        let target = Efd::<D>::from_curve_harmonic(target, self.harmonic()).unwrap();
+        let target = Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
@@ -276,7 +280,7 @@ where
         iter.map(|efd| target.l1_norm(&Efd::<D>::try_from_coeffs(efd.to_owned()).unwrap()))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(i, err)| (err, self.pick(i, target.as_trans(), res)))
+            .map(|(i, err)| (err, self.pick(i, target.as_trans(), is_open, res)))
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
@@ -285,6 +289,7 @@ where
     pub fn fetch(
         &self,
         target: &[<C::Trans as Trans>::Coord],
+        is_open: bool,
         size: usize,
         res: usize,
     ) -> Vec<(f64, C::UnNorm)>
@@ -294,9 +299,9 @@ where
         if self.is_empty() {
             return Vec::new();
         } else if size == 1 {
-            return self.fetch_1st(target, res).into_iter().collect();
+            return self.fetch_1st(target, is_open, res).into_iter().collect();
         }
-        let target = Efd::<D>::from_curve_harmonic(target, self.harmonic()).unwrap();
+        let target = Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
@@ -308,7 +313,7 @@ where
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
             .take(size)
-            .map(|i| (dis[i], self.pick(i, target.as_trans(), res)))
+            .map(|i| (dis[i], self.pick(i, target.as_trans(), is_open, res)))
             .collect()
     }
 
@@ -323,10 +328,10 @@ where
         C::from_code(code, self.inv[i])
     }
 
-    fn pick(&self, i: usize, trans: &Transform<C::Trans>, res: usize) -> C::UnNorm {
+    fn pick(&self, i: usize, trans: &Transform<C::Trans>, is_open: bool, res: usize) -> C::UnNorm {
         let fb = self.pick_norm(i);
         let curve = fb.curve(res).unwrap();
-        let efd = Efd::<D>::from_curve(curve).unwrap();
+        let efd = Efd::<D>::from_curve(curve, is_open);
         fb.unnorm(efd.as_trans().to(trans))
     }
 

@@ -25,10 +25,9 @@ where
     use std::time::Instant;
     let t0 = Instant::now();
     let SynConfig { gen, pop, mode, target } = config;
-    let mut s =
-        four_bar::mh::Solver::build(setting, syn::FbSyn::from_curve(&target, mode).unwrap());
+    let mut s = four_bar::mh::Solver::build(setting, syn::FbSyn::from_curve(&target, mode));
     if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
-        .then(|| cb.fetch_raw(&target, pop))
+        .then(|| cb.fetch_raw(&target, mode.is_target_open(), pop))
         .filter(|candi| !candi.is_empty())
     {
         s = s.pop_num(candi.len());

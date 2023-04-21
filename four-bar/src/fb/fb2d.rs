@@ -154,18 +154,12 @@ fn angle_with([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d: f64, a: f64) -> [f64; 2
     [x1 + d * a.cos(), y1 + d * a.sin()]
 }
 
-fn circle2(
-    [x1, y1]: [f64; 2],
-    [x2, y2]: [f64; 2],
-    r1: f64,
-    r2: f64,
-    inv: bool,
-) -> Option<[f64; 2]> {
+fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) -> [f64; 2] {
     let dx = x2 - x1;
     let dy = y2 - y1;
     let r = dx.hypot(dy);
     if r > r1 + r2 || r < (r1 - r2).abs() || (r < f64::EPSILON && (r1 - r2).abs() < f64::EPSILON) {
-        return None;
+        return [f64::NAN; 2];
     }
     let a = 0.5 * (r1 * r1 - r2 * r2 + r * r) / r;
     let h = (r1 * r1 - a * a).sqrt();
@@ -173,11 +167,11 @@ fn circle2(
     let s = dy / r;
     let xm = x1 + a * c;
     let ym = y1 + a * s;
-    Some(if inv {
+    if inv {
         [xm + h * s, ym - h * c]
     } else {
         [xm - h * s, ym + h * c]
-    })
+    }
 }
 
 fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
@@ -197,8 +191,9 @@ fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
         let a = dy.atan2(dx);
         [p1x + d * a.cos(), p1y + d * a.sin()]
     } else {
-        circle2(p2, p1, l2, l3, inv)?
+        circle2(p2, p1, l2, l3, inv)
     };
     let p4 = angle_with(p2, p3, l4, g);
-    Some([p0, p1, p2, p3, p4])
+    let js = [p0, p1, p2, p3, p4];
+    js.iter().flatten().all(|x| x.is_finite()).then_some(js)
 }

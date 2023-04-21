@@ -48,36 +48,11 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
     /// automatically.
     ///
     /// Return none if harmonic is zero or the curve is less than 1.
-    pub fn from_curve<C>(curve: C, mode: Mode) -> Option<Self>
+    pub fn from_curve<C>(curve: C, mode: Mode) -> Self
     where
         C: Curve<efd::Coord<D>>,
     {
-        let efd = efd::Efd::from_curve(mode.regularize(curve))?;
-        Some(Self::from_efd(efd, mode))
-    }
-
-    /// Create a new task from target curve and harmonic number.
-    ///
-    /// Return none if harmonic is zero or the curve is less than 1.
-    pub fn from_curve_harmonic<C, H>(curve: C, harmonic: H, mode: Mode) -> Option<Self>
-    where
-        C: Curve<efd::Coord<D>>,
-        Option<usize>: From<H>,
-    {
-        let efd = efd::Efd::from_curve_harmonic(mode.regularize(curve), harmonic)?;
-        Some(Self::from_efd(efd, mode))
-    }
-
-    /// Create a new task from target curve and Fourier power gate.
-    ///
-    /// Return none if the curve length is less than 1.
-    pub fn from_curve_gate<C, T>(curve: C, threshold: T, mode: Mode) -> Option<Self>
-    where
-        C: Curve<efd::Coord<D>>,
-        Option<f64>: From<T>,
-    {
-        let efd = efd::Efd::from_curve_gate(mode.regularize(curve), threshold)?;
-        Some(Self::from_efd(efd, mode))
+        Self::from_efd(efd::Efd::from_curve(curve, mode.is_target_open()), mode)
     }
 
     /// Create a new task from target EFD coefficients.
@@ -197,6 +172,7 @@ where
         if self.mode.is_result_open() != fb.is_open_curve() {
             return (INFEASIBLE, Default::default());
         }
+        let is_open = self.mode.is_target_open();
         let f = |[t1, t2]: [f64; 2]| {
             let states = fb.get_states();
             #[cfg(feature = "rayon")]
@@ -206,8 +182,7 @@ where
             iter.map(move |fb| (fb.curve_in(t1, t2, self.res), fb))
                 .filter(|(c, _)| c.len() > 1)
                 .map(|(c, fb)| {
-                    let c = self.mode.regularize(c);
-                    let efd = efd::Efd::<D>::from_curve_harmonic(c, self.efd.harmonic()).unwrap();
+                    let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
                     (efd.l1_norm(&self.efd), fb)
                 })
@@ -256,34 +231,11 @@ pub enum Mode {
 impl Mode {
     /// Return true if the target curve is open.
     pub const fn is_target_open(&self) -> bool {
-        !self.is_target_close()
-    }
-
-    /// Return true if the target curve is open.
-    pub const fn is_target_close(&self) -> bool {
-        matches!(self, Self::Closed)
+        !matches!(self, Self::Closed)
     }
 
     /// Return true if the synthesis curve is open.
     pub const fn is_result_open(&self) -> bool {
         matches!(self, Self::Open)
-    }
-
-    /// Return true if the synthesis curve is close.
-    pub const fn is_result_closed(&self) -> bool {
-        !self.is_result_open()
-    }
-
-    /// Regularize curve with the mode.
-    pub fn regularize<A, C>(&self, curve: C) -> Vec<A>
-    where
-        A: PartialEq + Clone,
-        C: Curve<A>,
-    {
-        match self {
-            _ if curve.is_closed() => curve.to_curve(),
-            Self::Closed => curve.closed_lin(),
-            Self::Partial | Self::Open => curve.closed_rev(),
-        }
     }
 }
