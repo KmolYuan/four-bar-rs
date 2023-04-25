@@ -61,3 +61,11 @@ trunk build --release
 ```
 
 The application is deployed in the `dist` directory (entire files).
+
+## NetBSD
+
+On NetBSD a pre-compiled binary is available from the official repositories, to install it simply run:
+
+```bash
+pkgin install four-bar-rs
+```
