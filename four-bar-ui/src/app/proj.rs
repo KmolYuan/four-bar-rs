@@ -14,8 +14,16 @@ const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 
 macro_rules! hotkey {
-    ($ui:ident, $($mod:ident)|+, $key:ident) => {
-        $ui.ctx().input_mut(|s| s.consume_key($(Modifiers::$mod)|+, Key::$key))
+    ($ui:ident, $mod1:ident + $key:ident) => {
+        hotkey!(@$ui, Modifiers::$mod1, Key::$key)
+    };
+
+    ($ui:ident, $mod1:ident + $mod2:ident + $key:ident) => {
+        hotkey!(@$ui, Modifiers::$mod1 | Modifiers::$mod2, Key::$key)
+    };
+
+    (@$ui:ident, $arg1:expr, $arg2:expr) => {
+        $ui.ctx().input_mut(|s| s.consume_key($arg1, $arg2))
     };
 }
 
@@ -200,7 +208,7 @@ impl ProjInner {
                 .add_enabled(enabled, Button::new("⮪ Undo"))
                 .on_hover_text("Ctrl+Z")
                 .clicked()
-                || hotkey!(ui, CTRL, Z)
+                || hotkey!(ui, CTRL + Z)
             {
                 self.undo.undo(&mut self.fb);
                 self.cache.changed = true;
@@ -210,8 +218,8 @@ impl ProjInner {
                 .add_enabled(enabled, Button::new("⮫ Redo"))
                 .on_hover_text("Ctrl+Shift+Z | Ctrl+Y")
                 .clicked()
-                || hotkey!(ui, CTRL, Y)
-                || hotkey!(ui, CTRL | SHIFT, Z)
+                || hotkey!(ui, CTRL + Y)
+                || hotkey!(ui, CTRL + SHIFT + Z)
             {
                 self.undo.redo(&mut self.fb);
                 self.cache.changed = true;
@@ -572,7 +580,7 @@ impl Projects {
 
     pub(crate) fn show(&mut self, ui: &mut Ui, cfg: &Cfg) {
         ui.horizontal(|ui| {
-            if ui.button("🖴 Load").clicked() || hotkey!(ui, CTRL, O) {
+            if ui.button("🖴 Load").clicked() || hotkey!(ui, CTRL + O) {
                 let q = self.queue();
                 io::open_ron(move |path, fb| q.push(Some(path), fb));
             }
@@ -598,13 +606,13 @@ impl Projects {
             if !show_btn {
                 return;
             }
-            if small_btn(ui, "💾", "Save (Ctrl+S)") || hotkey!(ui, CTRL, S) {
+            if small_btn(ui, "💾", "Save (Ctrl+S)") || hotkey!(ui, CTRL + S) {
                 self.list[self.curr].save();
             }
-            if small_btn(ui, "💾 Save As", "Ctrl+Shift+S") || hotkey!(ui, CTRL | SHIFT, S) {
+            if small_btn(ui, "💾 Save As", "Ctrl+Shift+S") || hotkey!(ui, CTRL + SHIFT + S) {
                 self.list[self.curr].save_as();
             }
-            if small_btn(ui, "✖", "Close (Ctrl+W)") || hotkey!(ui, CTRL, W) {
+            if small_btn(ui, "✖", "Close (Ctrl+W)") || hotkey!(ui, CTRL + W) {
                 self.list.remove(self.curr);
                 if self.curr > 0 {
                     self.curr -= 1;
