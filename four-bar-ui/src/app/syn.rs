@@ -33,7 +33,7 @@ where
         s = s.pop_num(candi.len());
         let fitness = candi
             .iter()
-            .map(|(f, fb)| mh::Product::new(fb.denormalize(), *f))
+            .map(|(f, fb)| mh::Product::new(*f, fb.denormalize()))
             .collect();
         let pool = candi.into_iter().map(|(_, fb)| fb.buf).collect::<Vec<_>>();
         s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
@@ -42,7 +42,7 @@ where
     }
     s.task(|ctx| ctx.gen == gen || !task.start.load(Ordering::Relaxed))
         .callback(|ctx| {
-            task.conv.write().unwrap().push(ctx.best_f.fitness);
+            task.conv.write().unwrap().push(ctx.best_f.fitness());
             task.gen.store(ctx.gen, Ordering::Relaxed);
             task.time.store(t0.elapsed().as_secs(), Ordering::Relaxed);
         })

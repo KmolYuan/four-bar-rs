@@ -157,7 +157,7 @@ where
     D::Trans: Sync + Send,
     efd::Coord<D>: Sync + Send,
     M: SynBound + Normalized<D> + CurveGen<D>,
-    M::De: Default + Clone + CurveGen<D> + Sync + Send,
+    M::De: Default + Clone + CurveGen<D> + Sync + Send + 'static,
 {
     type Fitness = mh::Product<M::De, f64>;
 
@@ -165,7 +165,7 @@ where
         #[cfg(feature = "rayon")]
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
-        let infisible = || mh::Product::new(M::De::default(), INFEASIBLE);
+        let infisible = || mh::Product::new(INFEASIBLE, M::De::default());
         let fb = M::from_slice(&xs[..M::BOUND_NUM]);
         if self.mode.is_result_open() != fb.is_open_curve() {
             return infisible();
@@ -182,7 +182,7 @@ where
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
-                    mh::Product::new(fb, efd.l1_norm(&self.efd))
+                    mh::Product::new(efd.l1_norm(&self.efd), fb)
                 })
         };
         match self.mode {

@@ -190,7 +190,7 @@ fn run<S>(
                     }
                     plot2d::plot(svg, curves, opt).unwrap();
                 }
-                history.push(ctx.best_f.fitness);
+                history.push(ctx.best_f.fitness());
                 pb.set_position(ctx.gen);
             });
         let mut cb_fb = None;
@@ -202,7 +202,7 @@ fn run<S>(
             s = s.pop_num(candi.len());
             let fitness = candi
                 .iter()
-                .map(|(f, fb)| mh::Product::new(fb.denormalize(), *f))
+                .map(|(f, fb)| mh::Product::new(*f, fb.denormalize()))
                 .collect();
             let pool = candi.into_iter().map(|(_, fb)| fb.buf).collect::<Vec<_>>();
             s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
@@ -210,7 +210,7 @@ fn run<S>(
             s = s.pop_num(cfg.pop);
         }
         let s = s.solve().unwrap();
-        let mh::Product { fitness: cost, product: ans } = s.best_fitness();
+        let (cost, ans) = s.best_fitness().into_inner();
         if !ans.is_valid() {
             return Err(SynErr::Solver);
         }
