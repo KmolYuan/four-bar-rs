@@ -176,12 +176,12 @@ fn run<S>(
             .task(|ctx| ctx.gen == cfg.gen as u64)
             .callback(|ctx| {
                 if use_log && ctx.gen % cfg.log as u64 == 0 {
-                    let (_, ans) = ctx.result();
+                    let ans = ctx.as_result();
                     let curve = ans.curve(cfg.res);
                     let path = root.join(format!("{title}_{}_linkage.svg", ctx.gen));
                     let svg = plot2d::SVGBackend::new(&path, (800, 800));
                     let curves = [("Target", target.as_slice()), ("Optimized", &curve)];
-                    let mut opt = plot2d::Opt::from(&ans)
+                    let mut opt = plot2d::Opt::from(ans)
                         .dot(true)
                         .font(cfg.font)
                         .legend(cfg.legend_pos.unwrap_or_default());
@@ -190,7 +190,7 @@ fn run<S>(
                     }
                     plot2d::plot(svg, curves, opt).unwrap();
                 }
-                history.push(ctx.best_f);
+                history.push(ctx.best_f.fitness);
                 pb.set_position(ctx.gen);
             });
         let mut cb_fb = None;
@@ -200,14 +200,17 @@ fn run<S>(
         {
             cb_fb.replace(candi[0].clone());
             s = s.pop_num(candi.len());
-            let fitness = candi.iter().map(|(f, _)| *f).collect();
+            let fitness = candi
+                .iter()
+                .map(|(f, fb)| mh::Product::new(fb.denormalize(), *f))
+                .collect();
             let pool = candi.into_iter().map(|(_, fb)| fb.buf).collect::<Vec<_>>();
             s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
         } else {
             s = s.pop_num(cfg.pop);
         }
         let s = s.solve().unwrap();
-        let (cost, ans) = s.result();
+        let mh::Product { fitness: cost, product: ans } = s.best_fitness();
         if !ans.is_valid() {
             return Err(SynErr::Solver);
         }

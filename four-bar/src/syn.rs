@@ -151,24 +151,24 @@ where
     }
 }
 
-impl<D, M> mh::ObjFactory for Syn<D, M>
+impl<D, M> mh::ObjFunc for Syn<D, M>
 where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
     efd::Coord<D>: Sync + Send,
     M: SynBound + Normalized<D> + CurveGen<D>,
-    M::De: Default + CurveGen<D> + Sync + Send,
+    M::De: Default + Clone + CurveGen<D> + Sync + Send,
 {
-    type Product = (f64, M::De);
-    type Eval = f64;
+    type Fitness = mh::Product<M::De, f64>;
 
-    fn produce(&self, xs: &[f64]) -> Self::Product {
+    fn fitness(&self, xs: &[f64]) -> Self::Fitness {
         #[cfg(feature = "rayon")]
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
+        let infisible = || mh::Product::new(M::De::default(), INFEASIBLE);
         let fb = M::from_slice(&xs[..M::BOUND_NUM]);
         if self.mode.is_result_open() != fb.is_open_curve() {
-            return (INFEASIBLE, Default::default());
+            return infisible();
         }
         let is_open = self.mode.is_target_open();
         let f = |[t1, t2]: [f64; 2]| {
@@ -182,15 +182,15 @@ where
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
-                    (efd.l1_norm(&self.efd), fb)
+                    mh::Product::new(fb, efd.l1_norm(&self.efd))
                 })
         };
         match self.mode {
             Mode::Closed | Mode::Open => fb
                 .angle_bound()
                 .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
-                .and_then(|t| f(t).min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap()))
-                .unwrap_or((INFEASIBLE, Default::default())),
+                .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
+                .unwrap_or_else(infisible),
             Mode::Partial => {
                 let bound = [
                     [xs[M::BOUND_NUM], xs[M::BOUND_NUM + 1]],
@@ -203,14 +203,10 @@ where
                 iter.map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
                     .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
                     .flat_map(f)
-                    .min_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap())
-                    .unwrap_or((INFEASIBLE, Default::default()))
+                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or_else(infisible)
             }
         }
-    }
-
-    fn evaluate(&self, (f, _): Self::Product) -> Self::Eval {
-        f
     }
 }
 

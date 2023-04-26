@@ -31,23 +31,24 @@ where
         .filter(|candi| !candi.is_empty())
     {
         s = s.pop_num(candi.len());
-        let fitness = candi.iter().map(|(f, _)| *f).collect();
+        let fitness = candi
+            .iter()
+            .map(|(f, fb)| mh::Product::new(fb.denormalize(), *f))
+            .collect();
         let pool = candi.into_iter().map(|(_, fb)| fb.buf).collect::<Vec<_>>();
         s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
     } else {
         s = s.pop_num(pop);
     }
-    let (_, fb) = s
-        .task(|ctx| ctx.gen == gen || !task.start.load(Ordering::Relaxed))
+    s.task(|ctx| ctx.gen == gen || !task.start.load(Ordering::Relaxed))
         .callback(|ctx| {
-            task.conv.write().unwrap().push(ctx.best_f);
+            task.conv.write().unwrap().push(ctx.best_f.fitness);
             task.gen.store(ctx.gen, Ordering::Relaxed);
             task.time.store(t0.elapsed().as_secs(), Ordering::Relaxed);
         })
         .solve()
         .unwrap()
-        .result();
-    fb
+        .into_result()
 }
 
 #[derive(Deserialize, Serialize, Default)]
