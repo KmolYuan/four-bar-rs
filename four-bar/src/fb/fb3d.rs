@@ -4,21 +4,21 @@ use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
 /// Spherical normalized four-bar linkage.
 ///
-/// + Buffer order: `[l0, l1, l2, l3, l4, g]`
+/// + Buffer order: `[l1, l2, l3, l4, l5, g]`
 ///
 /// # Parameters
 ///
-/// + Ground link `l0`
-/// + Driver link `l1`
-/// + Coupler link `l2`
-/// + Follower link `l3`
-/// + Extanded link `l4`
+/// + Ground link `l1`
+/// + Driver link `l2`
+/// + Coupler link `l3`
+/// + Follower link `l4`
+/// + Extanded link `l5`
 /// + Coupler link angle `g`
 pub type SNormFourBar = NormFourBarBase<[f64; 6]>;
 /// Spherical four-bar linkage.
 ///
 /// + Buffer 1 order: `[ox, oy, oz, r, p0i, p0j, a]`
-/// + Buffer 2 order: `[l0, l1, l2, l3, l4, g]`
+/// + Buffer 2 order: `[l1, l2, l3, l4, l5, g]`
 ///
 /// # Parameters
 ///
@@ -29,11 +29,11 @@ pub type SNormFourBar = NormFourBarBase<[f64; 6]>;
 /// + Sphere polar offset `p0i` (theta)
 /// + Sphere azimuth offset `p0j` (phi)
 /// + Angle offset `a`
-/// + Ground link `l0`
-/// + Driver link `l1`
-/// + Coupler link `l2`
-/// + Follower link `l3`
-/// + Extanded link `l4`
+/// + Ground link `l1`
+/// + Driver link `l2`
+/// + Coupler link `l3`
+/// + Follower link `l4`
+/// + Extanded link `l5`
 /// + Coupler link angle `g`
 ///
 /// # Spherical Coordinate System
@@ -49,9 +49,9 @@ impl Normalized<efd::D3> for SNormFourBar {
     }
 
     fn normalize(de: &Self::De) -> Self {
-        let l1 = de.l1();
+        let l2 = de.l2();
         let mut norm = de.norm.clone();
-        norm.buf[..4].iter_mut().for_each(|x| *x /= l1);
+        norm.buf[..4].iter_mut().for_each(|x| *x /= l2);
         norm
     }
 }
@@ -64,9 +64,9 @@ impl SNormFourBar {
 
     /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
     pub fn new_wrap(fb: &NormFourBar, w: f64) -> Self {
-        let NormFourBar { buf: [l0, l2, l3, l4, g], inv } = *fb;
-        let [l0, l1, l2, l3, l4] = [l0, fb.l1(), l2, l3, l4].map(|x| x / w * TAU);
-        Self { buf: [l0, l1, l2, l3, l4, g], inv }
+        let NormFourBar { buf: [l1, l3, l4, l5, g], inv } = *fb;
+        let [l1, l2, l3, l4, l5] = [l1, fb.l2(), l3, l4, l5].map(|x| x / w * TAU);
+        Self { buf: [l1, l2, l3, l4, l5, g], inv }
     }
 
     impl_parm_method! {
@@ -85,15 +85,15 @@ impl SNormFourBar {
         /// Angle offset of the ground link.
         fn a(self) -> f64 { 0. }
         /// Length of the ground link.
-        fn l0, l0_mut(self) -> f64 { self.buf[0] }
+        fn l1, l1_mut(self) -> f64 { self.buf[0] }
         /// Length of the driver link.
-        fn l1, l1_mut(self) -> f64 { self.buf[1] }
+        fn l2, l2_mut(self) -> f64 { self.buf[1] }
         /// Length of the coupler link.
-        fn l2, l2_mut(self) -> f64 { self.buf[2] }
+        fn l3, l3_mut(self) -> f64 { self.buf[2] }
         /// Length of the follower link.
-        fn l3, l3_mut(self) -> f64 { self.buf[3] }
+        fn l4, l4_mut(self) -> f64 { self.buf[3] }
         /// Length of the extended link.
-        fn l4, l4_mut(self) -> f64 { self.buf[4] }
+        fn l5, l5_mut(self) -> f64 { self.buf[4] }
         /// Angle of the extended link on the coupler.
         fn g, g_mut(self) -> f64 { self.buf[5] }
         /// Inverse coupler and follower to another circuit.
@@ -102,7 +102,7 @@ impl SNormFourBar {
 
     /// Reduce angles and spread out to planar coordinate.
     pub fn planar_loop(&self) -> [f64; 4] {
-        let mut ls = [self.l0(), self.l1(), self.l2(), self.l3()]
+        let mut ls = [self.l1(), self.l2(), self.l3(), self.l4()]
             .map(|d| d.rem_euclid(TAU))
             .map(|d| if d > PI { TAU - d } else { d });
         let mut longer = Vec::new();
@@ -155,10 +155,10 @@ impl SFourBar {
     /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
     pub fn new_wrap(fb: &FourBar, center: [f64; 3], r: f64, w: f64) -> Self {
         assert!(r > 0.);
-        let [p0x, p0y, a, l1] = fb.buf;
-        let NormFourBar { buf: [l0, l2, l3, l4, g], inv } = fb.norm;
-        let [p0i, p0j, l0, l1, l2, l3, l4] = [p0x, p0y, l0, l1, l2, l3, l4].map(|x| x / w * TAU);
-        let norm = SNormFourBar { buf: [l0, l1, l2, l3, l4, g], inv };
+        let [p0x, p0y, a, l2] = fb.buf;
+        let NormFourBar { buf: [l1, l3, l4, l5, g], inv } = fb.norm;
+        let [p0i, p0j, l1, l2, l3, l4, l5] = [p0x, p0y, l1, l2, l3, l4, l5].map(|x| x / w * TAU);
+        let norm = SNormFourBar { buf: [l1, l2, l3, l4, l5, g], inv };
         let [ox, oy, oz] = center;
         Self {
             buf: [ox, oy, oz, r, FRAC_PI_2 - p0j, p0i, a],
@@ -198,15 +198,15 @@ impl SFourBar {
         /// Angle offset of the ground link.
         fn a, a_mut(self) -> f64 { self.buf[6] }
         /// Length of the ground link.
-        fn l0, l0_mut(self) -> f64 { self.norm.buf[0] }
+        fn l1, l1_mut(self) -> f64 { self.norm.buf[0] }
         /// Length of the driver link.
-        fn l1, l1_mut(self) -> f64 { self.norm.buf[1] }
+        fn l2, l2_mut(self) -> f64 { self.norm.buf[1] }
         /// Length of the coupler link.
-        fn l2, l2_mut(self) -> f64 { self.norm.buf[2] }
+        fn l3, l3_mut(self) -> f64 { self.norm.buf[2] }
         /// Length of the follower link.
-        fn l3, l3_mut(self) -> f64 { self.norm.buf[3] }
+        fn l4, l4_mut(self) -> f64 { self.norm.buf[3] }
         /// Length of the extended link.
-        fn l4, l4_mut(self) -> f64 { self.norm.buf[4] }
+        fn l5, l5_mut(self) -> f64 { self.norm.buf[4] }
         /// Angle of the extended link on the coupler.
         fn g, g_mut(self) -> f64 { self.norm.buf[5] }
         /// Inverse coupler and follower to another circuit.
@@ -257,20 +257,20 @@ impl CurveGen<efd::D3> for SFourBar {
 
 fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     let [ox, oy, oz, r, p0i, p0j, a] = fb.buf;
-    let SNormFourBar { buf: [l0, l1, l2, l3, l4, g], inv } = fb.norm;
+    let SNormFourBar { buf: [l1, l2, l3, l4, l5, g], inv } = fb.norm;
     let e1 = {
         let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), g);
-        let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l4);
+        let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l5);
         let p1 = na::Vector3::new(r, 0., 0.);
         rx1v * rx1m * p1
     };
     let d = {
-        let k1 = l1.cos() * l3.cos() * l0.cos();
-        let k2 = l2.cos();
-        let k3 = l1.sin() * l3.cos() * l0.sin();
-        let k4 = l1.cos() * l3.sin() * l0.sin();
-        let k5 = l1.sin() * l3.sin() * l0.cos();
-        let k6 = l1.sin() * l3.sin();
+        let k1 = l2.cos() * l4.cos() * l1.cos();
+        let k2 = l3.cos();
+        let k3 = l2.sin() * l4.cos() * l1.sin();
+        let k4 = l2.cos() * l4.sin() * l1.sin();
+        let k5 = l2.sin() * l4.sin() * l1.cos();
+        let k6 = l2.sin() * l4.sin();
         let h1 = k1 - k2 + k3 * b.cos();
         let h2 = -k4 + k5 * b.cos();
         let h3 = k6 * b.sin();
@@ -282,17 +282,17 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     };
     let op0 = na::Vector3::new(r, 0., 0.);
     let op1 = {
-        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l0);
+        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l1);
         rot * op0
     };
     let op2 = {
         let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), b);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l1);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l2);
         rot1 * rot2 * op0
     };
     let op3 = {
         let rot1 = na::UnitQuaternion::from_axis_angle(&na::Unit::new_normalize(op1), d);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l3);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l4);
         rot1 * rot2 * op1
     };
     let rot = na::UnitQuaternion::from_scaled_axis(na::Vector3::from(to_cc([p0i, p0j], 1.)) * a);
@@ -303,7 +303,7 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     let p3 = o + rot * op3;
     let p4 = {
         let i = op2.normalize();
-        let k = (op2.cross(&op3) / l2.sin()).normalize();
+        let k = (op2.cross(&op3) / l3.sin()).normalize();
         let j = k.cross(&i);
         let op4 = na::UnitQuaternion::from_basis_unchecked(&[i, j, k]) * e1;
         o + rot * op4
@@ -336,15 +336,15 @@ fn spherical_loop_reduce() {
     use FourBarTy::*;
 
     macro_rules! assert_fb_eq {
-        ([$l0:literal, $l1:literal, $l2:literal, $l3:literal],
-         [$pl0:literal, $pl1:literal, $pl2:literal, $pl3:literal],
+        ([$l1:literal, $l2:literal, $l3:literal, $l4:literal],
+         [$pl1:literal, $pl2:literal, $pl3:literal, $pl4:literal],
          $ty:expr) => {
-            let fb = SNormFourBar::new_degrees([$l0, $l1, $l2, $l3, 0., 0.], false);
-            let [l0, l1, l2, l3] = fb.planar_loop();
-            assert_abs_diff_eq!(l0.to_degrees(), $pl0, epsilon = 1e-12);
+            let fb = SNormFourBar::new_degrees([$l1, $l2, $l3, $l4, 0., 0.], false);
+            let [l1, l2, l3, l4] = fb.planar_loop();
             assert_abs_diff_eq!(l1.to_degrees(), $pl1, epsilon = 1e-12);
             assert_abs_diff_eq!(l2.to_degrees(), $pl2, epsilon = 1e-12);
             assert_abs_diff_eq!(l3.to_degrees(), $pl3, epsilon = 1e-12);
+            assert_abs_diff_eq!(l4.to_degrees(), $pl4, epsilon = 1e-12);
             assert_eq!(fb.ty(), $ty);
         };
     }

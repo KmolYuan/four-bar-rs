@@ -43,18 +43,18 @@ pub enum FourBarTy {
 }
 
 impl FourBarTy {
-    /// Detect from four-bar loop `[l0, l1, l2, l3]`.
+    /// Detect from four-bar loop `[l1, l2, l3, l4]`.
     pub fn from_loop(mut fb_loop: [f64; 4]) -> Self {
-        let [l0, l1, l2, l3] = fb_loop;
+        let [l1, l2, l3, l4] = fb_loop;
         fb_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         let [s, p, q, l] = fb_loop;
         macro_rules! arms {
             ($d:expr => $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
                 match $d {
-                    d if d == l0 => $c1,
-                    d if d == l1 => $c2,
-                    d if d == l2 => $c3,
-                    d if d == l3 => $c4,
+                    d if d == l1 => $c1,
+                    d if d == l2 => $c2,
+                    d if d == l3 => $c3,
+                    d if d == l4 => $c4,
                     _ => unreachable!(),
                 }
             };
@@ -96,26 +96,26 @@ impl FourBarTy {
     }
 }
 
-pub(crate) fn angle_bound([l0, l1, l2, l3]: [f64; 4]) -> [f64; 2] {
-    match (l0 + l1 <= l2 + l3, (l0 - l1).abs() >= (l2 - l3).abs()) {
+pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> [f64; 2] {
+    match (l1 + l2 <= l3 + l4, (l1 - l2).abs() >= (l3 - l4).abs()) {
         (true, true) => [0., TAU],
         (true, false) => {
-            let l23 = l2 - l3;
-            let d = (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
+            let l33 = l3 - l4;
+            let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
             [d.acos(), TAU - d.acos()]
         }
         (false, true) => {
-            let l23 = l2 + l3;
-            let d = (l0 * l0 + l1 * l1 - l23 * l23) / (2. * l0 * l1);
+            let l33 = l3 + l4;
+            let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
             [-d.acos(), d.acos()]
         }
         (false, false) => {
-            let up = l0 * l0 + l1 * l1;
-            let down = 2. * l0 * l1;
-            let l23 = l2 - l3;
-            let d1 = (up - l23 * l23) / down;
-            let l23 = l2 + l3;
-            let d2 = (up - l23 * l23) / down;
+            let up = l1 * l1 + l2 * l2;
+            let down = 2. * l1 * l2;
+            let l33 = l3 - l4;
+            let d1 = (up - l33 * l33) / down;
+            let l33 = l3 + l4;
+            let d2 = (up - l33 * l33) / down;
             [d1.acos(), d2.acos()]
         }
     }

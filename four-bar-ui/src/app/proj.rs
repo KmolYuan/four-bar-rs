@@ -312,11 +312,11 @@ impl ProjInner {
             | angle(ui, "Rotation: ", self.fb.a_mut(), "");
         ui.separator();
         ui.heading("Parameters");
-        res |= nonzero_f(ui, "Ground: ", self.fb.l0_mut(), cfg.int)
-            | nonzero_f(ui, "Driver: ", self.fb.l1_mut(), cfg.int)
-            | nonzero_f(ui, "Coupler: ", self.fb.l2_mut(), cfg.int)
-            | nonzero_f(ui, "Follower: ", self.fb.l3_mut(), cfg.int)
-            | nonzero_f(ui, "Extended: ", self.fb.l4_mut(), cfg.int)
+        res |= nonzero_f(ui, "Ground: ", self.fb.l1_mut(), cfg.int)
+            | nonzero_f(ui, "Driver: ", self.fb.l2_mut(), cfg.int)
+            | nonzero_f(ui, "Coupler: ", self.fb.l3_mut(), cfg.int)
+            | nonzero_f(ui, "Follower: ", self.fb.l4_mut(), cfg.int)
+            | nonzero_f(ui, "Extended: ", self.fb.l5_mut(), cfg.int)
             | angle(ui, "Angle: ", self.fb.g_mut(), "")
             | ui.checkbox(self.fb.inv_mut(), "Invert follower and coupler");
         ui.separator();
@@ -368,23 +368,23 @@ impl ProjInner {
                 let theta4 = (y3 - y1).atan2(x3 - x1);
                 let theta = [theta2, theta3, theta4];
                 let omega2 = self.angles.omega2;
-                let omega3 = -omega2 * self.fb.l1() * (theta4 - theta2).sin()
-                    / (self.fb.l2() * (theta4 - theta3).sin() + f64::EPSILON);
-                let omega4 = omega2 * self.fb.l1() * (theta3 - theta2).sin()
-                    / (self.fb.l3() * (theta3 - theta4).sin() + f64::EPSILON);
+                let omega3 = -omega2 * self.fb.l2() * (theta4 - theta2).sin()
+                    / (self.fb.l3() * (theta4 - theta3).sin() + f64::EPSILON);
+                let omega4 = omega2 * self.fb.l2() * (theta3 - theta2).sin()
+                    / (self.fb.l4() * (theta3 - theta4).sin() + f64::EPSILON);
                 let omega = [omega2, omega3, omega4];
                 let alpha2 = self.angles.alpha2;
-                let alpha3 = (-self.fb.l1() * alpha2 * (theta4 - theta2).sin()
-                    + self.fb.l1() * omega2 * omega2 * (theta4 - theta2).cos()
-                    + self.fb.l2() * omega3 * omega3 * (theta4 - theta3).cos()
-                    - self.fb.l3() * omega4 * omega4)
-                    / self.fb.l2()
-                    * (theta4 - theta3).sin();
-                let alpha4 = (self.fb.l1() * alpha2 * (theta3 - theta2).sin()
-                    - self.fb.l1() * omega2 * omega2 * (theta3 - theta2).cos()
-                    + self.fb.l3() * omega4 * omega4 * (theta3 - theta4).cos()
-                    - self.fb.l2() * omega3 * omega3)
+                let alpha3 = (-self.fb.l2() * alpha2 * (theta4 - theta2).sin()
+                    + self.fb.l2() * omega2 * omega2 * (theta4 - theta2).cos()
+                    + self.fb.l3() * omega3 * omega3 * (theta4 - theta3).cos()
+                    - self.fb.l4() * omega4 * omega4)
                     / self.fb.l3()
+                    * (theta4 - theta3).sin();
+                let alpha4 = (self.fb.l2() * alpha2 * (theta3 - theta2).sin()
+                    - self.fb.l2() * omega2 * omega2 * (theta3 - theta2).cos()
+                    + self.fb.l4() * omega4 * omega4 * (theta3 - theta4).cos()
+                    - self.fb.l3() * omega3 * omega3)
+                    / self.fb.l4()
                     * (theta3 - theta4).sin();
                 let alpha = [alpha2, alpha3, alpha4];
                 (i as f64 * step, [theta, omega, alpha])

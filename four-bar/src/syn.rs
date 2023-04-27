@@ -182,7 +182,7 @@ where
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
-                    mh::Product::new(efd.l1_norm(&self.efd), fb)
+                    mh::Product::new(efd.l2_norm(&self.efd), fb)
                 })
         };
         match self.mode {

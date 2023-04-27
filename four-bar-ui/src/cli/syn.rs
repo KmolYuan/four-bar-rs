@@ -293,7 +293,7 @@ fn run<S>(
             writeln!(log, "error={err}")?;
             if !matches!(mode, syn::Mode::Partial) {
                 let efd = efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), h);
-                let cost = efd.l1_norm(&efd_target);
+                let cost = efd.l2_norm(&efd_target);
                 writeln!(log, "cost={cost}")?;
             }
             writeln!(log, "\n[competitor.fb]")?;
@@ -324,6 +324,6 @@ fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
             writeln!(w, concat![stringify!($field), "={}"], fb.$field())?;
         )+};
     }
-    impl_fmt!(p0x, p0y, a, l0, l1, l2, l3, l4, g, inv);
+    impl_fmt!(p0x, p0y, a, l1, l2, l3, l4, l5, g, inv);
     Ok(())
 }

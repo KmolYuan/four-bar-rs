@@ -6,7 +6,7 @@ macro_rules! impl_undo_redo {
     )+};
     ($(fn $method:ident($self:ident) { $ind:expr })+) => {
         impl_undo_redo!(@$(fn $method($self) { $ind } =>
-            P0x, p0x_mut; P0y, p0y_mut; A, a_mut; L0, l0_mut; L1, l1_mut; L2, l2_mut; L3, l3_mut; L4, l4_mut; G, g_mut)+);
+            P0x, p0x_mut; P0y, p0y_mut; A, a_mut; L1, l1_mut; L2, l2_mut; L3, l3_mut; L4, l4_mut; L5, l5_mut; G, g_mut)+);
     };
     ($(fn $method:ident, $inv:ident)+) => {$(
         pub(crate) fn $method(&mut self, state: &mut D::State) {
@@ -37,11 +37,11 @@ enum Field {
     P0x,
     P0y,
     A,
-    L0,
     L1,
     L2,
     L3,
     L4,
+    L5,
     G,
 }
 
@@ -59,7 +59,7 @@ impl Delta for FourBarDelta {
                 }
             };
         }
-        branch!(P0x, p0x; P0y, p0y; A, a; L0, l0; L1, l1; L2, l2; L3, l3; L4, l4; G, g)
+        branch!(P0x, p0x; P0y, p0y; A, a; L1, l1; L2, l2; L3, l3; L4, l4; L5, l5; G, g)
     }
 
     impl_undo_redo! {
