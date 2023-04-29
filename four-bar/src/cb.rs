@@ -1,8 +1,6 @@
 //! Create a codebook database for four-bar linkages.
 use self::distr::Code;
 use super::{NormFourBar, SNormFourBar};
-use crate::efd::{Efd, EfdDim, Trans, Transform, D2};
-use efd::D3;
 use mh::{
     random::{Rng, SeedOption},
     utility::prelude::*,
@@ -12,18 +10,32 @@ use std::{marker::PhantomData, sync::Mutex};
 mod distr;
 
 /// Planar four-bar codebook type.
-pub type FbCodebook = Codebook<NormFourBar, D2, 5, 2>;
+pub type FbCodebook = Codebook<NormFourBar, efd::D2, 5, 2>;
 /// Spherical four-bar codebook type.
-pub type SFbCodebook = Codebook<SNormFourBar, D3, 6, 3>;
+pub type SFbCodebook = Codebook<SNormFourBar, efd::D3, 6, 3>;
 
-fn to_arr<A, D>(stack: Mutex<Vec<Array<A, D>>>, n: usize) -> Array<A, D::Larger>
+fn to_arr<A, S, D>(stack: Mutex<Vec<ArrayBase<S, D>>>, n: usize) -> Array<A, D::Larger>
 where
     A: Clone,
+    S: ndarray::Data<Elem = A>,
     D: Dimension,
 {
     let stack = stack.into_inner().unwrap();
-    let arrays = stack.iter().take(n).map(Array::view).collect::<Vec<_>>();
+    let arrays = stack.iter().take(n).map(|a| a.view()).collect::<Vec<_>>();
     ndarray::stack(Axis(0), &arrays).unwrap()
+}
+
+fn efd_to_arr<D: efd::EfdDim>(efd: efd::Efd<D>) -> Array2<f64> {
+    use ndarray::ShapeBuilder as _;
+    let mat = efd.into_inner();
+    unsafe { Array2::from_shape_vec_unchecked(mat.shape().f(), mat.data.into()) }
+}
+
+fn arr_to_efd<D: efd::EfdDim>(arr: ArrayView2<f64>) -> efd::Efd<D> {
+    use efd::na::{self, DimName as _};
+    let vec = arr.axis_iter(Axis(1)).flatten().copied().collect();
+    let data = na::VecStorage::new(na::Dyn(arr.nrows()), <D as efd::EfdDim>::CDim::name(), vec);
+    efd::Efd::try_from_coeffs(efd::Coeff::<D>::from_data(data)).unwrap()
 }
 
 /// Codebook generation config.
@@ -76,7 +88,7 @@ impl Cfg {
 pub struct Codebook<C, D, const N: usize, const DIM: usize>
 where
     C: Code<N, DIM>,
-    D: EfdDim<Trans = C::Trans>,
+    D: efd::EfdDim<Trans = C::Trans>,
 {
     fb: Array2<f64>,
     inv: Array1<bool>,
@@ -87,7 +99,7 @@ where
 impl<C, D, const N: usize, const DIM: usize> Clone for Codebook<C, D, N, DIM>
 where
     C: Code<N, DIM>,
-    D: EfdDim<Trans = C::Trans>,
+    D: efd::EfdDim<Trans = C::Trans>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -102,7 +114,7 @@ where
 impl<C, D, const N: usize, const DIM: usize> Default for Codebook<C, D, N, DIM>
 where
     C: Code<N, DIM>,
-    D: EfdDim<Trans = C::Trans>,
+    D: efd::EfdDim<Trans = C::Trans>,
 {
     fn default() -> Self {
         Self {
@@ -117,12 +129,12 @@ where
 impl<C, D, const N: usize, const DIM: usize> Codebook<C, D, N, DIM>
 where
     C: Code<N, DIM> + Send,
-    D: EfdDim<Trans = C::Trans>,
+    D: efd::EfdDim<Trans = C::Trans>,
 {
     /// Takes time to generate codebook data.
     pub fn make(cfg: Cfg) -> Self
     where
-        <C::Trans as Trans>::Coord: PartialEq + Sync + Send,
+        <C::Trans as efd::Trans>::Coord: PartialEq + Sync + Send,
     {
         Self::make_with(cfg, |_| ())
     }
@@ -131,7 +143,7 @@ where
     pub fn make_with<CB>(cfg: Cfg, callback: CB) -> Self
     where
         CB: Fn(usize) + Sync + Send,
-        <C::Trans as Trans>::Coord: PartialEq + Sync + Send,
+        <C::Trans as efd::Trans>::Coord: PartialEq + Sync + Send,
     {
         let Cfg { is_open, size, res, harmonic, seed } = cfg;
         let rng = Rng::new(seed);
@@ -150,8 +162,8 @@ where
                 .filter_map(|fb| fb.curve(res).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
-                    let efd = Efd::<D>::from_curve_harmonic(curve, is_open, harmonic);
-                    efd_stack.lock().unwrap().push(efd.into_inner());
+                    let efd = efd::Efd::<D>::from_curve_harmonic(curve, is_open, harmonic);
+                    efd_stack.lock().unwrap().push(efd_to_arr(efd));
                     let (code, inv) = fb.to_code();
                     let mut stack = fb_stack.lock().unwrap();
                     stack.push(arr1(&code));
@@ -224,23 +236,23 @@ where
     /// This method will keep the dimensional variables without transform.
     pub fn fetch_raw(
         &self,
-        target: &[<C::Trans as Trans>::Coord],
+        target: &[<C::Trans as efd::Trans>::Coord],
         is_open: bool,
         size: usize,
     ) -> Vec<(f64, C)>
     where
-        Efd<D>: Sync,
+        efd::Efd<D>: Sync,
     {
         if self.is_empty() {
             return Vec::new();
         }
-        let target = Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
+        let target = efd::Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         let dis = iter
-            .map(|efd| target.l2_norm(&Efd::<D>::try_from_coeffs(efd.to_owned()).unwrap()))
+            .map(|arr| target.l2_norm(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         if size == 1 {
             return dis
@@ -262,22 +274,22 @@ where
     /// Get the nearest four-bar linkage from a target curve.
     pub fn fetch_1st(
         &self,
-        target: &[<C::Trans as Trans>::Coord],
+        target: &[<C::Trans as efd::Trans>::Coord],
         is_open: bool,
         res: usize,
     ) -> Option<(f64, C::UnNorm)>
     where
-        Efd<D>: Sync,
+        efd::Efd<D>: Sync,
     {
         if self.is_empty() {
             return None;
         }
-        let target = Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
+        let target = efd::Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
-        iter.map(|efd| target.l2_norm(&Efd::<D>::try_from_coeffs(efd.to_owned()).unwrap()))
+        iter.map(|arr| target.l2_norm(&arr_to_efd(arr)))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(i, err)| (err, self.pick(i, target.as_trans(), is_open, res)))
@@ -288,26 +300,26 @@ where
     /// Slower than [`Self::fetch_1st()`].
     pub fn fetch(
         &self,
-        target: &[<C::Trans as Trans>::Coord],
+        target: &[<C::Trans as efd::Trans>::Coord],
         is_open: bool,
         size: usize,
         res: usize,
     ) -> Vec<(f64, C::UnNorm)>
     where
-        Efd<D>: Sync,
+        efd::Efd<D>: Sync,
     {
         if self.is_empty() {
             return Vec::new();
         } else if size == 1 {
             return self.fetch_1st(target, is_open, res).into_iter().collect();
         }
-        let target = Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
+        let target = efd::Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         let dis = iter
-            .map(|efd| target.l2_norm(&Efd::<D>::try_from_coeffs(efd.to_owned()).unwrap()))
+            .map(|arr| target.l2_norm(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         let mut ind = (0..self.len()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
@@ -328,10 +340,16 @@ where
         C::from_code(code, self.inv[i])
     }
 
-    fn pick(&self, i: usize, trans: &Transform<C::Trans>, is_open: bool, res: usize) -> C::UnNorm {
+    fn pick(
+        &self,
+        i: usize,
+        trans: &efd::Transform<C::Trans>,
+        is_open: bool,
+        res: usize,
+    ) -> C::UnNorm {
         let fb = self.pick_norm(i);
         let curve = fb.curve(res).unwrap();
-        let efd = Efd::<D>::from_curve(curve, is_open);
+        let efd = efd::Efd::<D>::from_curve(curve, is_open);
         fb.unnorm(efd.as_trans().to(trans))
     }
 
@@ -361,7 +379,7 @@ where
 impl<C, D, const N: usize, const DIM: usize> FromIterator<Self> for Codebook<C, D, N, DIM>
 where
     C: Code<N, DIM> + Send,
-    D: EfdDim<Trans = C::Trans>,
+    D: efd::EfdDim<Trans = C::Trans>,
 {
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {
         iter.into_iter()
