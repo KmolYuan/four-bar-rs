@@ -26,15 +26,14 @@ where
 }
 
 fn efd_to_arr<D: efd::EfdDim>(efd: efd::Efd<D>) -> Array2<f64> {
-    use ndarray::ShapeBuilder as _;
     let mat = efd.into_inner();
-    unsafe { Array2::from_shape_vec_unchecked(mat.shape().f(), mat.data.into()) }
+    unsafe { Array2::from_shape_vec_unchecked([mat.ncols(), mat.nrows()], mat.data.into()) }
 }
 
 fn arr_to_efd<D: efd::EfdDim>(arr: ArrayView2<f64>) -> efd::Efd<D> {
     use efd::na::{self, DimName as _};
-    let vec = arr.axis_iter(Axis(1)).flatten().copied().collect();
-    let data = na::VecStorage::new(na::Dyn(arr.nrows()), <D as efd::EfdDim>::CDim::name(), vec);
+    let vec = arr.to_owned().into_raw_vec();
+    let data = na::VecStorage::new(efd::CDim::<D>::name(), na::Dyn(arr.nrows()), vec);
     efd::Efd::try_from_coeffs(efd::Coeff::<D>::from_data(data)).unwrap()
 }
 
