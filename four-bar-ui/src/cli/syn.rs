@@ -210,7 +210,8 @@ fn run<S>(
             s = s.pop_num(cfg.pop);
         }
         let s = s.solve().unwrap();
-        let (cost, ans) = s.best_fitness().into_inner();
+        let h = s.func().harmonic();
+        let (cost, ans) = s.into_err_result();
         if !ans.is_valid() {
             return Err(SynErr::Solver);
         }
@@ -222,7 +223,6 @@ fn run<S>(
         }
         let path = root.join(format!("{title}_result.ron"));
         std::fs::write(path, ron::to_string(&ans)?)?;
-        let h = s.func().harmonic();
         let curve = ans.curve(cfg.res);
         let efd_target = efd::Efd2::from_curve_harmonic(&target, mode.is_target_open(), h);
         let curve_diff = if matches!(mode, syn::Mode::Partial) {
