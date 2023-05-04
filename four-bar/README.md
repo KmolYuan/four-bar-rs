@@ -16,9 +16,7 @@ The synthesis function let you synthesize a four-bar mechanism by fitting target
 ```rust
 use four_bar::{mh, syn};
 
-let func = syn::PathSyn::from_curve(curve, syn::Mode::Closed)
-    .expect("invalid curve")
-    .res(res);
+let func = syn::FbSyn::from_curve(curve, syn::Mode::Closed).res(res);
 let s = mh::Solver::build(mh::Rga::default(), func)
     .task(|ctx| ctx.gen == gen)
     .pop_num(pop)
