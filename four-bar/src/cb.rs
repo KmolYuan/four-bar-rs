@@ -34,7 +34,7 @@ fn arr_to_efd<D: efd::EfdDim>(arr: ArrayView2<f64>) -> efd::Efd<D> {
     use efd::na::{self, DimName as _};
     let vec = arr.to_owned().into_raw_vec();
     let data = na::VecStorage::new(efd::CDim::<D>::name(), na::Dyn(arr.nrows()), vec);
-    efd::Efd::try_from_coeffs(efd::Coeff::<D>::from_data(data)).unwrap()
+    unsafe { efd::Efd::from_coeffs_unchecked(efd::Coeff::<D>::from_data(data)) }
 }
 
 /// Codebook generation config.
