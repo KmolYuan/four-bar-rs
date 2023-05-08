@@ -167,7 +167,8 @@ where
         const INFEASIBLE: f64 = 1e10;
         let infisible = || mh::Product::new(INFEASIBLE, M::De::default());
         let fb = M::from_slice(&xs[..M::BOUND_NUM]);
-        if self.mode.is_result_open() != fb.is_open_curve() {
+        let bound = fb.angle_bound();
+        if self.mode.is_result_open() != is_open_curve(&bound) {
             return infisible();
         }
         let is_open = self.mode.is_target_open();
@@ -186,8 +187,7 @@ where
                 })
         };
         match self.mode {
-            Mode::Closed | Mode::Open => fb
-                .angle_bound()
+            Mode::Closed | Mode::Open => bound
                 .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
                 .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
                 .unwrap_or_else(infisible),

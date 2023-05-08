@@ -241,10 +241,6 @@ impl CurveGen<efd::D3> for SFourBar {
         v[3] < v[..3].iter().sum()
     }
 
-    fn is_open_curve(&self) -> bool {
-        self.ty().is_open_curve()
-    }
-
     fn pos(&self, t: f64) -> Option<[efd::Coord<efd::D3>; 5]> {
         curve_interval(self, t)
     }

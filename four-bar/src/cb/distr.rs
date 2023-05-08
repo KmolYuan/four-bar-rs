@@ -58,7 +58,7 @@ impl Code<5, 2> for NormFourBar {
     }
 
     fn is_open(&self) -> bool {
-        self.ty().is_open_curve()
+        self.is_open_curve()
     }
 
     fn curve(&self, res: usize) -> Option<Vec<[f64; 2]>> {

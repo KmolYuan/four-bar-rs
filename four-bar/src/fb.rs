@@ -96,9 +96,18 @@ impl FourBarTy {
     }
 }
 
+const CLOSED_BOUND: [f64; 2] = [0., TAU];
+
+/// Check the bound if it generates open curve.
+///
+/// Please see [`CurveGen::angle_bound()`] for more information.
+pub fn is_open_curve(bound: &Option<[f64; 2]>) -> bool {
+    matches!(bound, Some(b) if *b != CLOSED_BOUND)
+}
+
 pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> [f64; 2] {
     match (l1 + l2 <= l3 + l4, (l1 - l2).abs() >= (l3 - l4).abs()) {
-        (true, true) => [0., TAU],
+        (true, true) => CLOSED_BOUND,
         (true, false) => {
             let l33 = l3 - l4;
             let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
@@ -286,14 +295,17 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
 pub trait CurveGen<D: efd::EfdDim>: Sized {
     /// Check if the data is valid.
     fn is_valid(&self) -> bool;
-    /// Check if the curve is open.
-    fn is_open_curve(&self) -> bool;
     /// Get the position with input angle.
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
     /// Input angle bounds of the linkage.
     ///
     /// Return `None` if unsupported.
     fn angle_bound(&self) -> Option<[f64; 2]>;
+
+    /// Check if the curve is open.
+    fn is_open_curve(&self) -> bool {
+        is_open_curve(&self.angle_bound())
+    }
 
     /// Generator for all curves in specified angle.
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
