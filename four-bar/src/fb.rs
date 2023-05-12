@@ -105,18 +105,23 @@ pub fn is_open_curve(bound: &Option<[f64; 2]>) -> bool {
     matches!(bound, Some(b) if *b != CLOSED_BOUND)
 }
 
-pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> [f64; 2] {
+pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> Option<[f64; 2]> {
+    let mut v = [l1, l2, l3, l4];
+    v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+    if v[3] > v[..3].iter().sum() {
+        return None;
+    }
     match (l1 + l2 <= l3 + l4, (l1 - l2).abs() >= (l3 - l4).abs()) {
-        (true, true) => CLOSED_BOUND,
+        (true, true) => Some(CLOSED_BOUND),
         (true, false) => {
             let l33 = l3 - l4;
             let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-            [d.acos(), TAU - d.acos()]
+            Some([d.acos(), TAU - d.acos()])
         }
         (false, true) => {
             let l33 = l3 + l4;
             let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-            [-d.acos(), d.acos()]
+            Some([-d.acos(), d.acos()])
         }
         (false, false) => {
             let up = l1 * l1 + l2 * l2;
@@ -125,7 +130,7 @@ pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> [f64; 2] {
             let d1 = (up - l33 * l33) / down;
             let l33 = l3 + l4;
             let d2 = (up - l33 * l33) / down;
-            [d1.acos(), d2.acos()]
+            Some([d1.acos(), d2.acos()])
         }
     }
 }
@@ -293,14 +298,17 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
 
 /// Curve-generating behavior.
 pub trait CurveGen<D: efd::EfdDim>: Sized {
-    /// Check if the data is valid.
-    fn is_valid(&self) -> bool;
     /// Get the position with input angle.
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
     /// Input angle bounds of the linkage.
     ///
     /// Return `None` if unsupported.
     fn angle_bound(&self) -> Option<[f64; 2]>;
+
+    /// Check if the data is valid.
+    fn is_valid(&self) -> bool {
+        self.angle_bound().is_some()
+    }
 
     /// Check if the curve is open.
     fn is_open_curve(&self) -> bool {
@@ -344,10 +352,6 @@ where
     N: Normalized<D>,
     N::De: CurveGen<D>,
 {
-    fn is_valid(&self) -> bool {
-        self.denormalize().is_valid()
-    }
-
     fn is_open_curve(&self) -> bool {
         self.denormalize().is_open_curve()
     }

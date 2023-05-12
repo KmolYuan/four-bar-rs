@@ -235,19 +235,12 @@ impl Transformable<efd::D3> for SFourBar {
 }
 
 impl CurveGen<efd::D3> for SFourBar {
-    fn is_valid(&self) -> bool {
-        let mut v = self.norm.planar_loop();
-        v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        v[3] < v[..3].iter().sum()
-    }
-
     fn pos(&self, t: f64) -> Option<[efd::Coord<efd::D3>; 5]> {
         curve_interval(self, t)
     }
 
     fn angle_bound(&self) -> Option<[f64; 2]> {
-        self.is_valid()
-            .then(|| angle_bound(self.norm.planar_loop()))
+        angle_bound(self.norm.planar_loop())
     }
 }
 

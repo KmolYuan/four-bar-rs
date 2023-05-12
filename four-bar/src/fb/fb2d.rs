@@ -125,19 +125,12 @@ impl Transformable<efd::D2> for FourBar {
 }
 
 impl CurveGen<efd::D2> for FourBar {
-    fn is_valid(&self) -> bool {
-        let mut v = [self.l1(), self.l2(), self.l3(), self.l4()];
-        v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        v[3] < v[..3].iter().sum()
-    }
-
     fn pos(&self, t: f64) -> Option<[efd::Coord<efd::D2>; 5]> {
         curve_interval(self, t)
     }
 
     fn angle_bound(&self) -> Option<[f64; 2]> {
-        self.is_valid()
-            .then(|| angle_bound([self.l1(), self.l2(), self.l3(), self.l4()]))
+        angle_bound([self.l1(), self.l2(), self.l3(), self.l4()])
     }
 }
 
