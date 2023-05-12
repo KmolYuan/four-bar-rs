@@ -124,12 +124,12 @@ pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> Option<[f64; 2]> {
             Some([-d.acos(), d.acos()])
         }
         (false, false) => {
-            let up = l1 * l1 + l2 * l2;
-            let down = 2. * l1 * l2;
+            let numerator = l1 * l1 + l2 * l2;
+            let denominator = 2. * l1 * l2;
             let l33 = l3 - l4;
-            let d1 = (up - l33 * l33) / down;
+            let d1 = (numerator - l33 * l33) / denominator;
             let l33 = l3 + l4;
-            let d2 = (up - l33 * l33) / down;
+            let d2 = (numerator - l33 * l33) / denominator;
             Some([d1.acos(), d2.acos()])
         }
     }
