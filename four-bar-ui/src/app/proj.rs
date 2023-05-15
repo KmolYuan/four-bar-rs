@@ -1,6 +1,6 @@
 use super::{io, link::Cfg, widgets::*};
 use eframe::egui::*;
-use four_bar::{csv::dump_csv, CurveGen as _, FourBar, NormFourBar};
+use four_bar::{csv::dump_csv, CurveGen as _, *};
 use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
@@ -123,20 +123,22 @@ impl Pivot {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, PartialEq, Default)]
-#[serde(default)]
-struct Angles {
-    theta2: f64,
-    omega2: f64,
-    alpha2: f64,
-}
-
-#[derive(Default)]
-struct Cache {
+struct Cache<D: efd::EfdDim> {
     changed: bool,
     has_closed_curve: bool,
-    joints: Option<[[f64; 2]; 5]>,
-    curves: Vec<[[f64; 2]; 3]>,
+    joints: Option<[efd::Coord<D>; 5]>,
+    curves: Vec<[efd::Coord<D>; 3]>,
+}
+
+impl<D: efd::EfdDim> Default for Cache<D> {
+    fn default() -> Self {
+        Self {
+            changed: true,
+            has_closed_curve: false,
+            joints: None,
+            curves: Vec::new(),
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -144,11 +146,11 @@ struct Cache {
 struct ProjInner {
     path: Option<PathBuf>,
     fb: FourBar,
-    angles: Angles,
+    angle: f64,
     hide: bool,
     use_rad: bool,
     #[serde(skip)]
-    cache: Cache,
+    cache: Cache<efd::D2>,
     #[serde(skip)]
     undo: undo::Undo<undo::FbDelta>,
 }
@@ -158,10 +160,10 @@ impl Default for ProjInner {
         Self {
             path: Default::default(),
             fb: FourBar::example(),
-            angles: Default::default(),
+            angle: 0.,
             hide: false,
             use_rad: false,
-            cache: Cache { changed: true, ..Cache::default() },
+            cache: Default::default(),
             undo: Default::default(),
         }
     }
@@ -267,22 +269,13 @@ impl ProjInner {
             | angle(ui, "Angle: ", self.fb.g_mut(), "")
             | ui.checkbox(self.fb.inv_mut(), "Invert follower and coupler");
         ui.separator();
-        ui.horizontal(|ui| {
-            ui.heading("Angle");
-            if ui
-                .add_enabled(self.angles != Default::default(), Button::new("Reset"))
-                .clicked()
-            {
-                self.angles = Default::default();
-                self.cache.changed = true;
-            }
-        });
+        ui.heading("Angle");
         if let Some([start, end]) = self.fb.angle_bound() {
-            res |= angle_bound_btns(ui, &mut self.angles.theta2, start, end);
+            res |= angle_bound_btns(ui, &mut self.angle, start, end);
         }
         ui.horizontal(|ui| {
             res |= ui
-                .group(|ui| angle(ui, "Theta: ", &mut self.angles.theta2, ""))
+                .group(|ui| angle(ui, "Theta: ", &mut self.angle, ""))
                 .inner;
             self.cache.changed |= res.changed();
         });
@@ -293,7 +286,7 @@ impl ProjInner {
         if self.cache.changed {
             // Recalculation
             self.cache.changed = false;
-            self.cache.joints = self.fb.pos(self.angles.theta2);
+            self.cache.joints = self.fb.pos(self.angle);
             self.cache.has_closed_curve = !self.fb.is_open_curve();
             self.cache.curves = self.fb.curves(res);
         }
@@ -395,7 +388,7 @@ impl Project {
 
     fn four_bar_state(&self) -> (FourBar, f64) {
         let proj = self.0.read().unwrap();
-        (proj.fb.clone(), proj.angles.theta2)
+        (proj.fb.clone(), proj.angle)
     }
 
     pub(crate) fn clone_curve(&self) -> Vec<[f64; 2]> {
