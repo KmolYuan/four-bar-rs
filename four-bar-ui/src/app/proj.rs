@@ -1,9 +1,8 @@
 use super::{io, link::Cfg, widgets::*};
 use eframe::egui::*;
-use four_bar::{csv::dump_csv, CurveGen as _, FourBar, NormFourBar, SFourBar};
+use four_bar::{csv::dump_csv, CurveGen as _, FourBar, NormFourBar};
 use serde::{Deserialize, Serialize};
 use std::{
-    f64::consts::TAU,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
@@ -57,25 +56,6 @@ fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
     }
 }
 
-fn plot_values(ui: &mut plot::PlotUi, values: &[(f64, [f64; 3])], sym: &str, use_rad: bool) {
-    let mut v2 = Vec::with_capacity(values.len());
-    let mut v3 = Vec::with_capacity(values.len());
-    let mut v4 = Vec::with_capacity(values.len());
-    for &(x, [y2, y3, y4]) in values {
-        let [x, y2, y3, y4] = if use_rad {
-            [x, y2, y3, y4]
-        } else {
-            [x, y2, y3, y4].map(f64::to_degrees)
-        };
-        v2.push([x, y2]);
-        v3.push([x, y3]);
-        v4.push([x, y4]);
-    }
-    ui.line(plot::Line::new(v2).name(format!("{sym}2")));
-    ui.line(plot::Line::new(v3).name(format!("{sym}3")));
-    ui.line(plot::Line::new(v4).name(format!("{sym}4")));
-}
-
 fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Response {
     ui.group(|ui| {
         fn copy_btn(ui: &mut Ui, start: f64, end: f64, suffix: &str) {
@@ -117,7 +97,6 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
 #[serde(tag = "type")]
 enum Fb {
     FourBar(FourBar),
-    SFourBar(SFourBar),
 }
 
 impl Default for Fb {
@@ -158,7 +137,6 @@ struct Cache {
     has_closed_curve: bool,
     joints: Option<[[f64; 2]; 5]>,
     curves: Vec<[[f64; 2]; 3]>,
-    dynamics: Vec<(f64, [[f64; 3]; 3])>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -168,12 +146,11 @@ struct ProjInner {
     fb: FourBar,
     angles: Angles,
     hide: bool,
-    angle_open: bool,
     use_rad: bool,
     #[serde(skip)]
     cache: Cache,
     #[serde(skip)]
-    undo: undo::Undo<undo::FourBarDelta>,
+    undo: undo::Undo<undo::FbDelta>,
 }
 
 impl Default for ProjInner {
@@ -183,7 +160,6 @@ impl Default for ProjInner {
             fb: FourBar::example(),
             angles: Default::default(),
             hide: false,
-            angle_open: false,
             use_rad: false,
             cache: Cache { changed: true, ..Cache::default() },
             undo: Default::default(),
@@ -229,35 +205,6 @@ impl ProjInner {
             }
         });
         ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot, cfg));
-        Window::new("⚽ Dynamics")
-            .open(&mut self.angle_open)
-            .vscroll(true)
-            .show(ui.ctx(), |ui| {
-                let res = angle(ui, "Omega: ", &mut self.angles.omega2, "/s")
-                    | angle(ui, "Alpha: ", &mut self.angles.alpha2, "/s²");
-                self.cache.changed |= res.changed();
-                ui.checkbox(&mut self.use_rad, "Plot radians");
-                for (i, (id, symbol, title)) in [
-                    ("plot_theta", "theta", "Angle"),
-                    ("plot_omega", "omega", "Angular Velocity"),
-                    ("plot_alpha", "alpha", "Angular Acceleration"),
-                ]
-                .into_iter()
-                .enumerate()
-                {
-                    ui.heading(title);
-                    let values = self
-                        .cache
-                        .dynamics
-                        .iter()
-                        .map(|(x, t)| (*x, t[i]))
-                        .collect::<Vec<_>>();
-                    plot::Plot::new(id)
-                        .legend(Default::default())
-                        .height(200.)
-                        .show(ui, |ui| plot_values(ui, &values, symbol, self.use_rad));
-                }
-            });
         self.undo.fetch(&self.fb);
     }
 
@@ -338,58 +285,18 @@ impl ProjInner {
                 .group(|ui| angle(ui, "Theta: ", &mut self.angles.theta2, ""))
                 .inner;
             self.cache.changed |= res.changed();
-            toggle_btn(ui, &mut self.angle_open, "⚽ Dynamics");
         });
         self.cache(cfg.res);
     }
 
     pub(crate) fn cache(&mut self, res: usize) {
         if self.cache.changed {
-            self.cache_inner(res);
+            // Recalculation
+            self.cache.changed = false;
+            self.cache.joints = self.fb.pos(self.angles.theta2);
+            self.cache.has_closed_curve = !self.fb.is_open_curve();
+            self.cache.curves = self.fb.curves(res);
         }
-    }
-
-    fn cache_inner(&mut self, res: usize) {
-        // Recalculation
-        self.cache.changed = false;
-        self.cache.joints = self.fb.pos(self.angles.theta2);
-        self.cache.has_closed_curve = self.fb.ty().is_closed_curve();
-        self.cache.curves = self.fb.curves(res);
-        let step = TAU / res as f64;
-        self.cache.dynamics = self
-            .cache
-            .curves
-            .iter()
-            .enumerate()
-            .map(|(i, [[x2, y2], [x3, y3], _])| {
-                let [[x0, y0], [x1, y1], ..] = self.cache.joints.unwrap();
-                let theta2 = (y2 - y0).atan2(x2 - x0);
-                let theta3 = (y3 - y2).atan2(x3 - x2);
-                let theta4 = (y3 - y1).atan2(x3 - x1);
-                let theta = [theta2, theta3, theta4];
-                let omega2 = self.angles.omega2;
-                let omega3 = -omega2 * self.fb.l2() * (theta4 - theta2).sin()
-                    / (self.fb.l3() * (theta4 - theta3).sin() + f64::EPSILON);
-                let omega4 = omega2 * self.fb.l2() * (theta3 - theta2).sin()
-                    / (self.fb.l4() * (theta3 - theta4).sin() + f64::EPSILON);
-                let omega = [omega2, omega3, omega4];
-                let alpha2 = self.angles.alpha2;
-                let alpha3 = (-self.fb.l2() * alpha2 * (theta4 - theta2).sin()
-                    + self.fb.l2() * omega2 * omega2 * (theta4 - theta2).cos()
-                    + self.fb.l3() * omega3 * omega3 * (theta4 - theta3).cos()
-                    - self.fb.l4() * omega4 * omega4)
-                    / self.fb.l3()
-                    * (theta4 - theta3).sin();
-                let alpha4 = (self.fb.l2() * alpha2 * (theta3 - theta2).sin()
-                    - self.fb.l2() * omega2 * omega2 * (theta3 - theta2).cos()
-                    + self.fb.l4() * omega4 * omega4 * (theta3 - theta4).cos()
-                    - self.fb.l3() * omega3 * omega3)
-                    / self.fb.l4()
-                    * (theta3 - theta4).sin();
-                let alpha = [alpha2, alpha3, alpha4];
-                (i as f64 * step, [theta, omega, alpha])
-            })
-            .collect();
     }
 
     fn plot(&self, ui: &mut plot::PlotUi, ind: usize, id: usize) {

@@ -21,7 +21,7 @@ pub(crate) trait Delta: Sized {
 }
 
 #[derive(PartialEq)]
-pub(crate) enum FourBarDelta {
+pub(crate) enum FbDelta {
     P0x(f64, f64),
     P0y(f64, f64),
     A(f64, f64),
@@ -34,7 +34,7 @@ pub(crate) enum FourBarDelta {
     Inv(bool, bool),
 }
 
-impl Delta for FourBarDelta {
+impl Delta for FbDelta {
     type State = FourBar;
 
     fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
