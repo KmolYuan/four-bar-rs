@@ -177,7 +177,7 @@ impl ProjInner {
         if self.cache.has_closed_curve {
             ui.label(RichText::new("This linkage has a closed curve.").color(Color32::GREEN));
         } else {
-            ui.label(RichText::new("This linkage has a open curve.").color(Color32::BLUE));
+            ui.label(RichText::new("This linkage has an open curve.").color(Color32::BLUE));
         }
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
@@ -287,7 +287,7 @@ impl ProjInner {
             // Recalculation
             self.cache.changed = false;
             self.cache.joints = self.fb.pos(self.angle);
-            self.cache.has_closed_curve = !self.fb.is_open_curve();
+            self.cache.has_closed_curve = self.fb.is_closed_curve();
             self.cache.curves = self.fb.curves(res);
         }
     }

@@ -1,4 +1,4 @@
-use four_bar::FourBar;
+use four_bar::{FourBar, SFourBar};
 
 pub(crate) trait Delta: Sized {
     type State: Clone;
@@ -10,10 +10,12 @@ pub(crate) trait Delta: Sized {
 }
 
 macro_rules! impl_delta {
-    ($ty_name:ident, $state:ident, $(($f:ident, $ty:ty, $m:ident, $m_mut:ident)),+ $(,)?) => {
+    ($ty_name:ident, $state:ident, $(($f:ident, $m:ident, $m_mut:ident)),+,
+        .., $(($b_f:ident, $b_m:ident, $b_m_mut:ident)),+ $(,)?) => {
         #[derive(PartialEq)]
         pub(crate) enum $ty_name {
-            $($f($ty, $ty)),+
+            $($f(f64),)+
+            $($b_f,)+
         }
 
         impl Delta for $ty_name {
@@ -21,22 +23,29 @@ macro_rules! impl_delta {
 
             fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
                 match (a, b) {
-                    $(_ if a.$m() != b.$m() => Some(Self::$f(a.$m(), b.$m())),)+
+                    $(_ if a.$m() != b.$m() => Some(Self::$f(b.$m() - a.$m())),)+
+                    $(_ if a.$b_m() != b.$b_m() => Some(Self::$b_f),)+
                     _ => None,
                 }
             }
 
             fn undo(&self, state: &mut Self::State) {
-                match self { $(Self::$f(v, _) => *state.$m_mut() = *v,)+ }
+                match self {
+                    $(Self::$f(v) => *state.$m_mut() -= *v,)+
+                    $(Self::$b_f => *state.$b_m_mut() = !state.$b_m(),)+
+                }
             }
 
             fn redo(&self, state: &mut Self::State) {
-                match self { $(Self::$f(_, v) => *state.$m_mut() = *v,)+ }
+                match self {
+                    $(Self::$f(v) => *state.$m_mut() += *v,)+
+                    $(Self::$b_f => *state.$b_m_mut() = !state.$b_m(),)+
+                }
             }
 
             fn try_merge(&mut self, rhs: &Self) -> Option<()> {
                 match (self, rhs) {
-                    $((Self::$f(_, lhs), Self::$f(_, rhs)) => Some(*lhs = *rhs),)+
+                    $((Self::$f(lhs), Self::$f(rhs)) => Some(*lhs += *rhs),)+
                     _ => None,
                 }
             }
@@ -47,16 +56,36 @@ macro_rules! impl_delta {
 impl_delta!(
     FbDelta,
     FourBar,
-    (P0x, f64, p0x, p0x_mut),
-    (P0y, f64, p0y, p0y_mut),
-    (A, f64, a, a_mut),
-    (L1, f64, l1, l1_mut),
-    (L2, f64, l2, l2_mut),
-    (L3, f64, l3, l3_mut),
-    (L4, f64, l4, l4_mut),
-    (L5, f64, l5, l5_mut),
-    (G, f64, g, g_mut),
-    (Inv, bool, inv, inv_mut),
+    (P0x, p0x, p0x_mut),
+    (P0y, p0y, p0y_mut),
+    (A, a, a_mut),
+    (L1, l1, l1_mut),
+    (L2, l2, l2_mut),
+    (L3, l3, l3_mut),
+    (L4, l4, l4_mut),
+    (L5, l5, l5_mut),
+    (G, g, g_mut),
+    ..,
+    (Inv, inv, inv_mut),
+);
+impl_delta!(
+    SFbDelta,
+    SFourBar,
+    (Ox, ox, ox_mut),
+    (Oy, oy, oy_mut),
+    (Oz, oz, oz_mut),
+    (R, r, r_mut),
+    (P0i, p0i, p0i_mut),
+    (P0j, p0j, p0j_mut),
+    (A, a, a_mut),
+    (L1, l1, l1_mut),
+    (L2, l2, l2_mut),
+    (L3, l3, l3_mut),
+    (L4, l4, l4_mut),
+    (L5, l5, l5_mut),
+    (G, g, g_mut),
+    ..,
+    (Inv, inv, inv_mut),
 );
 
 pub(crate) struct Undo<D: Delta> {

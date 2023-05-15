@@ -105,6 +105,13 @@ pub fn is_open_curve(bound: &Option<[f64; 2]>) -> bool {
     matches!(bound, Some(b) if *b != CLOSED_BOUND)
 }
 
+/// Check the bound if it generates closed curve.
+///
+/// Please see [`CurveGen::angle_bound()`] for more information.
+pub fn is_closed_curve(bound: &Option<[f64; 2]>) -> bool {
+    matches!(bound, Some(b) if *b == CLOSED_BOUND)
+}
+
 pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> Option<[f64; 2]> {
     let mut v = [l1, l2, l3, l4];
     v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
@@ -315,6 +322,11 @@ pub trait CurveGen<D: efd::EfdDim>: Sized {
         is_open_curve(&self.angle_bound())
     }
 
+    /// Check if the curve is closed.
+    fn is_closed_curve(&self) -> bool {
+        is_closed_curve(&self.angle_bound())
+    }
+
     /// Generator for all curves in specified angle.
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
         curve_in(
@@ -352,10 +364,6 @@ where
     N: Normalized<D>,
     N::De: CurveGen<D>,
 {
-    fn is_open_curve(&self) -> bool {
-        self.denormalize().is_open_curve()
-    }
-
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]> {
         self.denormalize().pos(t)
     }
