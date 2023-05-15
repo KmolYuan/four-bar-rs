@@ -1,16 +1,5 @@
 use four_bar::FourBar;
 
-macro_rules! impl_undo_redo {
-    ($(fn $method:ident, $inv:ident)+) => {$(
-        pub(crate) fn $method(&mut self, state: &mut D::State) {
-            let Some(delta) = self.$method.pop() else { return };
-            delta.$method(state);
-            self.$inv.push(delta);
-            self.last = Some(state.clone());
-        }
-    )+};
-}
-
 pub(crate) trait Delta: Sized {
     type State: Clone;
 
@@ -20,71 +9,55 @@ pub(crate) trait Delta: Sized {
     fn try_merge(&mut self, rhs: &Self) -> Option<()>;
 }
 
-#[derive(PartialEq)]
-pub(crate) enum FbDelta {
-    P0x(f64, f64),
-    P0y(f64, f64),
-    A(f64, f64),
-    L1(f64, f64),
-    L2(f64, f64),
-    L3(f64, f64),
-    L4(f64, f64),
-    L5(f64, f64),
-    G(f64, f64),
-    Inv(bool, bool),
-}
+macro_rules! impl_delta {
+    ($ty_name:ident, $state:ident, $(($f:ident, $ty:ty, $m:ident, $m_mut:ident)),+ $(,)?) => {
+        #[derive(PartialEq)]
+        pub(crate) enum $ty_name {
+            $($f($ty, $ty)),+
+        }
 
-impl Delta for FbDelta {
-    type State = FourBar;
+        impl Delta for $ty_name {
+            type State = $state;
 
-    fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
-        macro_rules! branch {
-            ($($f:ident, $m:ident),+) => {
+            fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
                 match (a, b) {
                     $(_ if a.$m() != b.$m() => Some(Self::$f(a.$m(), b.$m())),)+
                     _ => None,
                 }
-            };
-        }
-        branch!(P0x, p0x, P0y, p0y, A, a, L1, l1, L2, l2, L3, l3, L4, l4, L5, l5, G, g, Inv, inv)
-    }
+            }
 
-    fn undo(&self, state: &mut Self::State) {
-        macro_rules! branch {
-            ($($f:ident, $m:ident),+) => {
-                match self { $(Self::$f(v, _) => *state.$m() = *v,)+ }
-            };
-        }
-        branch!(
-            P0x, p0x_mut, P0y, p0y_mut, A, a_mut, L1, l1_mut, L2, l2_mut, L3, l3_mut, L4, l4_mut,
-            L5, l5_mut, G, g_mut, Inv, inv_mut
-        );
-    }
+            fn undo(&self, state: &mut Self::State) {
+                match self { $(Self::$f(v, _) => *state.$m_mut() = *v,)+ }
+            }
 
-    fn redo(&self, state: &mut Self::State) {
-        macro_rules! branch {
-            ($($f:ident, $m:ident),+) => {
-                match self { $(Self::$f(_, v) => *state.$m() = *v,)+ }
-            };
-        }
-        branch!(
-            P0x, p0x_mut, P0y, p0y_mut, A, a_mut, L1, l1_mut, L2, l2_mut, L3, l3_mut, L4, l4_mut,
-            L5, l5_mut, G, g_mut, Inv, inv_mut
-        );
-    }
+            fn redo(&self, state: &mut Self::State) {
+                match self { $(Self::$f(_, v) => *state.$m_mut() = *v,)+ }
+            }
 
-    fn try_merge(&mut self, rhs: &Self) -> Option<()> {
-        macro_rules! branch {
-            ($($f:ident),+) => {
+            fn try_merge(&mut self, rhs: &Self) -> Option<()> {
                 match (self, rhs) {
                     $((Self::$f(_, lhs), Self::$f(_, rhs)) => Some(*lhs = *rhs),)+
                     _ => None,
                 }
-            };
+            }
         }
-        branch!(P0x, P0y, A, L1, L2, L3, L4, L5, G, Inv)
-    }
+    };
 }
+
+impl_delta!(
+    FbDelta,
+    FourBar,
+    (P0x, f64, p0x, p0x_mut),
+    (P0y, f64, p0y, p0y_mut),
+    (A, f64, a, a_mut),
+    (L1, f64, l1, l1_mut),
+    (L2, f64, l2, l2_mut),
+    (L3, f64, l3, l3_mut),
+    (L4, f64, l4, l4_mut),
+    (L5, f64, l5, l5_mut),
+    (G, f64, g, g_mut),
+    (Inv, bool, inv, inv_mut),
+);
 
 pub(crate) struct Undo<D: Delta> {
     undo: Vec<D>,
@@ -131,8 +104,17 @@ impl<D: Delta> Undo<D> {
         self.last = None;
     }
 
-    impl_undo_redo! {
-        fn undo, redo
-        fn redo, undo
+    pub(crate) fn undo(&mut self, state: &mut D::State) {
+        let Some(delta) = self.undo.pop() else { return };
+        delta.undo(state);
+        self.redo.push(delta);
+        self.last = Some(state.clone());
+    }
+
+    pub(crate) fn redo(&mut self, state: &mut D::State) {
+        let Some(delta) = self.redo.pop() else { return };
+        delta.redo(state);
+        self.undo.push(delta);
+        self.last = Some(state.clone());
     }
 }
