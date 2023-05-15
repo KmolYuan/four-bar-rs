@@ -10,9 +10,9 @@ use std::{marker::PhantomData, sync::Mutex};
 mod distr;
 
 /// Planar four-bar codebook type.
-pub type FbCodebook = Codebook<NormFourBar, efd::D2, 5, 2>;
+pub type FbCodebook = Codebook<NormFourBar, efd::D2, 5>;
 /// Spherical four-bar codebook type.
-pub type SFbCodebook = Codebook<SNormFourBar, efd::D3, 6, 3>;
+pub type SFbCodebook = Codebook<SNormFourBar, efd::D3, 6>;
 
 fn to_arr<A, S, D>(stack: Mutex<Vec<ArrayBase<S, D>>>, n: usize) -> Array<A, D::Larger>
 where
@@ -84,10 +84,10 @@ impl Cfg {
 }
 
 /// Codebook type.
-pub struct Codebook<C, D, const N: usize, const DIM: usize>
+pub struct Codebook<C, D, const N: usize>
 where
-    C: Code<N, DIM>,
-    D: efd::EfdDim<Trans = C::Trans>,
+    C: Code<D, N>,
+    D: efd::EfdDim,
 {
     fb: Array2<f64>,
     inv: Array1<bool>,
@@ -95,10 +95,10 @@ where
     _marker: PhantomData<(C, D)>,
 }
 
-impl<C, D, const N: usize, const DIM: usize> Clone for Codebook<C, D, N, DIM>
+impl<C, D, const N: usize> Clone for Codebook<C, D, N>
 where
-    C: Code<N, DIM>,
-    D: efd::EfdDim<Trans = C::Trans>,
+    C: Code<D, N>,
+    D: efd::EfdDim,
 {
     fn clone(&self) -> Self {
         Self {
@@ -110,10 +110,10 @@ where
     }
 }
 
-impl<C, D, const N: usize, const DIM: usize> Default for Codebook<C, D, N, DIM>
+impl<C, D, const N: usize> Default for Codebook<C, D, N>
 where
-    C: Code<N, DIM>,
-    D: efd::EfdDim<Trans = C::Trans>,
+    C: Code<D, N>,
+    D: efd::EfdDim,
 {
     fn default() -> Self {
         Self {
@@ -125,15 +125,15 @@ where
     }
 }
 
-impl<C, D, const N: usize, const DIM: usize> Codebook<C, D, N, DIM>
+impl<C, D, const N: usize> Codebook<C, D, N>
 where
-    C: Code<N, DIM> + Send,
-    D: efd::EfdDim<Trans = C::Trans>,
+    C: Code<D, N> + Send,
+    D: efd::EfdDim,
 {
     /// Takes time to generate codebook data.
     pub fn make(cfg: Cfg) -> Self
     where
-        <C::Trans as efd::Trans>::Coord: PartialEq + Sync + Send,
+        efd::Coord<D>: Sync + Send,
     {
         Self::make_with(cfg, |_| ())
     }
@@ -142,7 +142,7 @@ where
     pub fn make_with<CB>(cfg: Cfg, callback: CB) -> Self
     where
         CB: Fn(usize) + Sync + Send,
-        <C::Trans as efd::Trans>::Coord: PartialEq + Sync + Send,
+        efd::Coord<D>: Sync + Send,
     {
         let Cfg { is_open, size, res, harmonic, seed } = cfg;
         let rng = Rng::new(seed);
@@ -157,8 +157,8 @@ where
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
             iter.flat_map(|rng| rng.sample(C::distr()))
-                .filter(|fb| is_open == fb.is_open())
-                .filter_map(|fb| fb.curve(res).map(|c| (c, fb)))
+                .filter(|fb| is_open == fb.is_open_curve())
+                .filter_map(|fb| fb.get_curve(res).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(curve, is_open, harmonic);
@@ -233,12 +233,7 @@ where
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// This method will keep the dimensional variables without transform.
-    pub fn fetch_raw(
-        &self,
-        target: &[<C::Trans as efd::Trans>::Coord],
-        is_open: bool,
-        size: usize,
-    ) -> Vec<(f64, C)>
+    pub fn fetch_raw(&self, target: &[efd::Coord<D>], is_open: bool, size: usize) -> Vec<(f64, C)>
     where
         efd::Efd<D>: Sync,
     {
@@ -273,10 +268,10 @@ where
     /// Get the nearest four-bar linkage from a target curve.
     pub fn fetch_1st(
         &self,
-        target: &[<C::Trans as efd::Trans>::Coord],
+        target: &[efd::Coord<D>],
         is_open: bool,
         res: usize,
-    ) -> Option<(f64, C::UnNorm)>
+    ) -> Option<(f64, C::De)>
     where
         efd::Efd<D>: Sync,
     {
@@ -299,11 +294,11 @@ where
     /// Slower than [`Self::fetch_1st()`].
     pub fn fetch(
         &self,
-        target: &[<C::Trans as efd::Trans>::Coord],
+        target: &[efd::Coord<D>],
         is_open: bool,
         size: usize,
         res: usize,
-    ) -> Vec<(f64, C::UnNorm)>
+    ) -> Vec<(f64, C::De)>
     where
         efd::Efd<D>: Sync,
     {
@@ -339,17 +334,11 @@ where
         C::from_code(code, self.inv[i])
     }
 
-    fn pick(
-        &self,
-        i: usize,
-        trans: &efd::Transform<C::Trans>,
-        is_open: bool,
-        res: usize,
-    ) -> C::UnNorm {
+    fn pick(&self, i: usize, trans: &efd::Transform<D::Trans>, is_open: bool, res: usize) -> C::De {
         let fb = self.pick_norm(i);
-        let curve = fb.curve(res).unwrap();
+        let curve = fb.get_curve(res).unwrap();
         let efd = efd::Efd::<D>::from_curve(curve, is_open);
-        fb.unnorm(efd.as_trans().to(trans))
+        fb.trans_denorm(&efd.as_trans().to(trans))
     }
 
     /// Merge two data to one codebook.
@@ -375,10 +364,10 @@ where
     }
 }
 
-impl<C, D, const N: usize, const DIM: usize> FromIterator<Self> for Codebook<C, D, N, DIM>
+impl<C, D, const N: usize> FromIterator<Self> for Codebook<C, D, N>
 where
-    C: Code<N, DIM> + Send,
-    D: efd::EfdDim<Trans = C::Trans>,
+    C: Code<D, N> + Send,
+    D: efd::EfdDim,
 {
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {
         iter.into_iter()

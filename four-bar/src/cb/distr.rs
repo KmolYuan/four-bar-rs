@@ -1,74 +1,53 @@
-use crate::{efd::*, *};
+use crate::*;
 use mh::rand::{Distribution, Rng};
 
-/// Uniform distribution of the [`NormFourBar`] type.
-pub struct NormFbDistr;
+/// Uniform distribution of the [`NormFourBarBase`] type.
+pub struct NormFbDistr<const N: usize>;
 
-impl Distribution<[NormFourBar; 2]> for NormFbDistr {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> [NormFourBar; 2] {
-        let v = crate::syn::BOUND2D[..5]
+type NormFb<const N: usize> = NormFourBarBase<[f64; N]>;
+
+impl<const N: usize> Distribution<[NormFb<N>; 2]> for NormFbDistr<N>
+where
+    NormFb<N>: syn::SynBound,
+{
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> [NormFb<N>; 2] {
+        let v = <NormFb<N> as syn::SynBound>::BOUND[..<NormFb<N> as syn::SynBound>::BOUND_NUM]
             .iter()
             .map(|&[u, l]| rng.gen_range(u..l))
             .collect::<Vec<_>>();
-        [false, true].map(|inv| NormFourBar::try_from(v.as_slice()).unwrap().with_inv(inv))
+        [false, true].map(|inv| NormFb::<N>::try_from(v.as_slice()).unwrap().with_inv(inv))
     }
 }
 
-/// Uniform distribution of the [`SNormFourBar`] type.
-pub struct SNormFbDistr;
-
-impl Distribution<[SNormFourBar; 2]> for SNormFbDistr {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> [SNormFourBar; 2] {
-        let v = crate::syn::BOUND3D[..6]
-            .iter()
-            .map(|&[u, l]| rng.gen_range(u..l))
-            .collect::<Vec<_>>();
-        [false, true].map(|inv| SNormFourBar::try_from(v.as_slice()).unwrap().with_inv(inv))
-    }
-}
-
-pub trait Code<const N: usize, const DIM: usize>: Sized {
+pub trait Code<D: efd::EfdDim, const N: usize>: Normalized<D> + CurveGen<D> + Sized {
     type Distr: Distribution<[Self; 2]> + Sync;
-    type Trans: Trans;
-    type UnNorm;
 
     fn distr() -> Self::Distr;
     fn from_code(code: [f64; N], inv: bool) -> Self;
     fn to_code(self) -> ([f64; N], bool);
-    fn is_open(&self) -> bool;
-    fn curve(&self, res: usize) -> Option<Vec<<Self::Trans as Trans>::Coord>>;
-    fn unnorm(self, trans: Transform<Self::Trans>) -> Self::UnNorm;
+
+    fn get_curve(&self, res: usize) -> Option<Vec<efd::Coord<D>>> {
+        self.angle_bound()
+            .filter(|[t1, t2]| t2 - t1 > crate::syn::MIN_ANGLE)
+            .map(|[t1, t2]| self.curve_in(t1, t2, res))
+    }
 }
 
-impl Code<5, 2> for NormFourBar {
-    type Distr = NormFbDistr;
-    type UnNorm = FourBar;
-    type Trans = T2;
+impl<D: efd::EfdDim, const N: usize> Code<D, N> for NormFb<N>
+where
+    Self: Normalized<D> + CurveGen<D> + syn::SynBound,
+{
+    type Distr = NormFbDistr<N>;
 
     fn distr() -> Self::Distr {
         NormFbDistr
     }
 
-    fn from_code(code: [f64; 5], inv: bool) -> Self {
+    fn from_code(code: [f64; N], inv: bool) -> Self {
         Self::new(code, inv)
     }
 
-    fn to_code(self) -> ([f64; 5], bool) {
+    fn to_code(self) -> ([f64; N], bool) {
         (self.buf, self.inv)
-    }
-
-    fn is_open(&self) -> bool {
-        self.is_open_curve()
-    }
-
-    fn curve(&self, res: usize) -> Option<Vec<[f64; 2]>> {
-        self.angle_bound()
-            .filter(|[t1, t2]| t2 - t1 > crate::syn::MIN_ANGLE)
-            .map(|[t1, t2]| self.curve_in(t1, t2, res))
-    }
-
-    fn unnorm(self, trans: Transform<Self::Trans>) -> Self::UnNorm {
-        use crate::Normalized as _;
-        self.trans_denorm(&trans)
     }
 }
