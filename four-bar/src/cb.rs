@@ -157,8 +157,7 @@ where
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
             iter.flat_map(|rng| rng.sample(C::distr()))
-                .filter(|fb| is_open == fb.is_open_curve())
-                .filter_map(|fb| fb.get_curve(res).map(|c| (c, fb)))
+                .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(curve, is_open, harmonic);
@@ -336,7 +335,7 @@ where
 
     fn pick(&self, i: usize, trans: &efd::Transform<D::Trans>, is_open: bool, res: usize) -> C::De {
         let fb = self.pick_norm(i);
-        let curve = fb.get_curve(res).unwrap();
+        let curve = fb.get_curve(res, is_open).unwrap();
         let efd = efd::Efd::<D>::from_curve(curve, is_open);
         fb.trans_denorm(&efd.as_trans().to(trans))
     }

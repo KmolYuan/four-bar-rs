@@ -26,9 +26,10 @@ pub trait Code<D: efd::EfdDim, const N: usize>: Normalized<D> + CurveGen<D> + Si
     fn from_code(code: [f64; N], inv: bool) -> Self;
     fn to_code(self) -> ([f64; N], bool);
 
-    fn get_curve(&self, res: usize) -> Option<Vec<efd::Coord<D>>> {
+    fn get_curve(&self, res: usize, is_open: bool) -> Option<Vec<efd::Coord<D>>> {
         self.angle_bound()
-            .filter(|[t1, t2]| t2 - t1 > crate::syn::MIN_ANGLE)
+            .check_mode(is_open)
+            .to_value()
             .map(|[t1, t2]| self.curve_in(t1, t2, res))
     }
 }

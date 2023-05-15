@@ -239,7 +239,7 @@ impl CurveGen<efd::D3> for SFourBar {
         curve_interval(self, t)
     }
 
-    fn angle_bound(&self) -> Option<[f64; 2]> {
+    fn angle_bound(&self) -> AngleBound {
         angle_bound(self.norm.planar_loop())
     }
 }

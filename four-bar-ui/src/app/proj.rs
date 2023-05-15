@@ -125,7 +125,7 @@ impl Pivot {
 
 struct Cache<D: efd::EfdDim> {
     changed: bool,
-    has_closed_curve: bool,
+    curve_state: AngleBound,
     joints: Option<[efd::Coord<D>; 5]>,
     curves: Vec<[efd::Coord<D>; 3]>,
 }
@@ -134,7 +134,7 @@ impl<D: efd::EfdDim> Default for Cache<D> {
     fn default() -> Self {
         Self {
             changed: true,
-            has_closed_curve: false,
+            curve_state: AngleBound::Invalid,
             joints: None,
             curves: Vec::new(),
         }
@@ -174,11 +174,11 @@ impl ProjInner {
         path_label(ui, "🖹", self.path.as_ref(), "Untitled");
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
-        if self.cache.has_closed_curve {
-            ui.label(RichText::new("This linkage has a closed curve.").color(Color32::GREEN));
-        } else {
-            ui.label(RichText::new("This linkage has an open curve.").color(Color32::BLUE));
-        }
+        match self.cache.curve_state {
+            AngleBound::Closed => ui.label("This linkage has a closed curve."),
+            AngleBound::Open(_, _) => ui.label("This linkage has an open curve."),
+            AngleBound::Invalid => ui.label("This linkage is invalid."),
+        };
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
             let enabled = self.undo.able_undo();
@@ -270,7 +270,7 @@ impl ProjInner {
             | ui.checkbox(self.fb.inv_mut(), "Invert follower and coupler");
         ui.separator();
         ui.heading("Angle");
-        if let Some([start, end]) = self.fb.angle_bound() {
+        if let Some([start, end]) = self.fb.angle_bound().to_value() {
             res |= angle_bound_btns(ui, &mut self.angle, start, end);
         }
         ui.horizontal(|ui| {
@@ -287,7 +287,7 @@ impl ProjInner {
             // Recalculation
             self.cache.changed = false;
             self.cache.joints = self.fb.pos(self.angle);
-            self.cache.has_closed_curve = self.fb.is_closed_curve();
+            self.cache.curve_state = self.fb.angle_bound();
             self.cache.curves = self.fb.curves(res);
         }
     }

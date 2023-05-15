@@ -129,7 +129,7 @@ impl CurveGen<efd::D2> for FourBar {
         curve_interval(self, t)
     }
 
-    fn angle_bound(&self) -> Option<[f64; 2]> {
+    fn angle_bound(&self) -> AngleBound {
         angle_bound([self.l1(), self.l2(), self.l3(), self.l4()])
     }
 }

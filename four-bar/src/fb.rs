@@ -2,7 +2,7 @@ pub use self::{fb2d::*, fb3d::*};
 use crate::efd::EfdDim;
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::f64::consts::TAU;
+use std::f64::consts::{FRAC_PI_8, TAU};
 
 mod fb2d;
 mod fb3d;
@@ -96,7 +96,10 @@ impl FourBarTy {
     }
 }
 
-const CLOSED_BOUND: [f64; 2] = [0., TAU];
+/// Closed boundary.
+pub const CLOSED_BOUND: [f64; 2] = [0., TAU];
+/// The minimum input angle bound. (π/16)
+pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
 
 /// Check the bound if it generates open curve.
 ///
@@ -112,23 +115,23 @@ pub fn is_closed_curve(bound: &Option<[f64; 2]>) -> bool {
     matches!(bound, Some(b) if *b == CLOSED_BOUND)
 }
 
-pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> Option<[f64; 2]> {
+pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> AngleBound {
     let mut v = [l1, l2, l3, l4];
     v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
     if v[3] > v[..3].iter().sum() {
-        return None;
+        return AngleBound::Invalid;
     }
     match (l1 + l2 <= l3 + l4, (l1 - l2).abs() >= (l3 - l4).abs()) {
-        (true, true) => Some(CLOSED_BOUND),
+        (true, true) => AngleBound::Closed,
         (true, false) => {
             let l33 = l3 - l4;
             let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-            Some([d.acos(), TAU - d.acos()])
+            AngleBound::Open(d.acos(), TAU - d.acos())
         }
         (false, true) => {
             let l33 = l3 + l4;
             let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-            Some([-d.acos(), d.acos()])
+            AngleBound::Open(-d.acos(), d.acos())
         }
         (false, false) => {
             let numerator = l1 * l1 + l2 * l2;
@@ -137,7 +140,7 @@ pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> Option<[f64; 2]> {
             let d1 = (numerator - l33 * l33) / denominator;
             let l33 = l3 + l4;
             let d2 = (numerator - l33 * l33) / denominator;
-            Some([d1.acos(), d2.acos()])
+            AngleBound::Open(d1.acos(), d2.acos())
         }
     }
 }
@@ -235,7 +238,7 @@ impl<B> NormFourBarBase<B> {
     where
         Self: CurveGen<D>,
     {
-        <Self as CurveGen<D>>::is_valid(self)
+        <Self as CurveGen<D>>::angle_bound(self).is_valid()
     }
 }
 
@@ -272,7 +275,7 @@ impl<B, NB> FourBarBase<B, NB> {
     where
         Self: CurveGen<D>,
     {
-        <Self as CurveGen<D>>::is_valid(self)
+        <Self as CurveGen<D>>::angle_bound(self).is_valid()
     }
 }
 
@@ -303,29 +306,56 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
     }
 }
 
+/// Angle boundary types.
+pub enum AngleBound {
+    /// Closed curve
+    Closed,
+    /// Open curve
+    Open(f64, f64),
+    /// Invalid
+    Invalid,
+}
+
+impl AngleBound {
+    /// Check the state is the same to the provided mode.
+    pub fn check_mode(self, is_open: bool) -> Self {
+        match (&self, is_open) {
+            (Self::Closed, false) | (Self::Open(_, _), true) => self,
+            _ => Self::Invalid,
+        }
+    }
+
+    /// Turn into boundary values.
+    pub fn to_value(self) -> Option<[f64; 2]> {
+        match self {
+            Self::Closed => Some(CLOSED_BOUND),
+            Self::Open(a, b) => (b - a > MIN_ANGLE).then_some([a, b]),
+            Self::Invalid => None,
+        }
+    }
+
+    /// Check if the curve is closed.
+    pub fn is_closed_curve(&self) -> bool {
+        matches!(self, AngleBound::Closed)
+    }
+
+    /// Check if the curve is open.
+    pub fn is_open_curve(&self) -> bool {
+        matches!(self, AngleBound::Open(_, _))
+    }
+
+    /// Check if the data is valid.
+    pub fn is_valid(&self) -> bool {
+        !matches!(self, AngleBound::Invalid)
+    }
+}
+
 /// Curve-generating behavior.
 pub trait CurveGen<D: efd::EfdDim>: Sized {
     /// Get the position with input angle.
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
     /// Input angle bounds of the linkage.
-    ///
-    /// Return `None` if unsupported.
-    fn angle_bound(&self) -> Option<[f64; 2]>;
-
-    /// Check if the data is valid.
-    fn is_valid(&self) -> bool {
-        self.angle_bound().is_some()
-    }
-
-    /// Check if the curve is open.
-    fn is_open_curve(&self) -> bool {
-        is_open_curve(&self.angle_bound())
-    }
-
-    /// Check if the curve is closed.
-    fn is_closed_curve(&self) -> bool {
-        is_closed_curve(&self.angle_bound())
-    }
+    fn angle_bound(&self) -> AngleBound;
 
     /// Generator for all curves in specified angle.
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
@@ -346,6 +376,7 @@ pub trait CurveGen<D: efd::EfdDim>: Sized {
     /// Generator for curves.
     fn curves(&self, res: usize) -> Vec<[efd::Coord<D>; 3]> {
         self.angle_bound()
+            .to_value()
             .map(|[start, end]| self.curves_in(start, end, res))
             .unwrap_or_default()
     }
@@ -353,6 +384,7 @@ pub trait CurveGen<D: efd::EfdDim>: Sized {
     /// Generator for coupler curve.
     fn curve(&self, res: usize) -> Vec<efd::Coord<D>> {
         self.angle_bound()
+            .to_value()
             .map(|[start, end]| self.curve_in(start, end, res))
             .unwrap_or_default()
     }
@@ -368,7 +400,7 @@ where
         self.denormalize().pos(t)
     }
 
-    fn angle_bound(&self) -> Option<[f64; 2]> {
+    fn angle_bound(&self) -> AngleBound {
         self.denormalize().angle_bound()
     }
 }

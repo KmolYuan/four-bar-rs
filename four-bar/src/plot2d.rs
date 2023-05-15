@@ -137,7 +137,7 @@ impl<'a, 'b, M> OptBase<'a, 'b, M> {
         M: CurveGen<D>,
     {
         let fb = self.fb?;
-        let [start, end] = fb.angle_bound()?;
+        let [start, end] = fb.angle_bound().to_value()?;
         let angle = match self.angle {
             Some(angle) if (start..end).contains(&angle) => angle,
             _ => start + (end - start) * 0.25,
