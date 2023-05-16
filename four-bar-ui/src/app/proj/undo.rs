@@ -6,7 +6,7 @@ pub(crate) trait Delta: Sized {
     fn delta(a: &Self::State, b: &Self::State) -> Option<Self>;
     fn undo(&self, state: &mut Self::State);
     fn redo(&self, state: &mut Self::State);
-    fn try_merge(&mut self, rhs: &Self) -> Option<()>;
+    fn try_merge(&mut self, rhs: &Self) -> bool;
 }
 
 macro_rules! impl_delta {
@@ -43,10 +43,10 @@ macro_rules! impl_delta {
                 }
             }
 
-            fn try_merge(&mut self, rhs: &Self) -> Option<()> {
+            fn try_merge(&mut self, rhs: &Self) -> bool {
                 match (self, rhs) {
-                    $((Self::$f(lhs), Self::$f(rhs)) => Some(*lhs += *rhs),)+
-                    _ => None,
+                    $((Self::$f(lhs), Self::$f(rhs)) => {*lhs += *rhs; true},)+
+                    _ => false,
                 }
             }
         }
@@ -115,12 +115,8 @@ impl<D: Delta> Undo<D> {
             return;
         };
         let Some(delta) = D::delta(base, state) else { return };
-        if self
-            .undo
-            .last_mut()
-            .and_then(|d| d.try_merge(&delta))
-            .is_none()
-        {
+        // FIXME: Use `is_some_and`
+        if self.undo.last_mut().map(|d| d.try_merge(&delta)) != Some(true) {
             self.undo.push(delta);
         }
         self.redo.clear();
