@@ -96,55 +96,6 @@ impl FourBarTy {
     }
 }
 
-/// Closed boundary.
-pub const CLOSED_BOUND: [f64; 2] = [0., TAU];
-/// The minimum input angle bound. (π/16)
-pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
-
-/// Check the bound if it generates open curve.
-///
-/// Please see [`CurveGen::angle_bound()`] for more information.
-pub fn is_open_curve(bound: &Option<[f64; 2]>) -> bool {
-    matches!(bound, Some(b) if *b != CLOSED_BOUND)
-}
-
-/// Check the bound if it generates closed curve.
-///
-/// Please see [`CurveGen::angle_bound()`] for more information.
-pub fn is_closed_curve(bound: &Option<[f64; 2]>) -> bool {
-    matches!(bound, Some(b) if *b == CLOSED_BOUND)
-}
-
-pub(crate) fn angle_bound([l1, l2, l3, l4]: [f64; 4]) -> AngleBound {
-    let mut v = [l1, l2, l3, l4];
-    v.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    if v[3] > v[..3].iter().sum() {
-        return AngleBound::Invalid;
-    }
-    match (l1 + l2 <= l3 + l4, (l1 - l2).abs() >= (l3 - l4).abs()) {
-        (true, true) => AngleBound::Closed,
-        (true, false) => {
-            let l33 = l3 - l4;
-            let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-            AngleBound::Open(d.acos(), TAU - d.acos())
-        }
-        (false, true) => {
-            let l33 = l3 + l4;
-            let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-            AngleBound::Open(-d.acos(), d.acos())
-        }
-        (false, false) => {
-            let numerator = l1 * l1 + l2 * l2;
-            let denominator = 2. * l1 * l2;
-            let l33 = l3 - l4;
-            let d1 = (numerator - l33 * l33) / denominator;
-            let l33 = l3 + l4;
-            let d2 = (numerator - l33 * l33) / denominator;
-            AngleBound::Open(d1.acos(), d2.acos())
-        }
-    }
-}
-
 /// Normalized four-bar base.
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
 #[derive(Clone, Default, Debug, PartialEq)]
@@ -307,16 +258,53 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
 }
 
 /// Angle boundary types.
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[derive(Copy, Clone, Default)]
 pub enum AngleBound {
     /// Closed curve
     Closed,
     /// Open curve
     Open(f64, f64),
     /// Invalid
+    #[default]
     Invalid,
 }
 
 impl AngleBound {
+    /// The minimum input angle bound. (π/16)
+    pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
+
+    /// Check angle bound from a planar loop.
+    pub fn from_planar_loop(mut planar_loop: [f64; 4]) -> Self {
+        let [l1, l2, l3, l4] = planar_loop;
+        planar_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        if planar_loop[3] > planar_loop[..3].iter().sum() {
+            return Self::Invalid;
+        }
+        match (l1 + l2 <= l3 + l4, (l1 - l2).abs() >= (l3 - l4).abs()) {
+            (true, true) => Self::Closed,
+            (true, false) => {
+                let l33 = l3 - l4;
+                let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
+                Self::Open(d.acos(), TAU - d.acos())
+            }
+            (false, true) => {
+                let l33 = l3 + l4;
+                let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
+                Self::Open(-d.acos(), d.acos())
+            }
+            (false, false) => {
+                let numerator = l1 * l1 + l2 * l2;
+                let denominator = 2. * l1 * l2;
+                let l33 = l3 - l4;
+                let d1 = (numerator - l33 * l33) / denominator;
+                let l33 = l3 + l4;
+                let d2 = (numerator - l33 * l33) / denominator;
+                Self::Open(d1.acos(), d2.acos())
+            }
+        }
+    }
+
     /// Check the state is the same to the provided mode.
     pub fn check_mode(self, is_open: bool) -> Self {
         match (&self, is_open) {
@@ -328,8 +316,8 @@ impl AngleBound {
     /// Turn into boundary values.
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
-            Self::Closed => Some(CLOSED_BOUND),
-            Self::Open(a, b) => (b - a > MIN_ANGLE).then_some([a, b]),
+            Self::Closed => Some([0., TAU]),
+            Self::Open(a, b) => (b - a > Self::MIN_ANGLE).then_some([a, b]),
             Self::Invalid => None,
         }
     }

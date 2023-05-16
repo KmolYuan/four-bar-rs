@@ -17,8 +17,6 @@
 use crate::{efd::Curve, *};
 use std::{borrow::Cow, f64::consts::*, marker::PhantomData};
 
-/// The minimum input angle bound. (π/16)
-pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
 /// Boundary of the planar objective variables.
 pub const BOUND2D: &[[f64; 2]] = <NormFourBar as SynBound>::BOUND;
 /// Boundary of the spherical objective variables.
@@ -201,7 +199,7 @@ where
                 #[cfg(not(feature = "rayon"))]
                 let iter = bound.into_iter();
                 iter.map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
-                    .filter(|[t1, t2]| t2 - t1 > MIN_ANGLE)
+                    .filter(|[t1, t2]| t2 - t1 > AngleBound::MIN_ANGLE)
                     .flat_map(f)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or_else(infisible)

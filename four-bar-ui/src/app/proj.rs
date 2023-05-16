@@ -125,7 +125,7 @@ impl Pivot {
 
 struct Cache<D: efd::EfdDim> {
     changed: bool,
-    curve_state: AngleBound,
+    angle_bound: AngleBound,
     joints: Option<[efd::Coord<D>; 5]>,
     curves: Vec<[efd::Coord<D>; 3]>,
 }
@@ -134,7 +134,7 @@ impl<D: efd::EfdDim> Default for Cache<D> {
     fn default() -> Self {
         Self {
             changed: true,
-            curve_state: AngleBound::Invalid,
+            angle_bound: AngleBound::Invalid,
             joints: None,
             curves: Vec::new(),
         }
@@ -174,7 +174,7 @@ impl ProjInner {
         path_label(ui, "🖹", self.path.as_ref(), "Untitled");
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
-        match self.cache.curve_state {
+        match self.cache.angle_bound {
             AngleBound::Closed => ui.label("This linkage has a closed curve."),
             AngleBound::Open(_, _) => ui.label("This linkage has an open curve."),
             AngleBound::Invalid => ui.label("This linkage is invalid."),
@@ -270,7 +270,7 @@ impl ProjInner {
             | ui.checkbox(self.fb.inv_mut(), "Invert follower and coupler");
         ui.separator();
         ui.heading("Angle");
-        if let Some([start, end]) = self.fb.angle_bound().to_value() {
+        if let Some([start, end]) = self.cache.angle_bound.to_value() {
             res |= angle_bound_btns(ui, &mut self.angle, start, end);
         }
         ui.horizontal(|ui| {
@@ -287,7 +287,7 @@ impl ProjInner {
             // Recalculation
             self.cache.changed = false;
             self.cache.joints = self.fb.pos(self.angle);
-            self.cache.curve_state = self.fb.angle_bound();
+            self.cache.angle_bound = self.fb.angle_bound();
             self.cache.curves = self.fb.curves(res);
         }
     }

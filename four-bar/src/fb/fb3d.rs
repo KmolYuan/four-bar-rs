@@ -240,7 +240,7 @@ impl CurveGen<efd::D3> for SFourBar {
     }
 
     fn angle_bound(&self) -> AngleBound {
-        angle_bound(self.norm.planar_loop())
+        AngleBound::from_planar_loop(self.norm.planar_loop())
     }
 }
 
