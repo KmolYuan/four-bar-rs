@@ -38,7 +38,7 @@ impl PlotOpt {
                 if !enable {
                     self.angle.take();
                 } else if self.angle.is_none() {
-                    self.angle = Some(0.);
+                    self.angle.replace(0.);
                 }
                 if let Some(angle_val) = &mut self.angle {
                     angle(ui, "", angle_val, "");

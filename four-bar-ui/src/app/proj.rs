@@ -330,7 +330,7 @@ impl Project {
     }
 
     fn set_path(&self, path: PathBuf) {
-        self.0.write().unwrap().path = Some(path);
+        self.0.write().unwrap().path.replace(path);
     }
 
     pub(crate) fn path(&self) -> Option<PathBuf> {
@@ -343,7 +343,7 @@ impl Project {
             if let Some(fb) = pre_open(path) {
                 proj.fb = fb;
             } else {
-                proj.path = None;
+                proj.path.take();
             }
         }
     }
