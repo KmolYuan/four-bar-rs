@@ -219,6 +219,18 @@ impl SFourBar {
     }
 }
 
+impl From<&SNormFourBar> for FourBarTy {
+    fn from(fb: &SNormFourBar) -> Self {
+        Self::from_loop(fb.planar_loop())
+    }
+}
+
+impl From<&SFourBar> for FourBarTy {
+    fn from(fb: &SFourBar) -> Self {
+        Self::from_loop(fb.norm.planar_loop())
+    }
+}
+
 impl Transformable<efd::D3> for SFourBar {
     fn transform_inplace(&mut self, trans: &efd::Transform<<efd::D3 as EfdDim>::Trans>) {
         let [ox, oy, oz] = trans.trans();

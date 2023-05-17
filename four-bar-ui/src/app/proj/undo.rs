@@ -1,4 +1,5 @@
-use four_bar::{FourBar, SFourBar};
+use super::*;
+use eframe::egui::{Response, Ui};
 
 pub(crate) trait Delta: Sized {
     type State: Clone;
@@ -9,13 +10,46 @@ pub(crate) trait Delta: Sized {
     fn try_merge(&mut self, rhs: &Self) -> bool;
 }
 
+pub(crate) trait IntoDelta: Clone {
+    type Delta: Delta<State = Self>;
+}
+
+pub(crate) trait DeltaUi {
+    fn delta_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response;
+}
+
+// A dummy UI function for angles.
+fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
+    super::angle(ui, label, val, "")
+}
+
+pub(crate) trait DeltaPlot<D: efd::EfdDim> {
+    fn delta_plot(
+        ui: &mut plot::PlotUi,
+        joints: [efd::Coord<D>; 5],
+        curves: &[[efd::Coord<D>; 3]],
+        is_main: bool,
+    );
+}
+
 macro_rules! impl_delta {
-    ($ty_name:ident, $state:ident, $(($f:ident, $m:ident, $m_mut:ident)),+,
-        .., $(($b_f:ident, $b_m:ident, $b_m_mut:ident)),+ $(,)?) => {
+    ($ty_name:ident, $state:ident, $(($f:ident, $m:ident, $m_mut:ident, $ui:ident, $des:literal)),+,
+        .., $(($b_f:ident, $b_m:ident, $b_m_mut:ident, $b_des:literal)),+ $(,)?) => {
         #[derive(PartialEq)]
         pub(crate) enum $ty_name {
             $($f(f64),)+
             $($b_f,)+
+        }
+
+        impl IntoDelta for $state {
+            type Delta = $ty_name;
+        }
+
+        impl DeltaUi for $state {
+            fn delta_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
+                $($ui(ui, $des, self.$m_mut(), cfg.int))|+
+                | $(ui.checkbox(self.$b_m_mut(), $b_des))|+
+            }
         }
 
         impl Delta for $ty_name {
@@ -56,36 +90,36 @@ macro_rules! impl_delta {
 impl_delta!(
     FbDelta,
     FourBar,
-    (P0x, p0x, p0x_mut),
-    (P0y, p0y, p0y_mut),
-    (A, a, a_mut),
-    (L1, l1, l1_mut),
-    (L2, l2, l2_mut),
-    (L3, l3, l3_mut),
-    (L4, l4, l4_mut),
-    (L5, l5, l5_mut),
-    (G, g, g_mut),
+    (P0x, p0x, p0x_mut, unit, "X Offset: "),
+    (P0y, p0y, p0y_mut, unit, "Y Offset: "),
+    (A, a, a_mut, angle, "Rotation: "),
+    (L1, l1, l1_mut, nonzero_f, "Ground: "),
+    (L2, l2, l2_mut, nonzero_f, "Driver: "),
+    (L3, l3, l3_mut, nonzero_f, "Coupler: "),
+    (L4, l4, l4_mut, nonzero_f, "Follower: "),
+    (L5, l5, l5_mut, nonzero_f, "Extended: "),
+    (G, g, g_mut, angle, "Extended angle: "),
     ..,
-    (Inv, inv, inv_mut),
+    (Inv, inv, inv_mut, "Invert follower and coupler"),
 );
 impl_delta!(
     SFbDelta,
     SFourBar,
-    (Ox, ox, ox_mut),
-    (Oy, oy, oy_mut),
-    (Oz, oz, oz_mut),
-    (R, r, r_mut),
-    (P0i, p0i, p0i_mut),
-    (P0j, p0j, p0j_mut),
-    (A, a, a_mut),
-    (L1, l1, l1_mut),
-    (L2, l2, l2_mut),
-    (L3, l3, l3_mut),
-    (L4, l4, l4_mut),
-    (L5, l5, l5_mut),
-    (G, g, g_mut),
+    (Ox, ox, ox_mut, unit, "X Offset: "),
+    (Oy, oy, oy_mut, unit, "Y Offset: "),
+    (Oz, oz, oz_mut, unit, "Z Offset: "),
+    (R, r, r_mut, unit, "Radius: "),
+    (P0i, p0i, p0i_mut, angle, "Polar angle: "),
+    (P0j, p0j, p0j_mut, angle, "Azimuth angle: "),
+    (A, a, a_mut, angle, "Rotation: "),
+    (L1, l1, l1_mut, angle, "Ground: "),
+    (L2, l2, l2_mut, angle, "Driver: "),
+    (L3, l3, l3_mut, angle, "Coupler: "),
+    (L4, l4, l4_mut, angle, "Follower: "),
+    (L5, l5, l5_mut, angle, "Extended: "),
+    (G, g, g_mut, angle, "Extended angle: "),
     ..,
-    (Inv, inv, inv_mut),
+    (Inv, inv, inv_mut, "Invert follower and coupler"),
 );
 
 pub(crate) struct Undo<D: Delta> {
@@ -141,5 +175,46 @@ impl<D: Delta> Undo<D> {
         delta.redo(state);
         self.undo.push(delta);
         self.last.replace(state.clone());
+    }
+}
+
+impl DeltaPlot<efd::D2> for FourBar {
+    fn delta_plot(
+        ui: &mut plot::PlotUi,
+        joints: [[f64; 2]; 5],
+        curves: &[[[f64; 2]; 3]],
+        is_main: bool,
+    ) {
+        draw_link(ui, &[joints[0], joints[2]], is_main);
+        draw_link(ui, &[joints[1], joints[3]], is_main);
+        draw_link(ui, &joints[2..], is_main);
+        let float_j = plot::Points::new(joints[2..].to_vec())
+            .radius(5.)
+            .color(JOINT_COLOR);
+        let fixed_j = plot::Points::new(joints[..2].to_vec())
+            .radius(10.)
+            .shape(plot::MarkerShape::Up)
+            .color(JOINT_COLOR);
+        ui.points(float_j);
+        ui.points(fixed_j);
+        for (i, name) in ["Driver joint", "Follower joint", "Coupler joint"]
+            .into_iter()
+            .enumerate()
+        {
+            let iter = curves.iter().map(|c| c[i]).collect::<Vec<_>>();
+            ui.line(plot::Line::new(iter).name(name).width(3.));
+        }
+    }
+}
+
+impl DeltaPlot<efd::D3> for SFourBar {
+    #[allow(unused_variables)]
+    fn delta_plot(
+        ui: &mut plot::PlotUi,
+        joints: [efd::Coord<efd::D3>; 5],
+        curves: &[[efd::Coord<efd::D3>; 3]],
+        is_main: bool,
+    ) {
+        // TODO: 3D plot
     }
 }

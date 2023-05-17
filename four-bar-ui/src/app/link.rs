@@ -62,14 +62,7 @@ impl Linkages {
     }
 
     pub(crate) fn preload(&mut self, files: Vec<std::path::PathBuf>, res: usize) {
-        self.projs.iter().for_each(|p| p.pre_open());
-        self.projs.retain(|p| p.path().is_some());
-        files.into_iter().for_each(|file| self.projs.pre_open(file));
-        if self.projs.is_empty() {
-            self.projs.push_example();
-        } else {
-            self.projs.iter().for_each(|proj| proj.cache(res));
-        }
+        self.projs.preload(files, res);
     }
 
     pub(crate) fn poll(&mut self, ctx: &Context) {

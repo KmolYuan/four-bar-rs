@@ -1,5 +1,5 @@
 use self::impl_io::*;
-use four_bar::{cb::FbCodebook, csv, plot2d, FourBar};
+use four_bar::{cb::FbCodebook, *};
 use std::path::{Path, PathBuf};
 
 const FMT: &str = "Rusty Object Notation (RON)";
@@ -167,7 +167,7 @@ where
 
 pub(crate) fn open_ron<C>(done: C)
 where
-    C: Fn(PathBuf, FourBar) + 'static,
+    C: Fn(PathBuf, Fb) + 'static,
 {
     let done = move |path, s: String| alert(ron::from_str(&s), |fb| done(path, fb));
     open(FMT, EXT, done);
@@ -224,14 +224,18 @@ where
     save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
 }
 
-pub(crate) fn save_ron_ask<C>(fb: &FourBar, name: &str, done: C)
+pub(crate) fn save_ron_ask<S, C>(fb: &S, name: &str, done: C)
 where
+    S: serde::Serialize,
     C: FnOnce(PathBuf) + 'static,
 {
     save_ask(&ron::to_string(fb).unwrap(), name, FMT, EXT, done);
 }
 
-pub(crate) fn save_ron(fb: &FourBar, path: &Path) {
+pub(crate) fn save_ron<S>(fb: &S, path: &Path)
+where
+    S: serde::Serialize,
+{
     save(&ron::to_string(fb).unwrap(), path);
 }
 
@@ -244,4 +248,11 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     let svg = plot2d::SVGBackend::with_string(&mut buf, (800, 600));
     plot2d::history(svg, history).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[serde(untagged)]
+pub(crate) enum Fb {
+    Fb(FourBar),
+    SFb(SFourBar),
 }

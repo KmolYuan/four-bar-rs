@@ -1,37 +1,92 @@
-use super::widgets::*;
+use super::{io, widgets::*};
 use eframe::egui::*;
-use four_bar::{plot2d, FourBar};
+use four_bar::*;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
-type Curves = Vec<(String, Vec<[f64; 2]>)>;
+pub(crate) enum Curve {
+    P(Vec<[f64; 2]>),
+    S(Vec<[f64; 3]>),
+}
+
+#[derive(Deserialize, Serialize)]
+enum PlotType {
+    P(Option<FourBar>, Vec<(String, Vec<[f64; 2]>)>),
+    S(Option<SFourBar>, Vec<(String, Vec<[f64; 3]>)>),
+}
+
+impl Default for PlotType {
+    fn default() -> Self {
+        Self::P(None, Vec::new())
+    }
+}
+
+impl PlotType {
+    fn set_fb(&mut self, fb: io::Fb) {
+        match (fb, self) {
+            (io::Fb::Fb(fb), Self::P(p_fb, _)) => {
+                p_fb.replace(fb);
+            }
+            (io::Fb::Fb(fb), p @ Self::S(_, _)) => *p = Self::P(Some(fb), Vec::new()),
+            (io::Fb::SFb(fb), p @ Self::P(_, _)) => *p = Self::S(Some(fb), Vec::new()),
+            (io::Fb::SFb(fb), Self::S(p_fb, _)) => {
+                p_fb.replace(fb);
+            }
+        }
+    }
+
+    fn remove_fb(&mut self) {
+        match self {
+            Self::P(fb, _) => _ = fb.take(),
+            Self::S(fb, _) => _ = fb.take(),
+        }
+    }
+
+    fn has_fb(&self) -> bool {
+        match self {
+            Self::P(fb, _) => fb.is_some(),
+            Self::S(fb, _) => fb.is_some(),
+        }
+    }
+
+    fn push_fb_curve(&mut self, s: &'static str, c: Curve) {
+        let s = s.to_string();
+        match (c, self) {
+            (Curve::P(c), Self::P(_, curves)) => curves.push((s, c)),
+            (Curve::P(c), p @ Self::S(_, _)) => *p = Self::P(None, vec![(s, c)]),
+            (Curve::S(c), p @ Self::P(_, _)) => *p = Self::S(None, vec![(s, c)]),
+            (Curve::S(c), Self::S(_, curves)) => curves.push((s, c)),
+        }
+    }
+}
 
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 struct PlotOpt {
-    fb: Rc<RefCell<Option<FourBar>>>,
+    plot: Rc<RefCell<PlotType>>,
     angle: Option<f64>,
-    curves: Rc<RefCell<Curves>>,
     inner: plot2d::OptInner,
 }
 
 impl PlotOpt {
     fn show(&mut self, ui: &mut Ui, lnk: &mut super::link::Linkages) -> bool {
+        match &*self.plot.borrow() {
+            PlotType::P(_, _) => ui.heading("Planar Plot"),
+            PlotType::S(_, _) => ui.heading("Spherical Plot"),
+        };
         if ui.button("🖴 Load Linkage").clicked() {
-            let opt_fb = self.fb.clone();
-            super::io::open_ron(move |_, fb| {
-                opt_fb.borrow_mut().replace(fb);
-            });
+            let plot = self.plot.clone();
+            super::io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
         }
         ui.horizontal(|ui| {
             if ui.button("🖴 Add from").clicked() {
-                let (fb, angle) = lnk.projs.four_bar_state();
-                self.fb.borrow_mut().replace(fb);
+                let (angle, fb) = lnk.projs.current_fb_state();
+                self.plot.borrow_mut().set_fb(fb);
                 self.angle.replace(angle);
             }
             lnk.projs.select(ui, false);
         });
-        if self.fb.borrow().is_some() {
+        if self.plot.borrow().has_fb() {
             ui.horizontal(|ui| {
                 let mut enable = self.angle.is_some();
                 ui.checkbox(&mut enable, "Specify input angle");
@@ -45,7 +100,7 @@ impl PlotOpt {
                 }
             });
             if ui.button("✖ Remove Linkage").clicked() {
-                self.fb.borrow_mut().take();
+                self.plot.borrow_mut().remove_fb();
                 self.angle.take();
             }
         } else {
@@ -53,32 +108,51 @@ impl PlotOpt {
         }
         ui.group(|ui| {
             ui.heading("Curves");
-            self.curves.borrow_mut().retain_mut(|(legend, _)| {
-                ui.horizontal(|ui| {
-                    ui.text_edit_singleline(legend);
-                    !ui.button("✖").clicked()
-                })
-                .inner
-            });
+            match &mut *self.plot.borrow_mut() {
+                PlotType::P(_, c) => c.retain_mut(|(legend, _)| {
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(legend);
+                        !ui.button("✖").clicked()
+                    })
+                    .inner
+                }),
+                PlotType::S(_, c) => c.retain_mut(|(legend, _)| {
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(legend);
+                        !ui.button("✖").clicked()
+                    })
+                    .inner
+                }),
+            }
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
-                    let c = lnk.projs.current_curve();
-                    self.curves.borrow_mut().push(("New Curve".to_string(), c));
+                    self.plot
+                        .borrow_mut()
+                        .push_fb_curve("New Curve", lnk.projs.current_curve());
                 }
                 lnk.projs.select(ui, false);
             });
-            if ui.button("🖴 Add Curve from CSV").clicked() {
-                let curves = self.curves.clone();
+            if ui.button("🖴 Add 2D Curve from CSV").clicked() {
+                let plot = self.plot.clone();
                 super::io::open_csv(move |_, c| {
-                    curves.borrow_mut().push(("New Curve".to_string(), c));
+                    plot.borrow_mut().push_fb_curve("New Curve", Curve::P(c));
+                });
+            }
+            if ui.button("🖴 Add 3D Curve from CSV").clicked() {
+                let plot = self.plot.clone();
+                super::io::open_csv(move |_, c| {
+                    plot.borrow_mut().push_fb_curve("New Curve", Curve::S(c));
                 });
             }
             if ui.button("🖴 Add Curve from RON").clicked() {
                 let res = lnk.cfg.res;
-                let curves = self.curves.clone();
+                let plot = self.plot.clone();
                 super::io::open_ron(move |_, fb| {
-                    let c = fb.curve(res);
-                    curves.borrow_mut().push(("New Curve".to_string(), c));
+                    let c = match fb {
+                        io::Fb::Fb(fb) => Curve::P(fb.curve(res)),
+                        io::Fb::SFb(fb) => Curve::S(fb.curve(res)),
+                    };
+                    plot.borrow_mut().push_fb_curve("New Curve", c);
                 });
             }
         });
@@ -143,15 +217,23 @@ impl Plotter {
                 .split_evenly(self.shape)
                 .into_iter()
                 .zip(&self.queue)
-                .for_each(|(root, p_opt)| {
-                    let curves = p_opt.curves.borrow();
-                    let curves = curves.iter().map(|(s, c)| (s.as_str(), c.as_slice()));
-                    let fb = p_opt.fb.borrow();
-                    let mut opt = plot2d::Opt::from(fb.as_ref()).inner(p_opt.inner.clone());
-                    if let Some(angle) = p_opt.angle {
-                        opt = opt.angle(angle);
+                .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
+                    PlotType::P(fb, c) => {
+                        let curves = c.iter().map(|(s, c)| (s.as_str(), c.as_slice()));
+                        let mut opt = plot2d::Opt::from(fb.as_ref()).inner(p_opt.inner.clone());
+                        if let Some(angle) = p_opt.angle {
+                            opt = opt.angle(angle);
+                        }
+                        super::io::alert(plot2d::plot(root, curves, opt), |_| ());
                     }
-                    super::io::alert(plot2d::plot(root, curves, opt), |_| ());
+                    PlotType::S(fb, c) => {
+                        let curves = c.iter().map(|(s, c)| (s.as_str(), c.as_slice()));
+                        let mut opt = plot3d::Opt::from(fb.as_ref()).inner(p_opt.inner.clone());
+                        if let Some(angle) = p_opt.angle {
+                            opt = opt.angle(angle);
+                        }
+                        super::io::alert(plot3d::plot(root, curves, opt), |_| ());
+                    }
                 });
             super::io::save_svg_ask(&buf, "figure.svg");
         }

@@ -137,7 +137,8 @@ impl Synthesis {
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
             if ui.button("🖊 Add from").clicked() {
-                *self.tmp_target.write().unwrap() = lnk.projs.current_curve();
+                // TODO: Support spherical synthesis
+                let _ = lnk.projs.current_curve();
             }
             lnk.projs.select(ui, false);
         });
@@ -341,7 +342,7 @@ impl Synthesis {
                 SynCmd::Rga(s) => solve(&task, &cb, config, s),
                 SynCmd::Tlbo(s) => solve(&task, &cb, config, s),
             };
-            queue.push(None, fb);
+            queue.push(None, io::Fb::Fb(fb));
             task.start.store(false, Ordering::Relaxed);
         };
         #[cfg(not(target_arch = "wasm32"))]
