@@ -24,14 +24,10 @@ impl Default for PlotType {
 impl PlotType {
     fn set_fb(&mut self, fb: io::Fb) {
         match (fb, self) {
-            (io::Fb::Fb(fb), Self::P(p_fb, _)) => {
-                p_fb.replace(fb);
-            }
+            (io::Fb::Fb(fb), Self::P(p_fb, _)) => _ = p_fb.replace(fb),
             (io::Fb::Fb(fb), p @ Self::S(_, _)) => *p = Self::P(Some(fb), Vec::new()),
             (io::Fb::SFb(fb), p @ Self::P(_, _)) => *p = Self::S(Some(fb), Vec::new()),
-            (io::Fb::SFb(fb), Self::S(p_fb, _)) => {
-                p_fb.replace(fb);
-            }
+            (io::Fb::SFb(fb), Self::S(p_fb, _)) => _ = p_fb.replace(fb),
         }
     }
 
