@@ -26,7 +26,7 @@ fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
 pub(crate) trait DeltaPlot<D: efd::EfdDim> {
     fn delta_plot(
         ui: &mut plot::PlotUi,
-        joints: [efd::Coord<D>; 5],
+        joints: Option<&[efd::Coord<D>; 5]>,
         curves: &[[efd::Coord<D>; 3]],
         is_main: bool,
     );
@@ -181,22 +181,24 @@ impl<D: Delta> Undo<D> {
 impl DeltaPlot<efd::D2> for FourBar {
     fn delta_plot(
         ui: &mut plot::PlotUi,
-        joints: [[f64; 2]; 5],
+        joints: Option<&[[f64; 2]; 5]>,
         curves: &[[[f64; 2]; 3]],
         is_main: bool,
     ) {
-        draw_link(ui, &[joints[0], joints[2]], is_main);
-        draw_link(ui, &[joints[1], joints[3]], is_main);
-        draw_link(ui, &joints[2..], is_main);
-        let float_j = plot::Points::new(joints[2..].to_vec())
-            .radius(5.)
-            .color(JOINT_COLOR);
-        let fixed_j = plot::Points::new(joints[..2].to_vec())
-            .radius(10.)
-            .shape(plot::MarkerShape::Up)
-            .color(JOINT_COLOR);
-        ui.points(float_j);
-        ui.points(fixed_j);
+        if let Some(joints) = joints {
+            draw_link(ui, &[joints[0], joints[2]], is_main);
+            draw_link(ui, &[joints[1], joints[3]], is_main);
+            draw_link(ui, &joints[2..], is_main);
+            let float_j = plot::Points::new(joints[2..].to_vec())
+                .radius(5.)
+                .color(JOINT_COLOR);
+            let fixed_j = plot::Points::new(joints[..2].to_vec())
+                .radius(10.)
+                .shape(plot::MarkerShape::Up)
+                .color(JOINT_COLOR);
+            ui.points(float_j);
+            ui.points(fixed_j);
+        }
         for (i, name) in ["Driver joint", "Follower joint", "Coupler joint"]
             .into_iter()
             .enumerate()
@@ -211,7 +213,7 @@ impl DeltaPlot<efd::D3> for SFourBar {
     #[allow(unused_variables)]
     fn delta_plot(
         ui: &mut plot::PlotUi,
-        joints: [efd::Coord<efd::D3>; 5],
+        joints: Option<&[efd::Coord<efd::D3>; 5]>,
         curves: &[[efd::Coord<efd::D3>; 3]],
         is_main: bool,
     ) {

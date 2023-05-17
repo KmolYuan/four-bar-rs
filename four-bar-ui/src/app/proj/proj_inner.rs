@@ -271,11 +271,10 @@ where
     }
 
     fn plot(&self, ui: &mut plot::PlotUi, ind: usize, id: usize) {
-        if self.hide {
-            return;
+        if !self.hide {
+            let joints = self.cache.joints.as_ref();
+            <M::De as undo::DeltaPlot<D>>::delta_plot(ui, joints, &self.cache.curves, ind == id);
         }
-        let Some(joints) = self.cache.joints.clone() else { return };
-        <M::De as undo::DeltaPlot<D>>::delta_plot(ui, joints, &self.cache.curves, ind == id);
     }
 
     fn request_cache(&mut self) {
