@@ -23,15 +23,6 @@ fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
     super::angle(ui, label, val, "")
 }
 
-pub(crate) trait DeltaPlot<D: efd::EfdDim> {
-    fn delta_plot(
-        ui: &mut plot::PlotUi,
-        joints: Option<&[efd::Coord<D>; 5]>,
-        curves: &[[efd::Coord<D>; 3]],
-        is_main: bool,
-    );
-}
-
 macro_rules! impl_delta {
     ($ty_name:ident, $state:ident, $(($f:ident, $m:ident, $m_mut:ident, $ui:ident, $des:literal)),+,
         .., $(($b_f:ident, $b_m:ident, $b_m_mut:ident, $b_des:literal)),+ $(,)?) => {
@@ -178,17 +169,53 @@ impl<D: Delta> Undo<D> {
     }
 }
 
+const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
+const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
+
+fn pick_color(i: usize) -> Color32 {
+    use plot2d::{Color as _, Palette as _};
+    let (r, g, b) = plot2d::Palette99::pick(i).to_rgba().rgb();
+    Color32::from_rgb(r, g, b).gamma_multiply(0.8)
+}
+
+fn draw_link2d(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
+    let width = if is_main { 3. } else { 1. };
+    if points.len() == 2 {
+        let line = plot::Line::new(points.to_vec())
+            .width(width)
+            .color(LINK_COLOR);
+        ui.line(line);
+    } else {
+        let polygon = plot::Polygon::new(points.to_vec())
+            .width(width)
+            .fill_alpha(if is_main { 0.8 } else { 0.2 })
+            .color(LINK_COLOR);
+        ui.polygon(polygon);
+    }
+}
+
+pub(crate) trait DeltaPlot<D: efd::EfdDim> {
+    fn delta_plot(
+        &self,
+        ui: &mut plot::PlotUi,
+        joints: Option<&[efd::Coord<D>; 5]>,
+        curves: &[[efd::Coord<D>; 3]],
+        is_main: bool,
+    );
+}
+
 impl DeltaPlot<efd::D2> for FourBar {
     fn delta_plot(
+        &self,
         ui: &mut plot::PlotUi,
         joints: Option<&[[f64; 2]; 5]>,
         curves: &[[[f64; 2]; 3]],
         is_main: bool,
     ) {
         if let Some(joints) = joints {
-            draw_link(ui, &[joints[0], joints[2]], is_main);
-            draw_link(ui, &[joints[1], joints[3]], is_main);
-            draw_link(ui, &joints[2..], is_main);
+            draw_link2d(ui, &[joints[0], joints[2]], is_main);
+            draw_link2d(ui, &[joints[1], joints[3]], is_main);
+            draw_link2d(ui, &joints[2..], is_main);
             let float_j = plot::Points::new(joints[2..].to_vec())
                 .radius(5.)
                 .color(JOINT_COLOR);
@@ -204,7 +231,11 @@ impl DeltaPlot<efd::D2> for FourBar {
             .enumerate()
         {
             let iter = curves.iter().map(|c| c[i]).collect::<Vec<_>>();
-            ui.line(plot::Line::new(iter).name(name).width(3.));
+            let line = plot::Line::new(iter)
+                .name(name)
+                .width(3.)
+                .color(pick_color(i));
+            ui.line(line);
         }
     }
 }
@@ -212,11 +243,72 @@ impl DeltaPlot<efd::D2> for FourBar {
 impl DeltaPlot<efd::D3> for SFourBar {
     #[allow(unused_variables)]
     fn delta_plot(
+        &self,
         ui: &mut plot::PlotUi,
         joints: Option<&[efd::Coord<efd::D3>; 5]>,
         curves: &[[efd::Coord<efd::D3>; 3]],
         is_main: bool,
     ) {
         // TODO: 3D plot
+        let proj = |curve: &[[f64; 3]]| {
+            curve
+                .iter()
+                .filter_map(|&[x, y, z]| (z > self.oz()).then_some([x, y]))
+                .collect::<Vec<_>>()
+        };
+        let circle = (0..=200)
+            .map(|i| {
+                let t = remap(i as f64, 0.0..=200., 0.0..=std::f64::consts::TAU);
+                [
+                    self.r() * t.cos() + self.ox(),
+                    self.r() * t.sin() + self.oy(),
+                ]
+            })
+            .collect::<Vec<_>>();
+        ui.line(plot::Line::new(circle).style(plot::LineStyle::dashed_dense()));
+        if let Some(joints) = joints {
+            // TODO: Draw link
+            let float_j = plot::Points::new(proj(&joints[2..]))
+                .radius(5.)
+                .color(JOINT_COLOR);
+            let fixed_j = plot::Points::new(proj(&joints[..2]))
+                .radius(10.)
+                .shape(plot::MarkerShape::Up)
+                .color(JOINT_COLOR);
+            ui.points(float_j);
+            ui.points(fixed_j);
+        }
+        for (i, name) in ["Driver joint", "Follower joint", "Coupler joint"]
+            .into_iter()
+            .enumerate()
+        {
+            let mut is_front = curves[0][i][2] > self.oz();
+            let mut iter = curves.iter().map(|c| c[i]);
+            loop {
+                let curve = iter
+                    .by_ref()
+                    .take_while(|[.., z]| {
+                        if is_front {
+                            *z > self.oz()
+                        } else {
+                            *z <= self.oz()
+                        }
+                    })
+                    .map(|[x, y, ..]| [x, y])
+                    .collect::<Vec<_>>();
+                if curve.is_empty() {
+                    break;
+                }
+                let mut line = plot::Line::new(curve)
+                    .name(name)
+                    .width(3.)
+                    .color(pick_color(i));
+                if !is_front {
+                    line = line.style(plot::LineStyle::dashed_dense());
+                }
+                ui.line(line);
+                is_front = !is_front;
+            }
+        }
     }
 }

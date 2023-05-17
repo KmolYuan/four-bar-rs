@@ -144,6 +144,42 @@ impl<D: efd::EfdDim> Default for Cache<D> {
     }
 }
 
+fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Response {
+    ui.group(|ui| {
+        fn copy_btn(ui: &mut Ui, start: f64, end: f64, suffix: &str) {
+            ui.horizontal(|ui| {
+                let s_str = format!("{start:.04}");
+                if ui.selectable_label(false, &s_str).clicked() {
+                    ui.output_mut(|s| s.copied_text = s_str);
+                }
+                let e_str = format!("{end:.04}");
+                if ui.selectable_label(false, &e_str).clicked() {
+                    ui.output_mut(|s| s.copied_text = e_str);
+                }
+                ui.label(suffix);
+            });
+        }
+        ui.label("Click to copy angle bounds:");
+        copy_btn(ui, start, end, "rad");
+        copy_btn(ui, start.to_degrees(), end.to_degrees(), "deg");
+        ui.horizontal(|ui| {
+            let mut res1 = ui.button("➡ To Start");
+            if res1.clicked() {
+                res1.mark_changed();
+                *theta2 = start;
+            }
+            let mut res2 = ui.button("➡ To End");
+            if res2.clicked() {
+                res2.mark_changed();
+                *theta2 = end;
+            }
+            res1 | res2
+        })
+        .inner
+    })
+    .inner
+}
+
 impl<D, M> ProjInner<D, M>
 where
     D: efd::EfdDim,
@@ -273,7 +309,7 @@ where
     fn plot(&self, ui: &mut plot::PlotUi, ind: usize, id: usize) {
         if !self.hide {
             let joints = self.cache.joints.as_ref();
-            <M::De as undo::DeltaPlot<D>>::delta_plot(ui, joints, &self.cache.curves, ind == id);
+            undo::DeltaPlot::delta_plot(&self.fb, ui, joints, &self.cache.curves, ind == id);
         }
     }
 

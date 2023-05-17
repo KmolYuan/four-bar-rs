@@ -17,61 +17,6 @@ use std::{
 mod proj_inner;
 mod undo;
 
-const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
-const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
-
-fn draw_link(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
-    let width = if is_main { 3. } else { 1. };
-    if points.len() == 2 {
-        let line = plot::Line::new(points.to_vec())
-            .width(width)
-            .color(LINK_COLOR);
-        ui.line(line);
-    } else {
-        let polygon = plot::Polygon::new(points.to_vec())
-            .width(width)
-            .fill_alpha(if is_main { 0.8 } else { 0.2 })
-            .color(LINK_COLOR);
-        ui.polygon(polygon);
-    }
-}
-
-fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Response {
-    ui.group(|ui| {
-        fn copy_btn(ui: &mut Ui, start: f64, end: f64, suffix: &str) {
-            ui.horizontal(|ui| {
-                let s_str = format!("{start:.04}");
-                if ui.selectable_label(false, &s_str).clicked() {
-                    ui.output_mut(|s| s.copied_text = s_str);
-                }
-                let e_str = format!("{end:.04}");
-                if ui.selectable_label(false, &e_str).clicked() {
-                    ui.output_mut(|s| s.copied_text = e_str);
-                }
-                ui.label(suffix);
-            });
-        }
-        ui.label("Click to copy angle bounds:");
-        copy_btn(ui, start, end, "rad");
-        copy_btn(ui, start.to_degrees(), end.to_degrees(), "deg");
-        ui.horizontal(|ui| {
-            let mut res1 = ui.button("➡ To Start");
-            if res1.clicked() {
-                res1.mark_changed();
-                *theta2 = start;
-            }
-            let mut res2 = ui.button("➡ To End");
-            if res2.clicked() {
-                res2.mark_changed();
-                *theta2 = end;
-            }
-            res1 | res2
-        })
-        .inner
-    })
-    .inner
-}
-
 #[derive(Default, Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]
 pub(crate) enum Pivot {
     Driver,
