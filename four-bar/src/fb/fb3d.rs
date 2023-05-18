@@ -259,11 +259,11 @@ impl CurveGen<efd::D3> for SFourBar {
 fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     let [ox, oy, oz, r, p0i, p0j, a] = fb.buf;
     let SNormFourBar { buf: [l1, l2, l3, l4, l5, g], inv } = fb.norm;
+    let op0 = na::Vector3::new(0., 0., r);
     let e1 = {
-        let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), g);
-        let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l5);
-        let p1 = na::Vector3::new(r, 0., 0.);
-        rx1v * rx1m * p1
+        let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), g);
+        let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l5);
+        rx1v * rx1m * op0
     };
     let d = {
         let k1 = l2.cos() * l4.cos() * l1.cos();
@@ -281,19 +281,18 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
             2. * (-h3 - (h3 * h3 - h1 * h1 + h2 * h2).sqrt()).atan2(h1 - h2)
         }
     };
-    let op0 = na::Vector3::new(r, 0., 0.);
     let op1 = {
-        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l1);
+        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l1);
         rot * op0
     };
     let op2 = {
-        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::x_axis(), b);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l2);
+        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), b);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l2);
         rot1 * rot2 * op0
     };
     let op3 = {
         let rot1 = na::UnitQuaternion::from_axis_angle(&na::Unit::new_normalize(op1), d);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), l4);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l4);
         rot1 * rot2 * op1
     };
     let rot = na::UnitQuaternion::from_scaled_axis(na::Vector3::from(to_cc([p0i, p0j], 1.)) * a);

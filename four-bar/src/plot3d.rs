@@ -98,7 +98,7 @@ where
             let iter = x
                 .zip(y.clone())
                 .zip(z)
-                .map(|((x, y), z)| (sc.y + x, sc.z + y, sc.x + z));
+                .map(|((x, y), z)| (sc.x + x, sc.y + y, sc.z + z));
             chart.draw_series(LineSeries::new(iter, BLACK.mix(0.1)))?;
         }
     }
@@ -106,13 +106,13 @@ where
     if opt.scale_bar {
         let scale_bar = scale_bar_size(sr);
         for (p, color) in [
-            ([scale_bar, 0., 0.], BLUE),  // Y
-            ([0., scale_bar, 0.], GREEN), // Z
-            ([0., 0., scale_bar], RED),   // X
+            ([scale_bar, 0., 0.], RED),
+            ([0., scale_bar, 0.], BLUE),
+            ([0., 0., scale_bar], GREEN),
         ] {
             let p = na::Vector3::from(p) + sc;
             chart.draw_series(LineSeries::new(
-                [(sc.y, sc.z, sc.x), (p.y, p.z, p.x)],
+                [(sc.x, sc.y, sc.z), (p.x, p.y, p.z)],
                 color.stroke_width(stroke),
             ))?;
         }
@@ -125,7 +125,7 @@ where
                 ($ty:ident) => {{
                     let line = curve
                         .iter()
-                        .map(|&[x, y, z]| $ty::new((y, z, x), dot_size, &color));
+                        .map(|&[x, y, z]| $ty::new((x, y, z), dot_size, &color));
                     chart
                         .draw_series(line)?
                         .label(label)
@@ -138,7 +138,7 @@ where
                 _ => draw_dots!(Circle),
             }
         } else {
-            let line = curve.iter().map(|&[x, y, z]| (y, z, x));
+            let line = curve.iter().map(|&[x, y, z]| (x, y, z));
             chart
                 .draw_series(LineSeries::new(line, color.stroke_width(stroke)))?
                 .label(label)
@@ -165,16 +165,16 @@ where
                         [sc.x + p.x, sc.y + p.y, sc.z + p.z]
                     })
                 })
-                .map(|[x, y, z]| (y, z, x));
+                .map(|[x, y, z]| (x, y, z));
             chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
         }
         let grounded = joints[..2].iter().map(|&[x, y, z]| {
-            EmptyElement::at((y, z, x)) + TriangleMarker::new((0, 10), dot_size + 3, BLACK.filled())
+            EmptyElement::at((x, y, z)) + TriangleMarker::new((0, 10), dot_size + 3, BLACK.filled())
         });
         chart.draw_series(grounded)?;
         let joints = joints
             .iter()
-            .map(|&[x, y, z]| Circle::new((y, z, x), dot_size, BLACK.filled()));
+            .map(|&[x, y, z]| Circle::new((x, y, z), dot_size, BLACK.filled()));
         chart.draw_series(joints)?;
     }
     if curves.len() > 1 {
