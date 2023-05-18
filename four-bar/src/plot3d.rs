@@ -156,15 +156,12 @@ where
                     let sc = na::Point3::from(sc);
                     let a = na::Point3::from(w[0]) - sc;
                     let b = na::Point3::from(w[1]) - sc;
-                    let (axis, angle) = (
-                        a.cross(&b).normalize(),
-                        a.normalize().dot(&b.normalize()).acos(),
-                    );
+                    let axis = a.cross(&b).normalize();
+                    let angle = a.normalize().dot(&b.normalize()).acos();
                     const N: usize = 150;
                     let step = angle / N as f64;
                     (0..=N).map(move |i| {
-                        let p = na::UnitQuaternion::from_scaled_axis(axis * i as f64 * step)
-                            * na::Point3::from(a);
+                        let p = na::UnitQuaternion::from_scaled_axis(axis * i as f64 * step) * a;
                         [sc.x + p.x, sc.y + p.y, sc.z + p.z]
                     })
                 })

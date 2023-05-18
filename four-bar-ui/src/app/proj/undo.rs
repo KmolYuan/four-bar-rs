@@ -1,4 +1,5 @@
 use super::*;
+use efd::na;
 use eframe::egui::{Response, Ui};
 
 pub(crate) trait Delta: Sized {
@@ -194,6 +195,57 @@ fn draw_link2d(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
     }
 }
 
+fn draw_sline<I, F>(ui: &mut plot::PlotUi, oz: f64, iter: I, line_f: F)
+where
+    I: IntoIterator<Item = [f64; 3]>,
+    F: Fn(plot::Line) -> plot::Line,
+{
+    let mut iter = iter.into_iter().peekable();
+    let mut is_front = iter.peek().unwrap()[2] > oz;
+    loop {
+        let curve = iter
+            .by_ref()
+            .take_while(|[.., z]| if is_front { *z > oz } else { *z <= oz })
+            .map(|[x, y, _]| [x, y])
+            .collect::<Vec<_>>();
+        if curve.is_empty() {
+            break;
+        }
+        let mut line = line_f(plot::Line::new(curve));
+        if !is_front {
+            line = line.style(plot::LineStyle::dashed_dense());
+        }
+        ui.line(line);
+        is_front = !is_front;
+    }
+}
+
+fn draw_link3d(ui: &mut plot::PlotUi, sc: [f64; 3], points: &[[f64; 3]], is_main: bool) {
+    let width = if is_main { 3. } else { 1. };
+    let sc = na::Point3::from(sc);
+    let iter = points.windows(2).flat_map(|w| {
+        let a = na::Point3::from(w[0]) - sc;
+        let b = na::Point3::from(w[1]) - sc;
+        let axis = a.cross(&b).normalize();
+        let angle = a.normalize().dot(&b.normalize()).acos();
+        const N: usize = 150;
+        let step = angle / N as f64;
+        (0..=N).map(move |i| {
+            let p = na::UnitQuaternion::from_scaled_axis(axis * i as f64 * step) * a;
+            [sc.x + p.x, sc.y + p.y, sc.z + p.z]
+        })
+    });
+    if points.len() > 2 {
+        let points = iter.clone().map(|[x, y, _]| [x, y]).collect::<Vec<_>>();
+        let polygon = plot::Polygon::new(points)
+            .width(width)
+            .fill_alpha(if is_main { 0.8 } else { 0.2 })
+            .color(LINK_COLOR);
+        ui.polygon(polygon);
+    }
+    draw_sline(ui, sc.z, iter, |line| line.width(width).color(LINK_COLOR));
+}
+
 pub(crate) trait DeltaPlot<D: efd::EfdDim> {
     fn delta_plot(
         &self,
@@ -249,16 +301,17 @@ impl DeltaPlot<efd::D3> for SFourBar {
         curves: &[[efd::Coord<efd::D3>; 3]],
         is_main: bool,
     ) {
-        // TODO: 3D plot
         let proj = |curve: &[[f64; 3]]| {
             curve
                 .iter()
                 .filter_map(|&[x, y, z]| (z > self.oz()).then_some([x, y]))
                 .collect::<Vec<_>>()
         };
-        let circle = (0..=200)
+        const N: usize = 150;
+        const STEP: f64 = std::f64::consts::TAU / N as f64;
+        let circle = (0..=N)
             .map(|i| {
-                let t = remap(i as f64, 0.0..=200., 0.0..=std::f64::consts::TAU);
+                let t = i as f64 * STEP;
                 [
                     self.r() * t.cos() + self.ox(),
                     self.r() * t.sin() + self.oy(),
@@ -267,7 +320,10 @@ impl DeltaPlot<efd::D3> for SFourBar {
             .collect::<Vec<_>>();
         ui.line(plot::Line::new(circle).style(plot::LineStyle::dashed_dense()));
         if let Some(joints) = joints {
-            // TODO: Draw link
+            let sc = [self.ox(), self.oy(), self.oz()];
+            draw_link3d(ui, sc, &[joints[0], joints[2]], is_main);
+            draw_link3d(ui, sc, &[joints[1], joints[3]], is_main);
+            draw_link3d(ui, sc, &joints[2..], is_main);
             let float_j = plot::Points::new(proj(&joints[2..]))
                 .radius(5.)
                 .color(JOINT_COLOR);
@@ -282,33 +338,9 @@ impl DeltaPlot<efd::D3> for SFourBar {
             .into_iter()
             .enumerate()
         {
-            let mut is_front = curves[0][i][2] > self.oz();
-            let mut iter = curves.iter().map(|c| c[i]);
-            loop {
-                let curve = iter
-                    .by_ref()
-                    .take_while(|[.., z]| {
-                        if is_front {
-                            *z > self.oz()
-                        } else {
-                            *z <= self.oz()
-                        }
-                    })
-                    .map(|[x, y, ..]| [x, y])
-                    .collect::<Vec<_>>();
-                if curve.is_empty() {
-                    break;
-                }
-                let mut line = plot::Line::new(curve)
-                    .name(name)
-                    .width(3.)
-                    .color(pick_color(i));
-                if !is_front {
-                    line = line.style(plot::LineStyle::dashed_dense());
-                }
-                ui.line(line);
-                is_front = !is_front;
-            }
+            let color = pick_color(i);
+            let iter = curves.iter().map(|c| c[i]);
+            draw_sline(ui, self.oz(), iter, |s| s.name(name).width(3.).color(color));
         }
     }
 }
