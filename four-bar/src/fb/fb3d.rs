@@ -143,7 +143,7 @@ impl SNormFourBar {
 }
 
 impl SFourBar {
-    const ORIGIN: [f64; 7] = [0., 0., 0., 1., FRAC_PI_2, 0., 0.];
+    const ORIGIN: [f64; 7] = [0., 0., 0., 1., 0., 0., 0.];
 
     /// Create with linkage lengths in degrees.
     pub fn new_degrees(mut buf: [f64; 7], buf_norm: [f64; 6], inv: bool) -> Self {
@@ -183,6 +183,8 @@ impl SFourBar {
     }
 
     impl_parm_method! {
+        /// Sphere center.
+        fn oc(self) -> [f64; 3] { [self.buf[0], self.buf[1], self.buf[2]] }
         /// X offset of the sphere center.
         fn ox, ox_mut(self) -> f64 { self.buf[0] }
         /// Y offset of the sphere center.
@@ -295,7 +297,18 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l4);
         rot1 * rot2 * op1
     };
-    let rot = na::UnitQuaternion::from_scaled_axis(na::Vector3::from(to_cc([p0i, p0j], 1.)) * a);
+    let rot = {
+        let p0_axis = na::Vector3::from(to_cc([p0i, p0j], 1.));
+        let rot1 = na::UnitQuaternion::from_scaled_axis(p0_axis * a);
+        let rot2 = if op0 == p0_axis {
+            na::UnitQuaternion::identity()
+        } else {
+            let axis = op0.cross(&p0_axis).normalize();
+            let angle = na::Vector3::z().dot(&p0_axis).acos();
+            na::UnitQuaternion::from_scaled_axis(axis * angle)
+        };
+        rot1 * rot2
+    };
     let o = na::Point3::new(ox, oy, oz);
     let p0 = o + rot * op0;
     let p1 = o + rot * op1;

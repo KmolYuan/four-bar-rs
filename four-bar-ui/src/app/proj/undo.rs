@@ -201,7 +201,8 @@ where
     F: Fn(plot::Line) -> plot::Line,
 {
     let mut iter = iter.into_iter().peekable();
-    let mut is_front = iter.peek().unwrap()[2] > oz;
+    let Some([.., first_z]) = iter.peek() else { return };
+    let mut is_front = *first_z > oz;
     loop {
         let curve = iter
             .by_ref()
@@ -320,7 +321,7 @@ impl DeltaPlot<efd::D3> for SFourBar {
             .collect::<Vec<_>>();
         ui.line(plot::Line::new(circle).style(plot::LineStyle::dashed_dense()));
         if let Some(joints) = joints {
-            let sc = [self.ox(), self.oy(), self.oz()];
+            let sc = self.oc();
             draw_link3d(ui, sc, &[joints[0], joints[2]], is_main);
             draw_link3d(ui, sc, &[joints[1], joints[3]], is_main);
             draw_link3d(ui, sc, &joints[2..], is_main);
