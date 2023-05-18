@@ -239,6 +239,11 @@ pub trait Normalized<D: efd::EfdDim>: Sized {
     /// Inverse method to convert types.
     fn normalize(de: &Self::De) -> Self;
 
+    /// Normalize in-placed.
+    fn normalize_inplace(de: &mut Self::De) {
+        *de = Self::normalize(de).denormalize();
+    }
+
     /// Denormalized with transformation.
     fn trans_denorm(&self, trans: &efd::Transform<D::Trans>) -> Self::De {
         self.denormalize().transform(trans)

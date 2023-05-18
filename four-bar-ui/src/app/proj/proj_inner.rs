@@ -275,7 +275,7 @@ where
                 .on_hover_text("Remove offset, then scale by the driver link")
                 .clicked()
             {
-                self.fb = M::normalize(&self.fb).denormalize();
+                M::normalize_inplace(&mut self.fb);
                 self.cache.changed = true;
             }
         });

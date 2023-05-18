@@ -49,10 +49,7 @@ impl Normalized<efd::D3> for SNormFourBar {
     }
 
     fn normalize(de: &Self::De) -> Self {
-        let l2 = de.l2();
-        let mut norm = de.norm.clone();
-        norm.buf[..4].iter_mut().for_each(|x| *x /= l2);
-        norm
+        de.norm.clone()
     }
 }
 
