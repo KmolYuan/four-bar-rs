@@ -52,14 +52,6 @@ pub(crate) struct App {
 
 impl App {
     pub(crate) fn new(ctx: &eframe::CreationContext, files: Vec<std::path::PathBuf>) -> Box<Self> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            #[wasm_bindgen::prelude::wasm_bindgen]
-            extern "C" {
-                fn loading_finished();
-            }
-            loading_finished();
-        }
         let mut font_data = BTreeMap::new();
         let mut families = Vec::new();
         for &(name, font) in FONT {
@@ -88,6 +80,18 @@ impl App {
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
+        #[cfg(target_arch = "wasm32")]
+        {
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            extern "C" {
+                fn loading_finished();
+                fn preload() -> String;
+            }
+            loading_finished();
+            if let Ok(fb) = ron::from_str(&preload()) {
+                app.link.projs.queue().push(None, fb);
+            }
+        }
         app.bp.preload(&ctx.egui_ctx);
         app.link.preload(files, app.link.cfg.res);
         Box::new(app)
