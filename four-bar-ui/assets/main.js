@@ -2,7 +2,7 @@
 
 // Preload
 window.loading_finished = () => document.getElementById("loading-text").remove();
-window.preload = () => new URLSearchParams(window.location.search).get('code');
+window.preload = () => new URLSearchParams(window.location.search).get('code') || "";
 
 // IO
 window.open_file = (ext, done, is_multiple, is_bin) => {
