@@ -1,8 +1,8 @@
 // Utility functions
 
 // Preload
-window.loading_finished = () => document.getElementById("loading-text").remove();
 window.preload = () => new URLSearchParams(window.location.search).get('code') || "";
+window.loading_finished = () => document.getElementById("loading-text").remove();
 
 // IO
 window.open_file = (ext, done, is_multiple, is_bin) => {
@@ -24,3 +24,4 @@ window.save_file = (s, path) => {
     a.href = URL.createObjectURL(new Blob([s], { type: "application/octet-stream" }));
     a.click();
 };
+window.clear_storage = () => window.localStorage.clear();
