@@ -104,7 +104,7 @@ pub(crate) fn path_label(ui: &mut Ui, icon: &str, path: Option<&PathBuf>, warn: 
     .inner
 }
 
-pub(crate) fn table(ui: &mut Ui, xs: &mut Vec<[f64; 2]>) {
+pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
     ScrollArea::vertical()
         .max_height(100.)
         .auto_shrink([false; 2])
@@ -118,14 +118,12 @@ pub(crate) fn table(ui: &mut Ui, xs: &mut Vec<[f64; 2]>) {
             }
             ui.horizontal(|ui| {
                 ui.vertical(|ui| xs.retain(|_| !ui.button("✖").clicked()));
-                ui.vertical(|ui| {
-                    xs.iter_mut()
-                        .for_each(|[x, _]| drop(unit(ui, "x: ", x, 0.01)));
-                });
-                ui.vertical(|ui| {
-                    xs.iter_mut()
-                        .for_each(|[_, y]| drop(unit(ui, "y: ", y, 0.01)));
-                });
+                for (i, label) in (0..N).zip(["x: ", "y: ", "z: "]) {
+                    ui.vertical(|ui| {
+                        xs.iter_mut()
+                            .for_each(|c| drop(unit(ui, label, &mut c[i], 0.01)));
+                    });
+                }
             });
         });
 }

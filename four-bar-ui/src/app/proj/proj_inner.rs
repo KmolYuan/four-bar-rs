@@ -1,5 +1,4 @@
-use super::{io::Fb, *};
-use crate::app::plotter::Curve;
+use super::*;
 use std::path::PathBuf;
 
 macro_rules! hotkey {
@@ -36,28 +35,20 @@ macro_rules! impl_method {
 }
 
 impl ProjSwitch {
-    pub(crate) fn new_fb() -> Self {
-        Self::Fb(FbProj::new(FourBar::example()))
-    }
-
-    pub(crate) fn new_sfb() -> Self {
-        Self::SFb(SFbProj::new(SFourBar::example()))
-    }
-
-    pub(crate) fn new(path: Option<PathBuf>, fb: Fb) -> Self {
+    pub(crate) fn new(path: Option<PathBuf>, fb: io::Fb) -> Self {
         match fb {
-            Fb::Fb(fb) => Self::Fb(FbProj::new_with_path(path, fb)),
-            Fb::SFb(fb) => Self::SFb(SFbProj::new_with_path(path, fb)),
+            io::Fb::Fb(fb) => Self::Fb(FbProj::new_with_path(path, fb)),
+            io::Fb::SFb(fb) => Self::SFb(SFbProj::new_with_path(path, fb)),
         }
     }
 
-    pub(crate) fn pre_open(path: impl AsRef<Path>) -> Option<Self> {
+    pub(crate) fn pre_open(path: impl AsRef<std::path::Path>) -> Option<Self> {
         if cfg!(target_arch = "wasm32") {
             return None;
         }
-        match ron::from_str::<Fb>(&std::fs::read_to_string(path).ok()?).ok()? {
-            Fb::Fb(fb) => Some(Self::Fb(FbProj::new(fb))),
-            Fb::SFb(fb) => Some(Self::SFb(SFbProj::new(fb))),
+        match ron::from_str::<io::Fb>(&std::fs::read_to_string(path).ok()?).ok()? {
+            io::Fb::Fb(fb) => Some(Self::Fb(FbProj::new(fb))),
+            io::Fb::SFb(fb) => Some(Self::SFb(SFbProj::new(fb))),
         }
     }
 
@@ -68,10 +59,14 @@ impl ProjSwitch {
         }
     }
 
-    pub(crate) fn curve(&self) -> Curve {
+    pub(crate) fn curve(&self) -> io::Curve {
         match self {
-            ProjSwitch::Fb(proj) => Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
-            ProjSwitch::SFb(proj) => Curve::S(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
+            ProjSwitch::Fb(proj) => {
+                io::Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect())
+            }
+            ProjSwitch::SFb(proj) => {
+                io::Curve::S(proj.cache.curves.iter().map(|[.., c]| *c).collect())
+            }
         }
     }
 

@@ -4,11 +4,6 @@ use four_bar::*;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
-pub(crate) enum Curve {
-    P(Vec<[f64; 2]>),
-    S(Vec<[f64; 3]>),
-}
-
 #[derive(Deserialize, Serialize)]
 enum PlotType {
     P(Option<FourBar>, Vec<(String, Vec<[f64; 2]>)>),
@@ -45,13 +40,13 @@ impl PlotType {
         }
     }
 
-    fn push_fb_curve(&mut self, s: &'static str, c: Curve) {
+    fn push_fb_curve(&mut self, s: &'static str, c: io::Curve) {
         let s = s.to_string();
         match (c, self) {
-            (Curve::P(c), Self::P(_, curves)) => curves.push((s, c)),
-            (Curve::P(c), p @ Self::S(_, _)) => *p = Self::P(None, vec![(s, c)]),
-            (Curve::S(c), p @ Self::P(_, _)) => *p = Self::S(None, vec![(s, c)]),
-            (Curve::S(c), Self::S(_, curves)) => curves.push((s, c)),
+            (io::Curve::P(c), Self::P(_, curves)) => curves.push((s, c)),
+            (io::Curve::P(c), p @ Self::S(_, _)) => *p = Self::P(None, vec![(s, c)]),
+            (io::Curve::S(c), p @ Self::P(_, _)) => *p = Self::S(None, vec![(s, c)]),
+            (io::Curve::S(c), Self::S(_, curves)) => curves.push((s, c)),
         }
     }
 }
@@ -128,27 +123,16 @@ impl PlotOpt {
                 }
                 lnk.projs.select(ui, false);
             });
-            if ui.button("🖴 Add 2D Curve from CSV").clicked() {
+            if ui.button("🖴 Add Curve from CSV").clicked() {
                 let plot = self.plot.clone();
-                super::io::open_csv(move |_, c| {
-                    plot.borrow_mut().push_fb_curve("New Curve", Curve::P(c));
-                });
-            }
-            if ui.button("🖴 Add 3D Curve from CSV").clicked() {
-                let plot = self.plot.clone();
-                super::io::open_csv(move |_, c| {
-                    plot.borrow_mut().push_fb_curve("New Curve", Curve::S(c));
-                });
+                super::io::open_csv(move |_, c| plot.borrow_mut().push_fb_curve("New Curve", c));
             }
             if ui.button("🖴 Add Curve from RON").clicked() {
                 let res = lnk.cfg.res;
                 let plot = self.plot.clone();
                 super::io::open_ron(move |_, fb| {
-                    let c = match fb {
-                        io::Fb::Fb(fb) => Curve::P(fb.curve(res)),
-                        io::Fb::SFb(fb) => Curve::S(fb.curve(res)),
-                    };
-                    plot.borrow_mut().push_fb_curve("New Curve", c);
+                    plot.borrow_mut()
+                        .push_fb_curve("New Curve", fb.into_curve(res));
                 });
             }
         });

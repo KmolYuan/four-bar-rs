@@ -3,7 +3,6 @@ use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-mod atomic;
 mod blueprint;
 mod io;
 mod link;

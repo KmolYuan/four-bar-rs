@@ -1,10 +1,11 @@
 //! Create a codebook database for four-bar linkages.
-use self::distr::Code;
+pub use self::distr::Code;
 use super::{NormFourBar, SNormFourBar};
 use mh::{
     random::{Rng, SeedOption},
     utility::prelude::*,
 };
+pub use ndarray_npy::{ReadNpzError, WriteNpzError};
 use std::{marker::PhantomData, sync::Mutex};
 
 mod distr;
@@ -179,7 +180,7 @@ where
     }
 
     /// Read codebook from NPZ file.
-    pub fn read<R>(r: R) -> Result<Self, ndarray_npy::ReadNpzError>
+    pub fn read<R>(r: R) -> Result<Self, ReadNpzError>
     where
         R: std::io::Read + std::io::Seek,
     {
@@ -194,7 +195,7 @@ where
     }
 
     /// Write codebook to NPZ file.
-    pub fn write<W>(&self, w: W) -> Result<W, ndarray_npy::WriteNpzError>
+    pub fn write<W>(&self, w: W) -> Result<W, WriteNpzError>
     where
         W: std::io::Write + std::io::Seek,
     {

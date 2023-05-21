@@ -1,5 +1,5 @@
 use self::impl_io::*;
-use four_bar::{cb::FbCodebook, *};
+use four_bar::*;
 use std::path::{Path, PathBuf};
 
 const FMT: &str = "Rusty Object Notation (RON)";
@@ -173,31 +173,29 @@ where
     open(FMT, EXT, done);
 }
 
-pub(crate) fn open_csv_single<D, C>(done: C)
+pub(crate) fn open_csv_single<C>(done: C)
 where
-    D: serde::de::DeserializeOwned,
-    C: FnOnce(PathBuf, Vec<D>) + 'static,
+    C: FnOnce(PathBuf, Curve) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(csv::parse_csv(&s), |d| done(p, d));
+        alert(Curve::parse_csv(&s), |d| done(p, d));
     });
 }
 
-pub(crate) fn open_csv<D, C>(done: C)
+pub(crate) fn open_csv<C>(done: C)
 where
-    D: serde::de::DeserializeOwned,
-    C: Fn(PathBuf, Vec<D>) + 'static,
+    C: Fn(PathBuf, Curve) + 'static,
 {
     open(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(csv::parse_csv(&s), |d| done(p, d));
+        alert(Curve::parse_csv(&s), |d| done(p, d));
     });
 }
 
 pub(crate) fn open_cb<C>(done: C)
 where
-    C: Fn(FbCodebook) + 'static,
+    C: Fn(Cb) + 'static,
 {
-    let done = move |b| alert(FbCodebook::read(std::io::Cursor::new(b)), &done);
+    let done = move |b| alert(Cb::from_buf(b), &done);
     open_bin(CB_FMT, CB_EXT, done);
 }
 
@@ -255,4 +253,50 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
 pub(crate) enum Fb {
     Fb(FourBar),
     SFb(SFourBar),
+}
+
+impl Fb {
+    pub(crate) fn into_curve(self, res: usize) -> Curve {
+        match self {
+            Self::Fb(fb) => Curve::P(fb.curve(res)),
+            Self::SFb(fb) => Curve::S(fb.curve(res)),
+        }
+    }
+}
+
+pub(crate) enum Curve {
+    P(Vec<[f64; 2]>),
+    S(Vec<[f64; 3]>),
+}
+
+impl Default for Curve {
+    fn default() -> Self {
+        Self::P(Vec::new())
+    }
+}
+
+impl Curve {
+    fn parse_csv(s: &str) -> Result<Self, csv::Error> {
+        if let Ok(c) = csv::parse_csv(s) {
+            Ok(Self::P(c))
+        } else {
+            Ok(Self::S(csv::parse_csv(s)?))
+        }
+    }
+}
+
+pub(crate) enum Cb {
+    P(cb::FbCodebook),
+    S(cb::SFbCodebook),
+}
+
+impl Cb {
+    fn from_buf(buf: Vec<u8>) -> Result<Self, cb::ReadNpzError> {
+        let c = std::io::Cursor::new(buf);
+        if let Ok(cb) = cb::FbCodebook::read(c.clone()) {
+            Ok(Self::P(cb))
+        } else {
+            Ok(Self::S(cb::SFbCodebook::read(c)?))
+        }
+    }
 }

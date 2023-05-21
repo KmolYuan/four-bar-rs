@@ -19,13 +19,19 @@ where
     }
 }
 
+/// Implement this trait to support codebook functions.
 pub trait Code<D: efd::EfdDim, const N: usize>: Normalized<D> + CurveGen<D> + Sized {
+    /// Random distribution
     type Distr: Distribution<[Self; 2]> + Sync;
 
+    /// Return the distribution.
     fn distr() -> Self::Distr;
+    /// Create entities from code.
     fn from_code(code: [f64; N], inv: bool) -> Self;
+    /// Convert entities to code.
     fn to_code(self) -> ([f64; N], bool);
 
+    /// Generate curve and check the curve type.
     fn get_curve(&self, res: usize, is_open: bool) -> Option<Vec<efd::Coord<D>>> {
         self.angle_bound()
             .check_mode(is_open)

@@ -1,18 +1,9 @@
 use self::proj_inner::*;
-use super::{
-    io::{self, Fb},
-    link::Cfg,
-    widgets::*,
-};
+use super::{io, link::Cfg, widgets::*};
 use eframe::egui::*;
 use four_bar::{CurveGen as _, *};
 use serde::{Deserialize, Serialize};
-use std::{
-    cell::RefCell,
-    path::{Path, PathBuf},
-    rc::Rc,
-    sync::{Arc, RwLock},
-};
+use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 
 mod proj_inner;
 mod undo;
@@ -35,23 +26,25 @@ impl Pivot {
     }
 }
 
-#[derive(Default, Deserialize, Serialize, Clone)]
-pub(crate) struct Queue(Arc<RwLock<Vec<ProjSwitch>>>);
+#[derive(Default, Clone)]
+pub(crate) struct Queue(Arc<mutex::RwLock<Vec<ProjSwitch>>>);
 
 impl Queue {
-    pub(crate) fn push(&self, path: Option<PathBuf>, fb: Fb) {
-        self.0.write().unwrap().push(ProjSwitch::new(path, fb));
+    pub(crate) fn push(&self, path: Option<PathBuf>, fb: io::Fb) {
+        self.0.write().push(ProjSwitch::new(path, fb));
     }
 }
 
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct Projects {
-    path: Rc<RefCell<Option<PathBuf>>>,
-    list: Vec<ProjSwitch>,
-    queue: Queue,
-    pivot: Pivot,
     curr: usize,
+    pivot: Pivot,
+    list: Vec<ProjSwitch>,
+    #[serde(skip)]
+    queue: Queue,
+    #[serde(skip)]
+    path: Rc<RefCell<Option<PathBuf>>>,
 }
 
 impl Projects {
@@ -59,7 +52,7 @@ impl Projects {
         files.into_iter().for_each(|p| self.pre_open(p));
         self.list.iter_mut().for_each(|p| p.preload());
         self.list.retain(|p| p.path().is_some());
-        if self.list.is_empty() && self.queue.0.read().unwrap().is_empty() {
+        if self.list.is_empty() && self.queue.0.read().is_empty() {
             self.push_fb_example();
         } else {
             self.list.iter_mut().for_each(|p| p.cache(res));
@@ -67,11 +60,11 @@ impl Projects {
     }
 
     pub(crate) fn push_fb_example(&self) {
-        self.queue.0.write().unwrap().push(ProjSwitch::new_fb());
+        self.queue.push(None, io::Fb::Fb(FourBar::example()));
     }
 
     pub(crate) fn push_sfb_example(&self) {
-        self.queue.0.write().unwrap().push(ProjSwitch::new_sfb());
+        self.queue.push(None, io::Fb::SFb(SFourBar::example()));
     }
 
     pub(crate) fn pre_open(&mut self, path: PathBuf) {
@@ -96,10 +89,10 @@ impl Projects {
                 }
             }
         });
-        let len = self.queue.0.read().unwrap().len();
+        let len = self.queue.0.read().len();
         if len > 0 {
             self.list.reserve(len);
-            while let Some(mut proj) = self.queue.0.write().unwrap().pop() {
+            while let Some(mut proj) = self.queue.0.write().pop() {
                 proj.cache(n);
                 self.list.push(proj);
             }
@@ -172,7 +165,7 @@ impl Projects {
         self.list[self.curr].fb_state()
     }
 
-    pub(crate) fn current_curve(&self) -> super::plotter::Curve {
+    pub(crate) fn current_curve(&self) -> io::Curve {
         self.list[self.curr].curve()
     }
 
