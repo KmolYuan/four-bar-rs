@@ -121,8 +121,8 @@ impl App {
                     ui.heading("Web Storage");
                     ui.label("The Web version disabled local storage by default.");
                     ui.label("Check \"Save local data\" to turn it on.");
-                    ui.colored_label(Color32::GREEN, "Guest friendly!");
                 }
+                ui.colored_label(Color32::GREEN, "Enjoy this app!");
                 ui.allocate_space(ui.available_size());
             });
         self.welcome_off = !welcome;
