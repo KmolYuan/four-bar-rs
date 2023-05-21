@@ -79,20 +79,20 @@ impl App {
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
+        app.bp.preload(&ctx.egui_ctx);
+        app.link.preload(files, app.link.cfg.res);
         #[cfg(target_arch = "wasm32")]
         {
             #[wasm_bindgen::prelude::wasm_bindgen]
             extern "C" {
-                fn loading_finished();
                 fn preload() -> String;
+                fn loading_finished();
             }
-            loading_finished();
             if let Ok(fb) = ron::from_str(&preload()) {
                 app.link.projs.queue().push(None, fb);
             }
+            loading_finished();
         }
-        app.bp.preload(&ctx.egui_ctx);
-        app.link.preload(files, app.link.cfg.res);
         Box::new(app)
     }
 
@@ -116,6 +116,13 @@ impl App {
                 ui.heading("License");
                 ui.label("This software is under AGPL v3 license.");
                 ui.label("The commercial usages under server or client side are not allowed.");
+                if cfg!(target_arch = "wasm32") {
+                    ui.separator();
+                    ui.heading("Web Storage");
+                    ui.label("The Web version disabled local storage by default.");
+                    ui.label("Check \"Save local data\" to turn it on.");
+                    ui.colored_label(Color32::GREEN, "Guest friendly!");
+                }
                 ui.allocate_space(ui.available_size());
             });
         self.welcome_off = !welcome;
@@ -193,6 +200,10 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        #[cfg(target_arch = "wasm32")]
+        if !self.link.cfg.web_data {
+            return;
+        }
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }
