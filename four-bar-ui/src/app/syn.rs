@@ -320,13 +320,7 @@ impl Synthesis {
             });
     }
 
-    pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi) {
-        if self.from_plot_open && ui.plot_clicked() {
-            // Add target curve from canvas
-            #[allow(unused_variables)]
-            let plot::PlotPoint { x, y } = ui.pointer_coordinate().unwrap();
-            // TODO: Interactives
-        }
+    pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi, lnk: &super::link::Linkages) {
         if self.target.has_target() {
             const NAME: &str = "Synthesis target";
             let target = match &self.target {
@@ -343,6 +337,31 @@ impl Synthesis {
                 .filled(false)
                 .radius(5.);
             ui.points(points);
+        }
+        if !self.from_plot_open || !ui.plot_clicked() {
+            return;
+        }
+        // Add target curve from canvas
+        let p = ui.pointer_coordinate().unwrap();
+        match &mut self.target {
+            Target::P(t, _) => t.push([p.x, p.y]),
+            Target::S(t, _) => {
+                let f = || {
+                    let [sx, sy, sz, r] = lnk.projs.current_sphere()?;
+                    let dx = p.x - sx;
+                    let dy = p.y - sy;
+                    (dx.hypot(dy) <= r).then_some([p.x, p.y, r * r - dx * dx - dy * dy + sz])
+                };
+                if let Some(c) = f() {
+                    t.push(c);
+                } else {
+                    let p = plot::Points::new([p.x, p.y])
+                        .shape(plot::MarkerShape::Cross)
+                        .color(Color32::RED)
+                        .radius(30.);
+                    ui.points(p);
+                }
+            }
         }
     }
 

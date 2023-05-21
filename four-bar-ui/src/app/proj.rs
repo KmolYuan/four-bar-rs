@@ -169,6 +169,10 @@ impl Projects {
         self.list[self.curr].curve()
     }
 
+    pub(crate) fn current_sphere(&self) -> Option<[f64; 4]> {
+        self.list.get(self.curr)?.get_sphere()
+    }
+
     pub(crate) fn request_cache(&mut self) {
         self.list[self.curr].request_cache();
     }

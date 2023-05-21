@@ -152,7 +152,7 @@ impl App {
             .show(ui, |ui| {
                 self.bp.plot(ui);
                 self.link.plot(ui);
-                self.syn.plot(ui);
+                self.syn.plot(ui, &self.link);
             });
     }
 

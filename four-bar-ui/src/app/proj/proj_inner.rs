@@ -54,19 +54,24 @@ impl ProjSwitch {
 
     pub(crate) fn fb_state(&self) -> (f64, io::Fb) {
         match self {
-            ProjSwitch::Fb(proj) => (proj.angle, io::Fb::Fb(proj.fb.clone())),
-            ProjSwitch::SFb(proj) => (proj.angle, io::Fb::SFb(proj.fb.clone())),
+            Self::Fb(proj) => (proj.angle, io::Fb::Fb(proj.fb.clone())),
+            Self::SFb(proj) => (proj.angle, io::Fb::SFb(proj.fb.clone())),
         }
     }
 
     pub(crate) fn curve(&self) -> io::Curve {
         match self {
-            ProjSwitch::Fb(proj) => {
-                io::Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect())
-            }
-            ProjSwitch::SFb(proj) => {
-                io::Curve::S(proj.cache.curves.iter().map(|[.., c]| *c).collect())
-            }
+            Self::Fb(proj) => io::Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
+            Self::SFb(proj) => io::Curve::S(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
+        }
+    }
+
+    pub(crate) fn get_sphere(&self) -> Option<[f64; 4]> {
+        if let Self::SFb(proj) = self {
+            let [x, y, z] = proj.fb.oc();
+            Some([x, y, z, proj.fb.r()])
+        } else {
+            None
         }
     }
 
