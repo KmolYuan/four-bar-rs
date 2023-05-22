@@ -202,7 +202,7 @@ where
     }
 
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
-        path_label(ui, "🖹", self.path.as_ref(), "Untitled");
+        path_label(ui, "🖹", self.path.as_ref(), "Unsaved");
         ui.label("Linkage type:");
         ui.label(FourBarTy::from(&self.fb).name());
         match self.cache.angle_bound {

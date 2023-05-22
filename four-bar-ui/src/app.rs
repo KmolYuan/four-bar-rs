@@ -64,11 +64,12 @@ impl App {
         ctx.egui_ctx
             .set_fonts(FontDefinitions { font_data, families });
         let mut style = (*ctx.egui_ctx.style()).clone();
+        style.override_text_style.replace(TextStyle::Body);
         for (text_style, size) in [
+            (TextStyle::Button, 14.),
             (TextStyle::Small, 14.),
             (TextStyle::Body, 18.),
             (TextStyle::Monospace, 18.),
-            (TextStyle::Button, 12.5),
             (TextStyle::Heading, 20.),
         ] {
             let id = FontId::proportional(size);
@@ -139,9 +140,7 @@ impl App {
             ui.selectable_value(&mut self.panel, value, icon)
                 .on_hover_text(text);
         }
-        if !matches!(self.panel, Panel::Off)
-            && ui.small_button("⬅").on_hover_text("Close Panel").clicked()
-        {
+        if !matches!(self.panel, Panel::Off) && small_btn(ui, "⬅", "Close Panel") {
             self.panel = Panel::Off;
         }
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {

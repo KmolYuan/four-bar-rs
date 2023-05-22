@@ -60,11 +60,11 @@ impl Projects {
         }
     }
 
-    pub(crate) fn push_fb_example(&self) {
+    fn push_fb_example(&self) {
         self.queue.push(None, io::Fb::Fb(FourBar::example()));
     }
 
-    pub(crate) fn push_sfb_example(&self) {
+    fn push_sfb_example(&self) {
         self.queue.push(None, io::Fb::SFb(SFourBar::example()));
     }
 
@@ -111,13 +111,14 @@ impl Projects {
                 let q = self.queue();
                 io::open_ron(move |path, fb| q.push(Some(path), fb));
             }
-            if ui.button("🗋 New Planar").clicked() {
+            if ui.button("✚ Planar").clicked() {
                 self.push_fb_example();
             }
-            if ui.button("🗋 New Spherical").clicked() {
+            if ui.button("✚ Spherical").clicked() {
                 self.push_sfb_example();
             }
         });
+        ui.separator();
         if self.select(ui, true) {
             self.list[self.curr].show(ui, &mut self.pivot, cfg);
         } else {
@@ -131,8 +132,13 @@ impl Projects {
             return false;
         }
         ui.horizontal(|ui| {
-            ComboBox::from_label("")
-                .show_index(ui, &mut self.curr, self.list.len(), |i| self.list[i].name());
+            ComboBox::from_label("").show_index(ui, &mut self.curr, self.list.len(), |i| {
+                let proj = &self.list[i];
+                match proj {
+                    ProjSwitch::Fb(_) => format!("[P] {}", proj.name()),
+                    ProjSwitch::SFb(_) => format!("[S] {}", proj.name()),
+                }
+            });
             if !show_btn {
                 return;
             }
