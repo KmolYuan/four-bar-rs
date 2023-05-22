@@ -294,12 +294,11 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     let rot = {
         let p0_axis = na::Vector3::from(to_cc([p0i, p0j], 1.));
         let rot1 = na::UnitQuaternion::from_scaled_axis(p0_axis * a);
-        let rot2 = if op0 == p0_axis {
-            na::UnitQuaternion::identity()
-        } else {
-            let axis = op0.cross(&p0_axis).normalize();
+        let rot2 = if let Some(axis) = op0.cross(&p0_axis).try_normalize(0.) {
             let angle = na::Vector3::z().dot(&p0_axis).acos();
             na::UnitQuaternion::from_scaled_axis(axis * angle)
+        } else {
+            na::UnitQuaternion::identity()
         };
         rot1 * rot2
     };
