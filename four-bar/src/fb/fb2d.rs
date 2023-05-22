@@ -163,16 +163,12 @@ fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) 
         return [f64::NAN; 2];
     }
     let a = 0.5 * (r1 * r1 - r2 * r2 + r * r) / r;
-    let h = (r1 * r1 - a * a).sqrt();
+    let h = (r1 * r1 - a * a).sqrt() * if inv { -1. } else { 1. };
     let c = dx / r;
     let s = dy / r;
     let xm = x1 + a * c;
     let ym = y1 + a * s;
-    if inv {
-        [xm + h * s, ym - h * c]
-    } else {
-        [xm - h * s, ym + h * c]
-    }
+    [xm - h * s, ym + h * c]
 }
 
 fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {

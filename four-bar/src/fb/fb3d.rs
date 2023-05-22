@@ -274,11 +274,8 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         let h1 = k1 - k2 + k3 * b.cos();
         let h2 = -k4 + k5 * b.cos();
         let h3 = k6 * b.sin();
-        if !inv {
-            2. * (-h3 + (h3 * h3 - h1 * h1 + h2 * h2).sqrt()).atan2(h1 - h2)
-        } else {
-            2. * (-h3 - (h3 * h3 - h1 * h1 + h2 * h2).sqrt()).atan2(h1 - h2)
-        }
+        let h = (h3 * h3 - h1 * h1 + h2 * h2).sqrt() * if inv { -1. } else { 1. };
+        2. * (-h3 + h).atan2(h1 - h2)
     };
     let op1 = {
         let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l1);
