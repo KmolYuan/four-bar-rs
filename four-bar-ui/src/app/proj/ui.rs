@@ -133,7 +133,6 @@ impl ProjPlot<efd::D2> for FourBar {
 }
 
 impl ProjPlot<efd::D3> for SFourBar {
-    #[allow(unused_variables)]
     fn delta_plot(
         &self,
         ui: &mut plot::PlotUi,

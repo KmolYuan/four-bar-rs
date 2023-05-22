@@ -32,13 +32,13 @@ pub enum FourBarTy {
     GRCR,
     /// Grashof rocker crank
     GRRC,
-    /// Non-Grashof Double rocker (ground link is the longest)
+    /// Non-Grashof triple rocker (ground link is the longest)
     RRR1,
-    /// Non-Grashof Double rocker (driver link is the longest)
+    /// Non-Grashof triple rocker (driver link is the longest)
     RRR2,
-    /// Non-Grashof Double rocker (coupler link is the longest)
+    /// Non-Grashof triple rocker (coupler link is the longest)
     RRR3,
-    /// Non-Grashof Double rocker (follower link is the longest)
+    /// Non-Grashof triple rocker (follower link is the longest)
     RRR4,
 }
 
@@ -69,14 +69,14 @@ impl FourBarTy {
     /// Name of the type.
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::GCCC => "Grashof double crank (Drag-link) (GCCC)",
+            Self::GCCC => "Grashof double crank (Drag-link, GCCC)",
             Self::GCRR => "Grashof crank rocker (GCRR)",
             Self::GRCR => "Grashof double rocker (GRCR)",
             Self::GRRC => "Grashof rocker crank (GRRC)",
-            Self::RRR1 => "Non-Grashof Double rocker (RRR1)",
-            Self::RRR2 => "Non-Grashof Double rocker (RRR2)",
-            Self::RRR3 => "Non-Grashof Double rocker (RRR3)",
-            Self::RRR4 => "Non-Grashof Double rocker (RRR4)",
+            Self::RRR1 => "Non-Grashof triple rocker (RRR1)",
+            Self::RRR2 => "Non-Grashof triple rocker (RRR2)",
+            Self::RRR3 => "Non-Grashof triple rocker (RRR3)",
+            Self::RRR4 => "Non-Grashof triple rocker (RRR4)",
         }
     }
 
