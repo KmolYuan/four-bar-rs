@@ -186,8 +186,8 @@ where
     M: Normalized<D>,
     M::De: CurveGen<D>
         + undo::IntoDelta
-        + undo::DeltaUi
-        + undo::DeltaPlot<D>
+        + ui::ProjUi
+        + ui::ProjPlot<D>
         + Default
         + for<'a> Deserialize<'a>,
     efd::Coord<D>: Serialize,
@@ -279,9 +279,7 @@ where
                 self.cache.changed = true;
             }
         });
-        ui.separator();
-        ui.heading("Parameters");
-        let mut res = undo::DeltaUi::delta_ui(&mut self.fb, ui, cfg);
+        let mut res = ui::ProjUi::delta_ui(&mut self.fb, ui, cfg);
         ui.separator();
         ui.heading("Angle");
         if let Some([start, end]) = self.cache.angle_bound.to_value() {
@@ -309,7 +307,7 @@ where
     fn plot(&self, ui: &mut plot::PlotUi, ind: usize, id: usize) {
         if !self.hide {
             let joints = self.cache.joints.as_ref();
-            undo::DeltaPlot::delta_plot(&self.fb, ui, joints, &self.cache.curves, ind == id);
+            ui::ProjPlot::delta_plot(&self.fb, ui, joints, &self.cache.curves, ind == id);
         }
     }
 

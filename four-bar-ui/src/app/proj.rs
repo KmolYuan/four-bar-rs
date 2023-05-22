@@ -1,11 +1,12 @@
-use self::proj_inner::*;
+use self::switch::*;
 use super::{io, link::Cfg, widgets::*};
 use eframe::egui::*;
 use four_bar::{CurveGen as _, *};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 
-mod proj_inner;
+mod switch;
+mod ui;
 mod undo;
 
 #[derive(Default, Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]
