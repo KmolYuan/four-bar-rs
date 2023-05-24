@@ -58,6 +58,16 @@ impl Synthesis {
         ui.group(|ui| self.opt_setting(ui));
         nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
         nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
+        ui.horizontal(|ui| {
+            ui.label("Mode: ");
+            for (mode, name) in [
+                (syn::Mode::Closed, "Closed"),
+                (syn::Mode::Open, "Open"),
+                (syn::Mode::Partial, "Partial"),
+            ] {
+                ui.selectable_value(&mut self.cfg.mode, mode, name);
+            }
+        });
         ui.separator();
         match self.target {
             P(_, _) => ui.heading("Planar Target Curve"),
