@@ -1,4 +1,4 @@
-use super::widgets::*;
+use super::{link::Linkages, widgets::*};
 use crate::{io, syn_cmd, syn_cmd::Target::*};
 use eframe::egui::*;
 use four_bar::*;
@@ -8,20 +8,6 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 #[inline]
 fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
     ron::ser::to_string_pretty(s, Default::default()).unwrap()
-}
-
-#[derive(Deserialize, Serialize, Clone, PartialEq)]
-#[serde(default)]
-pub(crate) struct SynConfig {
-    pub(crate) gen: u64,
-    pub(crate) pop: usize,
-    pub(crate) mode: syn::Mode,
-}
-
-impl Default for SynConfig {
-    fn default() -> Self {
-        Self { gen: 50, pop: 200, mode: syn::Mode::Closed }
-    }
 }
 
 #[derive(Default)]
@@ -35,8 +21,8 @@ enum Cache {
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Synthesis {
-    cfg_method: syn_cmd::SynCmd,
-    cfg: SynConfig,
+    method: syn_cmd::SynMethod,
+    cfg: syn_cmd::SynConfig,
     target: syn_cmd::Target,
     tasks: Vec<syn_cmd::Task>,
     #[serde(skip)]
@@ -50,7 +36,7 @@ pub(crate) struct Synthesis {
 }
 
 impl Synthesis {
-    pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut super::link::Linkages) {
+    pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.cfg);
@@ -216,7 +202,7 @@ impl Synthesis {
         ui.horizontal(|ui| {
             let enabled = self.target.has_target();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
-                self.start_syn(lnk.projs.queue());
+                self.start_syn(lnk);
             }
             ui.add(ProgressBar::new(0.).show_percentage());
         });
@@ -225,14 +211,14 @@ impl Synthesis {
 
     fn opt_setting(&mut self, ui: &mut Ui) {
         ui.horizontal_wrapped(|ui| {
-            for &(name, abbr, f) in syn_cmd::SynCmd::LIST {
-                let c = self.cfg_method.abbr() == abbr;
+            for &(name, abbr, f) in syn_cmd::SynMethod::LIST {
+                let c = self.method.abbr() == abbr;
                 if ui.selectable_label(c, abbr).on_hover_text(name).clicked() && !c {
-                    self.cfg_method = f();
+                    self.method = f();
                 }
             }
         });
-        let m = &mut self.cfg_method;
+        let m = &mut self.method;
         ui.horizontal_wrapped(|ui| {
             ui.hyperlink_to(m.name(), m.link())
                 .on_hover_text(format!("More about {}", m.name()));
@@ -242,7 +228,7 @@ impl Synthesis {
                 percent(ui, concat![stringify!($name), ": "], &mut $s.$name);
             )+}};
         }
-        use syn_cmd::SynCmd::*;
+        use syn_cmd::SynMethod::*;
         match m {
             De(s) => {
                 ui.horizontal_wrapped(|ui| {
@@ -284,7 +270,7 @@ impl Synthesis {
             });
     }
 
-    pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi, lnk: &super::link::Linkages) {
+    pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi, lnk: &Linkages) {
         if self.target.has_target() {
             const NAME: &str = "Synthesis target";
             let target = match &self.target {
@@ -329,36 +315,14 @@ impl Synthesis {
         }
     }
 
-    fn start_syn(&mut self, queue: super::proj::Queue) {
+    fn start_syn(&mut self, lnk: &Linkages) {
+        let (s, task) =
+            syn_cmd::Solver::new(self.method.clone(), self.target.clone(), self.cfg.clone());
+        self.task_queue.push(task);
+        let queue = lnk.projs.queue();
+        let f = move || io::alert(s.solve(), |fb| queue.push(None, fb));
         #[cfg(not(target_arch = "wasm32"))]
-        use four_bar::mh::rayon::spawn;
-        let target = self.target.clone();
-        let method = self.cfg_method.clone();
-        let pop = self.cfg.pop;
-        let mode = self.cfg.mode;
-        let task = syn_cmd::Task { gen: self.cfg.gen, time: 0, conv: Vec::new() };
-        let task = Arc::new(mutex::RwLock::new((0, task)));
-        self.task_queue.push(task.clone());
-
-        macro_rules! impl_solve {
-            ($s:ident) => {
-                syn_cmd::SynSolver::new($s, target, pop, mode, task).solve()
-            };
-        }
-
-        use syn_cmd::SynCmd::*;
-        let f = move || {
-            let fb = match method {
-                De(s) => impl_solve!(s),
-                Fa(s) => impl_solve!(s),
-                Pso(s) => impl_solve!(s),
-                Rga(s) => impl_solve!(s),
-                Tlbo(s) => impl_solve!(s),
-            };
-            queue.push(None, fb);
-        };
-        #[cfg(not(target_arch = "wasm32"))]
-        spawn(f);
+        four_bar::mh::rayon::spawn(f);
         #[cfg(target_arch = "wasm32")]
         f(); // Block
     }

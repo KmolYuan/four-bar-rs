@@ -48,7 +48,7 @@ struct Syn {
     #[clap(flatten)]
     cfg: SynCfg,
     #[clap(subcommand)]
-    method_cmd: Option<crate::syn_cmd::SynCmd>,
+    method_cmd: Option<crate::syn_cmd::SynMethod>,
 }
 
 #[derive(clap::Args)]

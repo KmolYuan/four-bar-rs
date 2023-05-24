@@ -74,11 +74,11 @@ pub(super) fn syn(syn: Syn) {
     let mpb = MultiProgress::new();
     let method_cmd = method_cmd.unwrap_or_default();
     let run: Box<dyn Fn(PathBuf) + Send + Sync> = match &method_cmd {
-        SynCmd::De(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
-        SynCmd::Fa(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
-        SynCmd::Pso(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
-        SynCmd::Rga(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
-        SynCmd::Tlbo(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynMethod::De(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynMethod::Fa(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynMethod::Pso(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynMethod::Rga(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
+        SynMethod::Tlbo(s) => Box::new(|f| run(&mpb, f, &cfg, &cb, &refer, s.clone())),
     };
     if one_by_one {
         files.into_iter().for_each(run);
