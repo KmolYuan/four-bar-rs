@@ -1,4 +1,5 @@
-use super::{io, widgets::*};
+use super::widgets::*;
+use crate::io;
 use eframe::egui::*;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
@@ -67,7 +68,7 @@ impl PlotOpt {
         };
         if ui.button("🖴 Load Linkage").clicked() {
             let plot = self.plot.clone();
-            super::io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
+            io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
         }
         ui.horizontal(|ui| {
             if ui.button("🖴 Add from").clicked() {
@@ -125,12 +126,12 @@ impl PlotOpt {
             });
             if ui.button("🖴 Add Curve from CSV").clicked() {
                 let plot = self.plot.clone();
-                super::io::open_csv(move |_, c| plot.borrow_mut().push_fb_curve("New Curve", c));
+                io::open_csv(move |_, c| plot.borrow_mut().push_fb_curve("New Curve", c));
             }
             if ui.button("🖴 Add Curve from RON").clicked() {
                 let res = lnk.cfg.res;
                 let plot = self.plot.clone();
-                super::io::open_ron(move |_, fb| {
+                io::open_ron(move |_, fb| {
                     plot.borrow_mut()
                         .push_fb_curve("New Curve", fb.into_curve(res));
                 });
@@ -204,7 +205,7 @@ impl Plotter {
                         if let Some(angle) = p_opt.angle {
                             opt = opt.angle(angle);
                         }
-                        super::io::alert(plot2d::plot(root, curves, opt), |_| ());
+                        io::alert(plot2d::plot(root, curves, opt), |_| ());
                     }
                     PlotType::S(fb, c) => {
                         let curves = c.iter().map(|(s, c)| (s.as_str(), c.as_slice()));
@@ -212,10 +213,10 @@ impl Plotter {
                         if let Some(angle) = p_opt.angle {
                             opt = opt.angle(angle);
                         }
-                        super::io::alert(plot3d::plot(root, curves, opt), |_| ());
+                        io::alert(plot3d::plot(root, curves, opt), |_| ());
                     }
                 });
-            super::io::save_svg_ask(&buf, "figure.svg");
+            io::save_svg_ask(&buf, "figure.svg");
         }
     }
 }

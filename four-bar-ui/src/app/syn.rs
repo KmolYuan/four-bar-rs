@@ -1,5 +1,5 @@
-use super::{io, widgets::*};
-use crate::syn_cmd::SynCmd;
+use super::widgets::*;
+use crate::{io, syn_cmd, syn_cmd::Target::*};
 use eframe::egui::*;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
@@ -10,21 +10,18 @@ fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
     ron::ser::to_string_pretty(s, Default::default()).unwrap()
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
-pub(crate) struct Synthesis {
-    cfg_method: SynCmd,
-    cfg: SynConfig,
-    target: Target,
-    tasks: Vec<Task>,
-    #[serde(skip)]
-    queue: Rc<RefCell<Cache>>,
-    #[serde(skip)]
-    task_queue: Vec<Arc<mutex::RwLock<(u64, Task)>>>,
-    #[serde(skip)]
-    conv_open: bool,
-    #[serde(skip)]
-    from_plot_open: bool,
+pub(crate) struct SynConfig {
+    pub(crate) gen: u64,
+    pub(crate) pop: usize,
+    pub(crate) mode: syn::Mode,
+}
+
+impl Default for SynConfig {
+    fn default() -> Self {
+        Self { gen: 50, pop: 200, mode: syn::Mode::Closed }
+    }
 }
 
 #[derive(Default)]
@@ -35,65 +32,21 @@ enum Cache {
     Cb(io::Cb),
 }
 
-#[derive(Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
-struct SynConfig {
-    gen: u64,
-    pop: usize,
-    mode: syn::Mode,
-}
-
-impl Default for SynConfig {
-    fn default() -> Self {
-        Self { gen: 50, pop: 200, mode: syn::Mode::Closed }
-    }
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-enum Target {
-    P(Vec<[f64; 2]>, #[serde(skip)] cb::FbCodebook),
-    S(Vec<[f64; 3]>, #[serde(skip)] cb::SFbCodebook),
-}
-
-impl Default for Target {
-    fn default() -> Self {
-        Self::P(Vec::new(), Default::default())
-    }
-}
-
-impl Target {
-    fn set_curve(&mut self, curve: io::Curve) {
-        match (curve, self) {
-            (io::Curve::P(c), Self::P(t, _)) => *t = c,
-            (io::Curve::S(c), Self::S(t, _)) => *t = c,
-            (io::Curve::P(c), t @ Self::S(_, _)) => *t = Self::P(c, Default::default()),
-            (io::Curve::S(c), t @ Self::P(_, _)) => *t = Self::S(c, Default::default()),
-        }
-    }
-
-    fn set_cb(&mut self, cb: io::Cb) -> Result<(), mh::ndarray::ShapeError> {
-        match (cb, self) {
-            (io::Cb::P(c), Self::P(_, t)) => t.merge_inplace(&c)?,
-            (io::Cb::S(c), Self::S(_, t)) => t.merge_inplace(&c)?,
-            (io::Cb::P(c), t @ Self::S(_, _)) => *t = Self::P(Vec::new(), c),
-            (io::Cb::S(c), t @ Self::P(_, _)) => *t = Self::S(Vec::new(), c),
-        }
-        Ok(())
-    }
-
-    fn has_target(&self) -> bool {
-        match self {
-            Self::P(t, _) => !t.is_empty(),
-            Self::S(t, _) => !t.is_empty(),
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-struct Task {
-    gen: u64,
-    time_spent: u64,
-    conv: Vec<f64>,
+pub(crate) struct Synthesis {
+    cfg_method: syn_cmd::SynCmd,
+    cfg: SynConfig,
+    target: syn_cmd::Target,
+    tasks: Vec<syn_cmd::Task>,
+    #[serde(skip)]
+    queue: Rc<RefCell<Cache>>,
+    #[serde(skip)]
+    task_queue: Vec<Arc<mutex::RwLock<(u64, syn_cmd::Task)>>>,
+    #[serde(skip)]
+    conv_open: bool,
+    #[serde(skip)]
+    from_plot_open: bool,
 }
 
 impl Synthesis {
@@ -107,8 +60,8 @@ impl Synthesis {
         nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
         ui.separator();
         match self.target {
-            Target::P(_, _) => ui.heading("Planar Target Curve"),
-            Target::S(_, _) => ui.heading("Spherical Target Curve"),
+            P(_, _) => ui.heading("Planar Target Curve"),
+            S(_, _) => ui.heading("Spherical Target Curve"),
         };
         match std::mem::replace(&mut *self.queue.borrow_mut(), Cache::Empty) {
             Cache::Curve(curve) => self.target.set_curve(curve),
@@ -120,10 +73,10 @@ impl Synthesis {
         ui.horizontal(|ui| {
             if ui.button("🖊 Add from").clicked() {
                 match (lnk.projs.current_curve(), &mut self.target) {
-                    (io::Curve::P(c), Target::P(t, _)) => *t = c,
-                    (io::Curve::S(c), Target::S(t, _)) => *t = c,
-                    (io::Curve::P(c), t @ Target::S(_, _)) => *t = Target::P(c, Default::default()),
-                    (io::Curve::S(c), t @ Target::P(_, _)) => *t = Target::S(c, Default::default()),
+                    (io::Curve::P(c), P(t, _)) => *t = c,
+                    (io::Curve::S(c), S(t, _)) => *t = c,
+                    (io::Curve::P(c), t @ S(_, _)) => *t = P(c, Default::default()),
+                    (io::Curve::S(c), t @ P(_, _)) => *t = S(c, Default::default()),
                 }
             }
             lnk.projs.select(ui, false);
@@ -135,23 +88,23 @@ impl Synthesis {
             }
             if ui.button("💾 Save CSV").clicked() {
                 match &self.target {
-                    Target::P(t, _) => io::save_csv_ask(t),
-                    Target::S(t, _) => io::save_csv_ask(t),
+                    P(t, _) => io::save_csv_ask(t),
+                    S(t, _) => io::save_csv_ask(t),
                 }
             }
         });
         ui.horizontal_wrapped(|ui| {
             if ui.button("🗐 Copy CSV").clicked() {
                 let text = match &self.target {
-                    Target::P(t, _) => csv::dump_csv(t).unwrap(),
-                    Target::S(t, _) => csv::dump_csv(t).unwrap(),
+                    P(t, _) => csv::dump_csv(t).unwrap(),
+                    S(t, _) => csv::dump_csv(t).unwrap(),
                 };
                 ui.output_mut(|s| s.copied_text = text);
             }
             if ui.button("🗐 Copy Array of Tuple").clicked() {
                 let text = match &self.target {
-                    Target::P(t, _) => ron_pretty(t),
-                    Target::S(t, _) => ron_pretty(t),
+                    P(t, _) => ron_pretty(t),
+                    S(t, _) => ron_pretty(t),
                 };
                 ui.output_mut(|s| s.copied_text = text);
             }
@@ -162,15 +115,15 @@ impl Synthesis {
                     };
                 }
                 let text = match &self.target {
-                    Target::P(t, _) => ron_pretty(&vec_nest!(t)),
-                    Target::S(t, _) => ron_pretty(&vec_nest!(t)),
+                    P(t, _) => ron_pretty(&vec_nest!(t)),
+                    S(t, _) => ron_pretty(&vec_nest!(t)),
                 };
                 ui.output_mut(|s| s.copied_text = text);
             }
         });
         ui.group(|ui| match &mut self.target {
-            Target::P(t, _) => table(ui, t),
-            Target::S(t, _) => table(ui, t),
+            P(t, _) => table(ui, t),
+            S(t, _) => table(ui, t),
         });
         ui.separator();
         ui.heading("Codebook");
@@ -178,8 +131,8 @@ impl Synthesis {
         ui.label(format!(
             "Number of data: {}",
             match &self.target {
-                Target::P(_, cb) => cb.len(),
-                Target::S(_, cb) => cb.len(),
+                P(_, cb) => cb.len(),
+                S(_, cb) => cb.len(),
             }
         ));
         ui.label("Run \"four-bar cb\" in command line window to generate codebook file.");
@@ -190,8 +143,8 @@ impl Synthesis {
             }
             if ui.button("🗑 Clear").clicked() {
                 match &mut self.target {
-                    Target::P(_, cb) => cb.clear(),
-                    Target::S(_, cb) => cb.clear(),
+                    P(_, cb) => cb.clear(),
+                    S(_, cb) => cb.clear(),
                 }
             }
         });
@@ -206,7 +159,7 @@ impl Synthesis {
                 if small_btn(ui, "💾", "Save history plot") {
                     io::save_history_ask(&task.conv, "history.svg");
                 }
-                let t = std::time::Duration::from_secs(task.time_spent);
+                let t = std::time::Duration::from_secs(task.time);
                 ui.label(format!("{t:?}"));
                 ui.add(ProgressBar::new(1.).show_percentage());
                 true
@@ -228,7 +181,7 @@ impl Synthesis {
                         io::save_history_ask(&task.conv, "history.svg");
                     }
                 }
-                let t = std::time::Duration::from_secs(task.time_spent);
+                let t = std::time::Duration::from_secs(task.time);
                 ui.label(format!("{t:?}"));
                 let pb = ProgressBar::new(*gen as f32 / task.gen as f32)
                     .show_percentage()
@@ -262,7 +215,7 @@ impl Synthesis {
 
     fn opt_setting(&mut self, ui: &mut Ui) {
         ui.horizontal_wrapped(|ui| {
-            for &(name, abbr, f) in SynCmd::LIST {
+            for &(name, abbr, f) in syn_cmd::SynCmd::LIST {
                 let c = self.cfg_method.abbr() == abbr;
                 if ui.selectable_label(c, abbr).on_hover_text(name).clicked() && !c {
                     self.cfg_method = f();
@@ -279,8 +232,9 @@ impl Synthesis {
                 percent(ui, concat![stringify!($name), ": "], &mut $s.$name);
             )+}};
         }
+        use syn_cmd::SynCmd::*;
         match m {
-            SynCmd::De(s) => {
+            De(s) => {
                 ui.horizontal_wrapped(|ui| {
                     use mh::de::Strategy::*;
                     for (i, strategy) in [S1, S2, S3, S4, S5, S6, S7, S8, S9, S10]
@@ -292,10 +246,10 @@ impl Synthesis {
                 });
                 param!(s, f, cross);
             }
-            SynCmd::Fa(s) => param!(s, alpha, beta_min, gamma),
-            SynCmd::Pso(s) => param!(s, cognition, social, velocity),
-            SynCmd::Rga(s) => param!(s, cross, mutate, win, delta),
-            SynCmd::Tlbo(_) => (),
+            Fa(s) => param!(s, alpha, beta_min, gamma),
+            Pso(s) => param!(s, cognition, social, velocity),
+            Rga(s) => param!(s, cross, mutate, win, delta),
+            Tlbo(_) => (),
         }
     }
 
@@ -324,8 +278,8 @@ impl Synthesis {
         if self.target.has_target() {
             const NAME: &str = "Synthesis target";
             let target = match &self.target {
-                Target::P(t, _) => t.clone(),
-                Target::S(t, _) => t.iter().map(|[x, y, _]| [*x, *y]).collect(),
+                P(t, _) => t.clone(),
+                S(t, _) => t.iter().map(|[x, y, _]| [*x, *y]).collect(),
             };
             let line = plot::Line::new(target.clone())
                 .name(NAME)
@@ -344,8 +298,8 @@ impl Synthesis {
         // Add target curve from canvas
         let p = ui.pointer_coordinate().unwrap();
         match &mut self.target {
-            Target::P(t, _) => t.push([p.x, p.y]),
-            Target::S(t, _) => {
+            P(t, _) => t.push([p.x, p.y]),
+            S(t, _) => {
                 let f = || {
                     let [sx, sy, sz, r] = lnk.projs.current_sphere()?;
                     let dx = p.x - sx;
@@ -372,16 +326,24 @@ impl Synthesis {
         let method = self.cfg_method.clone();
         let pop = self.cfg.pop;
         let mode = self.cfg.mode;
-        let task = Task { gen: self.cfg.gen, time_spent: 0, conv: Vec::new() };
+        let task = syn_cmd::Task { gen: self.cfg.gen, time: 0, conv: Vec::new() };
         let task = Arc::new(mutex::RwLock::new((0, task)));
         self.task_queue.push(task.clone());
+
+        macro_rules! impl_solve {
+            ($s:ident) => {
+                syn_cmd::SynSolver::new($s, target, pop, mode, task).solve()
+            };
+        }
+
+        use syn_cmd::SynCmd::*;
         let f = move || {
             let fb = match method {
-                SynCmd::De(s) => SynSolver::new(s, target, pop, mode, task).solve(),
-                SynCmd::Fa(s) => SynSolver::new(s, target, pop, mode, task).solve(),
-                SynCmd::Pso(s) => SynSolver::new(s, target, pop, mode, task).solve(),
-                SynCmd::Rga(s) => SynSolver::new(s, target, pop, mode, task).solve(),
-                SynCmd::Tlbo(s) => SynSolver::new(s, target, pop, mode, task).solve(),
+                De(s) => impl_solve!(s),
+                Fa(s) => impl_solve!(s),
+                Pso(s) => impl_solve!(s),
+                Rga(s) => impl_solve!(s),
+                Tlbo(s) => impl_solve!(s),
             };
             queue.push(None, fb);
         };
@@ -389,70 +351,5 @@ impl Synthesis {
         spawn(f);
         #[cfg(target_arch = "wasm32")]
         f(); // Block
-    }
-}
-
-struct SynSolver<S: mh::Setting> {
-    setting: S,
-    target: Target,
-    pop: usize,
-    mode: syn::Mode,
-    task: Arc<mutex::RwLock<(u64, Task)>>,
-}
-
-impl<S: mh::Setting> SynSolver<S> {
-    fn new(
-        setting: S,
-        target: Target,
-        pop: usize,
-        mode: syn::Mode,
-        task: Arc<mutex::RwLock<(u64, Task)>>,
-    ) -> Self {
-        Self { setting, target, pop, mode, task }
-    }
-
-    fn solve(self) -> io::Fb {
-        #[cfg(target_arch = "wasm32")]
-        use instant::Instant;
-        #[cfg(not(target_arch = "wasm32"))]
-        use std::time::Instant;
-        let t0 = Instant::now();
-        let Self { setting, target, pop, mode, task } = self;
-        macro_rules! impl_solve {
-            ($target:ident, $cb:ident, $fb:ident, $syn:ident) => {{
-                let mut s =
-                    four_bar::mh::Solver::build(setting, syn::$syn::from_curve(&$target, mode));
-                if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
-                    .then(|| $cb.fetch_raw(&$target, mode.is_target_open(), pop))
-                    .filter(|candi| !candi.is_empty())
-                {
-                    s = s.pop_num(candi.len());
-                    let fitness = candi
-                        .iter()
-                        .map(|(f, fb)| mh::Product::new(*f, fb.denormalize()))
-                        .collect();
-                    let pool = candi.into_iter().map(|(_, fb)| fb.buf).collect::<Vec<_>>();
-                    s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
-                } else {
-                    s = s.pop_num(pop);
-                }
-                let fb = s
-                    .task(|ctx| ctx.gen >= task.read().1.gen)
-                    .callback(|ctx| {
-                        let (gen, task) = &mut *task.write();
-                        task.conv.push(ctx.best_f.fitness());
-                        *gen = ctx.gen;
-                        task.time_spent = t0.elapsed().as_secs();
-                    })
-                    .solve()
-                    .unwrap()
-                    .into_result();
-                io::Fb::$fb(fb)
-            }};
-        }
-        match target {
-            Target::P(target, cb) => impl_solve!(target, cb, Fb, FbSyn),
-            Target::S(target, cb) => impl_solve!(target, cb, SFb, SFbSyn),
-        }
     }
 }

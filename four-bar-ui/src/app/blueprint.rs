@@ -1,4 +1,5 @@
 use super::widgets::*;
+use crate::io;
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
@@ -57,7 +58,7 @@ impl BluePrint {
                 let path = self.path.clone();
                 let inner = self.inner.clone();
                 let ctx = ui.ctx().clone();
-                super::io::open_img(move |path_new, img| {
+                io::open_img(move |path_new, img| {
                     path.borrow_mut().replace(path_new);
                     let h = ctx.load_texture("bp", img, Default::default());
                     let mut inner = inner.borrow_mut();

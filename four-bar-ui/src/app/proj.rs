@@ -1,5 +1,6 @@
 use self::switch::*;
-use super::{io, link::Cfg, widgets::*};
+use super::{link::Cfg, widgets::*};
+use crate::io;
 use eframe::egui::*;
 use four_bar::{CurveGen as _, *};
 use serde::{Deserialize, Serialize};

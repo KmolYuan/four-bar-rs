@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod blueprint;
-mod io;
 mod link;
 mod plotter;
 mod proj;
