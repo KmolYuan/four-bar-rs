@@ -79,18 +79,7 @@ impl PlotOpt {
             lnk.projs.select(ui, false);
         });
         if self.plot.borrow().has_fb() {
-            ui.horizontal(|ui| {
-                let mut enable = self.angle.is_some();
-                ui.checkbox(&mut enable, "Specify input angle");
-                if !enable {
-                    self.angle.take();
-                } else if self.angle.is_none() {
-                    self.angle.replace(0.);
-                }
-                if let Some(angle_val) = &mut self.angle {
-                    angle(ui, "", angle_val, "");
-                }
-            });
+            check_on(ui, "Input angle", &mut self.angle, 0., angle_f);
             if ui.button("✖ Remove Linkage").clicked() {
                 self.plot.borrow_mut().remove_fb();
                 self.angle.take();

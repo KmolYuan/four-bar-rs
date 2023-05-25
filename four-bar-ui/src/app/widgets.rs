@@ -22,6 +22,13 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     }
 }
 
+pub(crate) fn any_i<V>(ui: &mut Ui, val: &mut V) -> Response
+where
+    V: emath::Numeric,
+{
+    ui.add(DragValue::new(val))
+}
+
 pub(crate) fn unit<V>(ui: &mut Ui, label: &str, val: &mut V, int: f64) -> Response
 where
     V: emath::Numeric,
@@ -50,6 +57,10 @@ where
         .clamp_range(1e-4..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
+}
+
+pub(crate) fn angle_f(ui: &mut Ui, val: &mut f64) -> Response {
+    angle(ui, "", val, "")
 }
 
 pub(crate) fn angle(ui: &mut Ui, label: &str, val: &mut f64, suffix: &str) -> Response {
@@ -84,6 +95,32 @@ pub(crate) fn percent(ui: &mut Ui, label: &str, val: &mut f64) -> Response {
         .clamp_range(1e-4..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
+}
+
+pub(crate) fn check_on<V, F>(
+    ui: &mut Ui,
+    label: &str,
+    val: &mut Option<V>,
+    init: V,
+    f: F,
+) -> Response
+where
+    F: FnOnce(&mut Ui, &mut V) -> Response,
+{
+    ui.horizontal(|ui| {
+        let mut enable = val.is_some();
+        let mut ret = ui.checkbox(&mut enable, label);
+        if !enable {
+            val.take();
+        } else if val.is_none() {
+            val.replace(init);
+        }
+        if let Some(val) = val {
+            ret |= f(ui, val);
+        }
+        ret
+    })
+    .inner
 }
 
 pub(crate) fn path_label(ui: &mut Ui, icon: &str, path: Option<&PathBuf>, warn: &str) -> Response {

@@ -65,6 +65,7 @@ impl SynMethod {
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub(crate) struct SynConfig {
+    pub(crate) seed: Option<u64>,
     pub(crate) gen: u64,
     pub(crate) pop: usize,
     pub(crate) mode: syn::Mode,
@@ -72,7 +73,12 @@ pub(crate) struct SynConfig {
 
 impl Default for SynConfig {
     fn default() -> Self {
-        Self { gen: 50, pop: 200, mode: syn::Mode::Closed }
+        Self {
+            seed: None,
+            gen: 50,
+            pop: 200,
+            mode: syn::Mode::Closed,
+        }
     }
 }
 
@@ -138,7 +144,7 @@ impl Solver {
         use instant::Instant;
         #[cfg(not(target_arch = "wasm32"))]
         use std::time::Instant;
-        let SynConfig { gen, pop, mode } = cfg;
+        let SynConfig { seed, gen, pop, mode } = cfg;
         let task = Task { gen, time: 0, conv: Vec::new() };
         let task = Arc::new(mutex::RwLock::new((0, task)));
         macro_rules! impl_solve {
@@ -160,7 +166,7 @@ impl Solver {
                 }
                 {
                     let task = task.clone();
-                    s = s.task(move |ctx| ctx.gen >= task.read().1.gen);
+                    s = s.seed(seed).task(move |ctx| ctx.gen >= task.read().1.gen);
                 }
                 let s = {
                     let task = task.clone();

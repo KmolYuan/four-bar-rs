@@ -42,6 +42,7 @@ impl Synthesis {
             reset_button(ui, &mut self.cfg);
         });
         ui.group(|ui| self.opt_setting(ui));
+        check_on(ui, "Random seed", &mut self.cfg.seed, 0, any_i);
         nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
         nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
         ui.horizontal(|ui| {
