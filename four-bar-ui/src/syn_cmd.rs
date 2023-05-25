@@ -4,18 +4,10 @@ use four_bar::{cb, mh, syn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-type ListItem = (&'static str, &'static str, fn() -> SynMethod);
-
-macro_rules! impl_list {
-    ($name:ident) => {{
-        let s = Self::$name();
-        (s.name(), s.abbr(), Self::$name)
-    }};
-}
-
 macro_rules! impl_method {
     ($(fn $method:ident, $sym:ident, $name:literal, $full_name:literal, $link:literal)+) => {
-        pub(crate) const LIST: &[ListItem] = &[$(impl_list!($method)),+];
+        pub(crate) const LIST: &[(&'static str, &'static str, fn() -> Self)] =
+            &[$(($full_name, $name, Self::$method),)+];
 
         $(pub(crate) const fn $method() -> Self { Self::$sym(mh::$sym::new()) })+
 
