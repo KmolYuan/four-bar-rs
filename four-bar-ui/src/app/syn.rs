@@ -10,6 +10,13 @@ fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
     ron::ser::to_string_pretty(s, Default::default()).unwrap()
 }
 
+#[derive(Deserialize, Serialize, Clone)]
+struct Task {
+    gen: u64,
+    time: std::time::Duration,
+    conv: Vec<f64>,
+}
+
 #[derive(Default)]
 enum Cache {
     #[default]
@@ -24,11 +31,11 @@ pub(crate) struct Synthesis {
     method: syn_cmd::SynMethod,
     cfg: syn_cmd::SynConfig,
     target: syn_cmd::Target,
-    tasks: Vec<syn_cmd::Task>,
+    tasks: Vec<Task>,
     #[serde(skip)]
     queue: Rc<RefCell<Cache>>,
     #[serde(skip)]
-    task_queue: Vec<Arc<mutex::RwLock<(u64, syn_cmd::Task)>>>,
+    task_queue: Vec<Arc<mutex::RwLock<(u64, Task)>>>,
     #[serde(skip)]
     conv_open: bool,
     #[serde(skip)]
@@ -156,9 +163,8 @@ impl Synthesis {
                 if small_btn(ui, "💾", "Save history plot") {
                     io::save_history_ask(&task.conv, "history.svg");
                 }
-                let t = std::time::Duration::from_secs(task.time);
-                ui.label(format!("{t:?}"));
-                ui.add(ProgressBar::new(1.).show_percentage());
+                ui.label(format!("{:?}", task.time));
+                ui.colored_label(Color32::GREEN, "Finished");
                 true
             })
             .inner
@@ -178,8 +184,7 @@ impl Synthesis {
                         io::save_history_ask(&task.conv, "history.svg");
                     }
                 }
-                let t = std::time::Duration::from_secs(task.time);
-                ui.label(format!("{t:?}"));
+                ui.label(format!("{:?}", task.time));
                 let pb = ProgressBar::new(*gen as f32 / task.gen as f32)
                     .show_percentage()
                     .animate(*gen != task.gen);
@@ -317,9 +322,29 @@ impl Synthesis {
     }
 
     fn start_syn(&mut self, lnk: &Linkages) {
-        let (s, task) =
-            syn_cmd::Solver::new(self.method.clone(), self.target.clone(), self.cfg.clone());
-        self.task_queue.push(task);
+        #[cfg(target_arch = "wasm32")]
+        use instant::Instant;
+        #[cfg(not(target_arch = "wasm32"))]
+        use std::time::Instant;
+        let task = Task {
+            gen: self.cfg.gen,
+            time: std::time::Duration::from_secs(0),
+            conv: Vec::new(),
+        };
+        let task = Arc::new(mutex::RwLock::new((0, task)));
+        self.task_queue.push(task.clone());
+        let t0 = Instant::now();
+        let s = syn_cmd::Solver::new(
+            self.method.clone(),
+            self.target.clone(),
+            self.cfg.clone(),
+            move |best_f, gen| {
+                let (task_gen, task) = &mut *task.write();
+                *task_gen = gen;
+                task.conv.push(best_f);
+                task.time = t0.elapsed();
+            },
+        );
         let queue = lnk.projs.queue();
         let f = move || io::alert(s.solve(), |fb| queue.push(None, fb));
         #[cfg(not(target_arch = "wasm32"))]

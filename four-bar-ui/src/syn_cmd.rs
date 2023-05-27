@@ -1,8 +1,6 @@
 use crate::io;
-use eframe::egui::mutex;
 use four_bar::{cb, mh, syn};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 macro_rules! impl_method {
     ($(fn $method:ident, $sym:ident, $name:literal, $full_name:literal, $link:literal)+) => {
@@ -122,31 +120,17 @@ impl Target {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
-pub(crate) struct Task {
-    pub(crate) gen: u64,
-    pub(crate) time: u64,
-    pub(crate) conv: Vec<f64>,
-}
-
 pub(crate) enum Solver {
     FbSyn(mh::utility::SolverBuilder<'static, syn::FbSyn>),
     SFbSyn(mh::utility::SolverBuilder<'static, syn::SFbSyn>),
 }
 
 impl Solver {
-    pub(crate) fn new(
-        setting: SynMethod,
-        target: Target,
-        cfg: SynConfig,
-    ) -> (Self, Arc<mutex::RwLock<(u64, Task)>>) {
-        #[cfg(target_arch = "wasm32")]
-        use instant::Instant;
-        #[cfg(not(target_arch = "wasm32"))]
-        use std::time::Instant;
+    pub(crate) fn new<C>(setting: SynMethod, target: Target, cfg: SynConfig, f: C) -> Self
+    where
+        C: Fn(f64, u64) + Send + 'static,
+    {
         let SynConfig { seed, gen, pop, mode } = cfg;
-        let task = Task { gen, time: 0, conv: Vec::new() };
-        let task = Arc::new(mutex::RwLock::new((0, task)));
         macro_rules! impl_solve {
             ($target:ident, $cb:ident, $syn:ident) => {{
                 let mut s = setting.build_solver(syn::$syn::from_curve(&$target, mode));
@@ -164,21 +148,11 @@ impl Solver {
                 } else {
                     s = s.pop_num(pop);
                 }
-                {
-                    let task = task.clone();
-                    s = s.seed(seed).task(move |ctx| ctx.gen >= task.read().1.gen);
-                }
-                let s = {
-                    let task = task.clone();
-                    let t0 = Instant::now();
-                    Solver::$syn(s.callback(move |ctx| {
-                        let (gen, task) = &mut *task.write();
-                        task.conv.push(ctx.best_f.fitness());
-                        *gen = ctx.gen;
-                        task.time = t0.elapsed().as_secs();
-                    }))
-                };
-                (s, task)
+                s = s
+                    .seed(seed)
+                    .task(move |ctx| ctx.gen >= gen)
+                    .callback(move |ctx| f(ctx.best_f.fitness(), ctx.gen));
+                Solver::$syn(s)
             }};
         }
         match target {
