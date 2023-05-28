@@ -126,14 +126,18 @@ pub(crate) enum Solver {
 }
 
 impl Solver {
-    pub(crate) fn new<C>(setting: SynMethod, target: Target, cfg: SynConfig, f: C) -> Self
+    pub(crate) fn new<C>(method: SynMethod, target: Target, cfg: SynConfig, f: C) -> Self
     where
         C: Fn(f64, u64) + Send + 'static,
     {
         let SynConfig { seed, gen, pop, mode } = cfg;
         macro_rules! impl_solve {
             ($target:ident, $cb:ident, $syn:ident) => {{
-                let mut s = setting.build_solver(syn::$syn::from_curve(&$target, mode));
+                let mut s = method
+                    .build_solver(syn::$syn::from_curve(&$target, mode))
+                    .seed(seed)
+                    .task(move |ctx| ctx.gen >= gen)
+                    .callback(move |ctx| f(ctx.best_f.fitness(), ctx.gen));
                 if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
                     .then(|| $cb.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
@@ -148,11 +152,7 @@ impl Solver {
                 } else {
                     s = s.pop_num(pop);
                 }
-                s = s
-                    .seed(seed)
-                    .task(move |ctx| ctx.gen >= gen)
-                    .callback(move |ctx| f(ctx.best_f.fitness(), ctx.gen));
-                Solver::$syn(s)
+                Self::$syn(s)
             }};
         }
         match target {
