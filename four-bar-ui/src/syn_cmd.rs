@@ -1,5 +1,5 @@
 use crate::io;
-use four_bar::{cb, mh, syn};
+use four_bar::*;
 use serde::{Deserialize, Serialize};
 
 macro_rules! impl_method {
@@ -120,9 +120,12 @@ impl Target {
     }
 }
 
+type FbBuilder = mh::utility::SolverBuilder<'static, syn::FbSyn>;
+type SFbBuilder = mh::utility::SolverBuilder<'static, syn::SFbSyn>;
+
 pub(crate) enum Solver {
-    FbSyn(mh::utility::SolverBuilder<'static, syn::FbSyn>),
-    SFbSyn(mh::utility::SolverBuilder<'static, syn::SFbSyn>),
+    FbSyn(FbBuilder, Option<(f64, NormFourBar)>),
+    SFbSyn(SFbBuilder, Option<(f64, SNormFourBar)>),
 }
 
 impl Solver {
@@ -138,10 +141,12 @@ impl Solver {
                     .seed(seed)
                     .task(move |ctx| ctx.gen >= gen)
                     .callback(move |ctx| f(ctx.best_f.fitness(), ctx.gen));
+                let mut cb_fb = None;
                 if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
                     .then(|| $cb.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
                 {
+                    cb_fb.replace(candi[0].clone());
                     s = s.pop_num(candi.len());
                     let fitness = candi
                         .iter()
@@ -152,7 +157,7 @@ impl Solver {
                 } else {
                     s = s.pop_num(pop);
                 }
-                Self::$syn(s)
+                Self::$syn(s, cb_fb)
             }};
         }
         match target {
@@ -163,8 +168,22 @@ impl Solver {
 
     pub(crate) fn solve(self) -> Result<io::Fb, mh::ndarray::ShapeError> {
         match self {
-            Self::FbSyn(s) => Ok(io::Fb::Fb(s.solve()?.into_result())),
-            Self::SFbSyn(s) => Ok(io::Fb::SFb(s.solve()?.into_result())),
+            Self::FbSyn(s, _) => Ok(io::Fb::Fb(s.solve()?.into_result())),
+            Self::SFbSyn(s, _) => Ok(io::Fb::SFb(s.solve()?.into_result())),
         }
     }
+
+    // TODO: Get result with `cb_fb`
+    #[allow(dead_code)]
+    pub(crate) fn solve_cb(self) -> Result<CbFb, mh::ndarray::ShapeError> {
+        match self {
+            Self::FbSyn(s, cb_fb) => Ok(CbFb::Fb(s.solve()?.into_result(), cb_fb)),
+            Self::SFbSyn(s, cb_fb) => Ok(CbFb::SFb(s.solve()?.into_result(), cb_fb)),
+        }
+    }
+}
+
+pub(crate) enum CbFb {
+    Fb(FourBar, Option<(f64, NormFourBar)>),
+    SFb(SFourBar, Option<(f64, SNormFourBar)>),
 }
