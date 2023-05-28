@@ -12,7 +12,6 @@ fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
 
 #[derive(Deserialize, Serialize, Clone)]
 struct Task {
-    gen: u64,
     time: std::time::Duration,
     conv: Vec<f64>,
 }
@@ -35,7 +34,7 @@ pub(crate) struct Synthesis {
     #[serde(skip)]
     queue: Rc<RefCell<Cache>>,
     #[serde(skip)]
-    task_queue: Vec<Arc<mutex::RwLock<(u64, Task)>>>,
+    task_queue: Vec<Arc<mutex::RwLock<(f32, Task)>>>,
     #[serde(skip)]
     conv_open: bool,
     #[serde(skip)]
@@ -163,40 +162,23 @@ impl Synthesis {
                 if small_btn(ui, "💾", "Save history plot") {
                     io::save_history_ask(&task.conv, "history.svg");
                 }
-                ui.label(format!("{:?}", task.time));
+                ui.label(format!("{:.4?}", task.time));
                 ui.colored_label(Color32::GREEN, "Finished");
                 true
             })
             .inner
         });
         self.task_queue.retain(|task| {
+            let (pg, task) = &mut *task.write();
             ui.horizontal(|ui| {
-                let (gen, task) = &mut *task.write();
-                if *gen != task.gen {
-                    if small_btn(ui, "⏹", "Stop") {
-                        task.gen = *gen;
-                    }
-                } else {
-                    if small_btn(ui, "🗑", "Delete") {
-                        return false;
-                    }
-                    if small_btn(ui, "💾", "Save history plot") {
-                        io::save_history_ask(&task.conv, "history.svg");
-                    }
+                if small_btn(ui, "⏹", "Stop") {
+                    *pg = 1.;
                 }
-                ui.label(format!("{:?}", task.time));
-                let pb = ProgressBar::new(*gen as f32 / task.gen as f32)
-                    .show_percentage()
-                    .animate(*gen != task.gen);
-                ui.add(pb);
-                true
-            })
-            .inner
-        });
-        // FIXME: Use `drain_filter`
-        self.task_queue.retain(|task| {
-            let (gen, task) = &*task.read();
-            if *gen >= task.gen {
+                ui.label(format!("{:.4?}", task.time));
+                ui.add(ProgressBar::new(*pg).show_percentage().animate(true));
+            });
+            // FIXME: Use `drain_filter`
+            if *pg == 1. {
                 self.tasks.push(task.clone());
                 false
             } else {
@@ -327,20 +309,20 @@ impl Synthesis {
         #[cfg(not(target_arch = "wasm32"))]
         use std::time::Instant;
         let task = Task {
-            gen: self.cfg.gen,
             time: std::time::Duration::from_secs(0),
             conv: Vec::new(),
         };
-        let task = Arc::new(mutex::RwLock::new((0, task)));
+        let task = Arc::new(mutex::RwLock::new((0., task)));
         self.task_queue.push(task.clone());
+        let total_gen = self.cfg.gen;
         let t0 = Instant::now();
         let s = syn_cmd::Solver::new(
             self.method.clone(),
             self.target.clone(),
             self.cfg.clone(),
             move |best_f, gen| {
-                let (task_gen, task) = &mut *task.write();
-                *task_gen = gen;
+                let (pg, task) = &mut *task.write();
+                *pg = gen as f32 / total_gen as f32;
                 task.conv.push(best_f);
                 task.time = t0.elapsed();
             },
