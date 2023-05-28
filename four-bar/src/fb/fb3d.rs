@@ -236,11 +236,18 @@ impl Transformable<efd::D3> for SFourBar {
         *self.ox_mut() += ox;
         *self.oy_mut() += oy;
         *self.oz_mut() += oz;
-        let axis = na::Vector3::from(to_cc([self.p0i(), self.p0j()], 1.)) * self.a();
-        let rot = trans.rot() * na::UnitQuaternion::from_scaled_axis(axis);
-        let (axis, angle) = rot.axis_angle().unwrap_or((na::Vector3::x_axis(), 0.));
-        [*self.p0i_mut(), *self.p0j_mut()] = to_sc([axis.x, axis.y, axis.z]);
-        *self.a_mut() = angle;
+        let p0_axis = na::Vector3::from(to_cc([self.p0i(), self.p0j()], 1.));
+        let p1_v = na::Point3::new(self.a().cos(), self.a().sin(), 0.) + p0_axis;
+        let p0_axis = trans.rot() * p0_axis;
+        [*self.p0i_mut(), *self.p0j_mut()] = to_sc([p0_axis.x, p0_axis.y, p0_axis.z]);
+        let rot_inv = if let Some(axis) = p0_axis.cross(&na::Vector3::z()).try_normalize(0.) {
+            let angle = p0_axis.dot(&na::Vector3::z()).acos();
+            na::UnitQuaternion::from_scaled_axis(axis * angle)
+        } else {
+            na::UnitQuaternion::identity()
+        };
+        let p1_v = rot_inv * trans.rot() * p1_v;
+        *self.a_mut() = p1_v.y.atan2(p1_v.x);
         *self.r_mut() *= trans.scale();
     }
 }
@@ -258,7 +265,7 @@ impl CurveGen<efd::D3> for SFourBar {
 fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     let [ox, oy, oz, r, p0i, p0j, a] = fb.buf;
     let SNormFourBar { buf: [l1, l2, l3, l4, l5, g], inv } = fb.norm;
-    let op0 = na::Vector3::new(0., 0., r);
+    let op0 = na::Vector3::z() * r;
     let e1 = {
         let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), g);
         let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l5);
