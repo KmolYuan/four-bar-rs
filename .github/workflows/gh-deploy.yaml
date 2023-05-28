@@ -50,7 +50,7 @@ jobs:
         working-directory: four-bar-ui
         run: |
           rustup target add wasm32-unknown-unknown
-          cargo install trunk
+          cargo install trunk --locked
           trunk build --release --filehash=false
           # For GH-Pages
           trunk build --release --filehash=false --public-url=/four-bar-rs/ --dist=docs
