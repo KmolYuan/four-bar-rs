@@ -10,15 +10,13 @@ Web demo: <https://kmolyuan.github.io/four-bar-rs/>
 Four🍀bar is a simulator and a synthesizing tool for four-bar linkage mechanism.
 
 + CLI/GUI program is `four-bar-ui` crate, but the executable is called `four-bar`.
-+ Kernel library `four-bar` is on [crates.io](https://crates.io).
++ Kernel library `four-bar` is on <https://crates.io/crates/four-bar>.
 
-Powered by <https://github.com/emilk/egui>.
-
-Native icon from <https://icons8.com>.
+GUI powered by <https://github.com/emilk/egui>.
 
 ## Releases
 
-In Linux, `libxcb` and `libgtk-3` are required. (most desktops are already provided)
+In Linux, `libxcb` and `libgtk-3` are required, and most desktops are already provided.
 
 In Windows, since the builds are set in Visual Studio, the [support of Visual C++](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-160) is required.
 
@@ -35,7 +33,9 @@ four-bar FILE_PATH1 FILE_PATH2
 
 ## Native Build
 
-In Linux, you need to install some library for GUI:
+In Linux, you need to install some library for GUI.
+
+This is an example for `apt`, please see <https://github.com/emilk/egui#demo>.
 
 ```bash
 sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
@@ -51,12 +51,17 @@ cargo run -- --help
 
 ## WebAssembly Build
 
+Powered by `trunk` (<https://github.com/thedodd/trunk>), a Rust CLI tool for creating bin-type WASM projects.
+
 Run those scripts from the repository:
 
 ```bash
+rustup target add wasm32-unknown-unknown
 cargo install trunk
 cd four-bar-ui
+# Serve in localhost
 trunk serve
+# Compile WASM 
 trunk build --release
 ```
 
