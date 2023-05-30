@@ -120,7 +120,7 @@ where
         Self {
             fb: Array2::default([0, N]),
             inv: Array1::default(0),
-            efd: Array3::default([0, 0, <D::Trans as efd::Trans>::dim()]),
+            efd: Array3::default([0, 0, <D::Trans as efd::Trans>::dim() * 2]),
             _marker: PhantomData,
         }
     }
@@ -188,10 +188,25 @@ where
         macro_rules! impl_read {
             ($r:ident, $($field:ident),+) => {{
                 $(let $field = $r.by_name(stringify!($field))?;)+
-                Ok(Self { $($field),+, _marker: PhantomData })
+                Self { $($field),+, _marker: PhantomData }
             }};
         }
-        impl_read!(r, fb, inv, efd)
+        macro_rules! impl_check {
+            ($actual:expr, $expect:expr) => {
+                let actual = $actual;
+                let expect = $expect;
+                if actual != expect {
+                    return Err(ReadNpzError::Npy(ndarray_npy::ReadNpyError::WrongNdim(
+                        Some(expect),
+                        actual,
+                    )));
+                }
+            };
+        }
+        let cb = impl_read!(r, fb, inv, efd);
+        impl_check!(cb.fb.len_of(Axis(1)), N);
+        impl_check!(cb.efd.len_of(Axis(2)), <D::Trans as efd::Trans>::dim() * 2);
+        Ok(cb)
     }
 
     /// Write codebook to NPZ file.
