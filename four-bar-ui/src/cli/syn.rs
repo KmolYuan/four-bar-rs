@@ -171,10 +171,14 @@ fn run(
             io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(cb.as_sfb())),
         };
         let t0 = std::time::Instant::now();
-        let s = syn_cmd::Solver::new(method, target, cfg.inner.clone(), |best_f, gen| {
-            history.push(best_f);
-            pb.set_position(gen);
-        });
+        let s = {
+            let mut cfg = cfg.inner.clone();
+            cfg.mode = mode;
+            syn_cmd::Solver::new(method, target, cfg, |best_f, gen| {
+                history.push(best_f);
+                pb.set_position(gen);
+            })
+        };
         let (cost, h, result_fb) = s.solve_verbose().unwrap();
         let t1 = t0.elapsed();
         {
