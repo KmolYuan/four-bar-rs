@@ -1,4 +1,4 @@
-use crate::app::App;
+use crate::{app::App, syn_cmd};
 use clap::Parser;
 use four_bar::cb;
 use std::path::PathBuf;
@@ -48,26 +48,11 @@ struct Syn {
     #[clap(flatten)]
     cfg: SynCfg,
     #[clap(subcommand)]
-    method_cmd: Option<crate::syn_cmd::SynMethod>,
+    method: Option<crate::syn_cmd::SynMethod>,
 }
 
 #[derive(clap::Args)]
 struct SynCfg {
-    /// Number of the points (resolution) in curve production
-    #[clap(long, default_value_t = 180)]
-    res: usize,
-    /// Number of generation
-    #[clap(short, long, default_value_t = 50)]
-    gen: usize,
-    /// Number of population (the fetch number in codebook)
-    #[clap(short, long, default_value_t = 200)]
-    pop: usize,
-    /// Fix the seed to get a determined result, default to random
-    #[clap(short, long)]
-    seed: Option<u64>,
-    /// Plot and save the changes with log interval, default to disabled
-    #[clap(long, default_value_t = 0)]
-    log: usize,
     /// Font size in the plot
     #[clap(long, default_value_t = 24.)]
     font: f64,
@@ -80,17 +65,27 @@ struct SynCfg {
     /// Legend position
     #[clap(long)]
     legend_pos: Option<four_bar::plot2d::LegendPos>,
+    #[clap(flatten)]
+    inner: syn_cmd::SynConfig,
 }
 
 impl std::fmt::Display for SynCfg {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         macro_rules! impl_fmt {
-            ($($field:ident, $fmt:literal),+) => {$(
-                write!(f, concat![stringify!($field), $fmt], self.$field)?;
+            ($self:ident, $($field:ident),+) => {$(
+                write!(f, concat![stringify!($field), "={:?} "], $self.$field)?;
             )+};
         }
-        impl_fmt!(res, "={} ", gen, "={} ", pop, "={} ", seed, "={:?} ", log, "={} ", font, "={}");
+        impl_fmt!(self, res, gen, pop, seed, font);
         Ok(())
+    }
+}
+
+impl std::ops::Deref for SynCfg {
+    type Target = syn_cmd::SynConfig;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 

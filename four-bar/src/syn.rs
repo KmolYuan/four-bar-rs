@@ -57,7 +57,7 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
     /// must preprocess with [`Mode::regularize()`] method before turned into
     /// EFD.
     pub fn from_efd(efd: efd::Efd<D>, mode: Mode) -> Self {
-        Self { efd, mode, res: 720, _marker: PhantomData }
+        Self { efd, mode, res: 180, _marker: PhantomData }
     }
 
     /// Set the resolution during synthesis.

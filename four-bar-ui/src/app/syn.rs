@@ -1,9 +1,9 @@
 use super::{link::Linkages, widgets::*};
-use crate::{io, syn_cmd, syn_cmd::Target::*};
+use crate::{io, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, cell::RefCell, rc::Rc, sync::Arc};
 
 #[inline]
 fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
@@ -29,8 +29,10 @@ enum Cache {
 pub(crate) struct Synthesis {
     method: syn_cmd::SynMethod,
     cfg: syn_cmd::SynConfig,
-    target: syn_cmd::Target,
+    target: io::Curve,
     tasks: Vec<Task>,
+    #[serde(skip)]
+    cb: io::CbPool,
     #[serde(skip)]
     queue: Rc<RefCell<Cache>>,
     #[serde(skip)]
@@ -51,6 +53,7 @@ impl Synthesis {
         check_on(ui, "Random seed", &mut self.cfg.seed, 0, any_i);
         nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
         nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
+        nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
         ui.horizontal(|ui| {
             ui.label("Mode: ");
             for (mode, name) in [
@@ -63,24 +66,19 @@ impl Synthesis {
         });
         ui.separator();
         match self.target {
-            P(_, _) => ui.heading("Planar Target Curve"),
-            S(_, _) => ui.heading("Spherical Target Curve"),
+            io::Curve::P(_) => ui.heading("Planar Target Curve"),
+            io::Curve::S(_) => ui.heading("Spherical Target Curve"),
         };
         match std::mem::replace(&mut *self.queue.borrow_mut(), Cache::Empty) {
-            Cache::Curve(curve) => self.target.set_curve(curve),
-            Cache::Cb(cb) => io::alert(self.target.set_cb(cb), |_| ()),
+            Cache::Curve(curve) => self.target = curve,
+            Cache::Cb(cb) => io::alert(self.cb.merge_inplace(cb), |_| ()),
             Cache::Empty => (),
         }
         toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas")
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
             if ui.button("🖊 Add from").clicked() {
-                match (lnk.projs.current_curve(), &mut self.target) {
-                    (io::Curve::P(c), P(t, _)) => *t = c,
-                    (io::Curve::S(c), S(t, _)) => *t = c,
-                    (io::Curve::P(c), t @ S(_, _)) => *t = P(c, Default::default()),
-                    (io::Curve::S(c), t @ P(_, _)) => *t = S(c, Default::default()),
-                }
+                self.target = lnk.projs.current_curve();
             }
             lnk.projs.select(ui, false);
         });
@@ -91,23 +89,23 @@ impl Synthesis {
             }
             if ui.button("💾 Save CSV").clicked() {
                 match &self.target {
-                    P(t, _) => io::save_csv_ask(t),
-                    S(t, _) => io::save_csv_ask(t),
+                    io::Curve::P(t) => io::save_csv_ask(t),
+                    io::Curve::S(t) => io::save_csv_ask(t),
                 }
             }
         });
         ui.horizontal_wrapped(|ui| {
             if ui.button("🗐 Copy CSV").clicked() {
                 let text = match &self.target {
-                    P(t, _) => csv::dump_csv(t).unwrap(),
-                    S(t, _) => csv::dump_csv(t).unwrap(),
+                    io::Curve::P(t) => csv::dump_csv(t).unwrap(),
+                    io::Curve::S(t) => csv::dump_csv(t).unwrap(),
                 };
                 ui.output_mut(|s| s.copied_text = text);
             }
             if ui.button("🗐 Copy Array of Tuple").clicked() {
                 let text = match &self.target {
-                    P(t, _) => ron_pretty(t),
-                    S(t, _) => ron_pretty(t),
+                    io::Curve::P(t) => ron_pretty(t),
+                    io::Curve::S(t) => ron_pretty(t),
                 };
                 ui.output_mut(|s| s.copied_text = text);
             }
@@ -118,37 +116,32 @@ impl Synthesis {
                     };
                 }
                 let text = match &self.target {
-                    P(t, _) => ron_pretty(&vec_nest!(t)),
-                    S(t, _) => ron_pretty(&vec_nest!(t)),
+                    io::Curve::P(t) => ron_pretty(&vec_nest!(t)),
+                    io::Curve::S(t) => ron_pretty(&vec_nest!(t)),
                 };
                 ui.output_mut(|s| s.copied_text = text);
             }
         });
         ui.group(|ui| match &mut self.target {
-            P(t, _) => table(ui, t),
-            S(t, _) => table(ui, t),
+            io::Curve::P(t) => table(ui, t),
+            io::Curve::S(t) => table(ui, t),
         });
         ui.separator();
         ui.heading("Codebook");
         ui.label("Use pre-searched dataset to increase the speed.");
-        ui.label(format!(
-            "Number of data: {}",
-            match &self.target {
-                P(_, cb) => cb.len(),
-                S(_, cb) => cb.len(),
-            }
-        ));
+        ui.label(format!("No. of planar data: {}", self.cb.as_fb().len()));
+        ui.label(format!("No. of spherical data: {}", self.cb.as_sfb().len()));
         ui.label("Run \"four-bar cb\" in command line window to generate codebook file.");
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();
                 io::open_cb(move |cb| *queue.borrow_mut() = Cache::Cb(cb));
             }
-            if ui.button("🗑 Clear").clicked() {
-                match &mut self.target {
-                    P(_, cb) => cb.clear(),
-                    S(_, cb) => cb.clear(),
-                }
+            if ui.button("🗑 Clear Planar").clicked() {
+                self.cb.as_fb_mut().clear();
+            }
+            if ui.button("🗑 Clear Spherical").clicked() {
+                self.cb.as_sfb_mut().clear();
             }
         });
         ui.separator();
@@ -188,7 +181,7 @@ impl Synthesis {
         #[cfg(target_arch = "wasm32")]
         ui.colored_label(Color32::RED, "Web version freezes UI when solving starts!");
         ui.horizontal(|ui| {
-            let enabled = self.target.has_target();
+            let enabled = !self.target.is_empty();
             if ui.add_enabled(enabled, Button::new("▶ Start")).clicked() {
                 self.start_syn(lnk);
             }
@@ -259,11 +252,11 @@ impl Synthesis {
     }
 
     pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi, lnk: &Linkages) {
-        if self.target.has_target() {
+        if !self.target.is_empty() {
             const NAME: &str = "Synthesis target";
             let target = match &self.target {
-                P(t, _) => t.clone(),
-                S(t, _) => t.iter().map(|[x, y, _]| [*x, *y]).collect(),
+                io::Curve::P(t) => t.clone(),
+                io::Curve::S(t) => t.iter().map(|[x, y, _]| [*x, *y]).collect(),
             };
             let line = plot::Line::new(target.clone())
                 .name(NAME)
@@ -282,8 +275,8 @@ impl Synthesis {
         // Add target curve from canvas
         let p = ui.pointer_coordinate().unwrap();
         match &mut self.target {
-            P(t, _) => t.push([p.x, p.y]),
-            S(t, _) => {
+            io::Curve::P(t) => t.push([p.x, p.y]),
+            io::Curve::S(t) => {
                 let f = || {
                     let [sx, sy, sz, r] = lnk.projs.current_sphere()?;
                     let dx = p.x - sx;
@@ -314,21 +307,24 @@ impl Synthesis {
         };
         let task = Arc::new(mutex::RwLock::new((0., task)));
         self.task_queue.push(task.clone());
+        let method = self.method.clone();
+        let target = match self.target.clone() {
+            io::Curve::P(t) => Target::P(t.into(), Cow::Owned(self.cb.as_fb().clone())),
+            io::Curve::S(t) => Target::S(t.into(), Cow::Owned(self.cb.as_sfb().clone())),
+        };
+        let cfg = self.cfg.clone();
         let total_gen = self.cfg.gen;
-        let t0 = Instant::now();
-        let s = syn_cmd::Solver::new(
-            self.method.clone(),
-            self.target.clone(),
-            self.cfg.clone(),
-            move |best_f, gen| {
+        let queue = lnk.projs.queue();
+        let f = move || {
+            let t0 = Instant::now();
+            let s = syn_cmd::Solver::new(method, target, cfg, move |best_f, gen| {
                 let (pg, task) = &mut *task.write();
                 *pg = gen as f32 / total_gen as f32;
                 task.conv.push(best_f);
                 task.time = t0.elapsed();
-            },
-        );
-        let queue = lnk.projs.queue();
-        let f = move || io::alert(s.solve(), |fb| queue.push(None, fb));
+            });
+            io::alert(s.solve(), |fb| queue.push(None, fb));
+        };
         #[cfg(not(target_arch = "wasm32"))]
         four_bar::mh::rayon::spawn(f);
         #[cfg(target_arch = "wasm32")]

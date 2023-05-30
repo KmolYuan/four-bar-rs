@@ -5,14 +5,15 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::borrow::Cow;
 
 /// Parse CSV from string.
-pub fn parse_csv<D>(s: &str) -> Result<Vec<D>, Error>
+pub fn parse_csv<D, R>(r: R) -> Result<Vec<D>, Error>
 where
+    R: std::io::Read,
     D: DeserializeOwned,
 {
     ReaderBuilder::new()
         .has_headers(false)
         .comment(Some(b'#'))
-        .from_reader(std::io::Cursor::new(s))
+        .from_reader(r)
         .deserialize()
         .collect()
 }

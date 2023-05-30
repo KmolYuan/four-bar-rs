@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::io;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
@@ -62,10 +64,21 @@ impl SynMethod {
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(clap::Args))]
 pub(crate) struct SynConfig {
+    /// Fix the seed to get a determined result, default to random
+    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long))]
     pub(crate) seed: Option<u64>,
+    /// Number of generation
+    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = 50))]
     pub(crate) gen: u64,
+    /// Number of population (the fetch number in codebook)
+    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = 200))]
     pub(crate) pop: usize,
+    /// Number of the points (resolution) in curve production
+    #[cfg_attr(not(target_arch = "wasm32"), clap(long, default_value_t = 180))]
+    pub(crate) res: usize,
+    #[cfg_attr(not(target_arch = "wasm32"), clap(skip = syn::Mode::Closed))]
     pub(crate) mode: syn::Mode,
 }
 
@@ -75,69 +88,36 @@ impl Default for SynConfig {
             seed: None,
             gen: 50,
             pop: 200,
+            res: 180,
             mode: syn::Mode::Closed,
         }
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
-pub(crate) enum Target {
-    P(Vec<[f64; 2]>, #[serde(skip)] cb::FbCodebook),
-    S(Vec<[f64; 3]>, #[serde(skip)] cb::SFbCodebook),
+#[derive(Clone)]
+pub(crate) enum Target<'a> {
+    P(Cow<'a, [[f64; 2]]>, Cow<'a, cb::FbCodebook>),
+    S(Cow<'a, [[f64; 3]]>, Cow<'a, cb::SFbCodebook>),
 }
 
-impl Default for Target {
-    fn default() -> Self {
-        Self::P(Vec::new(), Default::default())
-    }
+type FbBuilder<'a> = mh::utility::SolverBuilder<'a, syn::FbSyn>;
+type SFbBuilder<'a> = mh::utility::SolverBuilder<'a, syn::SFbSyn>;
+
+pub(crate) enum Solver<'a> {
+    FbSyn(FbBuilder<'a>, Option<(f64, NormFourBar)>),
+    SFbSyn(SFbBuilder<'a>, Option<(f64, SNormFourBar)>),
 }
 
-impl Target {
-    pub(crate) fn set_curve(&mut self, curve: io::Curve) {
-        match (curve, self) {
-            (io::Curve::P(c), Self::P(t, _)) => *t = c,
-            (io::Curve::S(c), Self::S(t, _)) => *t = c,
-            (io::Curve::P(c), t @ Self::S(_, _)) => *t = Self::P(c, Default::default()),
-            (io::Curve::S(c), t @ Self::P(_, _)) => *t = Self::S(c, Default::default()),
-        }
-    }
-
-    pub(crate) fn set_cb(&mut self, cb: io::Cb) -> Result<(), mh::ndarray::ShapeError> {
-        match (cb, self) {
-            (io::Cb::P(c), Self::P(_, t)) => t.merge_inplace(&c)?,
-            (io::Cb::S(c), Self::S(_, t)) => t.merge_inplace(&c)?,
-            (io::Cb::P(c), t @ Self::S(_, _)) => *t = Self::P(Vec::new(), c),
-            (io::Cb::S(c), t @ Self::P(_, _)) => *t = Self::S(Vec::new(), c),
-        }
-        Ok(())
-    }
-
-    pub(crate) fn has_target(&self) -> bool {
-        match self {
-            Self::P(t, _) => !t.is_empty(),
-            Self::S(t, _) => !t.is_empty(),
-        }
-    }
-}
-
-type FbBuilder = mh::utility::SolverBuilder<'static, syn::FbSyn>;
-type SFbBuilder = mh::utility::SolverBuilder<'static, syn::SFbSyn>;
-
-pub(crate) enum Solver {
-    FbSyn(FbBuilder, Option<(f64, NormFourBar)>),
-    SFbSyn(SFbBuilder, Option<(f64, SNormFourBar)>),
-}
-
-impl Solver {
-    pub(crate) fn new<C>(method: SynMethod, target: Target, cfg: SynConfig, f: C) -> Self
+impl<'a> Solver<'a> {
+    pub(crate) fn new<C>(method: SynMethod, target: Target, cfg: SynConfig, mut f: C) -> Self
     where
-        C: Fn(f64, u64) + Send + 'static,
+        C: FnMut(f64, u64) + Send + 'a,
     {
-        let SynConfig { seed, gen, pop, mode } = cfg;
+        let SynConfig { seed, gen, pop, mode, res } = cfg;
         macro_rules! impl_solve {
             ($target:ident, $cb:ident, $syn:ident) => {{
                 let mut s = method
-                    .build_solver(syn::$syn::from_curve(&$target, mode))
+                    .build_solver(syn::$syn::from_curve(&$target, mode).res(res))
                     .seed(seed)
                     .task(move |ctx| ctx.gen >= gen)
                     .callback(move |ctx| f(ctx.best_f.fitness(), ctx.gen));
@@ -175,10 +155,18 @@ impl Solver {
 
     // TODO: Get result with `cb_fb`
     #[allow(dead_code)]
-    pub(crate) fn solve_cb(self) -> Result<CbFb, mh::ndarray::ShapeError> {
+    pub(crate) fn solve_verbose(self) -> Result<(f64, usize, CbFb), mh::ndarray::ShapeError> {
+        macro_rules! impl_solve {
+            ($syn:ident, $s:ident, $cb_fb:ident) => {{
+                let s = $s.solve()?;
+                let h = s.func().harmonic();
+                let (err, fb) = s.into_err_result();
+                Ok((err, h, CbFb::$syn(fb, $cb_fb)))
+            }};
+        }
         match self {
-            Self::FbSyn(s, cb_fb) => Ok(CbFb::Fb(s.solve()?.into_result(), cb_fb)),
-            Self::SFbSyn(s, cb_fb) => Ok(CbFb::SFb(s.solve()?.into_result(), cb_fb)),
+            Self::FbSyn(s, cb_fb) => impl_solve!(Fb, s, cb_fb),
+            Self::SFbSyn(s, cb_fb) => impl_solve!(SFb, s, cb_fb),
         }
     }
 }

@@ -120,7 +120,7 @@ where
         Self {
             fb: Array2::default([0, N]),
             inv: Array1::default(0),
-            efd: Array3::default([0, 0, 4]),
+            efd: Array3::default([0, 0, <D::Trans as efd::Trans>::dim()]),
             _marker: PhantomData,
         }
     }

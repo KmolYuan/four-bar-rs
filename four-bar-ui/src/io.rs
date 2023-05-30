@@ -178,7 +178,7 @@ where
     C: FnOnce(PathBuf, Curve) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(Curve::parse_csv(&s), |d| done(p, d));
+        alert(Curve::from_str(&s), |d| done(p, d));
     });
 }
 
@@ -187,7 +187,7 @@ where
     C: Fn(PathBuf, Curve) + 'static,
 {
     open(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(Curve::parse_csv(&s), |d| done(p, d));
+        alert(Curve::from_str(&s), |d| done(p, d));
     });
 }
 
@@ -257,6 +257,10 @@ pub(crate) enum Fb {
 
 impl Fb {
     pub(crate) fn into_curve(self, res: usize) -> Curve {
+        self.curve(res)
+    }
+
+    pub(crate) fn curve(&self, res: usize) -> Curve {
         match self {
             Self::Fb(fb) => Curve::P(fb.curve(res)),
             Self::SFb(fb) => Curve::S(fb.curve(res)),
@@ -264,6 +268,7 @@ impl Fb {
     }
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub(crate) enum Curve {
     P(Vec<[f64; 2]>),
     S(Vec<[f64; 3]>),
@@ -276,12 +281,30 @@ impl Default for Curve {
 }
 
 impl Curve {
-    fn parse_csv(s: &str) -> Result<Self, csv::Error> {
-        if let Ok(c) = csv::parse_csv(s) {
+    fn from_str(s: &str) -> Result<Self, csv::Error> {
+        Self::from_reader(std::io::Cursor::new(s))
+    }
+
+    pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, csv::Error>
+    where
+        R: std::io::Read,
+    {
+        if let Ok(c) = csv::parse_csv(&mut r) {
             Ok(Self::P(c))
         } else {
-            Ok(Self::S(csv::parse_csv(s)?))
+            Ok(Self::S(csv::parse_csv(r)?))
         }
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        match self {
+            Curve::P(c) => c.len(),
+            Curve::S(c) => c.len(),
+        }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -292,11 +315,56 @@ pub(crate) enum Cb {
 
 impl Cb {
     fn from_buf(buf: Vec<u8>) -> Result<Self, cb::ReadNpzError> {
-        let c = std::io::Cursor::new(buf);
-        if let Ok(cb) = cb::FbCodebook::read(c.clone()) {
+        Self::from_reader(std::io::Cursor::new(buf))
+    }
+
+    pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, cb::ReadNpzError>
+    where
+        R: std::io::Read + std::io::Seek,
+    {
+        if let Ok(cb) = cb::FbCodebook::read(&mut r) {
             Ok(Self::P(cb))
         } else {
-            Ok(Self::S(cb::SFbCodebook::read(c)?))
+            Ok(Self::S(cb::SFbCodebook::read(r)?))
         }
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct CbPool {
+    fb: cb::FbCodebook,
+    sfb: cb::SFbCodebook,
+}
+
+impl CbPool {
+    pub(crate) fn merge_inplace(&mut self, cb: Cb) -> Result<(), mh::ndarray::ShapeError> {
+        match cb {
+            Cb::P(cb) => self.fb.merge_inplace(&cb),
+            Cb::S(cb) => self.sfb.merge_inplace(&cb),
+        }
+    }
+
+    pub(crate) fn as_fb(&self) -> &cb::FbCodebook {
+        &self.fb
+    }
+
+    pub(crate) fn as_sfb(&self) -> &cb::SFbCodebook {
+        &self.sfb
+    }
+
+    pub(crate) fn as_fb_mut(&mut self) -> &mut cb::FbCodebook {
+        &mut self.fb
+    }
+
+    pub(crate) fn as_sfb_mut(&mut self) -> &mut cb::SFbCodebook {
+        &mut self.sfb
+    }
+}
+
+impl FromIterator<Cb> for CbPool {
+    fn from_iter<T: IntoIterator<Item = Cb>>(iter: T) -> Self {
+        let mut pool = Self::default();
+        iter.into_iter().for_each(|cb| _ = pool.merge_inplace(cb));
+        pool
     }
 }
