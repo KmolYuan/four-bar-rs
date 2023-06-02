@@ -121,30 +121,40 @@ impl Figure<'_, '_> {
                     let line = line
                         .iter()
                         .map(|&[x, y, z]| $mk::new((x, y, z), dot_size, color));
-                    chart.draw_series(line)?
+                    let anno = chart.draw_series(line)?;
+                    if !label.is_empty() {
+                        anno.label(label)
+                            .legend(move |(x, y)| $mk::new((x, y), dot_size, color));
+                    }
                 }};
             }
-            let anno = match style {
+            match style {
                 Style::Line => {
                     let line = line.iter().map(|&[x, y, z]| (x, y, z));
-                    chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?
+                    let anno =
+                        chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?;
+                    if !label.is_empty() {
+                        anno.label(label).legend(move |(x, y)| {
+                            PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
+                        });
+                    }
                 }
                 Style::Triangle => marker!(TriangleMarker),
                 Style::Cross => marker!(Cross),
                 Style::Circle => marker!(Circle),
                 Style::Square => {
-                    let r = dot_size as f64 * 0.5;
+                    let r = dot_size as i32 / 2;
                     let line = line.iter().map(|&[x, y, z]| {
-                        Cubiod::new([(x + r, y + r, z + r), (x - r, y - r, z - r)], color, BLACK)
+                        EmptyElement::at((x, y, z)) + Rectangle::new([(r, r), (-r, -r)], color)
                     });
-                    chart.draw_series(line)?
+                    let anno = chart.draw_series(line)?;
+                    if !label.is_empty() {
+                        anno.label(label).legend(move |(x, y)| {
+                            Rectangle::new([(x + r, y + r), (x - r, y - r)], color)
+                        });
+                    }
                 }
             };
-            if !label.is_empty() {
-                anno.label(label).legend(move |(x, y)| {
-                    PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
-                });
-            }
         }
         // Draw linkage
         if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
