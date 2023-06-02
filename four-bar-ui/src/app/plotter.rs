@@ -57,7 +57,7 @@ impl PlotType {
 struct PlotOpt {
     plot: Rc<RefCell<PlotType>>,
     angle: Option<f64>,
-    inner: plot2d::OptInner,
+    inner: plot2d::Opt,
 }
 
 impl PlotOpt {
@@ -133,7 +133,6 @@ impl PlotOpt {
             ui.checkbox(&mut self.inner.scale_bar, "Show scale bar in plots");
             ui.checkbox(&mut self.inner.grid, "Show grid in plots");
             ui.checkbox(&mut self.inner.axis, "Show axis in plots");
-            ui.checkbox(&mut self.inner.dot, "Use dot curve in plots");
         });
         !ui.button("✖ Remove Subplot").clicked()
     }
@@ -189,20 +188,26 @@ impl Plotter {
                 .zip(&self.queue)
                 .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
                     PlotType::P(fb, c) => {
-                        let curves = c.iter().map(|(s, c)| (s.as_str(), c.as_slice()));
-                        let mut opt = plot2d::Opt::from(fb.as_ref()).inner(p_opt.inner.clone());
+                        let mut fig =
+                            plot2d::Figure::from(fb.as_ref()).with_opt(p_opt.inner.clone());
                         if let Some(angle) = p_opt.angle {
-                            opt = opt.angle(angle);
+                            fig = fig.angle(angle);
                         }
-                        io::alert(plot2d::plot(root, curves, opt), |_| ());
+                        for (s, c) in c {
+                            fig = fig.add_line(s, c, plot2d::Style::Circle, plot2d::BLACK);
+                        }
+                        io::alert(fig.plot(root), |_| ());
                     }
                     PlotType::S(fb, c) => {
-                        let curves = c.iter().map(|(s, c)| (s.as_str(), c.as_slice()));
-                        let mut opt = plot3d::Opt::from(fb.as_ref()).inner(p_opt.inner.clone());
+                        let mut fig =
+                            plot3d::Figure::from(fb.as_ref()).with_opt(p_opt.inner.clone());
                         if let Some(angle) = p_opt.angle {
-                            opt = opt.angle(angle);
+                            fig = fig.angle(angle);
                         }
-                        io::alert(plot3d::plot(root, curves, opt), |_| ());
+                        for (s, c) in c {
+                            fig = fig.add_line(s, c, plot3d::Style::Circle, plot3d::BLACK);
+                        }
+                        io::alert(fig.plot(root), |_| ());
                     }
                 });
             io::save_svg_ask(&buf, "figure.svg");

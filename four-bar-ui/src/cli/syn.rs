@@ -17,10 +17,6 @@ macro_rules! impl_err_from {
     )+};
 }
 
-fn ref2<A>(curves: &[(String, Vec<A>)]) -> impl Iterator<Item = (&str, &[A])> {
-    curves.iter().map(|(s, c)| (s.as_str(), c.as_slice()))
-}
-
 #[derive(Debug)]
 enum SynErr {
     Format,
@@ -205,20 +201,21 @@ fn run(
                     .ref_num
                     .map(|n| format!("Target, Ref. [{n}]"))
                     .unwrap_or("Target".to_string());
-                let mut curves = vec![(target_str, $target), ("Optimized".to_string(), curve)];
                 let path = root.join(format!("{title}_result.svg"));
                 let svg = $plot::SVGBackend::new(&path, (1600, 800));
                 let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
-                let mut opt = $plot::Opt::from(&$fb)
-                    .dot(true)
+                let mut fig = $plot::Figure::from(&$fb)
                     .axis(false)
                     .font(cfg.font)
-                    .legend(cfg.legend_pos.unwrap_or_default())
+                    .legend(cfg.legend_pos)
                     .scale_bar(true);
                 if let Some(angle) = cfg.angle {
-                    opt = opt.angle(angle.to_radians());
+                    fig = fig.angle(angle.to_radians());
                 }
-                $plot::plot(root_l, ref2(&curves), opt)?;
+                fig = fig
+                    .add_line(target_str, &$target, $plot::Style::Circle, $plot::RED)
+                    .add_line("Optimized", &curve, $plot::Style::Triangle, $plot::BLACK);
+                fig.clone().plot(root_l)?;
                 let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
                 writeln!(log, "[{title}]")?;
                 if let Some(io::Fb::$fb_enum(fb)) = target_fb {
@@ -231,7 +228,7 @@ fn run(
                     let trans = efd.as_trans().to(efd_target.as_trans());
                     let fb = fb.trans_denorm(&trans);
                     let c = fb.curve(cfg.res);
-                    let err = curve_diff(&curves[0].1, &c);
+                    let err = curve_diff(&$target, &c);
                     writeln!(log, "\n[atlas]")?;
                     writeln!(log, "harmonic={h}")?;
                     writeln!(log, "error={err}")?;
@@ -240,7 +237,7 @@ fn run(
                     $log_fb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
                     std::fs::write(path, ron::to_string(&fb)?)?;
-                    curves.push(("Atlas".to_string(), c));
+                    fig = fig.add_line("Atlas", c, $plot::Style::Cross, $plot::BLUE);
                 }
                 writeln!(log, "\n[optimized]")?;
                 writeln!(log, "time={t1:?}")?;
@@ -257,7 +254,7 @@ fn run(
                 if let Ok(s) = std::fs::read_to_string(refer) {
                     let fb = ron::from_str::<$fb_ty>(&s)?;
                     let c = fb.curve(cfg.res);
-                    let err = curve_diff(&curves[0].1, &c);
+                    let err = curve_diff(&$target, &c);
                     writeln!(log, "\n[competitor]")?;
                     writeln!(log, "error={err}")?;
                     if !matches!(mode, syn::Mode::Partial) {
@@ -271,13 +268,9 @@ fn run(
                         .ref_num
                         .map(|n| format!("Ref. [{n}]"))
                         .unwrap_or("Competitor".to_string());
-                    curves.push((competitor_str, c));
+                    fig = fig.add_line(competitor_str, c, $plot::Style::Square, $plot::BLACK);
                 }
-                let opt = $plot::Opt::new()
-                    .dot(true)
-                    .font(cfg.font)
-                    .legend(cfg.legend_pos.unwrap_or_default());
-                $plot::plot(root_r, ref2(&curves), opt)?;
+                fig.remove_fb().plot(root_r)?;
                 log.flush()?;
                 pb.finish();
             };
