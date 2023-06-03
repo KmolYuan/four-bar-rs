@@ -215,7 +215,7 @@ fn run(
                 fig = fig
                     .add_line(target_str, &$target, $plot::Style::Circle, $plot::RED)
                     .add_line("Optimized", &curve, $plot::Style::Triangle, $plot::BLACK);
-                fig.clone().plot(root_l)?;
+                fig.plot(root_l)?;
                 let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
                 writeln!(log, "[{title}]")?;
                 if let Some(io::Fb::$fb_enum(fb)) = target_fb {

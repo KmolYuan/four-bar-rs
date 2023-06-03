@@ -20,7 +20,7 @@
 //! let mut buf = String::new();
 //! let svg = SVGBackend::with_string(&mut buf, (800, 800));
 //! let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
-//! fig.clone().plot(root_l).unwrap();
+//! fig.plot(root_l).unwrap();
 //! fig.plot(root_r).unwrap();
 //! ```
 use crate::*;
