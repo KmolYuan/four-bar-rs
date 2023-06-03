@@ -97,14 +97,9 @@ pub(crate) fn percent(ui: &mut Ui, label: &str, val: &mut f64) -> Response {
     ui.add(dv)
 }
 
-pub(crate) fn check_on<V, F>(
-    ui: &mut Ui,
-    label: &str,
-    val: &mut Option<V>,
-    init: V,
-    f: F,
-) -> Response
+pub(crate) fn check_on<V, F>(ui: &mut Ui, label: &str, val: &mut Option<V>, f: F) -> Response
 where
+    V: Default,
     F: FnOnce(&mut Ui, &mut V) -> Response,
 {
     ui.horizontal(|ui| {
@@ -113,7 +108,7 @@ where
         if !enable {
             val.take();
         } else if val.is_none() {
-            val.replace(init);
+            val.replace(V::default());
         }
         if let Some(val) = val {
             ret |= f(ui, val);

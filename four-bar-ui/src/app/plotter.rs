@@ -57,7 +57,7 @@ impl PlotType {
 struct PlotOpt {
     plot: Rc<RefCell<PlotType>>,
     angle: Option<f64>,
-    inner: plot2d::Opt,
+    opt: plot2d::Opt<'static>,
 }
 
 impl PlotOpt {
@@ -79,7 +79,7 @@ impl PlotOpt {
             lnk.projs.select(ui, false);
         });
         if self.plot.borrow().has_fb() {
-            check_on(ui, "Input angle", &mut self.angle, 0., angle_f);
+            check_on(ui, "Input angle", &mut self.angle, angle_f);
             if ui.button("✖ Remove Linkage").clicked() {
                 self.plot.borrow_mut().remove_fb();
                 self.angle.take();
@@ -128,11 +128,28 @@ impl PlotOpt {
         });
         ui.group(|ui| {
             ui.heading("Plot Option");
-            nonzero_i(ui, "Stroke in plots: ", &mut self.inner.stroke, 1);
-            nonzero_i(ui, "Font size in plots: ", &mut self.inner.font, 1);
-            ui.checkbox(&mut self.inner.scale_bar, "Show scale bar in plots");
-            ui.checkbox(&mut self.inner.grid, "Show grid in plots");
-            ui.checkbox(&mut self.inner.axis, "Show axis in plots");
+            check_on(ui, "Title", &mut self.opt.title, |ui, s| {
+                ui.text_edit_singleline(s.to_mut())
+            });
+            nonzero_i(ui, "Stroke in plots: ", &mut self.opt.stroke, 1);
+            nonzero_i(ui, "Font size in plots: ", &mut self.opt.font, 1);
+            check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {
+                ui.text_edit_singleline(s.to_mut())
+            });
+            ui.checkbox(&mut self.opt.scale_bar, "Show scale bar in plots");
+            ui.checkbox(&mut self.opt.grid, "Show grid in plots");
+            ui.checkbox(&mut self.opt.axis, "Show axis in plots");
+            check_on(ui, "Legend", &mut self.opt.legend, |ui, p| {
+                ComboBox::from_id_source("legend")
+                    .selected_text(p.name())
+                    .show_ui(ui, |ui| {
+                        use plot3d::LegendPos::*;
+                        for pos in [UL, ML, LL, UM, MM, LM, UR, MR, LR] {
+                            ui.selectable_value(p, pos, pos.name());
+                        }
+                    })
+                    .response
+            });
         });
         !ui.button("✖ Remove Subplot").clicked()
     }
@@ -188,8 +205,7 @@ impl Plotter {
                 .zip(&self.queue)
                 .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
                     PlotType::P(fb, c) => {
-                        let mut fig =
-                            plot2d::Figure::from(fb.as_ref()).with_opt(p_opt.inner.clone());
+                        let mut fig = plot2d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
                         if let Some(angle) = p_opt.angle {
                             fig = fig.angle(angle);
                         }
@@ -199,8 +215,7 @@ impl Plotter {
                         io::alert(fig.plot(root), |_| ());
                     }
                     PlotType::S(fb, c) => {
-                        let mut fig =
-                            plot3d::Figure::from(fb.as_ref()).with_opt(p_opt.inner.clone());
+                        let mut fig = plot3d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
                         if let Some(angle) = p_opt.angle {
                             fig = fig.angle(angle);
                         }

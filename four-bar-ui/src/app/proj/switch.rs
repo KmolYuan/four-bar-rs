@@ -252,7 +252,7 @@ where
         };
         ui.heading("Curve");
         ui.horizontal(|ui| {
-            ComboBox::from_label("")
+            ComboBox::from_id_source("pivot")
                 .selected_text(pivot.name())
                 .show_ui(ui, |ui| {
                     ui.selectable_value(pivot, Pivot::Coupler, Pivot::Coupler.name());

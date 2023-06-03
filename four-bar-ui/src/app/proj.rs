@@ -133,7 +133,7 @@ impl Projects {
             return false;
         }
         ui.horizontal(|ui| {
-            ComboBox::from_label("").show_index(ui, &mut self.curr, self.list.len(), |i| {
+            ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
                 let proj = &self.list[i];
                 match proj {
                     ProjSwitch::Fb(_) => format!("[P] {}", proj.name()),

@@ -36,25 +36,24 @@ impl Figure<'_, '_> {
     ///     .plot(SVGBackend::with_string(&mut buf, (800, 800)))
     ///     .unwrap();
     /// ```
-    pub fn plot<B, R>(self, root: R) -> PResult<(), B>
+    pub fn plot<B, R>(&self, root: R) -> PResult<(), B>
     where
         B: DrawingBackend,
         Canvas<B>: From<R>,
     {
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
-        let dot_size = self.get_dot_size();
+        let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
+        let font = self.get_font();
         let sc = na::Vector3::from(self.get_sphere_center().unwrap_or_default());
         let sr = self.get_sphere_radius().unwrap_or(1.);
         debug_assert!(sr > 0.);
         let Self {
-            title,
-            opt: Opt { stroke, font, scale_bar, grid, axis, legend },
             lines,
+            opt: Opt { title, scale_bar, grid, axis, legend, .. },
             ..
         } = self;
-        let font = ("Times New Roman", font).into_font().color(&BLACK);
         let font = || font.clone();
         let mut chart = ChartBuilder::on(&root);
         if let Some(title) = title {
@@ -74,7 +73,7 @@ impl Figure<'_, '_> {
             pb.scale = 0.9;
             pb.into_matrix()
         });
-        if axis {
+        if *axis {
             chart
                 .configure_axes()
                 .light_grid_style(BLACK.mix(0.15))
@@ -83,7 +82,7 @@ impl Figure<'_, '_> {
                 .draw()?;
         }
         // Draw grid
-        if grid {
+        if *grid {
             let t = (0..=500).map(|t| t as f64 / 500. * TAU);
             let z = t.clone().map(|t| sr * t.cos());
             let y = t.map(|t| sr * t.sin());
@@ -100,7 +99,7 @@ impl Figure<'_, '_> {
             }
         }
         // Draw scale bar
-        if scale_bar {
+        if *scale_bar {
             let scale_bar = scale_bar_size(sr);
             for (p, color) in [
                 ([scale_bar, 0., 0.], RED),
@@ -123,7 +122,7 @@ impl Figure<'_, '_> {
                         .map(|&[x, y, z]| $mk::new((x, y, z), dot_size, color));
                     let anno = chart.draw_series(line)?;
                     if !label.is_empty() {
-                        anno.label(label)
+                        anno.label(label.as_ref())
                             .legend(move |(x, y)| $mk::new((x, y), dot_size, color));
                     }
                 }};
@@ -134,7 +133,7 @@ impl Figure<'_, '_> {
                     let anno =
                         chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?;
                     if !label.is_empty() {
-                        anno.label(label).legend(move |(x, y)| {
+                        anno.label(label.as_ref()).legend(move |(x, y)| {
                             PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
                         });
                     }
@@ -149,7 +148,7 @@ impl Figure<'_, '_> {
                     });
                     let anno = chart.draw_series(line)?;
                     if !label.is_empty() {
-                        anno.label(label).legend(move |(x, y)| {
+                        anno.label(label.as_ref()).legend(move |(x, y)| {
                             Rectangle::new([(x + r, y + r), (x - r, y - r)], color)
                         });
                     }
@@ -188,7 +187,7 @@ impl Figure<'_, '_> {
                 .map(|&[x, y, z]| Circle::new((x, y, z), dot_size, BLACK.filled()));
             chart.draw_series(joints)?;
         }
-        if let Some(legend) = legend {
+        if let Some(legend) = *legend {
             chart
                 .configure_series_labels()
                 .position(legend.into())

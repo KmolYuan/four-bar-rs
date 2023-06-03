@@ -114,14 +114,31 @@ impl From<LegendPos> for SeriesLabelPosition {
     }
 }
 
+impl LegendPos {
+    /// Get the option names.
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::UL => "Upper Left",
+            Self::ML => "Middle Left",
+            Self::LL => "Lower Left",
+            Self::UM => "Upper Middle",
+            Self::MM => "Middle Middle",
+            Self::LM => "Lower Middle",
+            Self::UR => "Upper Right",
+            Self::MR => "Middle Right",
+            Self::LR => "Lower Right",
+            Self::Coord(_, _) => "Coordinate",
+        }
+    }
+}
+
 /// Option type base.
 #[derive(Clone)]
 pub struct FigureBase<'a, 'b, M, const N: usize> {
     pub(crate) fb: Option<&'b M>,
     pub(crate) angle: Option<f64>,
-    pub(crate) title: Option<&'a str>,
-    pub(crate) opt: Opt,
     pub(crate) lines: Vec<LineData<'a, N>>,
+    pub(crate) opt: Opt<'a>,
 }
 
 impl<M, const N: usize> Default for FigureBase<'_, '_, M, N> {
@@ -129,7 +146,6 @@ impl<M, const N: usize> Default for FigureBase<'_, '_, M, N> {
         Self {
             fb: None,
             angle: None,
-            title: None,
             opt: Default::default(),
             lines: Default::default(),
         }
@@ -175,9 +191,10 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         Self { angle: Some(angle), ..self }
     }
 
-    /// Set the title.
-    pub fn title(self, title: &'a str) -> Self {
-        Self { title: Some(title), ..self }
+    /// Set the plot caption.
+    pub fn title(mut self, title: impl Into<Cow<'a, str>>) -> Self {
+        self.opt.title.replace(title.into());
+        self
     }
 
     inner_opt! {
@@ -206,7 +223,7 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     /// Set the inner options.
-    pub fn with_opt(self, opt: Opt) -> Self {
+    pub fn with_opt(self, opt: Opt<'a>) -> Self {
         Self { opt, ..self }
     }
 
@@ -223,13 +240,24 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         fb.pos(angle)
     }
 
-    pub(crate) fn get_dot_size(&self) -> u32 {
-        self.stroke + 3
+    // (stroke, dot_size)
+    pub(crate) fn get_dot_size(&self) -> (u32, u32) {
+        (self.stroke, self.stroke + 3)
+    }
+
+    pub(crate) fn get_font(&self) -> TextStyle {
+        let family = self
+            .opt
+            .font_family
+            .as_ref()
+            .unwrap_or(&Cow::Borrowed("Times New Roman"))
+            .as_ref();
+        (family, self.opt.font).into_font().color(&BLACK)
     }
 }
 
-impl<M, const N: usize> std::ops::Deref for FigureBase<'_, '_, M, N> {
-    type Target = Opt;
+impl<'a, M, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> {
+    type Target = Opt<'a>;
     fn deref(&self) -> &Self::Target {
         &self.opt
     }
@@ -242,11 +270,15 @@ impl<M, const N: usize> std::ops::Deref for FigureBase<'_, '_, M, N> {
     serde(default)
 )]
 #[derive(Clone, PartialEq)]
-pub struct Opt {
+pub struct Opt<'a> {
+    /// Plot caption
+    pub title: Option<Cow<'a, str>>,
     /// Stroke size
     pub stroke: u32,
     /// Font size
     pub font: f64,
+    /// Font family
+    pub font_family: Option<Cow<'a, str>>,
     /// Show scale bar
     pub scale_bar: bool,
     /// Show grid
@@ -257,11 +289,13 @@ pub struct Opt {
     pub legend: Option<LegendPos>,
 }
 
-impl Default for Opt {
+impl Default for Opt<'_> {
     fn default() -> Self {
         Self {
+            title: None,
             stroke: 5,
             font: 24.,
+            font_family: None,
             scale_bar: false,
             grid: false,
             axis: true,
@@ -318,24 +352,23 @@ impl Figure<'_, '_> {
     ///     .plot(SVGBackend::with_string(&mut buf, (800, 800)))
     ///     .unwrap();
     /// ```
-    pub fn plot<B, R>(self, root: R) -> PResult<(), B>
+    pub fn plot<B, R>(&self, root: R) -> PResult<(), B>
     where
         B: DrawingBackend,
         Canvas<B>: From<R>,
     {
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
-        let dot_size = self.get_dot_size();
+        let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
+        let font = self.get_font();
         let Self {
-            title,
-            opt: Opt { stroke, font, scale_bar, grid, axis, legend },
             lines,
+            opt: Opt { title, scale_bar, grid, axis, legend, .. },
             ..
         } = self;
         let iter = lines.iter().flat_map(|(_, curve, ..)| curve.iter());
         let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
-        let font = ("Times New Roman", font).into_font().color(&BLACK);
         let font = || font.clone();
         let mut chart = ChartBuilder::on(&root);
         if let Some(title) = title {
@@ -362,7 +395,7 @@ impl Figure<'_, '_> {
                     let line = line.iter().map(|&[x, y]| $mk::new((x, y), dot_size, color));
                     let anno = chart.draw_series(line)?;
                     if !label.is_empty() {
-                        anno.label(label)
+                        anno.label(label.as_ref())
                             .legend(move |(x, y)| $mk::new((x, y), dot_size, color));
                     }
                 }};
@@ -373,7 +406,7 @@ impl Figure<'_, '_> {
                     let anno =
                         chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?;
                     if !label.is_empty() {
-                        anno.label(label).legend(move |(x, y)| {
+                        anno.label(label.as_ref()).legend(move |(x, y)| {
                             PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
                         });
                     }
@@ -388,7 +421,7 @@ impl Figure<'_, '_> {
                     });
                     let anno = chart.draw_series(line)?;
                     if !label.is_empty() {
-                        anno.label(label).legend(move |(x, y)| {
+                        anno.label(label.as_ref()).legend(move |(x, y)| {
                             Rectangle::new([(x + r, y + r), (x - r, y - r)], color)
                         });
                     }
@@ -411,7 +444,7 @@ impl Figure<'_, '_> {
                 .map(|&[x, y]| Circle::new((x, y), dot_size, BLACK.filled()));
             chart.draw_series(joints)?;
             // Draw scale bar
-            if scale_bar {
+            if *scale_bar {
                 let scale_bar = scale_bar_size((x_max - x_min).min(y_max - y_min));
                 for (p, color) in [
                     ((p0[0] + scale_bar, p0[1]), RED),
@@ -422,7 +455,7 @@ impl Figure<'_, '_> {
                 }
             }
         }
-        if let Some(legend) = legend {
+        if let Some(legend) = *legend {
             chart
                 .configure_series_labels()
                 .position(legend.into())
