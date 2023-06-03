@@ -109,7 +109,7 @@ impl Figure<'_, '_> {
             }
         }
         // Draw curves
-        for (label, line, style, color) in &self.lines {
+        for (label, line, style, color) in self.lines() {
             macro_rules! marker {
                 ($mk:ident) => {{
                     let line = line

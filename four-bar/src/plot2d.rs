@@ -26,7 +26,7 @@
 use crate::*;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
-use std::borrow::Cow;
+use std::{borrow::Cow, rc::Rc};
 
 /// Drawing option of four-bar linkage and its input angle.
 ///
@@ -136,8 +136,8 @@ impl LegendPos {
 #[derive(Clone)]
 pub struct FigureBase<'a, 'b, M, const N: usize> {
     pub(crate) fb: Option<&'b M>,
-    pub(crate) angle: Option<f64>,
-    pub(crate) lines: Vec<LineData<'a, N>>,
+    angle: Option<f64>,
+    lines: Vec<Rc<LineData<'a, N>>>,
     pub(crate) opt: Opt<'a>,
 }
 
@@ -218,8 +218,14 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [[f64; N]]>>,
     {
-        self.lines.push((name.into(), line.into(), style, color));
+        self.lines
+            .push(Rc::new((name.into(), line.into(), style, color)));
         self
+    }
+
+    // Iterate over lines
+    pub(crate) fn lines(&self) -> impl Iterator<Item = &LineData<'a, N>> {
+        self.lines.iter().map(|packed| &**packed)
     }
 
     /// Set the inner options.
@@ -246,11 +252,12 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     pub(crate) fn get_font(&self) -> TextStyle {
+        const DEFAULT_FONT: &str = "Times New Roman";
         let family = self
             .opt
             .font_family
             .as_ref()
-            .unwrap_or(&Cow::Borrowed("Times New Roman"))
+            .unwrap_or(&Cow::Borrowed(DEFAULT_FONT))
             .as_ref();
         (family, self.opt.font).into_font().color(&BLACK)
     }
@@ -363,7 +370,7 @@ impl Figure<'_, '_> {
         let joints = self.get_joints();
         let font = self.get_font();
         let Opt { scale_bar, grid, axis, legend, .. } = self.opt;
-        let iter = self.lines.iter().flat_map(|(_, curve, ..)| curve.iter());
+        let iter = self.lines().flat_map(|(_, curve, ..)| curve.iter());
         let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
         let mut chart = ChartBuilder::on(&root);
         if let Some(title) = &self.title {
@@ -386,7 +393,7 @@ impl Figure<'_, '_> {
             .y_label_style(font.clone())
             .draw()?;
         // Draw curve
-        for (label, line, style, color) in &self.lines {
+        for (label, line, style, color) in self.lines() {
             macro_rules! marker {
                 ($mk:ident) => {{
                     let line = line.iter().map(|&[x, y]| $mk::new((x, y), dot_size, color));
