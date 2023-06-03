@@ -49,15 +49,10 @@ impl Figure<'_, '_> {
         let sc = na::Vector3::from(self.get_sphere_center().unwrap_or_default());
         let sr = self.get_sphere_radius().unwrap_or(1.);
         debug_assert!(sr > 0.);
-        let Self {
-            lines,
-            opt: Opt { title, scale_bar, grid, axis, legend, .. },
-            ..
-        } = self;
-        let font = || font.clone();
+        let Opt { scale_bar, grid, axis, legend, .. } = self.opt;
         let mut chart = ChartBuilder::on(&root);
-        if let Some(title) = title {
-            chart.caption(title, font());
+        if let Some(title) = &self.title {
+            chart.caption(title, font.clone());
         }
         let mut chart = chart
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
@@ -73,16 +68,16 @@ impl Figure<'_, '_> {
             pb.scale = 0.9;
             pb.into_matrix()
         });
-        if *axis {
+        if axis {
             chart
                 .configure_axes()
                 .light_grid_style(BLACK.mix(0.15))
-                .label_style(font())
+                .label_style(font.clone())
                 .max_light_lines(3)
                 .draw()?;
         }
         // Draw grid
-        if *grid {
+        if grid {
             let t = (0..=500).map(|t| t as f64 / 500. * TAU);
             let z = t.clone().map(|t| sr * t.cos());
             let y = t.map(|t| sr * t.sin());
@@ -99,7 +94,7 @@ impl Figure<'_, '_> {
             }
         }
         // Draw scale bar
-        if *scale_bar {
+        if scale_bar {
             let scale_bar = scale_bar_size(sr);
             for (p, color) in [
                 ([scale_bar, 0., 0.], RED),
@@ -114,7 +109,7 @@ impl Figure<'_, '_> {
             }
         }
         // Draw curves
-        for (label, line, style, color) in lines {
+        for (label, line, style, color) in &self.lines {
             macro_rules! marker {
                 ($mk:ident) => {{
                     let line = line
@@ -187,13 +182,13 @@ impl Figure<'_, '_> {
                 .map(|&[x, y, z]| Circle::new((x, y, z), dot_size, BLACK.filled()));
             chart.draw_series(joints)?;
         }
-        if let Some(legend) = *legend {
+        if let Some(legend) = legend {
             chart
                 .configure_series_labels()
                 .position(legend.into())
                 .background_style(WHITE)
                 .border_style(BLACK)
-                .label_font(font())
+                .label_font(font)
                 .draw()?;
         }
         Ok(())

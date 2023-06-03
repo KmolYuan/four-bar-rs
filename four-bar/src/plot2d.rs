@@ -362,17 +362,12 @@ impl Figure<'_, '_> {
         let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
         let font = self.get_font();
-        let Self {
-            lines,
-            opt: Opt { title, scale_bar, grid, axis, legend, .. },
-            ..
-        } = self;
-        let iter = lines.iter().flat_map(|(_, curve, ..)| curve.iter());
+        let Opt { scale_bar, grid, axis, legend, .. } = self.opt;
+        let iter = self.lines.iter().flat_map(|(_, curve, ..)| curve.iter());
         let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
-        let font = || font.clone();
         let mut chart = ChartBuilder::on(&root);
-        if let Some(title) = title {
-            chart.caption(title, font());
+        if let Some(title) = &self.title {
+            chart.caption(title, font.clone());
         }
         let mut chart = chart
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
@@ -387,9 +382,11 @@ impl Figure<'_, '_> {
         if !axis {
             mesh.disable_axes();
         }
-        mesh.x_label_style(font()).y_label_style(font()).draw()?;
+        mesh.x_label_style(font.clone())
+            .y_label_style(font.clone())
+            .draw()?;
         // Draw curve
-        for (label, line, style, color) in lines {
+        for (label, line, style, color) in &self.lines {
             macro_rules! marker {
                 ($mk:ident) => {{
                     let line = line.iter().map(|&[x, y]| $mk::new((x, y), dot_size, color));
@@ -444,7 +441,7 @@ impl Figure<'_, '_> {
                 .map(|&[x, y]| Circle::new((x, y), dot_size, BLACK.filled()));
             chart.draw_series(joints)?;
             // Draw scale bar
-            if *scale_bar {
+            if scale_bar {
                 let scale_bar = scale_bar_size((x_max - x_min).min(y_max - y_min));
                 for (p, color) in [
                     ((p0[0] + scale_bar, p0[1]), RED),
@@ -455,13 +452,13 @@ impl Figure<'_, '_> {
                 }
             }
         }
-        if let Some(legend) = *legend {
+        if let Some(legend) = legend {
             chart
                 .configure_series_labels()
                 .position(legend.into())
                 .background_style(WHITE)
                 .border_style(BLACK)
-                .label_font(font())
+                .label_font(font)
                 .draw()?;
         }
         Ok(())
