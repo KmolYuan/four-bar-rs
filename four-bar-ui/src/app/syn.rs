@@ -131,7 +131,7 @@ impl Synthesis {
         ui.label("Use pre-searched dataset to increase the speed.");
         ui.label(format!("No. of planar data: {}", self.cb.as_fb().len()));
         ui.label(format!("No. of spherical data: {}", self.cb.as_sfb().len()));
-        ui.label("Run \"four-bar cb\" in command line window to generate codebook file.");
+        // TODO: Generate codebook here
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();

@@ -111,7 +111,7 @@ impl Figure<'_, '_> {
         // Draw curves
         for (label, line, style, color) in self.lines() {
             let line = line.iter().map(|&[x, y, z]| (x, y, z));
-            style.draw(&mut chart, line, color, stroke, dot_size, label)?;
+            style.draw(&mut chart, line, *color, label)?;
         }
         // Draw linkage
         if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {

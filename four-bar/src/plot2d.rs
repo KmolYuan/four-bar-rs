@@ -40,7 +40,8 @@ use std::{borrow::Cow, rc::Rc};
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, FourBar, 2>;
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
-pub(crate) type LineData<'a, const N: usize> = (Cow<'a, str>, Cow<'a, [[f64; N]]>, Style, RGBColor);
+pub(crate) type LineData<'a, const N: usize> =
+    (Cow<'a, str>, Cow<'a, [[f64; N]]>, Style, ShapeStyle);
 
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
@@ -72,9 +73,7 @@ impl Style {
         &self,
         chart: &mut ChartContext<'a, DB, CT>,
         line: I,
-        color: &'a RGBColor,
-        stroke: u32,
-        dot_size: u32,
+        color: ShapeStyle,
         label: &str,
     ) -> PResult<(), DB>
     where
@@ -83,6 +82,7 @@ impl Style {
         CT::From: Clone + 'static,
         I: IntoIterator<Item = CT::From>,
     {
+        let dot_size = color.stroke_width;
         let has_label = !label.is_empty();
         macro_rules! impl_marker {
             ($mk:ident) => {{
@@ -97,12 +97,11 @@ impl Style {
         }
         match self {
             Self::Line => {
-                let line = LineSeries::new(line, color.stroke_width(stroke));
+                let line = LineSeries::new(line, color);
                 let anno = chart.draw_series(line)?;
                 if has_label {
-                    anno.label(label).legend(move |(x, y)| {
-                        PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
-                    });
+                    anno.label(label)
+                        .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], color));
                 }
             }
             Self::Circle => impl_marker!(Circle),
@@ -257,7 +256,7 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     inner_opt! {
-        /// Set the line stroke/point size.
+        /// Set the line stroke of the linkage.
         fn stroke(u32)
         /// Set font size.
         fn font(f64)
@@ -272,13 +271,14 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     /// Add a line.
-    pub fn add_line<S, L>(mut self, name: S, line: L, style: Style, color: RGBColor) -> Self
+    pub fn add_line<S, L, C>(mut self, name: S, line: L, style: Style, color: C) -> Self
     where
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [[f64; N]]>>,
+        C: Into<ShapeStyle>,
     {
-        self.lines
-            .push(Rc::new((name.into(), line.into(), style, color)));
+        let line_data = (name.into(), line.into(), style, color.into());
+        self.lines.push(Rc::new(line_data));
         self
     }
 
@@ -454,7 +454,7 @@ impl Figure<'_, '_> {
         // Draw curve
         for (label, line, style, color) in self.lines() {
             let line = line.iter().map(|&[x, y]| (x, y));
-            style.draw(&mut chart, line, color, stroke, dot_size, label)?;
+            style.draw(&mut chart, line, *color, label)?;
         }
         // Draw Linkage
         if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
