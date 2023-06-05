@@ -399,8 +399,9 @@ impl Figure<'_, '_> {
                     let line = line.iter().map(|&[x, y]| $mk::new((x, y), dot_size, color));
                     let anno = chart.draw_series(line)?;
                     if !label.is_empty() {
-                        anno.label(label.as_ref())
-                            .legend(move |(x, y)| $mk::new((x, y), dot_size, color));
+                        anno.label(label.as_ref()).legend(move |(x, y)| {
+                            $mk::new((x + dot_size as i32 / 2, y), dot_size, color)
+                        });
                     }
                 }};
             }
