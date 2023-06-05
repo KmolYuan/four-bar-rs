@@ -110,45 +110,8 @@ impl Figure<'_, '_> {
         }
         // Draw curves
         for (label, line, style, color) in self.lines() {
-            macro_rules! marker {
-                ($mk:ident) => {{
-                    let line = line
-                        .iter()
-                        .map(|&[x, y, z]| $mk::new((x, y, z), dot_size, color));
-                    let anno = chart.draw_series(line)?;
-                    if !label.is_empty() {
-                        anno.label(label.as_ref())
-                            .legend(move |(x, y)| $mk::new((x, y), dot_size, color));
-                    }
-                }};
-            }
-            match style {
-                Style::Line => {
-                    let line = line.iter().map(|&[x, y, z]| (x, y, z));
-                    let anno =
-                        chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?;
-                    if !label.is_empty() {
-                        anno.label(label.as_ref()).legend(move |(x, y)| {
-                            PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
-                        });
-                    }
-                }
-                Style::Triangle => marker!(TriangleMarker),
-                Style::Cross => marker!(Cross),
-                Style::Circle => marker!(Circle),
-                Style::Square => {
-                    let r = dot_size as i32 / 2;
-                    let line = line.iter().map(|&[x, y, z]| {
-                        EmptyElement::at((x, y, z)) + Rectangle::new([(r, r), (-r, -r)], color)
-                    });
-                    let anno = chart.draw_series(line)?;
-                    if !label.is_empty() {
-                        anno.label(label.as_ref()).legend(move |(x, y)| {
-                            Rectangle::new([(x + r, y + r), (x - r, y - r)], color)
-                        });
-                    }
-                }
-            };
+            let line = line.iter().map(|&[x, y, z]| (x, y, z));
+            style.draw(&mut chart, line, color, stroke, dot_size, label)?;
         }
         // Draw linkage
         if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {

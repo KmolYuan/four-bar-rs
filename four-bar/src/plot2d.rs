@@ -67,6 +67,65 @@ pub enum Style {
     Square,
 }
 
+impl Style {
+    pub(crate) fn draw<'a, DB, CT, I>(
+        &self,
+        chart: &mut ChartContext<'a, DB, CT>,
+        line: I,
+        color: &'a RGBColor,
+        stroke: u32,
+        dot_size: u32,
+        label: &str,
+    ) -> PResult<(), DB>
+    where
+        DB: DrawingBackend + 'a,
+        CT: CoordTranslate,
+        CT::From: Clone + 'static,
+        I: IntoIterator<Item = CT::From>,
+    {
+        let has_label = !label.is_empty();
+        macro_rules! impl_marker {
+            ($mk:ident) => {{
+                let line = line.into_iter().map(|c| $mk::new(c, dot_size, color));
+                let anno = chart.draw_series(line)?;
+                if has_label {
+                    anno.label(label).legend(move |(x, y)| {
+                        $mk::new((x + dot_size as i32 / 2, y), dot_size, color)
+                    });
+                }
+            }};
+        }
+        match self {
+            Self::Line => {
+                let line = LineSeries::new(line, color.stroke_width(stroke));
+                let anno = chart.draw_series(line)?;
+                if has_label {
+                    anno.label(label).legend(move |(x, y)| {
+                        PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
+                    });
+                }
+            }
+            Self::Circle => impl_marker!(Circle),
+            Self::Triangle => impl_marker!(TriangleMarker),
+            Self::Cross => impl_marker!(Cross),
+            Self::Square => {
+                let r = dot_size as i32;
+                let line = line
+                    .into_iter()
+                    .map(|c| EmptyElement::at(c) + Rectangle::new([(r, r), (-r, -r)], color));
+                let anno = chart.draw_series(line)?;
+                if has_label {
+                    anno.label(label).legend(move |(x, y)| {
+                        EmptyElement::at((x + dot_size as i32 / 2, y))
+                            + Rectangle::new([(r, r), (-r, -r)], color)
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Legend position option.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
@@ -394,44 +453,8 @@ impl Figure<'_, '_> {
             .draw()?;
         // Draw curve
         for (label, line, style, color) in self.lines() {
-            macro_rules! marker {
-                ($mk:ident) => {{
-                    let line = line.iter().map(|&[x, y]| $mk::new((x, y), dot_size, color));
-                    let anno = chart.draw_series(line)?;
-                    if !label.is_empty() {
-                        anno.label(label.as_ref()).legend(move |(x, y)| {
-                            $mk::new((x + dot_size as i32 / 2, y), dot_size, color)
-                        });
-                    }
-                }};
-            }
-            match style {
-                Style::Line => {
-                    let line = line.iter().map(|&[x, y]| (x, y));
-                    let anno =
-                        chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?;
-                    if !label.is_empty() {
-                        anno.label(label.as_ref()).legend(move |(x, y)| {
-                            PathElement::new([(x, y), (x + 20, y)], color.stroke_width(stroke))
-                        });
-                    }
-                }
-                Style::Triangle => marker!(TriangleMarker),
-                Style::Cross => marker!(Cross),
-                Style::Circle => marker!(Circle),
-                Style::Square => {
-                    let r = dot_size as i32 / 2;
-                    let line = line.iter().map(|&[x, y]| {
-                        EmptyElement::at((x, y)) + Rectangle::new([(r, r), (-r, -r)], color)
-                    });
-                    let anno = chart.draw_series(line)?;
-                    if !label.is_empty() {
-                        anno.label(label.as_ref()).legend(move |(x, y)| {
-                            Rectangle::new([(x + r, y + r), (x - r, y - r)], color)
-                        });
-                    }
-                }
-            };
+            let line = line.iter().map(|&[x, y]| (x, y));
+            style.draw(&mut chart, line, color, stroke, dot_size, label)?;
         }
         // Draw Linkage
         if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
