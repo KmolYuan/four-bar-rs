@@ -139,17 +139,14 @@ impl PlotOpt {
             ui.checkbox(&mut self.opt.scale_bar, "Show scale bar in plots");
             ui.checkbox(&mut self.opt.grid, "Show grid in plots");
             ui.checkbox(&mut self.opt.axis, "Show axis in plots");
-            check_on(ui, "Legend", &mut self.opt.legend, |ui, p| {
-                ComboBox::from_id_source("legend")
-                    .selected_text(p.name())
-                    .show_ui(ui, |ui| {
-                        use plot3d::LegendPos::*;
-                        for pos in [UL, ML, LL, UM, MM, LM, UR, MR, LR] {
-                            ui.selectable_value(p, pos, pos.name());
-                        }
-                    })
-                    .response
-            });
+            ComboBox::from_id_source("legend")
+                .selected_text(self.opt.legend.name())
+                .show_ui(ui, |ui| {
+                    use plot2d::LegendPos::*;
+                    for pos in [Hide, UL, ML, LL, UM, MM, LM, UR, MR, LR] {
+                        ui.selectable_value(&mut self.opt.legend, pos, pos.name());
+                    }
+                });
         });
         !ui.button("✖ Remove Subplot").clicked()
     }

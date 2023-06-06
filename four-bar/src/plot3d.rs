@@ -145,10 +145,10 @@ impl Figure<'_, '_> {
                 .map(|&[x, y, z]| Circle::new((x, y, z), dot_size, BLACK.filled()));
             chart.draw_series(joints)?;
         }
-        if let Some(legend) = legend {
+        if let Some(legend) = legend.to_plotter_pos() {
             chart
                 .configure_series_labels()
-                .position(legend.into())
+                .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)
                 .label_font(font)

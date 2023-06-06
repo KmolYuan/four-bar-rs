@@ -38,26 +38,27 @@ mod impl_io {
 
     pub(super) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(PathBuf, String) + 'static,
+        C: Fn(PathBuf, std::io::Cursor<String>) + 'static,
     {
-        let done = move |path, s| done(PathBuf::from(path), s);
+        let done = move |path, s| done(PathBuf::from(path), std::io::Cursor::new(s));
         let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done)).into_js_value();
         open_file(&js_ext(ext), done, true, false);
     }
 
     pub(super) fn open_bin<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(Vec<u8>) + 'static,
+        C: Fn(std::io::Cursor<Vec<u8>>) + 'static,
     {
+        let done = move |buf| done(std::io::Cursor::new(buf));
         let done = Closure::<dyn Fn(Vec<u8>)>::wrap(Box::new(done)).into_js_value();
         open_file(&js_ext(ext), done, true, true);
     }
 
     pub(super) fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, String) + 'static,
+        C: FnOnce(PathBuf, std::io::Cursor<String>) + 'static,
     {
-        let done = |path: String, s| done(PathBuf::from(path), s);
+        let done = |path: String, s| done(PathBuf::from(path), std::io::Cursor::new(s));
         open_file(&js_ext(ext), Closure::once_into_js(done), false, false);
     }
 
@@ -98,32 +99,32 @@ mod impl_io {
 
     pub(super) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(PathBuf, String) + 'static,
+        C: Fn(PathBuf, std::fs::File) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             paths
                 .into_iter()
-                .for_each(|path| alert(std::fs::read_to_string(&path), |s| done(path, s)));
+                .for_each(|path| alert(std::fs::File::open(&path), |r| done(path, r)));
         }
     }
 
     pub(super) fn open_bin<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(Vec<u8>) + 'static,
+        C: Fn(std::fs::File) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             paths
                 .into_iter()
-                .for_each(|path| alert(std::fs::read(path), &done));
+                .for_each(|path| alert(std::fs::File::open(path), &done));
         }
     }
 
     pub(super) fn open_single<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, String) + 'static,
+        C: FnOnce(PathBuf, std::fs::File) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            alert(std::fs::read_to_string(&path), |s| done(path, s));
+            alert(std::fs::File::open(&path), |s| done(path, s));
         }
     }
 
@@ -169,7 +170,7 @@ pub(crate) fn open_ron<C>(done: C)
 where
     C: Fn(PathBuf, Fb) + 'static,
 {
-    let done = move |path, s: String| alert(ron::from_str(&s), |fb| done(path, fb));
+    let done = move |path, r| alert(ron::de::from_reader(r), |fb| done(path, fb));
     open(FMT, EXT, done);
 }
 
@@ -177,8 +178,8 @@ pub(crate) fn open_csv_single<C>(done: C)
 where
     C: FnOnce(PathBuf, Curve) + 'static,
 {
-    open_single(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(Curve::from_str(&s), |d| done(p, d));
+    open_single(CSV_FMT, CSV_EXT, move |p, r| {
+        alert(Curve::from_reader(r), |d| done(p, d));
     });
 }
 
@@ -186,8 +187,8 @@ pub(crate) fn open_csv<C>(done: C)
 where
     C: Fn(PathBuf, Curve) + 'static,
 {
-    open(CSV_FMT, CSV_EXT, move |p, s| {
-        alert(Curve::from_str(&s), |d| done(p, d));
+    open(CSV_FMT, CSV_EXT, move |p, r| {
+        alert(Curve::from_reader(r), |d| done(p, d));
     });
 }
 
@@ -195,7 +196,7 @@ pub(crate) fn open_cb<C>(done: C)
 where
     C: Fn(Cb) + 'static,
 {
-    let done = move |b| alert(Cb::from_buf(b), &done);
+    let done = move |b| alert(Cb::from_reader(b), &done);
     open_bin(CB_FMT, CB_EXT, done);
 }
 
@@ -281,10 +282,6 @@ impl Default for Curve {
 }
 
 impl Curve {
-    fn from_str(s: &str) -> Result<Self, csv::Error> {
-        Self::from_reader(std::io::Cursor::new(s))
-    }
-
     pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, csv::Error>
     where
         R: std::io::Read,
@@ -314,10 +311,6 @@ pub(crate) enum Cb {
 }
 
 impl Cb {
-    fn from_buf(buf: Vec<u8>) -> Result<Self, cb::ReadNpzError> {
-        Self::from_reader(std::io::Cursor::new(buf))
-    }
-
     pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, cb::ReadNpzError>
     where
         R: std::io::Read + std::io::Seek,

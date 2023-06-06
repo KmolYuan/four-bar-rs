@@ -1,6 +1,6 @@
 use super::{Syn, SynCfg};
 use crate::{io, syn_cmd};
-use four_bar::{plot2d::IntoDrawingArea as _, *};
+use four_bar::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::{
     borrow::Cow,
@@ -182,6 +182,7 @@ fn run(
             let svg = plot2d::SVGBackend::new(&path, (800, 600));
             plot2d::history(svg, history)?;
         }
+        use plot2d::{Color as _, IntoDrawingArea as _};
         macro_rules! impl_log {
             ($fb:ident, $cb_fb:ident, $target:ident, $log_fb:ident, $fb_enum:ident, $fb_ty:ident, $efd:ident, $plot:ident) => {
                 if !$fb.is_valid() {
@@ -213,8 +214,18 @@ fn run(
                     fig = fig.angle(angle.to_radians());
                 }
                 fig = fig
-                    .add_line(target_str, &$target, $plot::Style::Circle, $plot::RED)
-                    .add_line("Optimized", &curve, $plot::Style::Triangle, $plot::BLACK);
+                    .add_line(
+                        target_str,
+                        &$target,
+                        $plot::Style::Circle,
+                        $plot::RED.stroke_width(5),
+                    )
+                    .add_line(
+                        "Optimized",
+                        &curve,
+                        $plot::Style::Triangle,
+                        $plot::BLACK.stroke_width(5),
+                    );
                 fig.plot(root_l)?;
                 let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
                 writeln!(log, "[{title}]")?;
@@ -251,8 +262,8 @@ fn run(
                     .unwrap()
                     .join(refer)
                     .join(format!("{title}.ron"));
-                if let Ok(s) = std::fs::read_to_string(refer) {
-                    let fb = ron::from_str::<$fb_ty>(&s)?;
+                if let Ok(r) = std::fs::File::open(refer) {
+                    let fb = ron::de::from_reader::<_, $fb_ty>(r)?;
                     let c = fb.curve(cfg.res);
                     let err = curve_diff(&$target, &c);
                     writeln!(log, "\n[competitor]")?;
@@ -270,7 +281,7 @@ fn run(
                         .unwrap_or("Competitor".to_string());
                     fig = fig.add_line(competitor_str, c, $plot::Style::Square, $plot::BLACK);
                 }
-                fig.remove_fb().plot(root_r)?;
+                fig.remove_fb().axis(true).plot(root_r)?;
                 log.flush()?;
                 pb.finish();
             };

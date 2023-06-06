@@ -30,11 +30,11 @@ macro_rules! impl_delta {
             type State = $state;
 
             fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
-                match (a, b) {
-                    $(_ if a.$m() != b.$m() => Some(Self::$f(b.$m() - a.$m())),)+
-                    $(_ if a.$b_m() != b.$b_m() => Some(Self::$b_f),)+
-                    _ => None,
-                }
+                Some(match (a, b) {
+                    $(_ if a.$m() != b.$m() => Self::$f(b.$m() - a.$m()),)+
+                    $(_ if a.$b_m() != b.$b_m() => Self::$b_f,)+
+                    _ => None?,
+                })
             }
 
             fn undo(&self, state: &mut Self::State) {

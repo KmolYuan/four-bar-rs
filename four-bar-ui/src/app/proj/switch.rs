@@ -46,7 +46,7 @@ impl ProjSwitch {
         if cfg!(target_arch = "wasm32") {
             return None;
         }
-        match ron::from_str::<io::Fb>(&std::fs::read_to_string(path).ok()?).ok()? {
+        match ron::de::from_reader(std::fs::File::open(path).ok()?).ok()? {
             io::Fb::Fb(fb) => Some(Self::Fb(FbProj::new(fb))),
             io::Fb::SFb(fb) => Some(Self::SFb(SFbProj::new(fb))),
         }
@@ -335,8 +335,8 @@ where
         if let Some(fb) = self
             .path
             .as_ref()
-            .and_then(|p| std::fs::read_to_string(p).ok())
-            .and_then(|s| ron::from_str(&s).ok())
+            .and_then(|p| std::fs::File::open(p).ok())
+            .and_then(|r| ron::de::from_reader(r).ok())
         {
             self.fb = fb;
         }

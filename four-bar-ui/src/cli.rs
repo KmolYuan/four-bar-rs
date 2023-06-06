@@ -63,8 +63,8 @@ struct SynCfg {
     #[clap(long)]
     angle: Option<f64>,
     /// Legend position
-    #[clap(long)]
-    legend_pos: Option<four_bar::plot2d::LegendPos>,
+    #[clap(long, default_value = "ll")]
+    legend_pos: four_bar::plot2d::LegendPos,
     #[clap(flatten)]
     inner: syn_cmd::SynConfig,
 }

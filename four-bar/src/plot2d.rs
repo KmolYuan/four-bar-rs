@@ -128,8 +128,10 @@ impl Style {
 /// Legend position option.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[derive(Clone, Copy, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Default, Debug)]
 pub enum LegendPos {
+    /// Hide Legend
+    Hide,
     /// Upper Left
     UL,
     /// Middle Left
@@ -154,28 +156,11 @@ pub enum LegendPos {
     Coord(i32, i32),
 }
 
-impl From<LegendPos> for SeriesLabelPosition {
-    fn from(pos: LegendPos) -> Self {
-        use LegendPos::*;
-        match pos {
-            UL => Self::UpperLeft,
-            ML => Self::MiddleLeft,
-            LL => Self::LowerLeft,
-            UM => Self::UpperMiddle,
-            MM => Self::MiddleMiddle,
-            LM => Self::LowerMiddle,
-            UR => Self::UpperRight,
-            MR => Self::MiddleRight,
-            LR => Self::LowerRight,
-            Coord(x, y) => Self::Coordinate(x, y),
-        }
-    }
-}
-
 impl LegendPos {
     /// Get the option names.
     pub const fn name(&self) -> &'static str {
         match self {
+            Self::Hide => "Hide",
             Self::UL => "Upper Left",
             Self::ML => "Middle Left",
             Self::LL => "Lower Left",
@@ -187,6 +172,24 @@ impl LegendPos {
             Self::LR => "Lower Right",
             Self::Coord(_, _) => "Coordinate",
         }
+    }
+
+    /// Transform to plotters option.
+    pub fn to_plotter_pos(&self) -> Option<SeriesLabelPosition> {
+        use SeriesLabelPosition::*;
+        Some(match self {
+            Self::Hide => None?,
+            Self::UL => UpperLeft,
+            Self::ML => MiddleLeft,
+            Self::LL => LowerLeft,
+            Self::UM => UpperMiddle,
+            Self::MM => MiddleMiddle,
+            Self::LM => LowerMiddle,
+            Self::UR => UpperRight,
+            Self::MR => MiddleRight,
+            Self::LR => LowerRight,
+            &Self::Coord(x, y) => Coordinate(x, y),
+        })
     }
 }
 
@@ -267,7 +270,7 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         /// Show the axis.
         fn axis(bool)
         /// Set legend position.
-        fn legend(Option<LegendPos>)
+        fn legend(LegendPos)
     }
 
     /// Add a line.
@@ -352,7 +355,7 @@ pub struct Opt<'a> {
     /// Show axis
     pub axis: bool,
     /// Legend position
-    pub legend: Option<LegendPos>,
+    pub legend: LegendPos,
 }
 
 impl Default for Opt<'_> {
@@ -365,7 +368,7 @@ impl Default for Opt<'_> {
             scale_bar: false,
             grid: false,
             axis: true,
-            legend: None,
+            legend: LegendPos::Hide,
         }
     }
 }
@@ -483,10 +486,10 @@ impl Figure<'_, '_> {
                 }
             }
         }
-        if let Some(legend) = legend {
+        if let Some(legend) = legend.to_plotter_pos() {
             chart
                 .configure_series_labels()
-                .position(legend.into())
+                .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)
                 .label_font(font)
