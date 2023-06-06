@@ -123,8 +123,7 @@ impl<D: Delta> Undo<D> {
             return;
         };
         let Some(delta) = D::delta(base, state) else { return };
-        // FIXME: Use `is_some_and`
-        if self.undo.last_mut().map(|d| d.try_merge(&delta)) != Some(true) {
+        if self.undo.last_mut().is_some_and(|d| d.try_merge(&delta)) {
             self.undo.push(delta);
         }
         self.redo.clear();
