@@ -259,6 +259,12 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         self
     }
 
+    /// Set the font family.
+    pub fn font_family(mut self, family: impl Into<Cow<'a, str>>) -> Self {
+        self.opt.font_family.replace(family.into());
+        self
+    }
+
     inner_opt! {
         /// Set the line stroke of the linkage.
         fn stroke(u32)
