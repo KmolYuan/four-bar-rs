@@ -82,7 +82,8 @@ impl Style {
         CT::From: Clone + 'static,
         I: IntoIterator<Item = CT::From>,
     {
-        let dot_size = color.stroke_width;
+        let color = color.stroke_width(color.stroke_width + 2);
+        let dot_size = color.stroke_width + 5;
         let has_label = !label.is_empty();
         macro_rules! impl_marker {
             ($mk:ident) => {{

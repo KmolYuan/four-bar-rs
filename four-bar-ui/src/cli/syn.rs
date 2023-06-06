@@ -182,7 +182,7 @@ fn run(
             let svg = plot2d::SVGBackend::new(&path, (800, 600));
             plot2d::history(svg, history)?;
         }
-        use plot2d::{Color as _, IntoDrawingArea as _};
+        use plot2d::IntoDrawingArea as _;
         macro_rules! impl_log {
             ($fb:ident, $cb_fb:ident, $target:ident, $log_fb:ident, $fb_enum:ident, $fb_ty:ident, $efd:ident, $plot:ident) => {
                 if !$fb.is_valid() {
@@ -214,18 +214,8 @@ fn run(
                     fig = fig.angle(angle.to_radians());
                 }
                 fig = fig
-                    .add_line(
-                        target_str,
-                        &$target,
-                        $plot::Style::Circle,
-                        $plot::RED.stroke_width(5),
-                    )
-                    .add_line(
-                        "Optimized",
-                        &curve,
-                        $plot::Style::Triangle,
-                        $plot::BLACK.stroke_width(5),
-                    );
+                    .add_line(target_str, &$target, $plot::Style::Circle, $plot::RED)
+                    .add_line("Optimized", &curve, $plot::Style::Triangle, $plot::BLACK);
                 fig.plot(root_l)?;
                 let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
                 writeln!(log, "[{title}]")?;
