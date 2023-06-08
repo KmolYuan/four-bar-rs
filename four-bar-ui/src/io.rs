@@ -33,7 +33,7 @@ mod impl_io {
     }
 
     pub(super) fn alert_dialog(s: &str) {
-        alert(s)
+        alert(s);
     }
 
     pub(super) fn open<C>(_fmt: &str, ext: &[&str], done: C)

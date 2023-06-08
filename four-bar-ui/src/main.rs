@@ -21,6 +21,6 @@ fn main() {
         eframe::WebRunner::new()
             .start("app", opt, Box::new(|ctx| App::new(ctx, Vec::new())))
             .await
-            .expect("failed to startup")
+            .expect("failed to startup");
     });
 }
