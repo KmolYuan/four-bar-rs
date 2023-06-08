@@ -242,7 +242,7 @@ where
     }
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
-        let get_curve = |pivot: Pivot, fb: &M::De, n: usize| -> Vec<_> {
+        let get_curve = |pivot, fb: &M::De, n| -> Vec<_> {
             let curve = fb.curves(n).into_iter();
             match pivot {
                 Pivot::Driver => curve.map(|[c, _, _]| c).collect(),

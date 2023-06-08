@@ -70,13 +70,15 @@ pub(super) fn syn(syn: Syn) {
         .expect("Load codebook failed!");
     let mpb = MultiProgress::new();
     let method = method.unwrap_or_default();
-    let run = |f: PathBuf| run(&mpb, method.clone(), f, &cfg, &cb, &refer);
+    let run = |f| run(&mpb, method.clone(), f, &cfg, &cb, &refer);
+    let t0 = std::time::Instant::now();
     if one_by_one {
         files.into_iter().for_each(run);
     } else {
         use mh::rayon::prelude::*;
         files.into_par_iter().for_each(run);
     }
+    println!("Finished in {:?}", t0.elapsed());
 }
 
 fn run(

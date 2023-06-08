@@ -54,7 +54,7 @@ struct Syn {
 #[derive(clap::Args)]
 struct SynCfg {
     /// Font size in the plot
-    #[clap(long, default_value_t = 24.)]
+    #[clap(long, default_value_t = 45.)]
     font: f64,
     /// Reference number
     #[clap(long)]
