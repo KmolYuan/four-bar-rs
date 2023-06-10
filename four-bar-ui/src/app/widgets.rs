@@ -148,14 +148,15 @@ pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
             if ui.button("🗑 Clear").clicked() {
                 xs.clear();
             }
-            ui.horizontal(|ui| {
-                ui.vertical(|ui| xs.retain(|_| !ui.button("✖").clicked()));
-                for (i, label) in (0..N).zip(["x: ", "y: ", "z: "]) {
-                    ui.vertical(|ui| {
-                        xs.iter_mut()
-                            .for_each(|c| drop(unit(ui, label, &mut c[i], 0.01)));
-                    });
-                }
+            xs.retain_mut(|c| {
+                ui.horizontal(|ui| {
+                    let keep = !ui.button("✖").clicked();
+                    for (i, label) in (0..N).zip(["x: ", "y: ", "z: "]) {
+                        unit(ui, label, &mut c[i], 0.01);
+                    }
+                    keep
+                })
+                .inner
             });
         });
 }

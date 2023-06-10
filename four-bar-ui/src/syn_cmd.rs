@@ -153,8 +153,6 @@ impl<'a> Solver<'a> {
         }
     }
 
-    // TODO: Get result with `cb_fb`
-    #[allow(dead_code)]
     pub(crate) fn solve_verbose(self) -> Result<(f64, usize, CbFb), mh::ndarray::ShapeError> {
         macro_rules! impl_solve {
             ($syn:ident, $s:ident, $cb_fb:ident) => {{

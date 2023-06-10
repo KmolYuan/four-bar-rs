@@ -137,6 +137,10 @@ impl Synthesis {
                 let queue = self.queue.clone();
                 io::open_cb(move |cb| *queue.borrow_mut() = Cache::Cb(cb));
             }
+            if ui.button("✚ Planar").clicked() {}
+            if ui.button("✚ Spherical").clicked() {}
+        });
+        ui.horizontal(|ui| {
             if ui.button("🗑 Clear Planar").clicked() {
                 self.cb.as_fb_mut().clear();
             }
@@ -212,15 +216,15 @@ impl Synthesis {
         use syn_cmd::SynMethod::*;
         match m {
             De(s) => {
-                ui.horizontal_wrapped(|ui| {
-                    use mh::de::Strategy::*;
-                    for (i, strategy) in [S1, S2, S3, S4, S5, S6, S7, S8, S9, S10]
-                        .into_iter()
-                        .enumerate()
-                    {
-                        ui.selectable_value(&mut s.strategy, strategy, format!("S{i}"));
-                    }
-                });
+                use mh::de::Strategy::*;
+                const ST: [mh::de::Strategy; 10] = [S1, S2, S3, S4, S5, S6, S7, S8, S9, S10];
+                let mut i = ST.iter().position(|st| *st == s.strategy).unwrap();
+                if ComboBox::from_id_source("de strategy")
+                    .show_index(ui, &mut i, ST.len(), |i| format!("S{}", i + 1))
+                    .changed()
+                {
+                    s.strategy = ST[i];
+                }
                 param!(s, f, cross);
             }
             Fa(s) => param!(s, alpha, beta_min, gamma),
