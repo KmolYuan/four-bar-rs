@@ -31,7 +31,6 @@ impl Figure<'_, '_> {
     /// let mut buf = String::new();
     /// Figure::from(&fb)
     ///     .axis(false)
-    ///     .scale_bar(true)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
     ///     .plot(SVGBackend::with_string(&mut buf, (800, 800)))
     ///     .unwrap();
@@ -49,7 +48,7 @@ impl Figure<'_, '_> {
         let sc = na::Vector3::from(self.get_sphere_center().unwrap_or_default());
         let sr = self.get_sphere_radius().unwrap_or(1.);
         debug_assert!(sr > 0.);
-        let Opt { scale_bar, grid, axis, legend, .. } = self.opt;
+        let Opt {  grid, axis, legend, .. } = self.opt;
         let mut chart = ChartBuilder::on(&root);
         if let Some(title) = &self.title {
             chart.caption(title, font.clone());
@@ -91,21 +90,6 @@ impl Figure<'_, '_> {
                     .zip(z)
                     .map(|((x, y), z)| (sc.x + x, sc.y + y, sc.z + z));
                 chart.draw_series(LineSeries::new(iter, BLACK.mix(0.1)))?;
-            }
-        }
-        // Draw scale bar
-        if scale_bar {
-            let scale_bar = scale_bar_size(sr);
-            for (p, color) in [
-                ([scale_bar, 0., 0.], RED),
-                ([0., scale_bar, 0.], BLUE),
-                ([0., 0., scale_bar], GREEN),
-            ] {
-                let p = na::Vector3::from(p) + sc;
-                chart.draw_series(LineSeries::new(
-                    [(sc.x, sc.y, sc.z), (p.x, p.y, p.z)],
-                    color.stroke_width(stroke),
-                ))?;
             }
         }
         // Draw curves

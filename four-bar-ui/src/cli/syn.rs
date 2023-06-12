@@ -210,8 +210,7 @@ fn run(
                 let mut fig = $plot::Figure::from(&$fb)
                     .axis(false)
                     .font(cfg.font)
-                    .legend(cfg.legend_pos)
-                    .scale_bar(true);
+                    .legend(cfg.legend_pos);
                 if let Some(angle) = cfg.angle {
                     fig = fig.angle(angle.to_radians());
                 }

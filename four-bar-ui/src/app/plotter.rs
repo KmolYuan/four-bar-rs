@@ -136,7 +136,6 @@ impl PlotOpt {
             check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {
                 ui.text_edit_singleline(s.to_mut())
             });
-            ui.checkbox(&mut self.opt.scale_bar, "Show scale bar in plots");
             ui.checkbox(&mut self.opt.grid, "Show grid in plots");
             ui.checkbox(&mut self.opt.axis, "Show axis in plots");
             ComboBox::from_id_source("legend")

@@ -270,8 +270,6 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         fn stroke(u32)
         /// Set font size.
         fn font(f64)
-        /// Show the scale bar when the linkage is specified.
-        fn scale_bar(bool)
         /// Use grid in the plot.
         fn grid(bool)
         /// Show the axis.
@@ -355,8 +353,6 @@ pub struct Opt<'a> {
     pub font: f64,
     /// Font family
     pub font_family: Option<Cow<'a, str>>,
-    /// Show scale bar
-    pub scale_bar: bool,
     /// Show grid
     pub grid: bool,
     /// Show axis
@@ -372,7 +368,6 @@ impl Default for Opt<'_> {
             stroke: 5,
             font: 24.,
             font_family: None,
-            scale_bar: false,
             grid: false,
             axis: true,
             legend: LegendPos::Hide,
@@ -423,7 +418,6 @@ impl Figure<'_, '_> {
     /// let mut buf = String::new();
     /// Figure::from(&fb)
     ///     .axis(false)
-    ///     .scale_bar(true)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
     ///     .plot(SVGBackend::with_string(&mut buf, (800, 800)))
     ///     .unwrap();
@@ -438,7 +432,7 @@ impl Figure<'_, '_> {
         let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
         let font = self.get_font();
-        let Opt { scale_bar, grid, axis, legend, .. } = self.opt;
+        let Opt {  grid, axis, legend, .. } = self.opt;
         let iter = self.lines().flat_map(|(_, curve, ..)| curve.iter());
         let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
         let mut chart = ChartBuilder::on(&root);
@@ -481,17 +475,6 @@ impl Figure<'_, '_> {
                 .iter()
                 .map(|&[x, y]| Circle::new((x, y), dot_size, BLACK.filled()));
             chart.draw_series(joints)?;
-            // Draw scale bar
-            if scale_bar {
-                let scale_bar = scale_bar_size((x_max - x_min).min(y_max - y_min));
-                for (p, color) in [
-                    ((p0[0] + scale_bar, p0[1]), RED),
-                    ((p0[0], p0[1] + scale_bar), BLUE),
-                ] {
-                    let style = color.stroke_width(stroke);
-                    chart.draw_series(LineSeries::new([(p0[0], p0[1]), p], style))?;
-                }
-            }
         }
         if let Some(legend) = legend.to_plotter_pos() {
             chart
@@ -535,9 +518,4 @@ pub fn bounding_box<'a>(pts: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4]
         let r = dy * 0.5;
         [cen - r, cen + r, *y_min, *y_max]
     }
-}
-
-/// Calculate the scale bar size.
-pub fn scale_bar_size(x: f64) -> f64 {
-    10f64.powi(x.log10().floor() as i32 - 1)
 }
