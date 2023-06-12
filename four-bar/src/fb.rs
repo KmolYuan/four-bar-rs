@@ -330,16 +330,6 @@ impl AngleBound {
         }
     }
 
-    /// Check if the curve is closed.
-    pub fn is_closed_curve(&self) -> bool {
-        matches!(self, AngleBound::Closed)
-    }
-
-    /// Check if the curve is open.
-    pub fn is_open_curve(&self) -> bool {
-        matches!(self, AngleBound::Open(_, _))
-    }
-
     /// Check if the data is valid.
     pub fn is_valid(&self) -> bool {
         !matches!(self, AngleBound::Invalid)
