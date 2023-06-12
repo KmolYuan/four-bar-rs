@@ -191,15 +191,14 @@ where
                     return infisible();
                 }
                 let bound = [
-                    [xs[M::BOUND_NUM], xs[M::BOUND_NUM + 1]],
-                    [xs[M::BOUND_NUM + 1], xs[M::BOUND_NUM]],
+                    AngleBound::Open(xs[M::BOUND_NUM], xs[M::BOUND_NUM + 1]),
+                    AngleBound::Open(xs[M::BOUND_NUM + 1], xs[M::BOUND_NUM]),
                 ];
                 #[cfg(feature = "rayon")]
                 let iter = bound.into_par_iter();
                 #[cfg(not(feature = "rayon"))]
                 let iter = bound.into_iter();
-                iter.map(|[t1, t2]| [t1, if t2 > t1 { t2 } else { t2 + TAU }])
-                    .filter(|[t1, t2]| t2 - t1 > AngleBound::MIN_ANGLE)
+                iter.filter_map(|b| b.to_value())
                     .flat_map(f)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or_else(infisible)

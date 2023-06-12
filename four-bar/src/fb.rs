@@ -2,7 +2,7 @@ pub use self::{fb2d::*, fb3d::*};
 use crate::efd::EfdDim;
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::f64::consts::{FRAC_PI_8, TAU};
+use std::f64::consts::TAU;
 
 mod fb2d;
 mod fb3d;
@@ -276,8 +276,8 @@ pub enum AngleBound {
 }
 
 impl AngleBound {
-    /// The minimum input angle bound. (π/16)
-    pub const MIN_ANGLE: f64 = FRAC_PI_8 * 0.5;
+    /// The minimum input angle bound. (π/3)
+    pub const MIN_ANGLE: f64 = std::f64::consts::FRAC_PI_3;
 
     /// Check angle bound from a planar loop.
     pub fn from_planar_loop(mut planar_loop: [f64; 4]) -> Self {
@@ -322,7 +322,10 @@ impl AngleBound {
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
             Self::Closed => Some([0., TAU]),
-            Self::Open(a, b) => (b - a > Self::MIN_ANGLE).then_some([a, b]),
+            Self::Open(a, b) => {
+                let [a, b] = [a, if b > a { b } else { b + TAU }];
+                (b - a > Self::MIN_ANGLE).then_some([a, b])
+            }
             Self::Invalid => None,
         }
     }
