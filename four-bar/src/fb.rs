@@ -323,7 +323,7 @@ impl AngleBound {
         match self {
             Self::Closed => Some([0., TAU]),
             Self::Open(a, b) => {
-                let [a, b] = [a, if b > a { b } else { b + TAU }];
+                let b = if b > a { b } else { b + TAU };
                 (b - a > Self::MIN_ANGLE).then_some([a, b])
             }
             Self::Invalid => None,
