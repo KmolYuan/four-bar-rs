@@ -262,7 +262,7 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
     }
 }
 
-/// Angle boundary types.
+/// Angle boundary types. The input angle range.
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[derive(Copy, Clone, Default)]
 pub enum AngleBound {
