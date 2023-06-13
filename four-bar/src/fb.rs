@@ -101,6 +101,7 @@ impl FourBarTy {
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct NormFourBarBase<B> {
     /// Buffer
+    #[cfg_attr(feature = "serde", serde(alias = "v"))]
     pub buf: B,
     /// Inverse
     pub inv: bool,
@@ -111,6 +112,7 @@ pub struct NormFourBarBase<B> {
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct FourBarBase<B, NB> {
     /// Buffer
+    #[cfg_attr(feature = "serde", serde(alias = "v"))]
     pub buf: B,
     /// Normalized base
     #[cfg_attr(
