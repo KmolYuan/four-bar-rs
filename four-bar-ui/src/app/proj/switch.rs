@@ -37,19 +37,17 @@ macro_rules! impl_method {
 impl ProjSwitch {
     pub(crate) fn new(path: Option<PathBuf>, fb: io::Fb) -> Self {
         match fb {
-            io::Fb::Fb(fb) => Self::Fb(FbProj::new_with_path(path, fb)),
-            io::Fb::SFb(fb) => Self::SFb(SFbProj::new_with_path(path, fb)),
+            io::Fb::Fb(fb) => Self::Fb(FbProj::new(path, fb)),
+            io::Fb::SFb(fb) => Self::SFb(SFbProj::new(path, fb)),
         }
     }
 
-    pub(crate) fn pre_open(path: impl AsRef<std::path::Path>) -> Option<Self> {
+    pub(crate) fn pre_open(path: PathBuf) -> Option<Self> {
         if cfg!(target_arch = "wasm32") {
             return None;
         }
-        match ron::de::from_reader(std::fs::File::open(path).ok()?).ok()? {
-            io::Fb::Fb(fb) => Some(Self::Fb(FbProj::new(fb))),
-            io::Fb::SFb(fb) => Some(Self::SFb(SFbProj::new(fb))),
-        }
+        let fb = ron::de::from_reader(std::fs::File::open(&path).ok()?).ok()?;
+        Some(Self::new(Some(path), fb))
     }
 
     pub(crate) fn fb_state(&self) -> (f64, io::Fb) {
@@ -193,11 +191,7 @@ where
     efd::Coord<D>: Serialize,
     FourBarTy: for<'a> From<&'a M::De>,
 {
-    fn new(fb: M::De) -> Self {
-        Self { fb, ..Self::default() }
-    }
-
-    fn new_with_path(path: Option<PathBuf>, fb: M::De) -> Self {
+    fn new(path: Option<PathBuf>, fb: M::De) -> Self {
         Self { path, fb, ..Self::default() }
     }
 

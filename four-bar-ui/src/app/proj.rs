@@ -69,7 +69,7 @@ impl Projects {
         self.queue.push(None, io::Fb::SFb(SFourBar::example()));
     }
 
-    pub(crate) fn pre_open(&mut self, path: PathBuf) {
+    fn pre_open(&mut self, path: PathBuf) {
         if self.list.iter().any(|proj| proj.path() == Some(&path)) {
             return;
         }
