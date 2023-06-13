@@ -318,13 +318,28 @@ impl AngleBound {
         }
     }
 
+    /// Angle range must greater than [`AngleBound::MIN_ANGLE`].
+    pub fn check_min(self) -> Self {
+        match self {
+            Self::Open(a, b) => {
+                let b = if b > a { b } else { b + TAU };
+                if b - a > Self::MIN_ANGLE {
+                    self
+                } else {
+                    Self::Invalid
+                }
+            }
+            _ => self,
+        }
+    }
+
     /// Turn into boundary values.
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
             Self::Closed => Some([0., TAU]),
             Self::Open(a, b) => {
                 let b = if b > a { b } else { b + TAU };
-                (b - a > Self::MIN_ANGLE).then_some([a, b])
+                Some([a, b])
             }
             Self::Invalid => None,
         }

@@ -52,10 +52,6 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
     }
 
     /// Create a new task from target EFD coefficients.
-    ///
-    /// Please use threshold or harmonic to create the EFD object. The curve
-    /// must preprocess with [`Mode::regularize()`] method before turned into
-    /// EFD.
     pub fn from_efd(efd: efd::Efd<D>, mode: Mode) -> Self {
         Self { efd, mode, res: 180, _marker: PhantomData }
     }
@@ -183,6 +179,7 @@ where
         };
         match self.mode {
             Mode::Closed | Mode::Open => bound
+                .check_min()
                 .to_value()
                 .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
                 .unwrap_or_else(infisible),
@@ -198,7 +195,7 @@ where
                 let iter = bound.into_par_iter();
                 #[cfg(not(feature = "rayon"))]
                 let iter = bound.into_iter();
-                iter.filter_map(|b| b.to_value())
+                iter.filter_map(|b| b.check_min().to_value())
                     .flat_map(f)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap_or_else(infisible)
