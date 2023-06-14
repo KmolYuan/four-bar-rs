@@ -37,8 +37,7 @@ impl Default for BpInner {
 
 impl BluePrint {
     pub(crate) fn preload(&mut self, ctx: &Context) {
-        let img = self.path.borrow().as_ref().and_then(pre_open);
-        if let Some(img) = img {
+        if let Some(img) = self.path.borrow().as_ref().and_then(pre_open) {
             let h = ctx.load_texture("bp", img, Default::default());
             self.inner.borrow_mut().h.replace(h);
         } else {
