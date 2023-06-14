@@ -270,7 +270,7 @@ fn run(
                         .ref_num
                         .map(|n| format!("Ref. [{n}]"))
                         .unwrap_or("Competitor".to_string());
-                    fig = fig.add_line(competitor_str, c, $plot::Style::Square, $plot::BLACK);
+                    fig = fig.add_line(competitor_str, c, $plot::Style::Square, $plot::BLUE);
                 }
                 fig.remove_fb().axis(true).plot(root_r)?;
                 log.flush()?;

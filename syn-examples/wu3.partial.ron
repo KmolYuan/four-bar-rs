@@ -1,5 +1,0 @@
-/* Wu, J., Ge, Q. J., Gao, F., & Guo, W. Z. (2011). On the extension of a fourier
-   descriptor based method for planar four-bar linkage synthesis for generation of
-   open and closed paths. Journal of Mechanisms and Robotics, 3(3).
-   https://doi.org/10.1115/1.4004227 */
-(buf:(-2.0,-3.0,0.2,1.0),norm:(buf:(3.0,2.0,1.6,0.5,0.3),inv:false))
