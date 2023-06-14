@@ -1,4 +1,5 @@
 use self::impl_io::*;
+use eframe::egui::ColorImage;
 use four_bar::*;
 use std::path::{Path, PathBuf};
 
@@ -202,16 +203,9 @@ where
 
 pub(crate) fn open_img<C>(done: C)
 where
-    C: FnOnce(PathBuf, eframe::egui::ColorImage) + 'static,
+    C: FnOnce(PathBuf, ColorImage) + 'static,
 {
-    let done = move |path, b: Vec<u8>| {
-        let r = image::load_from_memory(&b).map(|img| {
-            let img = img.to_rgba8();
-            let size = [img.width(), img.height()].map(|s| s as _);
-            eframe::egui::ColorImage::from_rgba_unmultiplied(size, img.as_raw())
-        });
-        alert(r, |img| done(path, img));
-    };
+    let done = move |path, buf| alert(load_img(buf), |img| done(path, img));
     open_bin_single(IMG_FMT, IMG_EXT, done);
 }
 
@@ -360,4 +354,10 @@ impl FromIterator<Cb> for CbPool {
         iter.into_iter().for_each(|cb| _ = pool.merge_inplace(cb));
         pool
     }
+}
+
+pub(crate) fn load_img(buf: Vec<u8>) -> Result<ColorImage, image::ImageError> {
+    let img = image::load_from_memory(&buf)?.to_rgba8();
+    let size = [img.width(), img.height()].map(|s| s as _);
+    Ok(ColorImage::from_rgba_unmultiplied(size, img.as_raw()))
 }

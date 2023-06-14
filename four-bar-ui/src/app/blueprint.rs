@@ -8,10 +8,7 @@ fn pre_open(file: impl AsRef<std::path::Path>) -> Option<ColorImage> {
     if cfg!(target_arch = "wasm32") {
         None
     } else {
-        std::fs::read(file)
-            .ok()
-            .and_then(|b| image::load_from_memory(&b).ok())
-            .map(|img| ColorImage::from_rgb([img.width() as _, img.height() as _], img.as_bytes()))
+        io::load_img(std::fs::read(file).ok()?).ok()
     }
 }
 
