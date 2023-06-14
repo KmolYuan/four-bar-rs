@@ -278,8 +278,8 @@ pub enum AngleBound {
 }
 
 impl AngleBound {
-    /// The minimum input angle bound. (π/3)
-    pub const MIN_ANGLE: f64 = std::f64::consts::FRAC_PI_3;
+    /// The minimum input angle bound. (π/2)
+    pub const MIN_ANGLE: f64 = std::f64::consts::FRAC_PI_2;
 
     /// Check angle bound from a planar loop.
     pub fn from_planar_loop(mut planar_loop: [f64; 4]) -> Self {
