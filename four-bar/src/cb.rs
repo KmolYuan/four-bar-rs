@@ -211,7 +211,7 @@ where
     }
 
     /// Write codebook to NPZ file.
-    pub fn write<W>(&self, w: W) -> Result<W, WriteNpzError>
+    pub fn write<W>(&self, w: W) -> Result<(), WriteNpzError>
     where
         W: std::io::Write + std::io::Seek,
     {
@@ -223,7 +223,8 @@ where
             };
         }
         impl_write!(w, fb, inv, efd);
-        w.finish()
+        w.finish()?;
+        Ok(())
     }
 
     /// Length, total size.

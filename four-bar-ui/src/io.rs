@@ -16,14 +16,18 @@ const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
+    use super::alert;
     use std::path::{Path, PathBuf};
     use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
     #[wasm_bindgen]
     extern "C" {
-        fn alert(s: &str);
+        #[wasm_bindgen(js_name = alert)]
+        fn alert_js(s: &str);
         fn open_file(ext: &str, done: JsValue, is_multiple: bool, is_bin: bool);
         fn save_file(s: &str, path: &str);
+        #[wasm_bindgen(js_name = save_file)]
+        fn save_bin(s: &[u8], path: &str);
     }
 
     fn js_ext(ext: &[&str]) -> String {
@@ -34,7 +38,7 @@ mod impl_io {
     }
 
     pub(super) fn alert_dialog(s: &str) {
-        alert(s);
+        alert_js(s);
     }
 
     pub(super) fn open<C>(_fmt: &str, ext: &[&str], done: C)
@@ -71,17 +75,27 @@ mod impl_io {
         open_file(&js_ext(ext), Closure::once_into_js(done), false, true);
     }
 
-    pub(super) fn save_ask<C>(s: &str, file_name: &str, _fmt: &str, _ext: &[&str], done: C)
+    pub(super) fn save_ask<C>(s: &str, name: &str, _fmt: &str, _ext: &[&str], done: C)
     where
         C: FnOnce(PathBuf) + 'static,
     {
-        let file_name = PathBuf::from(file_name);
-        save(s, &file_name);
-        done(file_name);
+        let name = PathBuf::from(name);
+        save(s, &name);
+        done(name);
     }
 
-    pub(super) fn save(s: &str, path: &Path) {
-        save_file(s, path.to_str().unwrap());
+    pub(super) fn save(s: &str, name: &Path) {
+        save_file(s, name.to_str().unwrap());
+    }
+
+    pub(super) fn save_bin_ask<C, E>(name: &str, _fmt: &str, _ext: &[&str], write: C)
+    where
+        C: FnOnce(std::io::Cursor<&mut [u8]>) -> Result<(), E>,
+        E: std::error::Error,
+    {
+        let mut buf = Vec::new();
+        alert(write(std::io::Cursor::new(&mut buf)), |_| ());
+        save_bin(&buf, name);
     }
 }
 
@@ -142,17 +156,31 @@ mod impl_io {
     where
         C: FnOnce(PathBuf) + 'static,
     {
-        if let Some(file_name) = rfd::FileDialog::new()
+        if let Some(name) = rfd::FileDialog::new()
             .set_file_name(name)
             .add_filter(fmt, ext)
             .save_file()
         {
-            alert(std::fs::write(&file_name, s), |_| done(file_name));
+            alert(std::fs::write(&name, s), |_| done(name));
         }
     }
 
     pub(super) fn save(s: &str, path: &Path) {
         alert(std::fs::write(path, s), |_| ());
+    }
+
+    pub(super) fn save_bin_ask<C, E>(name: &str, fmt: &str, ext: &[&str], write: C)
+    where
+        C: FnOnce(std::fs::File) -> Result<(), E>,
+        E: std::error::Error,
+    {
+        if let Some(name) = rfd::FileDialog::new()
+            .set_file_name(name)
+            .add_filter(fmt, ext)
+            .save_file()
+        {
+            alert(std::fs::File::create(name), |f| alert(write(f), |_| ()));
+        }
     }
 }
 
@@ -215,6 +243,14 @@ where
 {
     let s = csv::dump_csv(curve).unwrap();
     save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
+}
+
+pub(crate) fn save_cb_ask<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>)
+where
+    C: cb::Code<D, N> + Send,
+    D: efd::EfdDim,
+{
+    save_bin_ask("cb.npz", CB_FMT, CB_EXT, |w| cb.write(w));
 }
 
 pub(crate) fn save_ron_ask<S, C>(fb: &S, name: &str, done: C)

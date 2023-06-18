@@ -241,9 +241,12 @@ impl Synthesis {
                 let queue = self.queue.clone();
                 io::open_cb(move |cb| *queue.write() = Cache::Cb(cb));
             }
-            // TODO: Codebook IO
-            if ui.button("💾 Planar").clicked() {}
-            if ui.button("💾 Spherical").clicked() {}
+            if ui.button("💾 Planar").clicked() {
+                io::save_cb_ask(self.cb.as_fb());
+            }
+            if ui.button("💾 Spherical").clicked() {
+                io::save_cb_ask(self.cb.as_sfb());
+            }
         });
         ui.separator();
         nonzero_i(ui, "Size: ", &mut self.cb_cfg.size, 1);
