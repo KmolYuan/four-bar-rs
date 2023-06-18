@@ -16,12 +16,12 @@ fn pre_open(file: impl AsRef<std::path::Path>) -> Option<ColorImage> {
 #[serde(default)]
 pub(crate) struct BluePrint {
     path: Rc<RefCell<Option<std::path::PathBuf>>>,
-    inner: Rc<RefCell<BpInner>>,
+    info: Rc<RefCell<BpInfo>>,
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
-struct BpInner {
+struct BpInfo {
     #[serde(skip)]
     h: Option<TextureHandle>,
     x: f64,
@@ -29,7 +29,7 @@ struct BpInner {
     s: f32,
 }
 
-impl Default for BpInner {
+impl Default for BpInfo {
     fn default() -> Self {
         Self { h: None, x: 0., y: 0., s: 1. }
     }
@@ -39,11 +39,11 @@ impl BluePrint {
     pub(crate) fn preload(&mut self, ctx: &Context) {
         if let Some(img) = self.path.borrow().as_ref().and_then(pre_open) {
             let h = ctx.load_texture("bp", img, Default::default());
-            self.inner.borrow_mut().h.replace(h);
-        } else {
-            self.path.borrow_mut().take();
-            *self.inner.borrow_mut() = Default::default();
+            self.info.borrow_mut().h.replace(h);
+            return;
         }
+        self.path.borrow_mut().take();
+        *self.info.borrow_mut() = Default::default();
     }
 
     pub(crate) fn show(&mut self, ui: &mut Ui) {
@@ -52,7 +52,7 @@ impl BluePrint {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let path = self.path.clone();
-                let inner = self.inner.clone();
+                let inner = self.info.clone();
                 let ctx = ui.ctx().clone();
                 io::open_img(move |path_new, img| {
                     path.borrow_mut().replace(path_new);
@@ -62,14 +62,14 @@ impl BluePrint {
                     inner.h.replace(h);
                 });
             }
-            if self.inner.borrow().h.is_some() && ui.button("🗑 Remove").clicked() {
+            if self.info.borrow().h.is_some() && ui.button("🗑 Remove").clicked() {
                 self.path.borrow_mut().take();
-                *self.inner.borrow_mut() = Default::default();
+                *self.info.borrow_mut() = Default::default();
             }
         });
         path_label(ui, "🖻", self.path.borrow().as_ref(), "No image");
-        if self.inner.borrow().h.is_some() {
-            let mut inner = self.inner.borrow_mut();
+        if self.info.borrow().h.is_some() {
+            let mut inner = self.info.borrow_mut();
             unit(ui, "X coordinate: ", &mut inner.x, 1.);
             unit(ui, "Y coordinate: ", &mut inner.y, 1.);
             nonzero_f(ui, "Scale: ", &mut inner.s, 1e-2);
@@ -77,7 +77,7 @@ impl BluePrint {
     }
 
     pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
-        let inner = self.inner.borrow();
+        let inner = self.info.borrow();
         if let Some(h) = inner.h.as_ref() {
             let center = plot::PlotPoint::new(inner.x, inner.y);
             let size = h.size().map(|s| s as f32 * inner.s);
