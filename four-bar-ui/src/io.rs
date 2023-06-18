@@ -156,12 +156,12 @@ mod impl_io {
     where
         C: FnOnce(PathBuf) + 'static,
     {
-        if let Some(name) = rfd::FileDialog::new()
+        if let Some(path) = rfd::FileDialog::new()
             .set_file_name(name)
             .add_filter(fmt, ext)
             .save_file()
         {
-            alert(std::fs::write(&name, s), |_| done(name));
+            alert(std::fs::write(&path, s), |_| done(path));
         }
     }
 
@@ -174,12 +174,12 @@ mod impl_io {
         C: FnOnce(std::fs::File) -> Result<(), E>,
         E: std::error::Error,
     {
-        if let Some(name) = rfd::FileDialog::new()
+        if let Some(path) = rfd::FileDialog::new()
             .set_file_name(name)
             .add_filter(fmt, ext)
             .save_file()
         {
-            alert(std::fs::File::create(name), |f| alert(write(f), |_| ()));
+            alert(std::fs::File::create(path), |f| alert(write(f), |_| ()));
         }
     }
 }
