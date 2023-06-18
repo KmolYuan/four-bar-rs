@@ -69,7 +69,7 @@ impl App {
             (TextStyle::Small, 14.),
             (TextStyle::Body, 18.),
             (TextStyle::Monospace, 18.),
-            (TextStyle::Heading, 20.),
+            (TextStyle::Heading, 24.),
         ] {
             let id = FontId::proportional(size);
             style.text_styles.insert(text_style, id);

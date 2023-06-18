@@ -39,6 +39,7 @@ fn arr_to_efd<D: efd::EfdDim>(arr: ArrayView2<f64>) -> efd::Efd<D> {
 }
 
 /// Codebook generation config.
+#[derive(Clone)]
 pub struct Cfg {
     /// Open curve
     pub is_open: bool,

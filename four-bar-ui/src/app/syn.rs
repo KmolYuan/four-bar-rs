@@ -3,7 +3,7 @@ use crate::{io, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, cell::RefCell, rc::Rc, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 #[inline]
 fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
@@ -24,17 +24,34 @@ enum Cache {
     Cb(io::Cb),
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(default)]
+struct CbCfg {
+    size: usize,
+    harmonic: usize,
+    is_open: bool,
+}
+
+impl Default for CbCfg {
+    fn default() -> Self {
+        Self { size: 10000, harmonic: 20, is_open: false }
+    }
+}
+
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Synthesis {
     method: syn_cmd::SynMethod,
     cfg: syn_cmd::SynConfig,
+    cb_cfg: CbCfg,
     target: io::Curve,
     tasks: Vec<Task>,
     #[serde(skip)]
     cb: io::CbPool,
     #[serde(skip)]
-    queue: Rc<RefCell<Cache>>,
+    cb_pg: Option<Arc<std::sync::atomic::AtomicU32>>,
+    #[serde(skip)]
+    queue: Arc<mutex::RwLock<Cache>>,
     #[serde(skip)]
     task_queue: Vec<Arc<mutex::RwLock<(f32, Task)>>>,
     #[serde(skip)]
@@ -49,11 +66,19 @@ impl Synthesis {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.cfg);
         });
-        ui.group(|ui| self.opt_setting(ui));
-        check_on(ui, "Random seed", &mut self.cfg.seed, any_i);
-        nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
-        nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
-        nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
+        ui.collapsing("Method", |ui| {
+            ui.group(|ui| self.opt_setting(ui));
+            check_on(ui, "Random seed", &mut self.cfg.seed, any_i);
+            nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
+            nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
+            nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
+        });
+        ui.collapsing("Codebook", |ui| self.cb_setting(ui));
+        ui.separator();
+        match self.target {
+            io::Curve::P(_) => ui.heading("Planar Target Curve"),
+            io::Curve::S(_) => ui.heading("Spherical Target Curve"),
+        };
         ui.horizontal(|ui| {
             ui.label("Mode: ");
             for (mode, name) in [
@@ -64,12 +89,7 @@ impl Synthesis {
                 ui.selectable_value(&mut self.cfg.mode, mode, name);
             }
         });
-        ui.separator();
-        match self.target {
-            io::Curve::P(_) => ui.heading("Planar Target Curve"),
-            io::Curve::S(_) => ui.heading("Spherical Target Curve"),
-        };
-        match std::mem::replace(&mut *self.queue.borrow_mut(), Cache::Empty) {
+        match std::mem::replace(&mut *self.queue.write(), Cache::Empty) {
             Cache::Curve(curve) => self.target = curve,
             Cache::Cb(cb) => io::alert(self.cb.merge_inplace(cb), |_| ()),
             Cache::Empty => (),
@@ -85,7 +105,7 @@ impl Synthesis {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();
-                io::open_csv_single(move |_, c| *queue.borrow_mut() = Cache::Curve(c));
+                io::open_csv_single(move |_, c| *queue.write() = Cache::Curve(c));
             }
             if ui.button("💾 Save CSV").clicked() {
                 match &self.target {
@@ -125,28 +145,6 @@ impl Synthesis {
         ui.group(|ui| match &mut self.target {
             io::Curve::P(t) => table(ui, t),
             io::Curve::S(t) => table(ui, t),
-        });
-        ui.separator();
-        ui.heading("Codebook");
-        ui.label("Use pre-searched dataset to increase the speed.");
-        ui.label(format!("No. of planar data: {}", self.cb.as_fb().len()));
-        ui.label(format!("No. of spherical data: {}", self.cb.as_sfb().len()));
-        // TODO: Generate codebook here
-        ui.horizontal(|ui| {
-            if ui.button("🖴 Load").clicked() {
-                let queue = self.queue.clone();
-                io::open_cb(move |cb| *queue.borrow_mut() = Cache::Cb(cb));
-            }
-            if ui.button("✚ Planar").clicked() {}
-            if ui.button("✚ Spherical").clicked() {}
-        });
-        ui.horizontal(|ui| {
-            if ui.button("🗑 Clear Planar").clicked() {
-                self.cb.as_fb_mut().clear();
-            }
-            if ui.button("🗑 Clear Spherical").clicked() {
-                self.cb.as_sfb_mut().clear();
-            }
         });
         ui.separator();
         ui.heading("Optimization");
@@ -232,6 +230,75 @@ impl Synthesis {
             Rga(s) => param!(s, cross, mutate, win, delta),
             Tlbo(_) => (),
         }
+    }
+
+    fn cb_setting(&mut self, ui: &mut Ui) {
+        ui.label("Use pre-searched dataset to increase the speed.");
+        ui.label(format!("No. of planar data: {}", self.cb.as_fb().len()));
+        ui.label(format!("No. of spherical data: {}", self.cb.as_sfb().len()));
+        ui.horizontal(|ui| {
+            if ui.button("🖴 Load").clicked() {
+                let queue = self.queue.clone();
+                io::open_cb(move |cb| *queue.write() = Cache::Cb(cb));
+            }
+            // TODO: Codebook IO
+            if ui.button("💾 Planar").clicked() {}
+            if ui.button("💾 Spherical").clicked() {}
+        });
+        ui.separator();
+        nonzero_i(ui, "Size: ", &mut self.cb_cfg.size, 1);
+        nonzero_i(ui, "Harmonic: ", &mut self.cb_cfg.harmonic, 1);
+        ui.checkbox(&mut self.cb_cfg.is_open, "Is open curve");
+        ui.horizontal(|ui| {
+            macro_rules! impl_make_cb {
+                ($cb:ident, $cb_ty:ident) => {
+                    let size = self.cb_cfg.size;
+                    let cfg = cb::Cfg::new()
+                        .res(self.cfg.res)
+                        .size(size)
+                        .harmonic(self.cb_cfg.harmonic)
+                        .is_open(self.cb_cfg.is_open);
+                    let queue = self.queue.clone();
+                    let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
+                    self.cb_pg.replace(pg.clone());
+                    let f = move || {
+                        let cb = cb::$cb::make_with(cfg, |p| {
+                            let p = p as f32 / size as f32;
+                            pg.store(p.to_bits(), std::sync::atomic::Ordering::Relaxed);
+                        });
+                        *queue.write() = Cache::Cb(io::Cb::$cb_ty(cb));
+                    };
+                    #[cfg(not(target_arch = "wasm32"))]
+                    mh::rayon::spawn(f);
+                    #[cfg(target_arch = "wasm32")]
+                    f(); // Block
+                };
+            }
+            if self.cb_pg.is_none() {
+                if ui.button("✚ Planar").clicked() {
+                    impl_make_cb!(FbCodebook, P);
+                }
+                if ui.button("✚ Spherical").clicked() {
+                    impl_make_cb!(SFbCodebook, S);
+                }
+            }
+        });
+        if let Some(pg) = &self.cb_pg {
+            let pg = f32::from_bits(pg.load(std::sync::atomic::Ordering::Relaxed));
+            ui.add(ProgressBar::new(pg).show_percentage().animate(true));
+            if pg == 1. {
+                self.cb_pg = None;
+            }
+        }
+        ui.separator();
+        ui.horizontal(|ui| {
+            if ui.button("🗑 Clear Planar").clicked() {
+                self.cb.as_fb_mut().clear();
+            }
+            if ui.button("🗑 Clear Spherical").clicked() {
+                self.cb.as_sfb_mut().clear();
+            }
+        });
     }
 
     fn convergence_plot(&mut self, ui: &mut Ui) {
@@ -330,7 +397,7 @@ impl Synthesis {
             io::alert(s.solve(), |fb| queue.push(None, fb));
         };
         #[cfg(not(target_arch = "wasm32"))]
-        four_bar::mh::rayon::spawn(f);
+        mh::rayon::spawn(f);
         #[cfg(target_arch = "wasm32")]
         f(); // Block
     }

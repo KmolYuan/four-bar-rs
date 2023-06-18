@@ -151,8 +151,12 @@ pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
             xs.retain_mut(|c| {
                 ui.horizontal(|ui| {
                     let keep = !ui.button("✖").clicked();
-                    for (i, label) in (0..N).zip(["x: ", "y: ", "z: "]) {
-                        unit(ui, label, &mut c[i], 0.01);
+                    for (c, label) in c.iter_mut().zip(["x: ", "y: ", "z: "]) {
+                        let w = DragValue::new(c)
+                            .prefix(label)
+                            .speed(0.01)
+                            .fixed_decimals(4);
+                        ui.add(w);
                     }
                     keep
                 })
