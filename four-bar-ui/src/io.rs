@@ -65,9 +65,9 @@ mod impl_io {
 
     pub(super) fn open_bin_single<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, Vec<u8>) + 'static,
+        C: FnOnce(PathBuf, std::io::Cursor<Vec<u8>>) + 'static,
     {
-        let done = |path: String, s| done(PathBuf::from(path), s);
+        let done = move |path: String, buf| done(PathBuf::from(path), std::io::Cursor::new(buf));
         open_file(&js_ext(ext), Closure::once_into_js(done), false, true);
     }
 
@@ -131,10 +131,10 @@ mod impl_io {
 
     pub(super) fn open_bin_single<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, Vec<u8>) + 'static,
+        C: FnOnce(PathBuf, std::fs::File) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            alert(std::fs::read(&path), |s| done(path, s));
+            alert(std::fs::File::open(&path), |s| done(path, s));
         }
     }
 
@@ -356,8 +356,13 @@ impl FromIterator<Cb> for CbPool {
     }
 }
 
-pub(crate) fn load_img(buf: Vec<u8>) -> Result<ColorImage, image::ImageError> {
-    let img = image::load_from_memory(&buf)?.to_rgba8();
+pub(crate) fn load_img<R>(r: R) -> Result<ColorImage, image::ImageError>
+where
+    R: std::io::Read + std::io::Seek,
+{
+    let img = image::io::Reader::new(std::io::BufReader::new(r))
+        .decode()?
+        .to_rgba8();
     let size = [img.width(), img.height()].map(|s| s as _);
     Ok(ColorImage::from_rgba_unmultiplied(size, img.as_raw()))
 }

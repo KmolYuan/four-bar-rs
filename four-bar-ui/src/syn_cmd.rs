@@ -153,6 +153,7 @@ impl<'a> Solver<'a> {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn solve_verbose(self) -> Result<(f64, usize, CbFb), mh::ndarray::ShapeError> {
         macro_rules! impl_solve {
             ($syn:ident, $s:ident, $cb_fb:ident) => {{
@@ -169,6 +170,7 @@ impl<'a> Solver<'a> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) enum CbFb {
     Fb(FourBar, Option<(f64, NormFourBar)>),
     SFb(SFourBar, Option<(f64, SNormFourBar)>),
