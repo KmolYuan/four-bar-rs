@@ -117,9 +117,9 @@ pub(super) fn syn(syn: Syn) {
             }
             Ok(Info { root, target, target_fb, title, mode })
         })
-        .filter(|result| !matches!(result, Err(SynErr::Format)))
         .filter_map(|r| match r {
             Ok(r) => Some(r),
+            Err(SynErr::Format) => None,
             Err(e) => {
                 println!("Error: {e}");
                 None
@@ -165,9 +165,10 @@ fn run(
     cb: &io::CbPool,
     refer: &Path,
 ) {
+    let title = &info.title;
     match try_run(pb, method, &info, cfg, cb, refer) {
-        Ok(()) => pb.println(format!("Finished: {}", info.title)),
-        Err(e) => pb.println(format!("Error in {}: {e}", info.title)),
+        Ok(()) => pb.println(format!("Finished: {title}")),
+        Err(e) => pb.println(format!("Error in {title}: {e}")),
     }
 }
 
