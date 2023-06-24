@@ -54,7 +54,7 @@ macro_rules! inner_opt {
 
 /// Line style.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub enum Style {
     /// Continuous Line
     Line,
@@ -70,6 +70,17 @@ pub enum Style {
 }
 
 impl Style {
+    /// Get the style names.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Line => "Line",
+            Self::Circle => "Circle",
+            Self::Triangle => "Triangle",
+            Self::Cross => "Cross",
+            Self::Square => "Square",
+        }
+    }
+
     pub(crate) fn draw<'a, DB, CT, I>(
         &self,
         chart: &mut ChartContext<'a, DB, CT>,
@@ -130,7 +141,7 @@ impl Style {
 /// Legend position option.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[derive(Clone, Copy, PartialEq, Default, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub enum LegendPos {
     /// Hide Legend
     Hide,

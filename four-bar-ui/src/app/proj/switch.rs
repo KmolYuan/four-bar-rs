@@ -246,13 +246,8 @@ where
         };
         ui.heading("Curve");
         ui.horizontal(|ui| {
-            ComboBox::from_id_source("pivot")
-                .selected_text(pivot.name())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(pivot, Pivot::Coupler, Pivot::Coupler.name());
-                    ui.selectable_value(pivot, Pivot::Driver, Pivot::Driver.name());
-                    ui.selectable_value(pivot, Pivot::Follower, Pivot::Follower.name());
-                });
+            const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];
+            combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
             if small_btn(ui, "💾", "Save") {
                 io::save_csv_ask(&get_curve(*pivot, &self.fb, cfg.res));
             }

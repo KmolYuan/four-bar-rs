@@ -164,3 +164,25 @@ pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
             });
         });
 }
+
+pub(crate) fn combo_enum<H, E, F, T, const N: usize>(
+    ui: &mut Ui,
+    id: H,
+    value: &mut E,
+    list: [E; N],
+    name: F,
+) where
+    H: std::hash::Hash,
+    E: PartialEq + Clone,
+    F: Fn(&E) -> T,
+    T: Into<WidgetText>,
+{
+    let mut i = list.iter().position(|opt| opt == value).unwrap();
+    if ComboBox::from_id_source(id)
+        .selected_text(name(value))
+        .show_index(ui, &mut i, N, |i| name(&list[i]))
+        .changed()
+    {
+        *value = list[i].clone();
+    }
+}

@@ -19,7 +19,7 @@ pub(crate) enum Pivot {
 }
 
 impl Pivot {
-    const fn name(&self) -> &str {
+    const fn name(&self) -> &'static str {
         match self {
             Pivot::Driver => "Driver",
             Pivot::Follower => "Follower",

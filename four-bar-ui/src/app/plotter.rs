@@ -14,7 +14,7 @@ struct LineData<const N: usize> {
     ))]
     line: Vec<[f64; N]>,
     style: plot2d::Style,
-    color: Color32,
+    color: [u8; 3],
     stroke_width: u32,
     filled: bool,
 }
@@ -24,19 +24,36 @@ impl<const N: usize> LineData<N> {
         Self { label, line, ..Self::default() }
     }
 
-    fn show(&mut self, ui: &mut Ui) -> bool {
-        // TODO: Line style settings
+    fn show(&mut self, ui: &mut Ui, id: usize) -> bool {
+        // Line style settings
+        let keep = ui
+            .horizontal(|ui| {
+                ui.text_edit_singleline(&mut self.label);
+                !ui.button("✖").clicked()
+            })
+            .inner;
         ui.horizontal(|ui| {
-            ui.text_edit_singleline(&mut self.label);
-            !ui.button("✖").clicked()
-        })
-        .inner
+            ui.label("Style");
+            use plot2d::Style::*;
+            const OPTS: [plot2d::Style; 5] = [Line, Circle, Triangle, Cross, Square];
+            let id = Id::new("style").with(id);
+            combo_enum(ui, id, &mut self.style, OPTS, |e| e.name());
+            nonzero_i(ui, "Stroke Width: ", &mut self.stroke_width, 1);
+        });
+        ui.horizontal(|ui| {
+            ui.color_edit_button_srgb(&mut self.color);
+            any_i(ui, &mut self.color[0]);
+            any_i(ui, &mut self.color[1]);
+            any_i(ui, &mut self.color[2]);
+            ui.checkbox(&mut self.filled, "Filled");
+        });
+        keep
     }
 
     fn share(&self) -> (&String, &Vec<[f64; N]>, plot3d::Style, plot2d::ShapeStyle) {
-        let Self { style, color, stroke_width, filled, .. } = *self;
+        let Self { style, color: [r, g, b], stroke_width, filled, .. } = *self;
         let color = {
-            let color = plot2d::RGBAColor(color.r(), color.g(), color.b(), color.a() as f64 / 255.);
+            let color = plot2d::RGBAColor(r, g, b, 1.);
             plot2d::ShapeStyle { color, filled, stroke_width }
         };
         let Self { label, line, .. } = self;
@@ -89,6 +106,28 @@ impl PlotType {
             (io::Curve::S(c), Self::S(_, curves)) => curves.push(LineData::new(s, c)),
         }
     }
+
+    fn show(&mut self, ui: &mut Ui) {
+        if match self {
+            Self::P(_, c) => c.is_empty(),
+            Self::S(_, c) => c.is_empty(),
+        } {
+            return;
+        }
+        ui.group(|ui| {
+            let mut i = 0;
+            match self {
+                Self::P(_, c) => c.retain_mut(|data| {
+                    i += 1;
+                    data.show(ui, i)
+                }),
+                Self::S(_, c) => c.retain_mut(|data| {
+                    i += 1;
+                    data.show(ui, i)
+                }),
+            }
+        });
+    }
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -128,11 +167,7 @@ impl PlotOpt {
         }
         ui.group(|ui| {
             ui.heading("Curves");
-            // Line style settings
-            match &mut *self.plot.borrow_mut() {
-                PlotType::P(_, c) => c.retain_mut(|data| data.show(ui)),
-                PlotType::S(_, c) => c.retain_mut(|data| data.show(ui)),
-            }
+            self.plot.borrow_mut().show(ui);
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
                     self.plot
@@ -154,26 +189,22 @@ impl PlotOpt {
                 });
             }
         });
-        ui.group(|ui| {
-            ui.heading("Plot Option");
-            check_on(ui, "Title", &mut self.opt.title, |ui, s| {
-                ui.text_edit_singleline(s.to_mut())
-            });
-            nonzero_i(ui, "Stroke in plots: ", &mut self.opt.stroke, 1);
-            nonzero_i(ui, "Font size in plots: ", &mut self.opt.font, 1);
-            check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {
-                ui.text_edit_singleline(s.to_mut())
-            });
-            ui.checkbox(&mut self.opt.grid, "Show grid in plots");
-            ui.checkbox(&mut self.opt.axis, "Show axis in plots");
-            ComboBox::new("legend", "Legend Position")
-                .selected_text(self.opt.legend.name())
-                .show_ui(ui, |ui| {
-                    use plot2d::LegendPos::*;
-                    for pos in [Hide, UL, ML, LL, UM, MM, LM, UR, MR, LR] {
-                        ui.selectable_value(&mut self.opt.legend, pos, pos.name());
-                    }
-                });
+        ui.heading("Plot Option");
+        check_on(ui, "Title", &mut self.opt.title, |ui, s| {
+            ui.text_edit_singleline(s.to_mut())
+        });
+        nonzero_i(ui, "Stroke in plots: ", &mut self.opt.stroke, 1);
+        nonzero_i(ui, "Font size in plots: ", &mut self.opt.font, 1);
+        check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {
+            ui.text_edit_singleline(s.to_mut())
+        });
+        ui.checkbox(&mut self.opt.grid, "Show grid in plots");
+        ui.checkbox(&mut self.opt.axis, "Show axis in plots");
+        ui.horizontal(|ui| {
+            ui.label("Legend");
+            use plot2d::LegendPos::*;
+            const OPTS: [plot2d::LegendPos; 10] = [Hide, UL, ML, LL, UM, MM, LM, UR, MR, LR];
+            combo_enum(ui, "legend", &mut self.opt.legend, OPTS, |e| e.name());
         });
         !ui.button("✖ Remove Subplot").clicked()
     }
