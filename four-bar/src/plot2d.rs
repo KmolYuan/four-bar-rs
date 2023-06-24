@@ -40,8 +40,7 @@ use std::{borrow::Cow, rc::Rc};
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, FourBar, 2>;
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
-pub(crate) type LineData<'a, const N: usize> =
-    (Cow<'a, str>, Cow<'a, [[f64; N]]>, Style, ShapeStyle);
+type LineData<'a, const N: usize> = (Cow<'a, str>, Cow<'a, [[f64; N]]>, Style, ShapeStyle);
 
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
@@ -54,11 +53,13 @@ macro_rules! inner_opt {
 }
 
 /// Line style.
-#[derive(Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Copy, Default)]
 pub enum Style {
     /// Continuous Line
     Line,
     /// Circle Marker
+    #[default]
     Circle,
     /// Triangle Marker
     Triangle,

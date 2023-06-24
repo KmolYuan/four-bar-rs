@@ -5,10 +5,49 @@ use four_bar::*;
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
+#[derive(Deserialize, Serialize, Default)]
+struct LineData<const N: usize> {
+    label: String,
+    #[serde(bound(
+        serialize = "[f64; N]: Serialize",
+        deserialize = "[f64; N]: serde::de::DeserializeOwned"
+    ))]
+    line: Vec<[f64; N]>,
+    style: plot2d::Style,
+    color: Color32,
+    stroke_width: u32,
+    filled: bool,
+}
+
+impl<const N: usize> LineData<N> {
+    fn new(label: String, line: Vec<[f64; N]>) -> Self {
+        Self { label, line, ..Self::default() }
+    }
+
+    fn show(&mut self, ui: &mut Ui) -> bool {
+        // TODO: Line style settings
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut self.label);
+            !ui.button("✖").clicked()
+        })
+        .inner
+    }
+
+    fn share(&self) -> (&String, &Vec<[f64; N]>, plot3d::Style, plot2d::ShapeStyle) {
+        let Self { style, color, stroke_width, filled, .. } = *self;
+        let color = {
+            let color = plot2d::RGBAColor(color.r(), color.g(), color.b(), color.a() as f64 / 255.);
+            plot2d::ShapeStyle { color, filled, stroke_width }
+        };
+        let Self { label, line, .. } = self;
+        (label, line, style, color)
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 enum PlotType {
-    P(Option<FourBar>, Vec<(String, Vec<[f64; 2]>)>),
-    S(Option<SFourBar>, Vec<(String, Vec<[f64; 3]>)>),
+    P(Option<FourBar>, Vec<LineData<2>>),
+    S(Option<SFourBar>, Vec<LineData<3>>),
 }
 
 impl Default for PlotType {
@@ -44,10 +83,10 @@ impl PlotType {
     fn push_fb_curve(&mut self, s: &'static str, c: io::Curve) {
         let s = s.to_string();
         match (c, self) {
-            (io::Curve::P(c), Self::P(_, curves)) => curves.push((s, c)),
-            (io::Curve::P(c), p @ Self::S(_, _)) => *p = Self::P(None, vec![(s, c)]),
-            (io::Curve::S(c), p @ Self::P(_, _)) => *p = Self::S(None, vec![(s, c)]),
-            (io::Curve::S(c), Self::S(_, curves)) => curves.push((s, c)),
+            (io::Curve::P(c), Self::P(_, curves)) => curves.push(LineData::new(s, c)),
+            (io::Curve::P(c), p @ Self::S(_, _)) => *p = Self::P(None, vec![LineData::new(s, c)]),
+            (io::Curve::S(c), p @ Self::P(_, _)) => *p = Self::S(None, vec![LineData::new(s, c)]),
+            (io::Curve::S(c), Self::S(_, curves)) => curves.push(LineData::new(s, c)),
         }
     }
 }
@@ -89,21 +128,10 @@ impl PlotOpt {
         }
         ui.group(|ui| {
             ui.heading("Curves");
+            // Line style settings
             match &mut *self.plot.borrow_mut() {
-                PlotType::P(_, c) => c.retain_mut(|(legend, _)| {
-                    ui.horizontal(|ui| {
-                        ui.text_edit_singleline(legend);
-                        !ui.button("✖").clicked()
-                    })
-                    .inner
-                }),
-                PlotType::S(_, c) => c.retain_mut(|(legend, _)| {
-                    ui.horizontal(|ui| {
-                        ui.text_edit_singleline(legend);
-                        !ui.button("✖").clicked()
-                    })
-                    .inner
-                }),
+                PlotType::P(_, c) => c.retain_mut(|data| data.show(ui)),
+                PlotType::S(_, c) => c.retain_mut(|data| data.show(ui)),
             }
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
@@ -181,6 +209,7 @@ impl Plotter {
             self.queue.len(),
             self.shape.0 * self.shape.1
         ));
+        // Subplot settings
         self.queue
             .retain_mut(|opt| ui.group(|ui| opt.show(ui, lnk)).inner);
         if ui.button("⊞ Add Subplot").clicked() {
@@ -205,8 +234,9 @@ impl Plotter {
                         if let Some(angle) = p_opt.angle {
                             fig = fig.angle(angle);
                         }
-                        for (s, c) in c {
-                            fig = fig.add_line(s, c, plot2d::Style::Circle, plot2d::BLACK);
+                        for data in c {
+                            let (label, line, style, color) = data.share();
+                            fig = fig.add_line(label, line, style, color);
                         }
                         io::alert(fig.plot(root), |_| ());
                     }
@@ -215,8 +245,9 @@ impl Plotter {
                         if let Some(angle) = p_opt.angle {
                             fig = fig.angle(angle);
                         }
-                        for (s, c) in c {
-                            fig = fig.add_line(s, c, plot3d::Style::Circle, plot3d::BLACK);
+                        for data in c {
+                            let (label, line, style, color) = data.share();
+                            fig = fig.add_line(label, line, style, color);
                         }
                         io::alert(fig.plot(root), |_| ());
                     }
