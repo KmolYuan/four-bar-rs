@@ -138,7 +138,7 @@ impl PlotOpt {
             });
             ui.checkbox(&mut self.opt.grid, "Show grid in plots");
             ui.checkbox(&mut self.opt.axis, "Show axis in plots");
-            ComboBox::from_id_source("legend")
+            ComboBox::new("legend", "Legend Position")
                 .selected_text(self.opt.legend.name())
                 .show_ui(ui, |ui| {
                     use plot2d::LegendPos::*;

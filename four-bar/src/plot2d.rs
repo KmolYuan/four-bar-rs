@@ -366,7 +366,7 @@ impl Default for Opt<'_> {
         Self {
             title: None,
             stroke: 5,
-            font: 24.,
+            font: 45.,
             font_family: None,
             grid: false,
             axis: true,
@@ -432,7 +432,7 @@ impl Figure<'_, '_> {
         let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
         let font = self.get_font();
-        let Opt {  grid, axis, legend, .. } = self.opt;
+        let Opt { grid, axis, legend, .. } = self.opt;
         let iter = self.lines().flat_map(|(_, curve, ..)| curve.iter());
         let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
         let mut chart = ChartBuilder::on(&root);
