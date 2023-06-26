@@ -137,32 +137,41 @@ pub(crate) fn path_label(ui: &mut Ui, icon: &str, path: Option<&PathBuf>, warn: 
 }
 
 pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
-    ScrollArea::vertical()
-        .max_height(100.)
-        .auto_shrink([false; 2])
-        .show(ui, |ui| {
-            if xs.is_empty() {
-                ui.label("No curve");
-                return;
-            }
-            if ui.button("🗑 Clear").clicked() {
-                xs.clear();
-            }
-            xs.retain_mut(|c| {
-                ui.horizontal(|ui| {
-                    let keep = !ui.button("✖").clicked();
-                    for (c, label) in c.iter_mut().zip(["x: ", "y: ", "z: "]) {
-                        let w = DragValue::new(c)
-                            .prefix(label)
-                            .speed(0.01)
-                            .fixed_decimals(4);
-                        ui.add(w);
-                    }
-                    keep
-                })
-                .inner
+    let rows = xs.len();
+    if rows == 0 {
+        ui.group(|ui| ui.label("No curve"));
+        return;
+    }
+    let space = ui.spacing().interact_size.y;
+    if ui.button("🗑 Clear All").clicked() {
+        xs.clear();
+    }
+
+    fn render<const N: usize>(ui: &mut Ui, c: &mut [f64; N]) -> bool {
+        let keep = !ui.button("✖").clicked();
+        for (c, label) in c.iter_mut().zip(["x: ", "y: ", "z: "]) {
+            let w = DragValue::new(c)
+                .prefix(label)
+                .speed(0.01)
+                .fixed_decimals(4);
+            ui.add(w);
+        }
+        keep
+    }
+
+    ui.group(|ui| {
+        ScrollArea::vertical()
+            .max_height(150.)
+            .auto_shrink([false; 2])
+            .show_rows(ui, space, rows, |ui, rng| {
+                let mut i = 0;
+                xs.retain_mut(|c| {
+                    let hidden = !rng.contains(&i);
+                    i += 1;
+                    hidden || ui.horizontal(|ui| render(ui, c)).inner
+                });
             });
-        });
+    });
 }
 
 pub(crate) fn combo_enum<H, E, F, T, const N: usize>(

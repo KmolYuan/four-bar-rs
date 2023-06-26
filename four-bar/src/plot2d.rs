@@ -395,7 +395,6 @@ where
     H: AsRef<[f64]>,
 {
     let font = ("Times New Roman", 24).into_font().color(&BLACK);
-    let font = || font.clone();
     let history = history.as_ref();
     let root = Canvas::from(root);
     root.fill(&WHITE)?;
@@ -413,9 +412,9 @@ where
         .disable_x_mesh()
         .disable_y_mesh()
         .x_desc("Generation")
-        .x_label_style(font())
+        .x_label_style(font.clone())
         .y_desc("Fitness")
-        .y_label_style(font())
+        .y_label_style(font.clone())
         .draw()?;
     chart.draw_series(LineSeries::new(history.iter().copied().enumerate(), BLUE))?;
     Ok(())

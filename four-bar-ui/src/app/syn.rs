@@ -142,10 +142,10 @@ impl Synthesis {
                 ui.output_mut(|s| s.copied_text = text);
             }
         });
-        ui.group(|ui| match &mut self.target {
+        match &mut self.target {
             io::Curve::P(t) => table(ui, t),
             io::Curve::S(t) => table(ui, t),
-        });
+        }
         ui.separator();
         ui.heading("Optimization");
         toggle_btn(ui, &mut self.conv_open, "📉 Convergence Plot");
