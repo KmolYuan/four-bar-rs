@@ -336,8 +336,8 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
             .opt
             .font_family
             .as_ref()
-            .unwrap_or(&Cow::Borrowed(DEFAULT_FONT))
-            .as_ref();
+            .map(|s| s.as_ref())
+            .unwrap_or(DEFAULT_FONT);
         (family, self.opt.font).into_font().color(&BLACK)
     }
 }
