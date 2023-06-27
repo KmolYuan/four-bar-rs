@@ -44,16 +44,11 @@ impl Figure<'_, '_> {
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
-        let font = self.get_font();
         let sc = na::Vector3::from(self.get_sphere_center().unwrap_or_default());
         let sr = self.get_sphere_radius().unwrap_or(1.);
         debug_assert!(sr > 0.);
-        let Opt {  grid, axis, legend, .. } = self.opt;
-        let mut chart = ChartBuilder::on(&root);
-        if let Some(title) = &self.title {
-            chart.caption(title, font.clone());
-        }
-        let mut chart = chart
+        let Opt { grid, axis, legend, .. } = self.opt;
+        let mut chart = ChartBuilder::on(&root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
             .margin((8).percent())
@@ -71,7 +66,7 @@ impl Figure<'_, '_> {
             chart
                 .configure_axes()
                 .light_grid_style(BLACK.mix(0.15))
-                .label_style(font.clone())
+                .label_style(self.get_axis_font())
                 .max_light_lines(3)
                 .draw()?;
         }
@@ -135,7 +130,7 @@ impl Figure<'_, '_> {
                 .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)
-                .label_font(font)
+                .label_font(self.get_font())
                 .draw()?;
         }
         Ok(())

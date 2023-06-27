@@ -235,7 +235,7 @@ fn try_run(
             fig = fig
                 .add_line(target_str, $target, $plot::Style::Circle, $plot::RED)
                 .add_line("Optimized", &curve, $plot::Style::Triangle, $plot::BLACK);
-            fig.plot(root_l)?;
+            fig.plot(root_r)?;
             let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
             writeln!(log, "[{title}]")?;
             if let Some(io::Fb::$fb_enum(fb)) = target_fb {
@@ -290,7 +290,7 @@ fn try_run(
                     .unwrap_or("Competitor".to_string());
                 fig = fig.add_line(competitor_str, c, $plot::Style::Square, $plot::BLUE);
             }
-            fig.remove_fb().axis(true).plot(root_r)?;
+            fig.remove_fb().axis(true).plot(root_l)?;
             log.flush()?;
             Ok(())
         }};

@@ -190,9 +190,6 @@ impl PlotOpt {
             }
         });
         ui.heading("Plot Option");
-        check_on(ui, "Title", &mut self.opt.title, |ui, s| {
-            ui.text_edit_singleline(s.to_mut())
-        });
         nonzero_i(ui, "Stroke in plots: ", &mut self.opt.stroke, 1);
         nonzero_i(ui, "Font size in plots: ", &mut self.opt.font, 1);
         check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {

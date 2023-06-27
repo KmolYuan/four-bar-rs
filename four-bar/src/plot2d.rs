@@ -265,12 +265,6 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         Self { angle: Some(angle), ..self }
     }
 
-    /// Set the plot caption.
-    pub fn title(mut self, title: impl Into<Cow<'a, str>>) -> Self {
-        self.opt.title.replace(title.into());
-        self
-    }
-
     /// Set the font family.
     pub fn font_family(mut self, family: impl Into<Cow<'a, str>>) -> Self {
         self.opt.font_family.replace(family.into());
@@ -330,15 +324,24 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         (self.stroke, self.stroke + 3)
     }
 
-    pub(crate) fn get_font(&self) -> TextStyle {
+    #[inline]
+    fn get_family(&self) -> &str {
         const DEFAULT_FONT: &str = "Times New Roman";
-        let family = self
-            .opt
+        self.opt
             .font_family
             .as_ref()
             .map(|s| s.as_ref())
-            .unwrap_or(DEFAULT_FONT);
-        (family, self.opt.font).into_font().color(&BLACK)
+            .unwrap_or(DEFAULT_FONT)
+    }
+
+    pub(crate) fn get_font(&self) -> TextStyle {
+        (self.get_family(), self.opt.font).into_font().color(&BLACK)
+    }
+
+    pub(crate) fn get_axis_font(&self) -> TextStyle {
+        (self.get_family(), self.opt.font * 0.8)
+            .into_font()
+            .color(&BLACK)
     }
 }
 
@@ -357,8 +360,6 @@ impl<'a, M, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> {
 )]
 #[derive(Clone, PartialEq)]
 pub struct Opt<'a> {
-    /// Plot caption
-    pub title: Option<Cow<'a, str>>,
     /// Stroke size
     pub stroke: u32,
     /// Font size
@@ -376,7 +377,6 @@ pub struct Opt<'a> {
 impl Default for Opt<'_> {
     fn default() -> Self {
         Self {
-            title: None,
             stroke: 5,
             font: 45.,
             font_family: None,
@@ -442,18 +442,13 @@ impl Figure<'_, '_> {
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
-        let font = self.get_font();
         let Opt { grid, axis, legend, .. } = self.opt;
         let iter = self.lines().flat_map(|(_, curve, ..)| curve.iter());
         let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
-        let mut chart = ChartBuilder::on(&root);
-        if let Some(title) = &self.title {
-            chart.caption(title, font.clone());
-        }
-        let mut chart = chart
+        let mut chart = ChartBuilder::on(&root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
-            .margin((2).percent())
+            .margin((4).percent())
             .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
         let mut mesh = chart.configure_mesh();
         // Draw mesh
@@ -463,9 +458,7 @@ impl Figure<'_, '_> {
         if !axis {
             mesh.disable_axes();
         }
-        mesh.x_label_style(font.clone())
-            .y_label_style(font.clone())
-            .draw()?;
+        mesh.label_style(self.get_axis_font()).draw()?;
         // Draw curve
         for (label, line, style, color) in self.lines() {
             let line = line.iter().map(|&[x, y]| (x, y));
@@ -493,7 +486,7 @@ impl Figure<'_, '_> {
                 .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)
-                .label_font(font)
+                .label_font(self.get_font())
                 .draw()?;
         }
         Ok(())
