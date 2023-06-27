@@ -444,12 +444,12 @@ impl Figure<'_, '_> {
         let joints = self.get_joints();
         let Opt { grid, axis, legend, .. } = self.opt;
         let iter = self.lines().flat_map(|(_, curve, ..)| curve.iter());
-        let [x_min, x_max, y_min, y_max] = bounding_box(iter.chain(joints.iter().flatten()));
+        let [x_spec, y_spec] = area2d(iter.chain(joints.iter().flatten()), root.dim_in_pixel());
         let mut chart = ChartBuilder::on(&root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
             .margin((4).percent())
-            .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+            .build_cartesian_2d(x_spec, y_spec)?;
         let mut mesh = chart.configure_mesh();
         // Draw mesh
         if !grid {
@@ -494,7 +494,11 @@ impl Figure<'_, '_> {
 }
 
 /// Get the 1:1 bounding box of the data, ignore the labels.
-pub fn bounding_box<'a>(pts: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4] {
+pub fn area2d<'a, I>(pts: I, area: (u32, u32)) -> [std::ops::Range<f64>; 2]
+where
+    I: IntoIterator<Item = &'a [f64; 2]>,
+{
+    let [w, h] = [area.0 as f64, area.1 as f64];
     let [mut x_min, mut x_max] = [&f64::INFINITY, &-f64::INFINITY];
     let [mut y_min, mut y_max] = [&f64::INFINITY, &-f64::INFINITY];
     for [x, y] in pts {
@@ -513,13 +517,18 @@ pub fn bounding_box<'a>(pts: impl IntoIterator<Item = &'a [f64; 2]>) -> [f64; 4]
     }
     let dx = (x_max - x_min).abs();
     let dy = (y_max - y_min).abs();
-    if dx > dy {
-        let cen = (y_min + y_max) * 0.5;
-        let r = dx * 0.5;
-        [*x_min, *x_max, cen - r, cen + r]
-    } else {
-        let cen = (x_min + x_max) * 0.5;
-        let r = dy * 0.5;
-        [cen - r, cen + r, *y_min, *y_max]
+    let x_cen = (x_min + x_max) * 0.5;
+    let y_cen = (y_min + y_max) * 0.5;
+    match (dx > dy, w > h, dx / dy < w / h) {
+        (true, true, false) | (false, false, false) | (true, false, _) => {
+            let x_r = dx * 0.5 * 1.2;
+            let y_r = dx / w * h * 0.5 * 1.2;
+            [x_cen - x_r..x_cen + x_r, y_cen - y_r..y_cen + y_r]
+        }
+        (true, true, true) | (false, false, true) | (false, true, _) => {
+            let y_r = dy * 0.5 * 1.2;
+            let x_r = dy / h * w * 0.5 * 1.2;
+            [x_cen - x_r..x_cen + x_r, y_cen - y_r..y_cen + y_r]
+        }
     }
 }
