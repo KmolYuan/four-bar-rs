@@ -52,6 +52,14 @@ macro_rules! inner_opt {
     )+};
 }
 
+// Rounding float numbers
+pub(crate) fn formatter(v: &f64) -> String {
+    let mut s = format!("{v:.02}");
+    let sub = s.trim_end_matches('0');
+    s.truncate(sub.strip_suffix('.').unwrap_or(sub).len());
+    s
+}
+
 /// Line style.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
@@ -458,7 +466,10 @@ impl Figure<'_, '_> {
         if !axis {
             mesh.disable_axes();
         }
-        mesh.label_style(self.get_axis_font()).x_labels(8).draw()?;
+        mesh.label_style(self.get_axis_font())
+            .x_label_formatter(&formatter)
+            .y_label_formatter(&formatter)
+            .draw()?;
         // Draw curve
         for (label, line, style, color) in self.lines() {
             let line = line.iter().map(|&[x, y]| (x, y));

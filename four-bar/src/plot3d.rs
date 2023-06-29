@@ -68,6 +68,9 @@ impl Figure<'_, '_> {
                 .light_grid_style(BLACK.mix(0.15))
                 .label_style(self.get_axis_font())
                 .max_light_lines(3)
+                .x_formatter(&formatter)
+                .y_formatter(&formatter)
+                .z_formatter(&formatter)
                 .draw()?;
         }
         // Draw grid
