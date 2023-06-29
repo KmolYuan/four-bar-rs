@@ -458,7 +458,7 @@ impl Figure<'_, '_> {
         if !axis {
             mesh.disable_axes();
         }
-        mesh.label_style(self.get_axis_font()).draw()?;
+        mesh.label_style(self.get_axis_font()).x_labels(8).draw()?;
         // Draw curve
         for (label, line, style, color) in self.lines() {
             let line = line.iter().map(|&[x, y]| (x, y));

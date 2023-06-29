@@ -226,7 +226,6 @@ fn try_run(
             let svg = $plot::SVGBackend::new(&path, (1600, 800));
             let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
             let mut fig = $plot::Figure::from(&$fb)
-                .axis(false)
                 .font(cfg.font)
                 .legend(cfg.legend_pos);
             if let Some(angle) = cfg.angle {
@@ -290,7 +289,7 @@ fn try_run(
                     .unwrap_or("Competitor".to_string());
                 fig = fig.add_line(competitor_str, c, $plot::Style::Square, $plot::BLUE);
             }
-            fig.remove_fb().axis(true).plot(root_l)?;
+            fig.remove_fb().plot(root_l)?;
             log.flush()?;
             Ok(())
         }};

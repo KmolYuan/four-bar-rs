@@ -59,7 +59,7 @@ struct SynCfg {
     /// Reference number
     #[clap(long)]
     ref_num: Option<std::num::NonZeroU8>,
-    /// Linkage input angle in the plot
+    /// Linkage input angle (degrees) in the plot
     #[clap(long)]
     angle: Option<f64>,
     /// Legend position
