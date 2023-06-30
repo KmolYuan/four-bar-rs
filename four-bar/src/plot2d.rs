@@ -24,6 +24,7 @@
 //! fig.plot(root_r).unwrap();
 //! ```
 use crate::*;
+use plotters::element::DashedPathElement;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 use std::{borrow::Cow, rc::Rc};
@@ -63,9 +64,12 @@ pub(crate) fn formatter(v: &f64) -> String {
 /// Line style.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum Style {
     /// Continuous Line
     Line,
+    /// Dashed Line
+    DashedLine,
     /// Circle Marker
     #[default]
     Circle,
@@ -79,9 +83,10 @@ pub enum Style {
 
 impl Style {
     /// Get the style names.
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             Self::Line => "Line",
+            Self::DashedLine => "Dashed Line",
             Self::Circle => "Circle",
             Self::Triangle => "Triangle",
             Self::Cross => "Cross",
@@ -100,7 +105,7 @@ impl Style {
         DB: DrawingBackend + 'a,
         CT: CoordTranslate,
         CT::From: Clone + 'static,
-        I: IntoIterator<Item = CT::From>,
+        I: Iterator<Item = CT::From> + Clone,
     {
         let color = color.stroke_width(color.stroke_width + 2);
         let dot_size = color.stroke_width + 5;
@@ -110,9 +115,8 @@ impl Style {
                 let line = line.into_iter().map(|c| $mk::new(c, dot_size, color));
                 let anno = chart.draw_series(line)?;
                 if has_label {
-                    anno.label(label).legend(move |(x, y)| {
-                        $mk::new((x + dot_size as i32 / 2, y), dot_size, color)
-                    });
+                    anno.label(label)
+                        .legend(move |(x, y)| $mk::new((x + 10, y), dot_size, color));
                 }
             }};
         }
@@ -123,6 +127,15 @@ impl Style {
                 if has_label {
                     anno.label(label)
                         .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], color));
+                }
+            }
+            Self::DashedLine => {
+                let series = DashedLineSeries::new(line, 10, 5, color);
+                let anno = chart.draw_series(series)?;
+                if has_label {
+                    anno.label(label).legend(move |(x, y)| {
+                        DashedPathElement::new([(x, y), (x + 20, y)], 10, 5, color)
+                    });
                 }
             }
             Self::Circle => impl_marker!(Circle),

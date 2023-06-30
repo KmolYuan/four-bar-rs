@@ -29,8 +29,10 @@ efd = "3.1"
 
 [dependencies.plotters]
 version = "0.3"
+git = "https://github.com/KmolYuan/plotters.git"
+branch = "dash"
 default-features = false
-features = ["svg_backend", "all_series", "all_elements"]
+features = ["svg_backend", "all_series", "all_elements", "full_palette"]
 optional = true
 
 [dev-dependencies]

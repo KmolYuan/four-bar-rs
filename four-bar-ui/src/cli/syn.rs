@@ -233,7 +233,7 @@ fn try_run(
             }
             fig = fig
                 .add_line(target_str, $target, $plot::Style::Circle, $plot::RED)
-                .add_line("Optimized", &curve, $plot::Style::Triangle, $plot::BLACK);
+                .add_line("Optimized", &curve, $plot::Style::Line, $plot::BLACK);
             fig.plot(root_r)?;
             let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
             writeln!(log, "[{title}]")?;
@@ -256,7 +256,7 @@ fn try_run(
                 $log_fb(&mut log, &fb)?;
                 let path = root.join(format!("{title}_atlas.ron"));
                 std::fs::write(path, ron::to_string(&fb)?)?;
-                fig = fig.add_line("Atlas", c, $plot::Style::Cross, $plot::BLUE);
+                fig = fig.add_line("Atlas", c, $plot::Style::Cross, $plot::full_palette::ORANGE);
             }
             writeln!(log, "\n[optimized]")?;
             writeln!(log, "time={t1:?}")?;
@@ -287,7 +287,7 @@ fn try_run(
                     .ref_num
                     .map(|n| format!("Ref. [{n}]"))
                     .unwrap_or("Competitor".to_string());
-                fig = fig.add_line(competitor_str, c, $plot::Style::Square, $plot::BLUE);
+                fig = fig.add_line(competitor_str, c, $plot::Style::DashedLine, $plot::BLUE);
             }
             fig.remove_fb().plot(root_l)?;
             log.flush()?;
