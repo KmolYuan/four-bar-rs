@@ -4,6 +4,7 @@ dist/
 Cargo.lock
 *.npz
 *.svg
+*.emf
 *.ron
 *.log
 !*.closed.ron

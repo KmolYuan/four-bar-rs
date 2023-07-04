@@ -202,13 +202,12 @@ fn try_run(
         let svg = plot2d::SVGBackend::new(&path, (800, 600));
         plot2d::history(svg, history)?;
     }
-    use plot2d::IntoDrawingArea as _;
     macro_rules! impl_log {
         ($fb:ident, $cb_fb:ident, $target:ident, $log_fb:ident, $fb_enum:ident, $fb_ty:ident, $efd:ident, $plot:ident) => {{
             if !$fb.is_valid() {
                 return Err(SynErr::Solver);
             }
-            let path = root.join(format!("{title}_result.ron"));
+            let path = root.join(format!("{title}.result.ron"));
             std::fs::write(path, ron::to_string(&$fb)?)?;
             let efd_target = efd::$efd::from_curve_harmonic(&$target, mode.is_target_open(), h);
             let curve = $fb.curve(cfg.res);
@@ -222,9 +221,6 @@ fn try_run(
                 .ref_num
                 .map(|n| format!("Target, Ref. [{n}]"))
                 .unwrap_or("Target".to_string());
-            let path = root.join(format!("{title}_result.svg"));
-            let svg = $plot::SVGBackend::new(&path, (1600, 800));
-            let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
             let mut fig = $plot::Figure::from(&$fb)
                 .font(cfg.font)
                 .legend(cfg.legend_pos);
@@ -234,7 +230,11 @@ fn try_run(
             fig = fig
                 .add_line(target_str, $target, $plot::Style::Circle, $plot::RED)
                 .add_line("Optimized", &curve, $plot::Style::Line, $plot::BLACK);
-            fig.plot(root_r)?;
+            {
+                let path = root.join(format!("{title}.linkage.svg"));
+                let svg = $plot::SVGBackend::new(&path, (800, 800));
+                fig.plot(svg)?;
+            }
             let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
             writeln!(log, "[{title}]")?;
             if let Some(io::Fb::$fb_enum(fb)) = target_fb {
@@ -289,7 +289,11 @@ fn try_run(
                     .unwrap_or("Competitor".to_string());
                 fig = fig.add_line(competitor_str, c, $plot::Style::DashedLine, $plot::BLUE);
             }
-            fig.remove_fb().plot(root_l)?;
+            {
+                let path = root.join(format!("{title}.curve.svg"));
+                let svg = $plot::SVGBackend::new(&path, (800, 800));
+                fig.remove_fb().plot(svg)?;
+            }
             log.flush()?;
             Ok(())
         }};
