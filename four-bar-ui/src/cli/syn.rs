@@ -198,7 +198,7 @@ fn try_run(
     let (cost, h, result_fb) = s.solve_verbose().unwrap();
     let t1 = t0.elapsed();
     {
-        let path = root.join(format!("{title}_history.svg"));
+        let path = root.join(format!("{title}.history.svg"));
         let svg = plot2d::SVGBackend::new(&path, (800, 600));
         plot2d::history(svg, history)?;
     }
@@ -207,7 +207,7 @@ fn try_run(
             if !$fb.is_valid() {
                 return Err(SynErr::Solver);
             }
-            let path = root.join(format!("{title}.result.ron"));
+            let path = root.join(format!("{title}.linkage.ron"));
             std::fs::write(path, ron::to_string(&$fb)?)?;
             let efd_target = efd::$efd::from_curve_harmonic(&$target, mode.is_target_open(), h);
             let curve = $fb.curve(cfg.res);
