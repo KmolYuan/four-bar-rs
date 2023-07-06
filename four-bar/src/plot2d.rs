@@ -358,12 +358,6 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     pub(crate) fn get_font(&self) -> TextStyle {
         (self.get_family(), self.opt.font).into_font().color(&BLACK)
     }
-
-    pub(crate) fn get_axis_font(&self) -> TextStyle {
-        (self.get_family(), self.opt.font * 0.8)
-            .into_font()
-            .color(&BLACK)
-    }
 }
 
 impl<'a, M, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> {
@@ -479,7 +473,7 @@ impl Figure<'_, '_> {
         if !axis {
             mesh.disable_axes();
         }
-        mesh.label_style(self.get_axis_font())
+        mesh.label_style(self.get_font())
             .x_label_formatter(&formatter)
             .y_label_formatter(&formatter)
             .draw()?;

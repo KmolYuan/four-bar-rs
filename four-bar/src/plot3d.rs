@@ -66,7 +66,7 @@ impl Figure<'_, '_> {
             chart
                 .configure_axes()
                 .light_grid_style(BLACK.mix(0.15))
-                .label_style(self.get_axis_font())
+                .label_style(self.get_font())
                 .max_light_lines(3)
                 .x_formatter(&formatter)
                 .y_formatter(&formatter)
