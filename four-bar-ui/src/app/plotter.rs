@@ -1,5 +1,5 @@
 use super::widgets::*;
-use crate::io;
+use crate::io::{self, Alert as _};
 use eframe::egui::*;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
@@ -266,7 +266,7 @@ impl Plotter {
                             let (label, line, style, color) = data.share();
                             fig = fig.add_line(label, line, style, color);
                         }
-                        io::alert(fig.plot(root), |_| ());
+                        fig.plot(root).alert("Plot");
                     }
                     PlotType::S(fb, c) => {
                         let mut fig = plot3d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
@@ -277,7 +277,7 @@ impl Plotter {
                             let (label, line, style, color) = data.share();
                             fig = fig.add_line(label, line, style, color);
                         }
-                        io::alert(fig.plot(root), |_| ());
+                        fig.plot(root).alert("Plot");
                     }
                 });
             io::save_svg_ask(&buf, "figure.svg");

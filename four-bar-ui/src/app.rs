@@ -45,6 +45,8 @@ pub(crate) struct App {
     bp: blueprint::BluePrint,
     plotter: plotter::Plotter,
     #[serde(skip)]
+    toasts: egui_toast::Toasts,
+    #[serde(skip)]
     panel: Panel,
 }
 
@@ -81,6 +83,10 @@ impl App {
             .unwrap_or_default();
         app.bp.preload(&ctx.egui_ctx);
         app.link.preload(files, app.link.cfg.res);
+        app.toasts = app
+            .toasts
+            .anchor(Align2::RIGHT_BOTTOM, [-10., -10.])
+            .direction(Direction::BottomUp);
         #[cfg(target_arch = "wasm32")]
         {
             #[wasm_bindgen::prelude::wasm_bindgen]
@@ -195,6 +201,14 @@ impl eframe::App for App {
             self.pc_view(ctx);
         }
         self.link.poll(ctx);
+        for e in crate::io::ERR_MSG.lock().unwrap().drain(..) {
+            self.toasts.add(egui_toast::Toast {
+                kind: egui_toast::ToastKind::Error,
+                text: e.into(),
+                options: Default::default(),
+            });
+        }
+        self.toasts.show(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

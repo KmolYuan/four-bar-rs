@@ -1,5 +1,4 @@
 use self::impl_io::*;
-use eframe::egui::ColorImage;
 use four_bar::*;
 use std::path::{Path, PathBuf};
 
@@ -16,14 +15,12 @@ const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
-    use super::alert;
+    use super::Alert as _;
     use std::path::{Path, PathBuf};
     use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
     #[wasm_bindgen]
     extern "C" {
-        #[wasm_bindgen(js_name = alert)]
-        fn alert_js(s: &str);
         fn open_file(ext: &str, done: JsValue, is_multiple: bool, is_bin: bool);
         fn save_file(s: &str, path: &str);
         #[wasm_bindgen(js_name = save_file)]
@@ -35,10 +32,6 @@ mod impl_io {
             .map(|s| format!(".{s}"))
             .collect::<Vec<_>>()
             .join(",")
-    }
-
-    pub(super) fn alert_dialog(s: &str) {
-        alert_js(s);
     }
 
     pub(super) fn open<C>(_fmt: &str, ext: &[&str], done: C)
@@ -94,32 +87,24 @@ mod impl_io {
         E: std::error::Error,
     {
         let mut buf = Vec::new();
-        alert(write(std::io::Cursor::new(&mut buf)), |_| ());
+        write(std::io::Cursor::new(&mut buf)).alert("Save File");
         save_bin(&buf, name);
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod impl_io {
-    use super::alert;
+    use super::Alert as _;
     use std::path::{Path, PathBuf};
-
-    pub(super) fn alert_dialog(s: &str) {
-        rfd::MessageDialog::new()
-            .set_title("Error")
-            .set_description(s)
-            .set_level(rfd::MessageLevel::Error)
-            .show();
-    }
 
     pub(super) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
         C: Fn(PathBuf, std::fs::File) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
-            paths
-                .into_iter()
-                .for_each(|path| alert(std::fs::File::open(&path), |r| done(path, r)));
+            for path in paths {
+                std::fs::File::open(&path).alert_then("Open File", |r| done(path, r));
+            }
         }
     }
 
@@ -130,7 +115,7 @@ mod impl_io {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             paths
                 .into_iter()
-                .for_each(|path| alert(std::fs::File::open(path), &done));
+                .for_each(|path| std::fs::File::open(path).alert_then("Open File", &done));
         }
     }
 
@@ -139,7 +124,7 @@ mod impl_io {
         C: FnOnce(PathBuf, std::fs::File) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            alert(std::fs::File::open(&path), |s| done(path, s));
+            std::fs::File::open(&path).alert_then("Open File", |s| done(path, s));
         }
     }
 
@@ -148,7 +133,7 @@ mod impl_io {
         C: FnOnce(PathBuf, std::fs::File) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            alert(std::fs::File::open(&path), |s| done(path, s));
+            std::fs::File::open(&path).alert_then("Open File", |s| done(path, s));
         }
     }
 
@@ -161,12 +146,12 @@ mod impl_io {
             .add_filter(fmt, ext)
             .save_file()
         {
-            alert(std::fs::write(&path, s), |_| done(path));
+            std::fs::write(&path, s).alert_then("Save File", |_| done(path));
         }
     }
 
     pub(super) fn save(s: &str, path: &Path) {
-        alert(std::fs::write(path, s), |_| ());
+        std::fs::write(path, s).alert("Save File");
     }
 
     pub(super) fn save_bin_ask<C, E>(name: &str, fmt: &str, ext: &[&str], write: C)
@@ -179,19 +164,32 @@ mod impl_io {
             .add_filter(fmt, ext)
             .save_file()
         {
-            alert(std::fs::File::create(path), |f| alert(write(f), |_| ()));
+            std::fs::File::create(path).alert_then("Create File", |f| write(f).alert("Save File"));
         }
     }
 }
 
-pub(crate) fn alert<T, E, C>(r: Result<T, E>, done: C)
-where
-    E: std::error::Error,
-    C: FnOnce(T),
-{
-    match r {
-        Ok(t) => done(t),
-        Err(e) => alert_dialog(&e.to_string()),
+pub(crate) static ERR_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+pub(crate) trait Alert<T>: Sized {
+    fn alert_then<C>(self, title: &'static str, done: C)
+    where
+        C: FnOnce(T);
+
+    fn alert(self, title: &'static str) {
+        self.alert_then(title, |_| ());
+    }
+}
+
+impl<T, E: std::error::Error> Alert<T> for Result<T, E> {
+    fn alert_then<C>(self, title: &'static str, done: C)
+    where
+        C: FnOnce(T),
+    {
+        match self {
+            Ok(t) => done(t),
+            Err(e) => ERR_MSG.lock().unwrap().push(format!("{title} Error\n{e}")),
+        }
     }
 }
 
@@ -199,7 +197,7 @@ pub(crate) fn open_ron<C>(done: C)
 where
     C: Fn(PathBuf, Fb) + 'static,
 {
-    let done = move |path, r| alert(ron::de::from_reader(r), |fb| done(path, fb));
+    let done = move |path, r| ron::de::from_reader(r).alert_then("Parse File", |fb| done(path, fb));
     open(FMT, EXT, done);
 }
 
@@ -208,7 +206,7 @@ where
     C: FnOnce(PathBuf, Curve) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, move |p, r| {
-        alert(Curve::from_reader(r), |d| done(p, d));
+        Curve::from_reader(r).alert_then("Parse File", |d| done(p, d));
     });
 }
 
@@ -217,7 +215,7 @@ where
     C: Fn(PathBuf, Curve) + 'static,
 {
     open(CSV_FMT, CSV_EXT, move |p, r| {
-        alert(Curve::from_reader(r), |d| done(p, d));
+        Curve::from_reader(r).alert_then("Parse File", |d| done(p, d));
     });
 }
 
@@ -225,7 +223,7 @@ pub(crate) fn open_cb<C>(done: C)
 where
     C: Fn(Cb) + 'static,
 {
-    let done = move |b| alert(Cb::from_reader(b), &done);
+    let done = move |b| Cb::from_reader(b).alert_then("Parse File", &done);
     open_bin(CB_FMT, CB_EXT, done);
 }
 
@@ -233,7 +231,7 @@ pub(crate) fn open_img<C>(done: C)
 where
     C: FnOnce(PathBuf, ColorImage) + 'static,
 {
-    let done = move |path, buf| alert(load_img(buf), |img| done(path, img));
+    let done = move |path, buf| load_img(buf).alert_then("Parse File", |img| done(path, img));
     open_bin_single(IMG_FMT, IMG_EXT, done);
 }
 
@@ -391,6 +389,8 @@ impl FromIterator<Cb> for CbPool {
         pool
     }
 }
+
+use eframe::egui::ColorImage;
 
 pub(crate) fn load_img<R>(r: R) -> Result<ColorImage, image::ImageError>
 where

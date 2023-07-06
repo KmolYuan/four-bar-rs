@@ -1,5 +1,5 @@
 use super::{link::Linkages, widgets::*};
-use crate::{io, syn_cmd, syn_cmd::Target};
+use crate::{io, io::Alert as _, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
@@ -91,7 +91,7 @@ impl Synthesis {
         });
         match std::mem::replace(&mut *self.queue.write(), Cache::Empty) {
             Cache::Curve(curve) => self.target = curve,
-            Cache::Cb(cb) => io::alert(self.cb.merge_inplace(cb), |_| ()),
+            Cache::Cb(cb) => self.cb.merge_inplace(cb).alert("Merge Codebook"),
             Cache::Empty => (),
         }
         toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas")
@@ -394,7 +394,8 @@ impl Synthesis {
                 task.conv.push(best_f);
                 task.time = t0.elapsed();
             });
-            io::alert(s.solve(), |fb| queue.push(None, fb));
+            s.solve()
+                .alert_then("Initialization", |fb| queue.push(None, fb));
         };
         #[cfg(not(target_arch = "wasm32"))]
         mh::rayon::spawn(f);
