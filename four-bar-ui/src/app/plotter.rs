@@ -35,7 +35,7 @@ impl<const N: usize> LineData<N> {
         ui.horizontal(|ui| {
             ui.label("Style");
             use plot2d::Style::*;
-            const OPTS: [plot2d::Style; 5] = [Line, Circle, Triangle, Cross, Square];
+            const OPTS: [plot2d::Style; 6] = [Line, DashedLine, Circle, Triangle, Cross, Square];
             let id = Id::new("style").with(id);
             combo_enum(ui, id, &mut self.style, OPTS, |e| e.name());
             nonzero_i(ui, "Stroke Width: ", &mut self.stroke_width, 1);
