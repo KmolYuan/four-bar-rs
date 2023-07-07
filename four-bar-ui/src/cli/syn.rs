@@ -109,7 +109,13 @@ pub(super) fn syn(syn: Syn) {
                     if path.is_dir() {
                         std::fs::remove_dir_all(path)?;
                     } else {
-                        std::fs::remove_file(path)?;
+                        let keep_list = [
+                            root.join(format!("{title}.linkage.ron")),
+                            root.join(format!("{title}.log")),
+                        ];
+                        if !keep_list.contains(&path) {
+                            std::fs::remove_file(path)?;
+                        }
                     }
                 }
             } else {
@@ -165,6 +171,8 @@ fn run(
     cb: &io::CbPool,
     refer: &Path,
 ) {
+    // TODO: "--rerun" and "--clean" commend
+    // Use `{title}.linkage.ron` to re-draw the result
     let title = &info.title;
     match try_run(pb, method, &info, cfg, cb, refer) {
         Ok(()) => pb.println(format!("Finished: {title}")),
