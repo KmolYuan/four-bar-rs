@@ -82,6 +82,16 @@ pub enum Style {
 }
 
 impl Style {
+    /// Style list.
+    pub const LIST: [Self; 6] = [
+        Self::Line,
+        Self::DashedLine,
+        Self::Circle,
+        Self::Triangle,
+        Self::Cross,
+        Self::Square,
+    ];
+
     /// Get the style names.
     pub const fn name(&self) -> &'static str {
         match self {

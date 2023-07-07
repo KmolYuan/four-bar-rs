@@ -34,10 +34,8 @@ impl<const N: usize> LineData<N> {
             .inner;
         ui.horizontal(|ui| {
             ui.label("Style");
-            use plot2d::Style::*;
-            const OPTS: [plot2d::Style; 6] = [Line, DashedLine, Circle, Triangle, Cross, Square];
             let id = Id::new("style").with(id);
-            combo_enum(ui, id, &mut self.style, OPTS, |e| e.name());
+            combo_enum(ui, id, &mut self.style, plot2d::Style::LIST, |e| e.name());
             nonzero_i(ui, "Stroke Width: ", &mut self.stroke_width, 1);
         });
         ui.horizontal(|ui| {
@@ -50,7 +48,7 @@ impl<const N: usize> LineData<N> {
         keep
     }
 
-    fn share(&self) -> (&String, &Vec<[f64; N]>, plot3d::Style, plot2d::ShapeStyle) {
+    fn share(&self) -> (&String, &Vec<[f64; N]>, plot2d::Style, plot2d::ShapeStyle) {
         let Self { style, color: [r, g, b], stroke_width, filled, .. } = *self;
         let color = {
             let color = plot2d::RGBAColor(r, g, b, 1.);
