@@ -35,12 +35,17 @@ struct Syn {
     #[clap(required = true)]
     files: Vec<PathBuf>,
     /// Force to rerun the result
-    #[clap(long)]
+    ///
+    /// If the last result exists, the program will only redraw it
+    #[clap(short = 'f', long, alias = "force")]
     rerun: bool,
-    /// Remove related project folders
+    /// Remove the related project folders and exit
+    ///
+    /// This flag won't run the synthesis functions
     #[clap(long, alias = "clear")]
     clean: bool,
-    /// Disable parallel for running all tasks
+    /// Disable parallel for running all tasks, use a single loop for
+    /// benchmarking
     #[clap(long)]
     one_by_one: bool,
     /// Provide pre-generated codebook databases, support multiple paths as

@@ -440,7 +440,7 @@ fn run(
     let result_path = info.root.join(format!("{title}.linkage.ron"));
     let f = || {
         if !rerun && result_path.is_file() {
-            // Just re-draw the plots
+            // Just redraw the plots
             let result_fb = match ron::de::from_reader(std::fs::File::open(result_path)?)? {
                 io::Fb::Fb(fb) => syn_cmd::SolvedFb::Fb(fb, None),
                 io::Fb::SFb(fb) => syn_cmd::SolvedFb::SFb(fb, None),
