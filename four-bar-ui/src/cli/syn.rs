@@ -265,7 +265,7 @@ impl<'a> Solver<'a> {
         let competitor_str = cfg
             .ref_num
             .map(|n| format!("Ref. [{n}]"))
-            .unwrap_or("Competitor".to_string());
+            .unwrap_or("Ref. [?]".to_string());
         let mut log = std::io::Cursor::new(Vec::new());
         writeln!(log, "[{title}]")?;
         match (target, &result_fb) {

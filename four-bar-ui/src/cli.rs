@@ -67,7 +67,7 @@ struct SynCfg {
     /// Font size in the plot
     #[clap(long, default_value_t = 45.)]
     font: f64,
-    /// Reference number
+    /// Reference number of competitor, default to "Ref. [?]"
     #[clap(long)]
     ref_num: Option<std::num::NonZeroU8>,
     /// Linkage input angle (degrees) in the plot
