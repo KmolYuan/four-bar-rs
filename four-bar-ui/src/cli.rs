@@ -34,6 +34,12 @@ struct Syn {
     /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
     #[clap(required = true)]
     files: Vec<PathBuf>,
+    /// Force to rerun the result
+    #[clap(long)]
+    rerun: bool,
+    /// Remove related project folders
+    #[clap(long)]
+    clean: bool,
     /// Disable parallel for running all tasks
     #[clap(long)]
     one_by_one: bool,

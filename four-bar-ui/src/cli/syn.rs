@@ -63,7 +63,16 @@ struct Info {
 }
 
 pub(super) fn syn(syn: Syn) {
-    let Syn { files, one_by_one, cfg, cb, refer, method } = syn;
+    let Syn {
+        files,
+        one_by_one,
+        cfg,
+        cb,
+        refer,
+        method,
+        rerun,
+        clean,
+    } = syn;
     println!("{cfg}");
     println!("-----");
     // Load target files & create project folders
@@ -103,22 +112,22 @@ pub(super) fn syn(syn: Syn) {
             };
             let root = file.parent().unwrap().join(&title);
             if root.is_dir() {
-                // Avoid file browser missing opening folders
-                for e in std::fs::read_dir(&root)? {
-                    let path = e?.path();
-                    if path.is_dir() {
-                        std::fs::remove_dir_all(path)?;
-                    } else {
-                        let keep_list = [
-                            root.join(format!("{title}.linkage.ron")),
-                            root.join(format!("{title}.log")),
-                        ];
-                        if !keep_list.contains(&path) {
+                if rerun {
+                    // Clear the root folder
+                    // Avoid file browser missing opening folders
+                    for e in std::fs::read_dir(&root)? {
+                        let path = e?.path();
+                        if path.is_dir() {
+                            std::fs::remove_dir_all(path)?;
+                        } else {
                             std::fs::remove_file(path)?;
                         }
                     }
+                } else if clean {
+                    // Just remove root folder
+                    std::fs::remove_dir(&root)?;
                 }
-            } else {
+            } else if !clean || rerun {
                 std::fs::create_dir(&root)?;
             }
             Ok(Info { root, target, target_fb, title, mode })
@@ -132,6 +141,9 @@ pub(super) fn syn(syn: Syn) {
             }
         })
         .collect::<Vec<_>>();
+    if clean && !rerun {
+        return;
+    }
     // Load codebook
     let cb = cb
         .map(|cb| std::env::split_paths(&cb).collect::<Vec<_>>())
@@ -150,7 +162,7 @@ pub(super) fn syn(syn: Syn) {
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     // Tasks
     let method = method.unwrap_or_default();
-    let run = |info| run(&pb, method.clone(), info, &cfg, &cb, &refer);
+    let run = |info| run(&pb, method.clone(), info, &cfg, &cb, &refer, rerun);
     let t0 = std::time::Instant::now();
     if one_by_one {
         files.into_iter().for_each(run);
@@ -170,11 +182,10 @@ fn run(
     cfg: &SynCfg,
     cb: &io::CbPool,
     refer: &Path,
+    rerun: bool,
 ) {
-    // TODO: "--rerun" and "--clean" commend
-    // Use `{title}.linkage.ron` to re-draw the result
     let title = &info.title;
-    match try_run(pb, method, &info, cfg, cb, refer) {
+    match try_run(pb, method, &info, cfg, cb, refer, rerun) {
         Ok(()) => pb.println(format!("Finished: {title}")),
         Err(e) => pb.println(format!("Error in {title}: {e}")),
     }
@@ -187,8 +198,14 @@ fn try_run(
     cfg: &SynCfg,
     cb: &io::CbPool,
     refer: &Path,
+    rerun: bool,
 ) -> Result<(), SynErr> {
     let Info { root, target, target_fb, title, mode } = info;
+    // TODO: "--rerun" and "--clean" commend
+    // Use `{title}.linkage.ron` to re-draw the result
+    if rerun {
+        todo!();
+    }
     let mut history = Vec::with_capacity(cfg.gen as usize);
     let t0 = std::time::Instant::now();
     let s = {
