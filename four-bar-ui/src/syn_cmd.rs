@@ -154,13 +154,13 @@ impl<'a> Solver<'a> {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn solve_verbose(self) -> Result<(f64, usize, CbFb), mh::ndarray::ShapeError> {
+    pub(crate) fn solve_verbose(self) -> Result<(f64, usize, SolvedFb), mh::ndarray::ShapeError> {
         macro_rules! impl_solve {
             ($syn:ident, $s:ident, $cb_fb:ident) => {{
                 let s = $s.solve()?;
                 let h = s.func().harmonic();
                 let (err, fb) = s.into_err_result();
-                Ok((err, h, CbFb::$syn(fb, $cb_fb)))
+                Ok((err, h, SolvedFb::$syn(fb, $cb_fb)))
             }};
         }
         match self {
@@ -171,7 +171,7 @@ impl<'a> Solver<'a> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) enum CbFb {
+pub(crate) enum SolvedFb {
     Fb(FourBar, Option<(f64, NormFourBar)>),
     SFb(SFourBar, Option<(f64, SNormFourBar)>),
 }

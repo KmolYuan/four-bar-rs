@@ -38,7 +38,7 @@ struct Syn {
     #[clap(long)]
     rerun: bool,
     /// Remove related project folders
-    #[clap(long)]
+    #[clap(long, alias = "clear")]
     clean: bool,
     /// Disable parallel for running all tasks
     #[clap(long)]

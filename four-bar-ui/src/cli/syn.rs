@@ -125,7 +125,7 @@ pub(super) fn syn(syn: Syn) {
                     }
                 } else if clean {
                     // Just remove root folder
-                    std::fs::remove_dir(&root)?;
+                    std::fs::remove_dir_all(&root)?;
                 }
             } else if !clean || rerun {
                 std::fs::create_dir(&root)?;
@@ -175,6 +175,258 @@ pub(super) fn syn(syn: Syn) {
     println!("Finished in {:?}", t0.elapsed());
 }
 
+struct Solver<'a> {
+    refer: &'a Path,
+    info: &'a Info,
+    cfg: &'a SynCfg,
+    harmonic: usize,
+    result_fb: syn_cmd::SolvedFb,
+    cost_t1: Option<(f64, std::time::Duration)>,
+}
+
+impl<'a> Solver<'a> {
+    fn from_runtime(
+        pb: &ProgressBar,
+        method: syn_cmd::SynMethod,
+        info: &'a Info,
+        cfg: &'a SynCfg,
+        cb: &io::CbPool,
+        refer: &'a Path,
+        result_path: impl AsRef<Path>,
+    ) -> Result<Self, SynErr> {
+        let Info { root, target, title, mode, .. } = info;
+        let mut history = Vec::with_capacity(cfg.gen as usize);
+        let t0 = std::time::Instant::now();
+        let s = {
+            let mut cfg = cfg.inner.clone();
+            cfg.mode = *mode;
+            let target = match &target {
+                io::Curve::P(t) => syn_cmd::Target::P(Cow::Borrowed(t), Cow::Borrowed(cb.as_fb())),
+                io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(cb.as_sfb())),
+            };
+            syn_cmd::Solver::new(method, target, cfg, |best_f, _| {
+                history.push(best_f);
+                pb.inc(1);
+            })
+        };
+        let (cost, harmonic, result_fb) = s.solve_verbose().map_err(|_| SynErr::Solver)?;
+        let t1 = t0.elapsed();
+        let path = root.join(format!("{title}.history.svg"));
+        let svg = plot2d::SVGBackend::new(&path, (800, 600));
+        plot2d::history(svg, history)?;
+        match &result_fb {
+            syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(result_path, ron::to_string(fb)?)?,
+            syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(result_path, ron::to_string(fb)?)?,
+        }
+        Ok(Self {
+            refer,
+            info,
+            cfg,
+            harmonic,
+            result_fb,
+            cost_t1: Some((cost, t1)),
+        })
+    }
+
+    fn from_exist(
+        pb: &ProgressBar,
+        info: &'a Info,
+        cfg: &'a SynCfg,
+        refer: &'a Path,
+        result_fb: syn_cmd::SolvedFb,
+    ) -> Self {
+        let harmonic = match &result_fb {
+            syn_cmd::SolvedFb::Fb(fb, _) => {
+                efd::Efd2::from_curve(fb.curve(cfg.res), info.mode.is_result_open()).harmonic()
+            }
+            syn_cmd::SolvedFb::SFb(fb, _) => {
+                efd::Efd3::from_curve(fb.curve(cfg.res), info.mode.is_result_open()).harmonic()
+            }
+        };
+        pb.inc(cfg.gen);
+        Self {
+            refer,
+            info,
+            cfg,
+            harmonic,
+            result_fb,
+            cost_t1: None,
+        }
+    }
+
+    fn log(self) -> Result<(), SynErr> {
+        let Self { refer, info, cfg, harmonic, result_fb, cost_t1 } = self;
+        let Info { root, target, target_fb, title, mode } = info;
+        let refer = root
+            .parent()
+            .unwrap()
+            .join(refer)
+            .join(format!("{title}.ron"));
+        let competitor_str = cfg
+            .ref_num
+            .map(|n| format!("Ref. [{n}]"))
+            .unwrap_or("Competitor".to_string());
+        let mut log = std::io::Cursor::new(Vec::new());
+        writeln!(log, "[{title}]")?;
+        match (target, &result_fb) {
+            (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
+                let curve_diff = if matches!(info.mode, syn::Mode::Partial) {
+                    efd::partial_curve_diff
+                } else {
+                    efd::curve_diff
+                };
+                let efd_target =
+                    efd::Efd2::from_curve_harmonic(target, info.mode.is_target_open(), harmonic);
+                let curve = fb.curve(cfg.res);
+                let mut fig = plot2d::Figure::from(fb)
+                    .font(cfg.font)
+                    .legend(cfg.legend_pos)
+                    .add_line("Target", target, plot2d::Style::Circle, plot2d::RED)
+                    .add_line("Optimized", &curve, plot2d::Style::Line, plot2d::BLACK);
+                if let Some(angle) = cfg.angle {
+                    fig = fig.angle(angle.to_radians());
+                }
+                {
+                    let path = root.join(format!("{title}.linkage.svg"));
+                    let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                    fig.plot(svg)?;
+                }
+                if let Some(io::Fb::Fb(fb)) = target_fb {
+                    writeln!(log, "\n[target.fb]")?;
+                    log_fb(&mut log, fb)?;
+                }
+                if let Some((cost, fb)) = cb_fb {
+                    let c = fb.curve(cfg.res);
+                    let efd = efd::Efd2::from_curve_harmonic(c, mode.is_result_open(), harmonic);
+                    let trans = efd.as_trans().to(efd_target.as_trans());
+                    let fb = fb.trans_denorm(&trans);
+                    let c = fb.curve(cfg.res);
+                    let err = curve_diff(target, &c);
+                    writeln!(log, "\n[atlas]")?;
+                    writeln!(log, "harmonic={harmonic}")?;
+                    writeln!(log, "cost={cost}")?;
+                    writeln!(log, "error={err}")?;
+                    writeln!(log, "\n[atlas.fb]")?;
+                    log_fb(&mut log, &fb)?;
+                    let path = root.join(format!("{title}_atlas.ron"));
+                    std::fs::write(path, ron::to_string(&fb)?)?;
+                    fig = fig.add_line("Atlas", c, plot2d::Style::Cross, plot2d::MAGENTA);
+                }
+                writeln!(log, "\n[optimized]")?;
+                let err = curve_diff(target, &curve);
+                if let Some((cost, t1)) = cost_t1 {
+                    writeln!(log, "time={t1:?}")?;
+                    writeln!(log, "cost={cost}")?;
+                }
+                writeln!(log, "error={err}")?;
+                writeln!(log, "harmonic={harmonic}")?;
+                writeln!(log, "\n[optimized.fb]")?;
+                log_fb(&mut log, fb)?;
+                if let Ok(r) = std::fs::File::open(refer) {
+                    let fb = ron::de::from_reader::<_, FourBar>(r)?;
+                    let c = fb.curve(cfg.res);
+                    let err = curve_diff(target, &c);
+                    writeln!(log, "\n[competitor]")?;
+                    if !matches!(mode, syn::Mode::Partial) {
+                        let efd =
+                            efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
+                        let cost = efd.l2_norm(&efd_target);
+                        writeln!(log, "cost={cost}")?;
+                    }
+                    writeln!(log, "error={err}")?;
+                    writeln!(log, "\n[competitor.fb]")?;
+                    log_fb(&mut log, &fb)?;
+                    fig = fig.add_line(competitor_str, c, plot2d::Style::DashedLine, plot2d::BLUE);
+                }
+                let path = root.join(format!("{title}.curve.svg"));
+                let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                fig.remove_fb().plot(svg)?;
+            }
+            (io::Curve::S(target), syn_cmd::SolvedFb::SFb(fb, cb_fb)) if fb.is_valid() => {
+                let curve_diff = if matches!(info.mode, syn::Mode::Partial) {
+                    efd::partial_curve_diff
+                } else {
+                    efd::curve_diff
+                };
+                let efd_target =
+                    efd::Efd3::from_curve_harmonic(target, info.mode.is_target_open(), harmonic);
+                let curve = fb.curve(cfg.res);
+                let mut fig = plot3d::Figure::from(fb)
+                    .font(cfg.font)
+                    .legend(cfg.legend_pos)
+                    .add_line("Target", target, plot2d::Style::Circle, plot2d::RED)
+                    .add_line("Optimized", &curve, plot2d::Style::Line, plot2d::BLACK);
+                if let Some(angle) = cfg.angle {
+                    fig = fig.angle(angle.to_radians());
+                }
+                {
+                    let path = root.join(format!("{title}.linkage.svg"));
+                    let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                    fig.plot(svg)?;
+                }
+                if let Some(io::Fb::SFb(fb)) = target_fb {
+                    writeln!(log, "\n[target.fb]")?;
+                    log_sfb(&mut log, fb)?;
+                }
+                if let Some((cost, fb)) = cb_fb {
+                    let c = fb.curve(cfg.res);
+                    let efd = efd::Efd3::from_curve_harmonic(c, mode.is_result_open(), harmonic);
+                    let trans = efd.as_trans().to(efd_target.as_trans());
+                    let fb = fb.trans_denorm(&trans);
+                    let c = fb.curve(cfg.res);
+                    let err = curve_diff(target, &c);
+                    writeln!(log, "\n[atlas]")?;
+                    writeln!(log, "harmonic={harmonic}")?;
+                    writeln!(log, "cost={cost}")?;
+                    writeln!(log, "error={err}")?;
+                    writeln!(log, "\n[atlas.fb]")?;
+                    log_sfb(&mut log, &fb)?;
+                    let path = root.join(format!("{title}_atlas.ron"));
+                    std::fs::write(path, ron::to_string(&fb)?)?;
+                    fig = fig.add_line("Atlas", c, plot2d::Style::Cross, plot2d::MAGENTA);
+                }
+                writeln!(log, "\n[optimized]")?;
+                let err = curve_diff(target, &curve);
+                if let Some((cost, t1)) = cost_t1 {
+                    writeln!(log, "time={t1:?}")?;
+                    writeln!(log, "cost={cost}")?;
+                }
+                writeln!(log, "error={err}")?;
+                writeln!(log, "harmonic={harmonic}")?;
+                writeln!(log, "\n[optimized.fb]")?;
+                log_sfb(&mut log, fb)?;
+                if let Ok(r) = std::fs::File::open(refer) {
+                    let fb = ron::de::from_reader::<_, SFourBar>(r)?;
+                    let c = fb.curve(cfg.res);
+                    let err = curve_diff(target, &c);
+                    writeln!(log, "\n[competitor]")?;
+                    if !matches!(mode, syn::Mode::Partial) {
+                        let efd =
+                            efd::Efd3::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
+                        let cost = efd.l2_norm(&efd_target);
+                        writeln!(log, "cost={cost}")?;
+                    }
+                    writeln!(log, "error={err}")?;
+                    writeln!(log, "\n[competitor.fb]")?;
+                    log_sfb(&mut log, &fb)?;
+                    fig = fig.add_line(competitor_str, c, plot2d::Style::DashedLine, plot2d::BLUE);
+                }
+                let path = root.join(format!("{title}.curve.svg"));
+                let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                fig.remove_fb().plot(svg)?;
+            }
+            _ => Err(SynErr::Solver)?,
+        }
+        // Check the previous log file
+        let log_path = root.join(format!("{title}.log"));
+        if !log_path.is_file() {
+            log.flush()?;
+            std::fs::write(log_path, log.into_inner())?;
+        }
+        Ok(())
+    }
+}
+
 fn run(
     pb: &ProgressBar,
     method: syn_cmd::SynMethod,
@@ -185,152 +437,22 @@ fn run(
     rerun: bool,
 ) {
     let title = &info.title;
-    match try_run(pb, method, &info, cfg, cb, refer, rerun) {
+    let result_path = info.root.join(format!("{title}.linkage.ron"));
+    let f = || {
+        if !rerun && result_path.is_file() {
+            // Just re-draw the plots
+            let result_fb = match ron::de::from_reader(std::fs::File::open(result_path)?)? {
+                io::Fb::Fb(fb) => syn_cmd::SolvedFb::Fb(fb, None),
+                io::Fb::SFb(fb) => syn_cmd::SolvedFb::SFb(fb, None),
+            };
+            Solver::from_exist(pb, &info, cfg, refer, result_fb).log()
+        } else {
+            Solver::from_runtime(pb, method, &info, cfg, cb, refer, result_path)?.log()
+        }
+    };
+    match f() {
         Ok(()) => pb.println(format!("Finished: {title}")),
         Err(e) => pb.println(format!("Error in {title}: {e}")),
-    }
-}
-
-fn try_run(
-    pb: &ProgressBar,
-    method: syn_cmd::SynMethod,
-    info: &Info,
-    cfg: &SynCfg,
-    cb: &io::CbPool,
-    refer: &Path,
-    rerun: bool,
-) -> Result<(), SynErr> {
-    let Info { root, target, target_fb, title, mode } = info;
-    // TODO: "--rerun" and "--clean" commend
-    // Use `{title}.linkage.ron` to re-draw the result
-    if rerun {
-        todo!();
-    }
-    let mut history = Vec::with_capacity(cfg.gen as usize);
-    let t0 = std::time::Instant::now();
-    let s = {
-        let mut cfg = cfg.inner.clone();
-        cfg.mode = *mode;
-        let target = match &target {
-            io::Curve::P(t) => syn_cmd::Target::P(Cow::Borrowed(t), Cow::Borrowed(cb.as_fb())),
-            io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(cb.as_sfb())),
-        };
-        syn_cmd::Solver::new(method, target, cfg, |best_f, _| {
-            history.push(best_f);
-            pb.inc(1);
-        })
-    };
-    let (cost, h, result_fb) = s.solve_verbose().unwrap();
-    let t1 = t0.elapsed();
-    {
-        let path = root.join(format!("{title}.history.svg"));
-        let svg = plot2d::SVGBackend::new(&path, (800, 600));
-        plot2d::history(svg, history)?;
-    }
-    macro_rules! impl_log {
-        ($fb:ident, $cb_fb:ident, $target:ident, $log_fb:ident, $fb_enum:ident, $fb_ty:ident, $efd:ident, $plot:ident) => {{
-            if !$fb.is_valid() {
-                return Err(SynErr::Solver);
-            }
-            let path = root.join(format!("{title}.linkage.ron"));
-            std::fs::write(path, ron::to_string(&$fb)?)?;
-            let efd_target = efd::$efd::from_curve_harmonic(&$target, mode.is_target_open(), h);
-            let curve = $fb.curve(cfg.res);
-            let curve_diff = if matches!(mode, syn::Mode::Partial) {
-                efd::partial_curve_diff
-            } else {
-                efd::curve_diff
-            };
-            let err = curve_diff(&$target, &curve);
-            let target_str = cfg
-                .ref_num
-                .map(|n| format!("Target, Ref. [{n}]"))
-                .unwrap_or("Target".to_string());
-            let mut fig = $plot::Figure::from(&$fb)
-                .font(cfg.font)
-                .legend(cfg.legend_pos);
-            if let Some(angle) = cfg.angle {
-                fig = fig.angle(angle.to_radians());
-            }
-            fig = fig
-                .add_line(target_str, $target, $plot::Style::Circle, $plot::RED)
-                .add_line("Optimized", &curve, $plot::Style::Line, $plot::BLACK);
-            {
-                let path = root.join(format!("{title}.linkage.svg"));
-                let svg = $plot::SVGBackend::new(&path, (800, 800));
-                fig.plot(svg)?;
-            }
-            let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
-            writeln!(log, "[{title}]")?;
-            if let Some(io::Fb::$fb_enum(fb)) = target_fb {
-                writeln!(log, "\n[target.fb]")?;
-                $log_fb(&mut log, &fb)?;
-            }
-            if let Some((cost, fb)) = $cb_fb {
-                let c = fb.curve(cfg.res);
-                let efd = efd::$efd::from_curve_harmonic(c, mode.is_result_open(), h);
-                let trans = efd.as_trans().to(efd_target.as_trans());
-                let fb = fb.trans_denorm(&trans);
-                let c = fb.curve(cfg.res);
-                let err = curve_diff(&$target, &c);
-                writeln!(log, "\n[atlas]")?;
-                writeln!(log, "harmonic={h}")?;
-                writeln!(log, "error={err}")?;
-                writeln!(log, "cost={cost}")?;
-                writeln!(log, "\n[atlas.fb]")?;
-                $log_fb(&mut log, &fb)?;
-                let path = root.join(format!("{title}_atlas.ron"));
-                std::fs::write(path, ron::to_string(&fb)?)?;
-                fig = fig.add_line("Atlas", c, $plot::Style::Cross, $plot::full_palette::ORANGE);
-            }
-            writeln!(log, "\n[optimized]")?;
-            writeln!(log, "time={t1:?}")?;
-            writeln!(log, "harmonic={h}")?;
-            writeln!(log, "error={err}")?;
-            writeln!(log, "cost={cost}")?;
-            writeln!(log, "\n[optimized.fb]")?;
-            $log_fb(&mut log, &$fb)?;
-            let refer = root
-                .parent()
-                .unwrap()
-                .join(refer)
-                .join(format!("{title}.ron"));
-            if let Ok(r) = std::fs::File::open(refer) {
-                let fb = ron::de::from_reader::<_, $fb_ty>(r)?;
-                let c = fb.curve(cfg.res);
-                let err = curve_diff(&$target, &c);
-                writeln!(log, "\n[competitor]")?;
-                writeln!(log, "error={err}")?;
-                if !matches!(mode, syn::Mode::Partial) {
-                    let efd = efd::$efd::from_curve_harmonic(&c, mode.is_result_open(), h);
-                    let cost = efd.l2_norm(&efd_target);
-                    writeln!(log, "cost={cost}")?;
-                }
-                writeln!(log, "\n[competitor.fb]")?;
-                $log_fb(&mut log, &fb)?;
-                let competitor_str = cfg
-                    .ref_num
-                    .map(|n| format!("Ref. [{n}]"))
-                    .unwrap_or("Competitor".to_string());
-                fig = fig.add_line(competitor_str, c, $plot::Style::DashedLine, $plot::BLUE);
-            }
-            {
-                let path = root.join(format!("{title}.curve.svg"));
-                let svg = $plot::SVGBackend::new(&path, (800, 800));
-                fig.remove_fb().plot(svg)?;
-            }
-            log.flush()?;
-            Ok(())
-        }};
-    }
-    match (result_fb, target) {
-        (syn_cmd::CbFb::Fb(fb, cb_fb), io::Curve::P(target)) => {
-            impl_log!(fb, cb_fb, target, log_fb, Fb, FourBar, Efd2, plot2d)
-        }
-        (syn_cmd::CbFb::SFb(fb, cb_fb), io::Curve::S(target)) => {
-            impl_log!(fb, cb_fb, target, log_sfb, SFb, SFourBar, Efd3, plot3d)
-        }
-        _ => unreachable!(),
     }
 }
 
