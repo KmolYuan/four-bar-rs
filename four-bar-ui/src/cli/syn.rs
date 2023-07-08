@@ -93,7 +93,10 @@ pub(super) fn syn(syn: Syn) {
                         Ok(curve)
                     }
                     "csv" | "txt" => Ok(io::Curve::from_reader(std::fs::File::open(&file)?)?),
-                    _ => Err(SynErr::Format),
+                    _ => {
+                        println!("Unsupported: {}", file.display());
+                        Err(SynErr::Format)
+                    }
                 })?;
             match &target {
                 io::Curve::P(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
