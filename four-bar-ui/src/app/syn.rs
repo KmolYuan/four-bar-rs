@@ -151,15 +151,13 @@ impl Synthesis {
         toggle_btn(ui, &mut self.conv_open, "📉 Convergence Plot");
         self.tasks.retain(|task| {
             ui.horizontal(|ui| {
-                if small_btn(ui, "🗑", "Delete") {
-                    return false;
-                }
+                let keep = !small_btn(ui, "🗑", "Delete");
                 if small_btn(ui, "💾", "Save history plot") {
                     io::save_history_ask(&task.conv, "history.svg");
                 }
                 ui.label(format!("{:.4?}", task.time));
                 ui.colored_label(Color32::GREEN, "Finished");
-                true
+                keep
             })
             .inner
         });

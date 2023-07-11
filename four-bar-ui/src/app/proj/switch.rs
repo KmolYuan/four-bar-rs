@@ -73,6 +73,15 @@ impl ProjSwitch {
         }
     }
 
+    pub(crate) fn proj_name(&self) -> String {
+        let (prefix, mut name) = match self {
+            Self::Fb(proj) => ("[P] ", proj.name()),
+            Self::SFb(proj) => ("[S] ", proj.name()),
+        };
+        name.insert_str(0, prefix);
+        name
+    }
+
     impl_method! {
         fn show(self: &mut Self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg);
         fn plot(self: &Self, ui: &mut plot::PlotUi, ind: usize, id: usize);

@@ -134,11 +134,7 @@ impl Projects {
         }
         ui.horizontal(|ui| {
             ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
-                let proj = &self.list[i];
-                match proj {
-                    ProjSwitch::Fb(_) => format!("[P] {}", proj.name()),
-                    ProjSwitch::SFb(_) => format!("[S] {}", proj.name()),
-                }
+                self.list[i].proj_name()
             });
             if !show_btn {
                 return;
