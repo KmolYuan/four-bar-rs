@@ -137,11 +137,16 @@ struct PlotOpt {
 }
 
 impl PlotOpt {
-    fn show(&mut self, ui: &mut Ui, lnk: &mut super::link::Linkages) -> bool {
-        match &*self.plot.borrow() {
-            PlotType::P(_, _) => ui.heading("Planar Plot"),
-            PlotType::S(_, _) => ui.heading("Spherical Plot"),
-        };
+    fn show(&mut self, ui: &mut Ui, lnk: &mut super::link::Linkages, i: usize) -> bool {
+        let keep = ui
+            .horizontal(|ui| {
+                match &*self.plot.borrow() {
+                    PlotType::P(_, _) => ui.heading(format!("Planar Plot {{{i}}}")),
+                    PlotType::S(_, _) => ui.heading(format!("Spherical Plot {{{i}}}")),
+                };
+                !ui.button("✖").clicked()
+            })
+            .inner;
         if ui.button("🖴 Load Linkage").clicked() {
             let plot = self.plot.clone();
             io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
@@ -201,7 +206,7 @@ impl PlotOpt {
             const OPTS: [plot2d::LegendPos; 10] = [Hide, UL, ML, LL, UM, MM, LM, UR, MR, LR];
             combo_enum(ui, "legend", &mut self.opt.legend, OPTS, |e| e.name());
         });
-        !ui.button("✖ Remove Subplot").clicked()
+        keep
     }
 }
 
@@ -222,7 +227,7 @@ impl Default for Plotter {
 impl Plotter {
     pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut super::link::Linkages) {
         ui.heading("Plotter");
-        nonzero_i(ui, "Plot size: ", &mut self.size, 1);
+        nonzero_i(ui, "Subplot size: ", &mut self.size, 1);
         ui.horizontal(|ui| {
             ui.label("Plot grid: (");
             nonzero_i(ui, "", &mut self.shape.0, 1);
@@ -235,9 +240,24 @@ impl Plotter {
             self.queue.len(),
             self.shape.0 * self.shape.1
         ));
+        // Grid view
+        ui.group(|ui| {
+            Grid::new("plot-grid").show(ui, |ui| {
+                for i in 0..self.shape.0 {
+                    for j in 0..self.shape.1 {
+                        ui.group(|ui| ui.label(format!("{}", i * self.shape.1 + j)));
+                    }
+                    ui.end_row();
+                }
+            });
+        });
         // Subplot settings
-        self.queue
-            .retain_mut(|opt| ui.group(|ui| opt.show(ui, lnk)).inner);
+        let mut i = 0;
+        self.queue.retain_mut(|opt| {
+            let keep = ui.group(|ui| opt.show(ui, lnk, i)).inner;
+            i += 1;
+            keep
+        });
         if ui.button("⊞ Add Subplot").clicked() {
             self.queue.push(PlotOpt::default());
         }

@@ -29,8 +29,8 @@ enum Panel {
     #[default]
     Linkages,
     Synthesis,
-    BluePrint,
     Plotter,
+    BluePrint,
     Options,
     Off,
 }
@@ -138,8 +138,8 @@ impl App {
         for (value, icon, text) in [
             (Panel::Linkages, "🍀", "Linkages"),
             (Panel::Synthesis, "💡", "Synthesis"),
-            (Panel::BluePrint, "🖻", "Blue Print"),
             (Panel::Plotter, "", "Plotter"),
+            (Panel::BluePrint, "🖻", "Blue Print"),
             (Panel::Options, "🛠", "Options"),
         ] {
             ui.selectable_value(&mut self.panel, value, icon)
@@ -171,8 +171,8 @@ impl App {
         CentralPanel::default().show(ctx, |ui| match self.panel {
             Panel::Linkages => pan_panel(ui, |ui| self.link.show(ui)),
             Panel::Synthesis => pan_panel(ui, |ui| self.syn.show(ui, &mut self.link)),
-            Panel::BluePrint => pan_panel(ui, |ui| self.bp.show(ui)),
             Panel::Plotter => pan_panel(ui, |ui| self.plotter.show(ui, &mut self.link)),
+            Panel::BluePrint => pan_panel(ui, |ui| self.bp.show(ui)),
             Panel::Options => pan_panel(ui, |ui| self.link.option(ui)),
             Panel::Off => self.canvas(ui),
         });
@@ -182,8 +182,8 @@ impl App {
         match self.panel {
             Panel::Linkages => side_panel(ctx, |ui| self.link.show(ui)),
             Panel::Synthesis => side_panel(ctx, |ui| self.syn.show(ui, &mut self.link)),
-            Panel::BluePrint => side_panel(ctx, |ui| self.bp.show(ui)),
             Panel::Plotter => side_panel(ctx, |ui| self.plotter.show(ui, &mut self.link)),
+            Panel::BluePrint => side_panel(ctx, |ui| self.bp.show(ui)),
             Panel::Options => side_panel(ctx, |ui| self.link.option(ui)),
             Panel::Off => (),
         }
