@@ -307,8 +307,8 @@ impl<'a> Solver<'a> {
                     let err = curve_diff(target, &c);
                     writeln!(log, "\n[atlas]")?;
                     writeln!(log, "harmonic={harmonic}")?;
-                    writeln!(log, "cost={cost}")?;
-                    writeln!(log, "error={err}")?;
+                    writeln!(log, "cost={cost:.04}")?;
+                    writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[atlas.fb]")?;
                     log_fb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
@@ -319,9 +319,9 @@ impl<'a> Solver<'a> {
                 let err = curve_diff(target, &curve);
                 if let Some((cost, t1)) = cost_t1 {
                     writeln!(log, "time={t1:?}")?;
-                    writeln!(log, "cost={cost}")?;
+                    writeln!(log, "cost={cost:.04}")?;
                 }
-                writeln!(log, "error={err}")?;
+                writeln!(log, "error={err:.04}")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "\n[optimized.fb]")?;
                 log_fb(&mut log, fb)?;
@@ -334,9 +334,9 @@ impl<'a> Solver<'a> {
                         let efd =
                             efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
                         let cost = efd.l2_norm(&efd_target);
-                        writeln!(log, "cost={cost}")?;
+                        writeln!(log, "cost={cost:.04}")?;
                     }
-                    writeln!(log, "error={err}")?;
+                    writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_fb(&mut log, &fb)?;
                     fig = fig.add_line(competitor_str, c, plot2d::Style::DashedLine, plot2d::BLUE);
@@ -380,8 +380,8 @@ impl<'a> Solver<'a> {
                     let err = curve_diff(target, &c);
                     writeln!(log, "\n[atlas]")?;
                     writeln!(log, "harmonic={harmonic}")?;
-                    writeln!(log, "cost={cost}")?;
-                    writeln!(log, "error={err}")?;
+                    writeln!(log, "cost={cost:.04}")?;
+                    writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[atlas.fb]")?;
                     log_sfb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
@@ -392,9 +392,9 @@ impl<'a> Solver<'a> {
                 let err = curve_diff(target, &curve);
                 if let Some((cost, t1)) = cost_t1 {
                     writeln!(log, "time={t1:?}")?;
-                    writeln!(log, "cost={cost}")?;
+                    writeln!(log, "cost={cost:.04}")?;
                 }
-                writeln!(log, "error={err}")?;
+                writeln!(log, "error={err:.04}")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "\n[optimized.fb]")?;
                 log_sfb(&mut log, fb)?;
@@ -407,9 +407,9 @@ impl<'a> Solver<'a> {
                         let efd =
                             efd::Efd3::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
                         let cost = efd.l2_norm(&efd_target);
-                        writeln!(log, "cost={cost}")?;
+                        writeln!(log, "cost={cost:.04}")?;
                     }
-                    writeln!(log, "error={err}")?;
+                    writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_sfb(&mut log, &fb)?;
                     fig = fig.add_line(competitor_str, c, plot2d::Style::DashedLine, plot2d::BLUE);
@@ -461,15 +461,16 @@ fn run(
 
 macro_rules! impl_fmt {
     ($w:ident, $fb:ident, $($field:ident),+) => {{
-        $(writeln!($w, concat![stringify!($field), "={}"], $fb.$field())?;)+
+        $(writeln!($w, concat![stringify!($field), "={:.04}"], $fb.$field())?;)+
+        writeln!($w, "inv={}", $fb.inv())?;
         Ok(())
     }};
 }
 
 fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
-    impl_fmt!(w, fb, p0x, p0y, a, l1, l2, l3, l4, l5, g, inv)
+    impl_fmt!(w, fb, p0x, p0y, a, l1, l2, l3, l4, l5, g)
 }
 
 fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
-    impl_fmt!(w, fb, ox, oy, oz, r, p0i, p0j, a, l1, l2, l3, l4, l5, g, inv)
+    impl_fmt!(w, fb, ox, oy, oz, r, p0i, p0j, a, l1, l2, l3, l4, l5, g)
 }
