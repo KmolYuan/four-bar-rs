@@ -169,7 +169,7 @@ mod impl_io {
     }
 }
 
-pub(crate) static ERR_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+static ERR_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 pub(crate) trait Alert<T>: Sized {
     fn alert_then<C>(self, title: &'static str, done: C)
@@ -191,6 +191,21 @@ impl<T, E: std::error::Error> Alert<T> for Result<T, E> {
             Err(e) => ERR_MSG.lock().unwrap().push(format!("{title} Error\n{e}")),
         }
     }
+}
+
+pub(crate) fn push_err_msg(toasts: &mut egui_toast::Toasts) {
+    let options = egui_toast::ToastOptions::default().duration_in_seconds(10.);
+    for e in ERR_MSG.lock().unwrap().drain(..) {
+        toasts.add(egui_toast::Toast {
+            kind: egui_toast::ToastKind::Error,
+            text: e.into(),
+            options,
+        });
+    }
+}
+
+pub(crate) fn alert(msg: String) {
+    ERR_MSG.lock().unwrap().push(msg);
 }
 
 pub(crate) fn open_ron<C>(done: C)

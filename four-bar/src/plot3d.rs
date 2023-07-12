@@ -40,6 +40,7 @@ impl Figure<'_, '_> {
         B: DrawingBackend,
         Canvas<B>: From<R>,
     {
+        self.check_empty::<B>()?;
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();

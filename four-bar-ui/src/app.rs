@@ -201,13 +201,7 @@ impl eframe::App for App {
             self.pc_view(ctx);
         }
         self.link.poll(ctx);
-        for e in crate::io::ERR_MSG.lock().unwrap().drain(..) {
-            self.toasts.add(egui_toast::Toast {
-                kind: egui_toast::ToastKind::Error,
-                text: e.into(),
-                options: Default::default(),
-            });
-        }
+        crate::io::push_err_msg(&mut self.toasts);
         self.toasts.show(ctx);
     }
 

@@ -315,6 +315,11 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         fn legend(LegendPos)
     }
 
+    /// Set the inner options.
+    pub fn with_opt(self, opt: Opt<'a>) -> Self {
+        Self { opt, ..self }
+    }
+
     /// Add a line.
     pub fn add_line<S, L, C>(mut self, name: S, line: L, style: Style, color: C) -> Self
     where
@@ -332,9 +337,11 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
         self.lines.iter().map(|packed| &**packed)
     }
 
-    /// Set the inner options.
-    pub fn with_opt(self, opt: Opt<'a>) -> Self {
-        Self { opt, ..self }
+    #[inline]
+    pub(crate) fn check_empty<B: DrawingBackend>(&self) -> PResult<(), B> {
+        (!self.lines.is_empty() || self.fb.is_some())
+            .then_some(())
+            .ok_or(DrawingAreaErrorKind::LayoutError)
     }
 
     pub(crate) fn get_joints<D: efd::EfdDim>(&self) -> Option<[efd::Coord<D>; 5]>
@@ -429,7 +436,7 @@ where
         .unwrap();
     let mut chart = ChartBuilder::on(&root)
         .set_label_area_size(LabelAreaPosition::Left, (10).percent())
-        .set_label_area_size(LabelAreaPosition::Bottom, (6).percent())
+        .set_label_area_size(LabelAreaPosition::Bottom, (10).percent())
         .margin((8).percent())
         .build_cartesian_2d(0..history.len() - 1, 0.0..*max_fitness)?;
     chart
@@ -463,6 +470,7 @@ impl Figure<'_, '_> {
         B: DrawingBackend,
         Canvas<B>: From<R>,
     {
+        self.check_empty::<B>()?;
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();

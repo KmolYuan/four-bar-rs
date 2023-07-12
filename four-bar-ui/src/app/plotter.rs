@@ -147,29 +147,30 @@ impl PlotOpt {
                 !ui.button("✖").clicked()
             })
             .inner;
-        if ui.button("🖴 Load Linkage").clicked() {
-            let plot = self.plot.clone();
-            io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
-        }
-        ui.horizontal(|ui| {
-            if ui.button("🖴 Add from").clicked() {
-                let (angle, fb) = lnk.projs.current_fb_state();
-                self.plot.borrow_mut().set_fb(fb);
-                self.angle.replace(angle);
+        ui.collapsing("Linkage", |ui| {
+            if self.plot.borrow().has_fb() {
+                check_on(ui, "Input angle", &mut self.angle, angle_f);
+                if ui.button("✖ Remove Linkage").clicked() {
+                    self.plot.borrow_mut().remove_fb();
+                    self.angle.take();
+                }
+            } else {
+                ui.label("No Linkage");
             }
-            lnk.projs.select(ui, false);
+            if ui.button("🖴 Load Linkage").clicked() {
+                let plot = self.plot.clone();
+                io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
+            }
+            ui.horizontal(|ui| {
+                if ui.button("🖴 Add from").clicked() {
+                    let (angle, fb) = lnk.projs.current_fb_state();
+                    self.plot.borrow_mut().set_fb(fb);
+                    self.angle.replace(angle);
+                }
+                lnk.projs.select(ui, false);
+            });
         });
-        if self.plot.borrow().has_fb() {
-            check_on(ui, "Input angle", &mut self.angle, angle_f);
-            if ui.button("✖ Remove Linkage").clicked() {
-                self.plot.borrow_mut().remove_fb();
-                self.angle.take();
-            }
-        } else {
-            ui.label("No Linkage");
-        }
-        ui.group(|ui| {
-            ui.heading("Curves");
+        ui.collapsing("Curves", |ui| {
             self.plot.borrow_mut().show(ui);
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
@@ -192,19 +193,20 @@ impl PlotOpt {
                 });
             }
         });
-        ui.heading("Plot Option");
-        nonzero_i(ui, "Stroke in plots: ", &mut self.opt.stroke, 1);
-        nonzero_i(ui, "Font size in plots: ", &mut self.opt.font, 1);
-        check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {
-            ui.text_edit_singleline(s.to_mut())
-        });
-        ui.checkbox(&mut self.opt.grid, "Show grid in plots");
-        ui.checkbox(&mut self.opt.axis, "Show axis in plots");
-        ui.horizontal(|ui| {
-            ui.label("Legend");
-            use plot2d::LegendPos::*;
-            const OPTS: [plot2d::LegendPos; 10] = [Hide, UL, ML, LL, UM, MM, LM, UR, MR, LR];
-            combo_enum(ui, "legend", &mut self.opt.legend, OPTS, |e| e.name());
+        ui.collapsing("Plot Option", |ui| {
+            nonzero_i(ui, "Stroke in plots: ", &mut self.opt.stroke, 1);
+            nonzero_i(ui, "Font size in plots: ", &mut self.opt.font, 1);
+            check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {
+                ui.text_edit_singleline(s.to_mut())
+            });
+            ui.checkbox(&mut self.opt.grid, "Show grid in plots");
+            ui.checkbox(&mut self.opt.axis, "Show axis in plots");
+            ui.horizontal(|ui| {
+                ui.label("Legend");
+                use plot2d::LegendPos::*;
+                const OPTS: [plot2d::LegendPos; 10] = [Hide, UL, ML, LL, UM, MM, LM, UR, MR, LR];
+                combo_enum(ui, "legend", &mut self.opt.legend, OPTS, |e| e.name());
+            });
         });
         keep
     }
@@ -230,16 +232,13 @@ impl Plotter {
         nonzero_i(ui, "Subplot size: ", &mut self.size, 1);
         ui.horizontal(|ui| {
             ui.label("Plot grid: (");
-            nonzero_i(ui, "", &mut self.shape.0, 1);
+            ui.add(DragValue::new(&mut self.shape.0).clamp_range(1..=10));
             ui.label(", ");
-            nonzero_i(ui, "", &mut self.shape.1, 1);
+            ui.add(DragValue::new(&mut self.shape.1).clamp_range(1..=10));
             ui.label(")");
         });
-        ui.label(format!(
-            "Capacity: {}/{}",
-            self.queue.len(),
-            self.shape.0 * self.shape.1
-        ));
+        let cap = self.shape.0 * self.shape.1;
+        ui.label(format!("Capacity: {}/{cap}", self.queue.len()));
         // Grid view
         ui.group(|ui| {
             Grid::new("plot-grid").show(ui, |ui| {
@@ -263,42 +262,50 @@ impl Plotter {
         }
         ui.separator();
         if ui.button("💾 Save Plot").clicked() {
-            use plot2d::IntoDrawingArea as _;
-            let mut buf = String::new();
-            let size = (
-                self.size * self.shape.0 as u32,
-                self.size * self.shape.1 as u32,
-            );
-            let b = plot2d::SVGBackend::with_string(&mut buf, size);
-            b.into_drawing_area()
-                .split_evenly(self.shape)
-                .into_iter()
-                .zip(&self.queue)
-                .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
-                    PlotType::P(fb, c) => {
-                        let mut fig = plot2d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
-                        if let Some(angle) = p_opt.angle {
-                            fig = fig.angle(angle);
-                        }
-                        for data in c {
-                            let (label, line, style, color) = data.share();
-                            fig = fig.add_line(label, line, style, color);
-                        }
-                        fig.plot(root).alert("Plot");
-                    }
-                    PlotType::S(fb, c) => {
-                        let mut fig = plot3d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
-                        if let Some(angle) = p_opt.angle {
-                            fig = fig.angle(angle);
-                        }
-                        for data in c {
-                            let (label, line, style, color) = data.share();
-                            fig = fig.add_line(label, line, style, color);
-                        }
-                        fig.plot(root).alert("Plot");
-                    }
-                });
-            io::save_svg_ask(&buf, "figure.svg");
+            if cap == self.queue.len() {
+                self.save_plot();
+            } else {
+                io::alert(format!("Incorrect plot number: {}/{cap}", self.queue.len()));
+            }
         }
+    }
+
+    fn save_plot(&mut self) {
+        use plot2d::IntoDrawingArea as _;
+        let mut buf = String::new();
+        let size = (
+            self.size * self.shape.0 as u32,
+            self.size * self.shape.1 as u32,
+        );
+        let b = plot2d::SVGBackend::with_string(&mut buf, size);
+        b.into_drawing_area()
+            .split_evenly(self.shape)
+            .into_iter()
+            .zip(&self.queue)
+            .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
+                PlotType::P(fb, c) => {
+                    let mut fig = plot2d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
+                    if let Some(angle) = p_opt.angle {
+                        fig = fig.angle(angle);
+                    }
+                    for data in c {
+                        let (label, line, style, color) = data.share();
+                        fig = fig.add_line(label, line, style, color);
+                    }
+                    fig.plot(root).alert("Plot");
+                }
+                PlotType::S(fb, c) => {
+                    let mut fig = plot3d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
+                    if let Some(angle) = p_opt.angle {
+                        fig = fig.angle(angle);
+                    }
+                    for data in c {
+                        let (label, line, style, color) = data.share();
+                        fig = fig.add_line(label, line, style, color);
+                    }
+                    fig.plot(root).alert("Plot");
+                }
+            });
+        io::save_svg_ask(&buf, "figure.svg");
     }
 }
