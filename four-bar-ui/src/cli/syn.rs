@@ -313,7 +313,12 @@ impl<'a> Solver<'a> {
                     log_fb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
                     std::fs::write(path, ron::to_string(&fb)?)?;
-                    fig = fig.add_line("Atlas", c, plot2d::Style::Cross, plot2d::MAGENTA);
+                    fig = fig.add_line(
+                        "Atlas",
+                        c,
+                        plot2d::Style::Dot,
+                        plot2d::full_palette::GREEN_600,
+                    );
                 }
                 writeln!(log, "\n[optimized]")?;
                 let err = curve_diff(target, &curve);
@@ -386,7 +391,7 @@ impl<'a> Solver<'a> {
                     log_sfb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
                     std::fs::write(path, ron::to_string(&fb)?)?;
-                    fig = fig.add_line("Atlas", c, plot2d::Style::Cross, plot2d::MAGENTA);
+                    fig = fig.add_line("Atlas", c, plot2d::Style::Dot, plot2d::CYAN);
                 }
                 writeln!(log, "\n[optimized]")?;
                 let err = curve_diff(target, &curve);
