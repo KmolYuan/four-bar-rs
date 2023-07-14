@@ -73,6 +73,8 @@ pub enum Style {
     /// Circle Marker
     #[default]
     Circle,
+    /// Dot Marker
+    Dot,
     /// Triangle Marker
     Triangle,
     /// Cross Marker
@@ -83,10 +85,11 @@ pub enum Style {
 
 impl Style {
     /// Style list.
-    pub const LIST: [Self; 6] = [
+    pub const LIST: [Self; 7] = [
         Self::Line,
         Self::DashedLine,
         Self::Circle,
+        Self::Dot,
         Self::Triangle,
         Self::Cross,
         Self::Square,
@@ -98,6 +101,7 @@ impl Style {
             Self::Line => "Line",
             Self::DashedLine => "Dashed Line",
             Self::Circle => "Circle",
+            Self::Dot => "Dot",
             Self::Triangle => "Triangle",
             Self::Cross => "Cross",
             Self::Square => "Square",
@@ -149,6 +153,20 @@ impl Style {
                 }
             }
             Self::Circle => impl_marker!(Circle),
+            Self::Dot => {
+                let color = color.filled();
+                let dot_size = dot_size - 4;
+                let line = line.into_iter().map(|c| Circle::new(c, dot_size, color));
+                let anno = chart.draw_series(line)?;
+                if has_label {
+                    anno.label(label).legend(move |c| {
+                        EmptyElement::at(c)
+                            + Circle::new((0, 0), dot_size, color)
+                            + Circle::new((10, 0), dot_size, color)
+                            + Circle::new((20, 0), dot_size, color)
+                    });
+                }
+            }
             Self::Triangle => impl_marker!(TriangleMarker),
             Self::Cross => impl_marker!(Cross),
             Self::Square => {
