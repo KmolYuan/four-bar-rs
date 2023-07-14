@@ -8,7 +8,7 @@ mod syn_cmd;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    self::cli::Entry::parse();
+    self::cli::Entry::main();
 }
 
 #[cfg(target_arch = "wasm32")]

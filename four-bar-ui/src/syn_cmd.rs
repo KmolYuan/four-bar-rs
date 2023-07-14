@@ -1,8 +1,7 @@
-use std::borrow::Cow;
-
 use crate::io;
 use four_bar::*;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 macro_rules! impl_method {
     ($(fn $method:ident, $sym:ident, $name:literal, $full_name:literal, $link:literal)+) => {

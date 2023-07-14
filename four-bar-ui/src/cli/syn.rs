@@ -1,4 +1,3 @@
-use super::{Syn, SynCfg};
 use crate::{io, syn_cmd};
 use four_bar::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -52,6 +51,78 @@ impl_err_from! {
     impl csv::Error => CsvSer
     impl ron::error::SpannedError => RonSer
     impl ron::error::Error => RonDe
+}
+
+#[derive(clap::Args)]
+#[clap(subcommand_precedence_over_arg = true)]
+pub(super) struct Syn {
+    /// Target file paths in "[path]/[name].[mode].[ron|csv|txt]" pattern
+    #[clap(required = true)]
+    files: Vec<PathBuf>,
+    /// Force to rerun the result
+    ///
+    /// If the last result exists, the program will only redraw it
+    #[clap(short = 'f', long, alias = "force")]
+    rerun: bool,
+    /// Remove the related project folders and exit
+    ///
+    /// This flag won't run the synthesis functions
+    #[clap(long, alias = "clear")]
+    clean: bool,
+    /// Disable parallel for running all tasks, use a single loop for
+    /// benchmarking
+    #[clap(long)]
+    one_by_one: bool,
+    /// Provide pre-generated codebook databases, support multiple paths as
+    #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
+    #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
+    #[clap(long)]
+    cb: Option<std::ffi::OsString>,
+    /// Competitor path starting from file root with the same filename
+    #[clap(short, long, default_value = "refer")]
+    refer: PathBuf,
+    #[clap(flatten)]
+    cfg: SynCfg,
+    #[clap(subcommand)]
+    method: Option<crate::syn_cmd::SynMethod>,
+}
+
+#[derive(clap::Args)]
+struct SynCfg {
+    /// Font size in the plot
+    #[clap(long, default_value_t = 45.)]
+    font: f64,
+    /// Reference number of competitor, default to "Ref. [?]"
+    #[clap(long)]
+    ref_num: Option<std::num::NonZeroU8>,
+    /// Linkage input angle (degrees) in the plot
+    #[clap(long)]
+    angle: Option<f64>,
+    /// Legend position
+    #[clap(long, default_value = "ll")]
+    legend_pos: four_bar::plot2d::LegendPos,
+    #[clap(flatten)]
+    inner: syn_cmd::SynConfig,
+}
+
+impl std::fmt::Display for SynCfg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        macro_rules! impl_fmt {
+            ($self:ident, $($field:ident),+) => {$(
+                write!(f, concat![stringify!($field), "={:?} "], $self.$field)?;
+            )+};
+        }
+        impl_fmt!(self, res, gen, pop, seed, font);
+        Ok(())
+    }
+}
+
+impl std::ops::Deref for SynCfg {
+    type Target = syn_cmd::SynConfig;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 struct Info {
