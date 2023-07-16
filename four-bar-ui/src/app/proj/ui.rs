@@ -44,7 +44,9 @@ where
     F: Fn(plot::Line) -> plot::Line,
 {
     let mut iter = iter.into_iter().peekable();
-    let Some([.., first_z]) = iter.peek() else { return };
+    let Some([.., first_z]) = iter.peek() else {
+        return;
+    };
     let mut is_front = *first_z > oz;
     loop {
         let curve = iter

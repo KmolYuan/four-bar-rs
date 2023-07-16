@@ -122,7 +122,9 @@ impl<D: Delta> Undo<D> {
             self.last.replace(state.clone());
             return;
         };
-        let Some(delta) = D::delta(base, state) else { return };
+        let Some(delta) = D::delta(base, state) else {
+            return;
+        };
         if self.undo.last_mut().is_some_and(|d| d.try_merge(&delta)) {
             self.undo.push(delta);
         }
