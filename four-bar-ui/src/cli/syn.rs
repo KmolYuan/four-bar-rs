@@ -20,7 +20,7 @@ macro_rules! impl_err_from {
 enum SynErr {
     Format,
     Io(std::io::Error),
-    Plot(plot2d::DrawingAreaErrorKind<std::io::Error>),
+    Plot(plot::DrawingAreaErrorKind<std::io::Error>),
     CsvSer(csv::Error),
     RonSer(ron::error::SpannedError),
     RonDe(ron::error::Error),
@@ -47,7 +47,7 @@ impl std::error::Error for SynErr {}
 
 impl_err_from! {
     impl std::io::Error => Io
-    impl plot2d::DrawingAreaErrorKind<std::io::Error> => Plot
+    impl plot::DrawingAreaErrorKind<std::io::Error> => Plot
     impl csv::Error => CsvSer
     impl ron::error::SpannedError => RonSer
     impl ron::error::Error => RonDe
@@ -100,7 +100,7 @@ struct SynCfg {
     angle: Option<f64>,
     /// Legend position
     #[clap(long, default_value = "ll")]
-    legend_pos: four_bar::plot2d::LegendPos,
+    legend_pos: plot::LegendPos,
     #[clap(flatten)]
     inner: syn_cmd::SynConfig,
 }
@@ -286,7 +286,7 @@ impl<'a> Solver<'a> {
         let (cost, harmonic, result_fb) = s.solve_verbose().map_err(|_| SynErr::Solver)?;
         let t1 = t0.elapsed();
         let path = root.join(format!("{title}.history.svg"));
-        let svg = plot2d::SVGBackend::new(&path, (800, 600));
+        let svg = plot::SVGBackend::new(&path, (800, 600));
         plot2d::history(svg, history)?;
         match &result_fb {
             syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(result_path, ron::to_string(fb)?)?,
@@ -355,14 +355,14 @@ impl<'a> Solver<'a> {
                 let mut fig = plot2d::Figure::from(fb)
                     .font(cfg.font)
                     .legend(cfg.legend_pos)
-                    .add_line("Target", target, plot2d::Style::Circle, plot2d::RED)
-                    .add_line("Optimized", &curve, plot2d::Style::Line, plot2d::BLACK);
+                    .add_line("Target", target, plot::Style::Circle, plot::RED)
+                    .add_line("Optimized", &curve, plot::Style::Line, plot::BLACK);
                 if let Some(angle) = cfg.angle {
                     fig = fig.angle(angle.to_radians());
                 }
                 {
                     let path = root.join(format!("{title}.linkage.svg"));
-                    let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                    let svg = plot::SVGBackend::new(&path, (800, 800));
                     fig.plot(svg)?;
                 }
                 if let Some(io::Fb::Fb(fb)) = target_fb {
@@ -384,12 +384,7 @@ impl<'a> Solver<'a> {
                     log_fb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
                     std::fs::write(path, ron::to_string(&fb)?)?;
-                    fig = fig.add_line(
-                        "Atlas",
-                        c,
-                        plot2d::Style::Dot,
-                        plot2d::full_palette::GREEN_600,
-                    );
+                    fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::full_palette::GREEN_600);
                 }
                 writeln!(log, "\n[optimized]")?;
                 let err = curve_diff(target, &curve);
@@ -415,10 +410,10 @@ impl<'a> Solver<'a> {
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_fb(&mut log, &fb)?;
-                    fig = fig.add_line(competitor_str, c, plot2d::Style::DashedLine, plot2d::BLUE);
+                    fig = fig.add_line(competitor_str, c, plot::Style::DashedLine, plot::BLUE);
                 }
                 let path = root.join(format!("{title}.curve.svg"));
-                let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                let svg = plot::SVGBackend::new(&path, (800, 800));
                 fig.remove_fb().plot(svg)?;
             }
             (io::Curve::S(target), syn_cmd::SolvedFb::SFb(fb, cb_fb)) if fb.is_valid() => {
@@ -433,14 +428,14 @@ impl<'a> Solver<'a> {
                 let mut fig = plot3d::Figure::from(fb)
                     .font(cfg.font)
                     .legend(cfg.legend_pos)
-                    .add_line("Target", target, plot2d::Style::Circle, plot2d::RED)
-                    .add_line("Optimized", &curve, plot2d::Style::Line, plot2d::BLACK);
+                    .add_line("Target", target, plot::Style::Circle, plot::RED)
+                    .add_line("Optimized", &curve, plot::Style::Line, plot::BLACK);
                 if let Some(angle) = cfg.angle {
                     fig = fig.angle(angle.to_radians());
                 }
                 {
                     let path = root.join(format!("{title}.linkage.svg"));
-                    let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                    let svg = plot::SVGBackend::new(&path, (800, 800));
                     fig.plot(svg)?;
                 }
                 if let Some(io::Fb::SFb(fb)) = target_fb {
@@ -462,7 +457,7 @@ impl<'a> Solver<'a> {
                     log_sfb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
                     std::fs::write(path, ron::to_string(&fb)?)?;
-                    fig = fig.add_line("Atlas", c, plot2d::Style::Dot, plot2d::CYAN);
+                    fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::CYAN);
                 }
                 writeln!(log, "\n[optimized]")?;
                 let err = curve_diff(target, &curve);
@@ -488,10 +483,10 @@ impl<'a> Solver<'a> {
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_sfb(&mut log, &fb)?;
-                    fig = fig.add_line(competitor_str, c, plot2d::Style::DashedLine, plot2d::BLUE);
+                    fig = fig.add_line(competitor_str, c, plot::Style::DashedLine, plot::BLUE);
                 }
                 let path = root.join(format!("{title}.curve.svg"));
-                let svg = plot2d::SVGBackend::new(&path, (800, 800));
+                let svg = plot::SVGBackend::new(&path, (800, 800));
                 fig.remove_fb().plot(svg)?;
             }
             _ => Err(SynErr::Solver)?,

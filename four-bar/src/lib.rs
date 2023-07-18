@@ -25,6 +25,8 @@ pub mod cb;
 pub mod csv;
 mod fb;
 #[cfg(feature = "plot")]
+pub mod plot;
+#[cfg(feature = "plot")]
 pub mod plot2d;
 #[cfg(feature = "plot")]
 pub mod plot3d;

@@ -1,12 +1,12 @@
 use super::*;
-use efd::na;
+use four_bar::{efd, efd::na};
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
 
 fn pick_color(i: usize) -> Color32 {
-    use plot2d::{Color as _, Palette as _};
-    let (r, g, b) = plot2d::Palette99::pick(i).to_rgba().rgb();
+    use four_bar::plot::{Color as _, Palette as _, Palette99};
+    let (r, g, b) = Palette99::pick(i).to_rgba().rgb();
     Color32::from_rgb(r, g, b).gamma_multiply(0.8)
 }
 

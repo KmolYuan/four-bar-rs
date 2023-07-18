@@ -1,7 +1,7 @@
 use super::widgets::*;
 use crate::io::{self, Alert as _};
 use eframe::egui::*;
-use four_bar::*;
+use four_bar::{plot as fb_plot, *};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, rc::Rc};
 
@@ -13,7 +13,7 @@ struct LineData<const N: usize> {
         deserialize = "[f64; N]: serde::de::DeserializeOwned"
     ))]
     line: Vec<[f64; N]>,
-    style: plot2d::Style,
+    style: fb_plot::Style,
     color: [u8; 3],
     stroke_width: u32,
     filled: bool,
@@ -35,7 +35,7 @@ impl<const N: usize> LineData<N> {
         ui.horizontal(|ui| {
             ui.label("Style");
             let id = Id::new("style").with(id);
-            combo_enum(ui, id, &mut self.style, plot2d::Style::LIST, |e| e.name());
+            combo_enum(ui, id, &mut self.style, fb_plot::Style::LIST, |e| e.name());
             nonzero_i(ui, "Stroke Width: ", &mut self.stroke_width, 1);
         });
         ui.horizontal(|ui| {
@@ -48,11 +48,11 @@ impl<const N: usize> LineData<N> {
         keep
     }
 
-    fn share(&self) -> (&String, &Vec<[f64; N]>, plot2d::Style, plot2d::ShapeStyle) {
+    fn share(&self) -> (&String, &Vec<[f64; N]>, fb_plot::Style, fb_plot::ShapeStyle) {
         let Self { style, color: [r, g, b], stroke_width, filled, .. } = *self;
         let color = {
-            let color = plot2d::RGBAColor(r, g, b, 1.);
-            plot2d::ShapeStyle { color, filled, stroke_width }
+            let color = fb_plot::RGBAColor(r, g, b, 1.);
+            fb_plot::ShapeStyle { color, filled, stroke_width }
         };
         let Self { label, line, .. } = self;
         (label, line, style, color)
@@ -133,7 +133,7 @@ impl PlotType {
 struct PlotOpt {
     plot: Rc<RefCell<PlotType>>,
     angle: Option<f64>,
-    opt: plot2d::Opt<'static>,
+    opt: fb_plot::Opt<'static>,
 }
 
 impl PlotOpt {
@@ -203,9 +203,8 @@ impl PlotOpt {
             ui.checkbox(&mut self.opt.axis, "Show axis in plots");
             ui.horizontal(|ui| {
                 ui.label("Legend");
-                use plot2d::LegendPos::*;
-                const OPTS: [plot2d::LegendPos; 10] = [Hide, UL, ML, LL, UM, MM, LM, UR, MR, LR];
-                combo_enum(ui, "legend", &mut self.opt.legend, OPTS, |e| e.name());
+                const LIST: [fb_plot::LegendPos; 10] = fb_plot::LegendPos::LIST;
+                combo_enum(ui, "legend", &mut self.opt.legend, LIST, |e| e.name());
             });
         });
         keep
@@ -271,13 +270,13 @@ impl Plotter {
     }
 
     fn save_plot(&mut self) {
-        use plot2d::IntoDrawingArea as _;
+        use four_bar::plot::IntoDrawingArea as _;
         let mut buf = String::new();
         let size = (
             self.size * self.shape.0 as u32,
             self.size * self.shape.1 as u32,
         );
-        let b = plot2d::SVGBackend::with_string(&mut buf, size);
+        let b = fb_plot::SVGBackend::with_string(&mut buf, size);
         b.into_drawing_area()
             .split_evenly(self.shape)
             .into_iter()

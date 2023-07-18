@@ -1,6 +1,5 @@
 //! The functions used to plot the 3D curve and synthesis result.
-pub use crate::plot2d::{LegendPos, Opt, Style};
-use crate::{plot2d::*, *};
+pub use crate::plot::*;
 use efd::na;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
@@ -9,7 +8,7 @@ use std::f64::consts::TAU;
 /// Drawing option of spherical four-bar linkage and its input angle.
 ///
 /// Please see [`Figure::plot()`] for more information.
-pub type Figure<'a, 'b> = FigureBase<'a, 'b, SFourBar, 3>;
+pub type Figure<'a, 'b> = FigureBase<'a, 'b, crate::SFourBar, 3>;
 
 impl Figure<'_, '_> {
     fn get_sphere_center(&self) -> Option<[f64; 3]> {

@@ -4,7 +4,7 @@
 //! use four_bar::{mh, syn};
 //!
 //! # let curve = vec![[0., 0.], [1., 0.], [2., 0.]];
-//! # let gen = 0;
+//! # let gen = 1;
 //! # let pop = 2;
 //! # let res = 3;
 //! let func = syn::FbSyn::from_curve(curve, syn::Mode::Closed).res(res);

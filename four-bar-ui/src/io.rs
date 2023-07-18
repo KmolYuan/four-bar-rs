@@ -287,7 +287,7 @@ pub(crate) fn save_svg_ask(buf: &str, name: &str) {
 
 pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     let mut buf = String::new();
-    let svg = plot2d::SVGBackend::with_string(&mut buf, (800, 600));
+    let svg = plot::SVGBackend::with_string(&mut buf, (800, 600));
     plot2d::history(svg, history).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
 }

@@ -2,7 +2,7 @@ use self::switch::*;
 use super::{link::Cfg, widgets::*};
 use crate::io;
 use eframe::egui::*;
-use four_bar::{CurveGen as _, *};
+use four_bar::{FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 

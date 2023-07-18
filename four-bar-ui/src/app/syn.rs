@@ -1,7 +1,7 @@
 use super::{link::Linkages, widgets::*};
 use crate::{io, io::Alert as _, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
-use four_bar::*;
+use four_bar::{cb, csv, mh, syn};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, sync::Arc};
 
