@@ -1,5 +1,6 @@
 //! The functions used to plot the 2D curve and synthesis result.
-use crate::plot::*;
+#[doc(no_inline)]
+pub use crate::plot::*;
 
 /// Drawing option of four-bar linkage and its input angle.
 ///

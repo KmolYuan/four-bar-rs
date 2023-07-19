@@ -1,4 +1,5 @@
 //! The functions used to plot the 3D curve and synthesis result.
+#[doc(no_inline)]
 pub use crate::plot::*;
 use efd::na;
 #[doc(no_inline)]
