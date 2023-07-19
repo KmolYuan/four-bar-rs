@@ -194,13 +194,13 @@ impl PlotOpt {
             }
         });
         ui.collapsing("Plot Option", |ui| {
-            nonzero_i(ui, "Stroke in plots: ", &mut self.opt.stroke, 1);
-            nonzero_i(ui, "Font size in plots: ", &mut self.opt.font, 1);
+            nonzero_i(ui, "Stroke size: ", &mut self.opt.stroke, 1);
+            nonzero_i(ui, "Font size: ", &mut self.opt.font, 1);
             check_on(ui, "Font Family", &mut self.opt.font_family, |ui, s| {
                 ui.text_edit_singleline(s.to_mut())
             });
-            ui.checkbox(&mut self.opt.grid, "Show grid in plots");
-            ui.checkbox(&mut self.opt.axis, "Show axis in plots");
+            ui.checkbox(&mut self.opt.grid, "Show grid");
+            ui.checkbox(&mut self.opt.axis, "Show axis");
             ui.horizontal(|ui| {
                 ui.label("Legend");
                 const LIST: [fb_plot::LegendPos; 10] = fb_plot::LegendPos::LIST;
@@ -243,7 +243,8 @@ impl Plotter {
             Grid::new("plot-grid").show(ui, |ui| {
                 for i in 0..self.shape.0 {
                     for j in 0..self.shape.1 {
-                        ui.group(|ui| ui.label(format!("{}", i * self.shape.1 + j)));
+                        let n = i * self.shape.1 + j;
+                        ui.group(|ui| ui.label(format!("{{{n}}}")));
                     }
                     ui.end_row();
                 }
