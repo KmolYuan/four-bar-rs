@@ -26,7 +26,6 @@
 //! fig.plot(root_l).unwrap();
 //! fig.plot(root_r).unwrap();
 //! ```
-
 use crate::*;
 use plotters::element::DashedPathElement;
 #[doc(no_inline)]

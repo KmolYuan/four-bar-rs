@@ -103,7 +103,7 @@ impl Synthesis {
             lnk.projs.select(ui, false);
         });
         ui.horizontal(|ui| {
-            if ui.button("🖴 Load").clicked() {
+            if ui.button("🖴 Add from CSV").clicked() {
                 let queue = self.queue.clone();
                 io::open_csv_single(move |_, c| *queue.write() = Cache::Curve(c));
             }
