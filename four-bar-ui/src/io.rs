@@ -412,6 +412,7 @@ where
     R: std::io::Read + std::io::Seek,
 {
     let img = image::io::Reader::new(std::io::BufReader::new(r))
+        .with_guessed_format()?
         .decode()?
         .to_rgba8();
     let size = [img.width(), img.height()].map(|s| s as _);
