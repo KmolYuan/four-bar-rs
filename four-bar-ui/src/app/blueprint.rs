@@ -69,10 +69,10 @@ impl BluePrint {
         });
         path_label(ui, "🖻", self.path.borrow().as_ref(), "No image");
         if self.info.borrow().h.is_some() {
-            let mut inner = self.info.borrow_mut();
-            unit(ui, "X coordinate: ", &mut inner.x, 1.);
-            unit(ui, "Y coordinate: ", &mut inner.y, 1.);
-            nonzero_f(ui, "Scale: ", &mut inner.s, 1e-2);
+            let mut info = self.info.borrow_mut();
+            unit(ui, "X coordinate: ", &mut info.x, 1e-2);
+            unit(ui, "Y coordinate: ", &mut info.y, 1e-2);
+            nonzero_f(ui, "Scale: ", &mut info.s, 1e-4);
         }
     }
 
