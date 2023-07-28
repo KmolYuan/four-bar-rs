@@ -97,7 +97,7 @@ impl Synthesis {
         toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas")
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
-            if ui.button("🖊 Add from").clicked() {
+            if ui.button("🖴 Add from").clicked() {
                 self.target = lnk.projs.current_curve();
             }
             lnk.projs.select(ui, false);

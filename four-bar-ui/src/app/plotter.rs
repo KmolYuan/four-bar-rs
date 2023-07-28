@@ -157,10 +157,6 @@ impl PlotOpt {
             } else {
                 ui.label("No Linkage");
             }
-            if ui.button("🖴 Load Linkage").clicked() {
-                let plot = self.plot.clone();
-                io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
-            }
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
                     let (angle, fb) = lnk.projs.current_fb_state();
@@ -169,6 +165,10 @@ impl PlotOpt {
                 }
                 lnk.projs.select(ui, false);
             });
+            if ui.button("🖴 Add from RON").clicked() {
+                let plot = self.plot.clone();
+                io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
+            }
         });
         ui.collapsing("Curves", |ui| {
             self.plot.borrow_mut().show(ui);
@@ -180,11 +180,11 @@ impl PlotOpt {
                 }
                 lnk.projs.select(ui, false);
             });
-            if ui.button("🖴 Add Curve from CSV").clicked() {
+            if ui.button("🖴 Add from CSV").clicked() {
                 let plot = self.plot.clone();
                 io::open_csv(move |_, c| plot.borrow_mut().push_fb_curve("New Curve", c));
             }
-            if ui.button("🖴 Add Curve from RON").clicked() {
+            if ui.button("🖴 Add from RON").clicked() {
                 let res = lnk.cfg.res;
                 let plot = self.plot.clone();
                 io::open_ron(move |_, fb| {
