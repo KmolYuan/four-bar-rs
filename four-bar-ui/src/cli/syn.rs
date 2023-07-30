@@ -152,23 +152,20 @@ pub(super) fn syn(syn: Syn) {
         .filter_map(|file| file.canonicalize().ok())
         .map(|file| {
             let mut target_fb = None;
-            let target = file
-                .extension()
-                .and_then(OsStr::to_str)
-                .ok_or(SynErr::Format)
-                .and_then(|s| match s {
-                    "ron" => {
-                        let fb = ron::de::from_reader::<_, io::Fb>(std::fs::File::open(&file)?)?;
-                        let curve = fb.curve(cfg.inner.res);
-                        target_fb.replace(fb);
-                        Ok(curve)
-                    }
-                    "csv" | "txt" => Ok(io::Curve::from_reader(std::fs::File::open(&file)?)?),
-                    _ => {
-                        println!("Unsupported: {}", file.display());
-                        Err(SynErr::Format)
-                    }
-                })?;
+            let ext = file.extension().and_then(OsStr::to_str);
+            let target = match ext.ok_or(SynErr::Format)? {
+                "csv" | "txt" => io::Curve::from_reader(std::fs::File::open(&file)?)?,
+                "ron" => {
+                    let fb = ron::de::from_reader::<_, io::Fb>(std::fs::File::open(&file)?)?;
+                    let curve = fb.curve(cfg.inner.res);
+                    target_fb.replace(fb);
+                    curve
+                }
+                _ => {
+                    println!("Unsupported: {}", file.display());
+                    Err(SynErr::Format)?
+                }
+            };
             match &target {
                 io::Curve::P(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
                 io::Curve::S(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
