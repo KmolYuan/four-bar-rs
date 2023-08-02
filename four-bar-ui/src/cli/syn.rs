@@ -306,12 +306,13 @@ impl<'a> Solver<'a> {
         refer: &'a Path,
         result_fb: syn_cmd::SolvedFb,
     ) -> Self {
+        let is_open = info.mode.is_result_open();
         let harmonic = match &result_fb {
             syn_cmd::SolvedFb::Fb(fb, _) => {
-                efd::Efd2::from_curve(fb.curve(cfg.res), info.mode.is_result_open()).harmonic()
+                efd::Efd2::from_curve(fb.curve(cfg.res), is_open).harmonic()
             }
             syn_cmd::SolvedFb::SFb(fb, _) => {
-                efd::Efd3::from_curve(fb.curve(cfg.res), info.mode.is_result_open()).harmonic()
+                efd::Efd3::from_curve(fb.curve(cfg.res), is_open).harmonic()
             }
         };
         pb.inc(cfg.gen);
