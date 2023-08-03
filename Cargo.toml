@@ -2,7 +2,7 @@
 members = ["four-bar", "four-bar-ui"]
 
 [workspace.package]
-version = "5.0.1"
+version = "5.1.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 license = "AGPL-3.0-or-later"

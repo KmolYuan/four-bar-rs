@@ -140,3 +140,13 @@ impl Figure<'_, '_> {
         Ok(())
     }
 }
+
+/// Get the area of a set of points in 3D.
+pub fn area3d<'a, I>(pts: I) -> [std::ops::Range<f64>; 3]
+where
+    I: IntoIterator<Item = &'a [f64; 3]>,
+{
+    ExtBound::from_iter(pts)
+        .to_square()
+        .map_to(|min, max| min..max)
+}

@@ -54,6 +54,100 @@ pub(crate) fn formatter(v: &f64) -> String {
     s
 }
 
+/// The extreme values of the data.
+///
+/// ```
+/// use four_bar::plot::ExtBound;
+///
+/// let data = vec![[1.], [2.], [3.]];
+/// let ext = ExtBound::from_iter(&data);
+/// assert_eq!(ext.min, [1.]);
+/// assert_eq!(ext.max, [3.]);
+/// ```
+pub struct ExtBound<const N: usize> {
+    /// Minimum values.
+    pub min: [f64; N],
+    /// Maximum values.
+    pub max: [f64; N],
+}
+
+impl<'a, const N: usize> FromIterator<&'a [f64; N]> for ExtBound<N> {
+    fn from_iter<I: IntoIterator<Item = &'a [f64; N]>>(iter: I) -> Self {
+        let init = Self {
+            min: [f64::INFINITY; N],
+            max: [f64::NEG_INFINITY; N],
+        };
+        iter.into_iter().fold(init, |mut bound, p| {
+            p.iter()
+                .zip(&mut bound.min)
+                .zip(&mut bound.max)
+                .for_each(|((p, min), max)| {
+                    *min = min.min(*p);
+                    *max = max.max(*p);
+                });
+            bound
+        })
+    }
+}
+
+impl<const N: usize> ExtBound<N> {
+    /// Map the extreme values to another type.
+    pub fn map_to<F, R>(self, f: F) -> [R; N]
+    where
+        F: Fn(f64, f64) -> R,
+        [R; N]: Default,
+    {
+        let Self { min, max } = self;
+        min.into_iter()
+            .zip(max)
+            .map(|(min, max)| f(min, max))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap_or_default()
+    }
+
+    /// Get the center of the boundary.
+    pub fn center(&self) -> [f64; N] {
+        self.min
+            .iter()
+            .zip(&self.max)
+            .map(|(min, max)| (max - min) / 2.)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
+    }
+
+    /// Change to square boundary by the maximum range.
+    ///
+    /// ```
+    /// use four_bar::plot::ExtBound;
+    ///
+    /// let ext = ExtBound { min: [0., 0.], max: [1., 2.] }.to_square();
+    /// assert_eq!(ext.min, [-0.5, 0.]);
+    /// assert_eq!(ext.max, [1.5, 2.]);
+    /// ```
+    pub fn to_square(mut self) -> Self {
+        let center = self.center();
+        let width = self
+            .min
+            .iter()
+            .zip(&self.max)
+            .map(|(min, max)| (max - min))
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        // Extand to same range
+        self.min
+            .iter_mut()
+            .zip(&mut self.max)
+            .zip(&center)
+            .for_each(|((min, max), center)| {
+                *min = center - width / 2.;
+                *max = center + width / 2.;
+            });
+        self
+    }
+}
+
 /// Line style.
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
