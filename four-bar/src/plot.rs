@@ -60,7 +60,7 @@ pub(crate) fn formatter(v: &f64) -> String {
 /// use four_bar::plot::ExtBound;
 ///
 /// let data = vec![[1.], [2.], [3.]];
-/// let ext = ExtBound::from_iter(&data);
+/// let ext = ExtBound::from_pts(&data);
 /// assert_eq!(ext.min, [1.]);
 /// assert_eq!(ext.max, [3.]);
 /// ```
@@ -71,8 +71,12 @@ pub struct ExtBound<const N: usize> {
     pub max: [f64; N],
 }
 
-impl<'a, const N: usize> FromIterator<&'a [f64; N]> for ExtBound<N> {
-    fn from_iter<I: IntoIterator<Item = &'a [f64; N]>>(iter: I) -> Self {
+impl<const N: usize> ExtBound<N> {
+    /// Create a new instance from an iterator of points.
+    pub fn from_pts<'a, I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = &'a [f64; N]>,
+    {
         let init = Self {
             min: [f64::INFINITY; N],
             max: [f64::NEG_INFINITY; N],
@@ -88,33 +92,18 @@ impl<'a, const N: usize> FromIterator<&'a [f64; N]> for ExtBound<N> {
             bound
         })
     }
-}
 
-impl<const N: usize> ExtBound<N> {
     /// Map the extreme values to another type.
     pub fn map_to<F, R>(self, f: F) -> [R; N]
     where
         F: Fn(f64, f64) -> R,
-        [R; N]: Default,
     {
-        let Self { min, max } = self;
-        min.into_iter()
-            .zip(max)
-            .map(|(min, max)| f(min, max))
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap_or_default()
+        std::array::from_fn(|i| f(self.min[i], self.max[i]))
     }
 
     /// Get the center of the boundary.
     pub fn center(&self) -> [f64; N] {
-        self.min
-            .iter()
-            .zip(&self.max)
-            .map(|(min, max)| (max - min) / 2.)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap()
+        std::array::from_fn(|i| (self.min[i] + self.max[i]) / 2.)
     }
 
     /// Change to square boundary by the maximum range.

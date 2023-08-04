@@ -146,7 +146,7 @@ pub fn area3d<'a, I>(pts: I) -> [std::ops::Range<f64>; 3]
 where
     I: IntoIterator<Item = &'a [f64; 3]>,
 {
-    ExtBound::from_iter(pts)
+    ExtBound::from_pts(pts)
         .to_square()
         .map_to(|min, max| min..max)
 }

@@ -129,7 +129,7 @@ where
     I: IntoIterator<Item = &'a [f64; 2]>,
 {
     let [w, h] = [area.0 as f64, area.1 as f64];
-    let [[x_min, x_max], [y_min, y_max]] = ExtBound::from_iter(pts).map_to(|min, max| [min, max]);
+    let [[x_min, x_max], [y_min, y_max]] = ExtBound::from_pts(pts).map_to(|min, max| [min, max]);
     let dx = (x_max - x_min).abs();
     let dy = (y_max - y_min).abs();
     let x_cen = (x_min + x_max) * 0.5;
