@@ -103,7 +103,7 @@ impl<const N: usize> ExtBound<N> {
 
     /// Get the center of the boundary.
     pub fn center(&self) -> [f64; N] {
-        std::array::from_fn(|i| (self.min[i] + self.max[i]) / 2.)
+        std::array::from_fn(|i| (self.min[i] + self.max[i]) * 0.5)
     }
 
     /// Change to square boundary by the maximum range.
@@ -121,7 +121,7 @@ impl<const N: usize> ExtBound<N> {
             .min
             .iter()
             .zip(&self.max)
-            .map(|(min, max)| (max - min))
+            .map(|(min, max)| (max - min).abs())
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap();
         // Extand to same range
