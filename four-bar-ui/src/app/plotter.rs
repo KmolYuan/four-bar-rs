@@ -159,7 +159,9 @@ impl PlotOpt {
             }
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
-                    let (angle, fb) = lnk.projs.current_fb_state();
+                    let Some((angle, fb)) = lnk.projs.current_fb_state() else {
+                        return;
+                    };
                     self.plot.borrow_mut().set_fb(fb);
                     self.angle.replace(angle);
                 }
@@ -174,9 +176,9 @@ impl PlotOpt {
             self.plot.borrow_mut().show(ui);
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
-                    self.plot
-                        .borrow_mut()
-                        .push_fb_curve("New Curve", lnk.projs.current_curve());
+                    if let Some(c) = lnk.projs.current_curve() {
+                        self.plot.borrow_mut().push_fb_curve("New Curve", c);
+                    }
                 }
                 lnk.projs.select(ui, false);
             });

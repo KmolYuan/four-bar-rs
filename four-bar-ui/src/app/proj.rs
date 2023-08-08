@@ -102,7 +102,9 @@ impl Projects {
             ctx.request_repaint();
         }
         if let Some(path) = self.path.borrow_mut().take() {
-            self.list[self.curr].set_path(path);
+            if let Some(p) = self.list.get_mut(self.curr) {
+                p.set_path(path);
+            }
         }
     }
 
@@ -165,12 +167,12 @@ impl Projects {
         !self.list.is_empty()
     }
 
-    pub(crate) fn current_fb_state(&self) -> (f64, io::Fb) {
-        self.list[self.curr].fb_state()
+    pub(crate) fn current_fb_state(&self) -> Option<(f64, io::Fb)> {
+        Some(self.list.get(self.curr)?.fb_state())
     }
 
-    pub(crate) fn current_curve(&self) -> io::Curve {
-        self.list[self.curr].curve()
+    pub(crate) fn current_curve(&self) -> Option<io::Curve> {
+        Some(self.list.get(self.curr)?.curve())
     }
 
     pub(crate) fn current_sphere(&self) -> Option<[f64; 4]> {
@@ -178,7 +180,9 @@ impl Projects {
     }
 
     pub(crate) fn request_cache(&mut self) {
-        self.list[self.curr].request_cache();
+        if let Some(p) = self.list.get_mut(self.curr) {
+            p.request_cache();
+        }
     }
 
     pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {

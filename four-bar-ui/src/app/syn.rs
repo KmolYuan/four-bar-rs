@@ -98,7 +98,9 @@ impl Synthesis {
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
             if ui.button("🖴 Add from").clicked() {
-                self.target = lnk.projs.current_curve();
+                if let Some(target) = lnk.projs.current_curve() {
+                    self.target = target;
+                }
             }
             lnk.projs.select(ui, false);
         });
