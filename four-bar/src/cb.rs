@@ -35,7 +35,7 @@ fn arr_to_efd<D: efd::EfdDim>(arr: ArrayView2<f64>) -> efd::Efd<D> {
     use efd::na::{self, DimName as _};
     let vec = arr.to_owned().into_raw_vec();
     let data = na::VecStorage::new(efd::CDim::<D>::name(), na::Dyn(arr.nrows()), vec);
-    unsafe { efd::Efd::from_coeffs_unchecked(efd::Coeff::<D>::from_data(data)) }
+    efd::Efd::from_coeffs_unchecked(efd::Coeff::<D>::from_data(data))
 }
 
 /// Codebook generation config.
@@ -245,6 +245,19 @@ where
     /// Number of the harmonics.
     pub fn harmonic(&self) -> usize {
         self.efd.len_of(Axis(1))
+    }
+
+    /// Iterate over the linkages.
+    pub fn fb_iter(&self) -> impl Iterator<Item = ([f64; N], bool)> + '_ {
+        self.inv
+            .iter()
+            .zip(self.fb.rows())
+            .map(|(inv, arr)| (arr.to_vec().try_into().unwrap(), *inv))
+    }
+
+    /// Iterate over the EFD coefficients.
+    pub fn efd_iter(&self) -> impl Iterator<Item = ndarray::ArrayView2<f64>> + '_ {
+        self.efd.axis_iter(ndarray::Axis(0))
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
