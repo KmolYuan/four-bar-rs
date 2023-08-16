@@ -195,3 +195,11 @@ pub(crate) fn combo_enum<H, E, F, T, const N: usize>(
         *value = list[i].clone();
     }
 }
+
+pub(crate) fn static_plot(name: &str) -> plot::Plot {
+    plot::Plot::new(name)
+        .legend(Default::default())
+        .allow_drag(false)
+        .allow_zoom(false)
+        .allow_scroll(false)
+}

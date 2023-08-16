@@ -260,6 +260,13 @@ where
         self.efd.axis_iter(ndarray::Axis(0))
     }
 
+    /// Iterate over the open state of the linkages.
+    pub fn open_iter(&self) -> impl Iterator<Item = bool> + '_ {
+        self.efd
+            .axis_iter(ndarray::Axis(0))
+            .map(|efd| efd.slice(s![.., <D::Trans as efd::Trans>::dim()..]).sum() == 0.)
+    }
+
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// This method will keep the dimensional variables without transform.

@@ -1,8 +1,9 @@
 use super::{link::Linkages, widgets::*};
 use crate::{io, io::Alert as _, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
-use four_bar::{cb, csv, mh, syn};
+use four_bar::{cb, csv, efd, mh, syn};
 use serde::{Deserialize, Serialize};
+use smartcore::linalg::basic::arrays::Array;
 use std::{borrow::Cow, sync::Arc};
 
 #[inline]
@@ -22,6 +23,12 @@ enum Cache {
     Empty,
     Curve(io::Curve),
     Cb(io::Cb),
+}
+
+struct CbVis {
+    pt: [f64; 2],
+    is_open: bool,
+    is_sphere: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -49,6 +56,8 @@ pub(crate) struct Synthesis {
     #[serde(skip)]
     cb: io::CbPool,
     #[serde(skip)]
+    cb_vis: Vec<CbVis>,
+    #[serde(skip)]
     cb_pg: Option<Arc<std::sync::atomic::AtomicU32>>,
     #[serde(skip)]
     queue: Arc<mutex::RwLock<Cache>>,
@@ -56,6 +65,8 @@ pub(crate) struct Synthesis {
     task_queue: Vec<Arc<mutex::RwLock<(f32, Task)>>>,
     #[serde(skip)]
     conv_open: bool,
+    #[serde(skip)]
+    cb_vis_open: bool,
     #[serde(skip)]
     from_plot_open: bool,
 }
@@ -189,6 +200,7 @@ impl Synthesis {
             }
             ui.add(ProgressBar::new(0.).show_percentage());
         });
+        self.cb_vis(ui);
         self.convergence_plot(ui);
     }
 
@@ -290,6 +302,17 @@ impl Synthesis {
                 self.cb_pg = None;
             }
         }
+        ui.group(|ui| {
+            if ui.button("☁ Visualize").clicked() {
+                if !self.cb_vis_open {
+                    self.cb_vis_cache();
+                } else {
+                    self.cb_vis.clear();
+                    self.cb_vis.shrink_to_fit();
+                }
+                self.cb_vis_open = !self.cb_vis_open;
+            }
+        });
         ui.separator();
         ui.horizontal(|ui| {
             if ui.button("🗑 Clear Planar").clicked() {
@@ -305,20 +328,15 @@ impl Synthesis {
         Window::new("📉 Convergence Plot")
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
-                plot::Plot::new("plot_conv")
-                    .legend(Default::default())
-                    .allow_drag(false)
-                    .allow_zoom(false)
-                    .allow_scroll(false)
-                    .show(ui, |ui| {
-                        for (i, task) in self.tasks.iter().enumerate() {
-                            let pts1 = plot::PlotPoints::from_ys_f64(&task.conv);
-                            let pts2 = plot::PlotPoints::from_ys_f64(&task.conv);
-                            let name = format!("Task {}", i + 1);
-                            ui.line(plot::Line::new(pts1).fill(-1.5).name(&name));
-                            ui.points(plot::Points::new(pts2).name(name).stems(0.));
-                        }
-                    });
+                static_plot("plot_conv").show(ui, |ui| {
+                    for (i, task) in self.tasks.iter().enumerate() {
+                        let pts1 = plot::PlotPoints::from_ys_f64(&task.conv);
+                        let pts2 = plot::PlotPoints::from_ys_f64(&task.conv);
+                        let name = format!("Task {}", i + 1);
+                        ui.line(plot::Line::new(pts1).fill(-1.5).name(&name));
+                        ui.points(plot::Points::new(pts2).name(name).stems(0.));
+                    }
+                });
             });
     }
 
@@ -365,6 +383,75 @@ impl Synthesis {
                 }
             }
         }
+    }
+
+    fn cb_vis_cache(&mut self) {
+        // Cache the visualization of codebook
+        fn t_sne<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>, is_sphere: bool) -> Vec<CbVis>
+        where
+            C: cb::Code<D, N> + Send,
+            D: efd::EfdDim,
+        {
+            use smartcore::{decomposition::pca::*, linalg::basic::matrix::DenseMatrix};
+            let data = cb
+                .fb_iter()
+                .zip(cb.open_iter())
+                .flat_map(|((buf, inv), open)| {
+                    [buf.as_slice(), &[inv as u8 as f64, open as u8 as f64]].concat()
+                })
+                .collect::<Vec<_>>();
+            let data = DenseMatrix::new(cb.len(), N + 2, data, false);
+            let pca = PCA::fit(&data, Default::default()).unwrap();
+            let reduced = pca.transform(&data).unwrap();
+            cb.fb_iter()
+                .zip(cb.open_iter())
+                .enumerate()
+                .map(|(i, (_, is_open))| CbVis {
+                    pt: [*reduced.get((i, 0)), *reduced.get((i, 1))],
+                    is_open,
+                    is_sphere,
+                })
+                .collect()
+        }
+        self.cb_vis
+            .reserve(self.cb.as_fb().len() + self.cb.as_sfb().len());
+        if !self.cb.as_fb().is_empty() {
+            self.cb_vis.extend(t_sne(self.cb.as_fb(), false));
+        }
+        if !self.cb.as_sfb().is_empty() {
+            self.cb_vis.extend(t_sne(self.cb.as_sfb(), true));
+        }
+    }
+
+    fn cb_vis(&mut self, ui: &mut Ui) {
+        if !self.cb_vis_open {
+            return;
+        }
+        // FIXME: GUI error
+        Window::new("☁ Codebook Visualization")
+            .open(&mut self.cb_vis_open)
+            .fixed_size([600., 600.])
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    let mut f = |name, draw_sphere| {
+                        static_plot(name).data_aspect(1.).show(ui, |ui| {
+                            for &CbVis { pt, is_open, is_sphere } in &self.cb_vis {
+                                if is_sphere != draw_sphere {
+                                    continue;
+                                }
+                                let (name, color) = if is_open {
+                                    ("Open Curve", Color32::RED)
+                                } else {
+                                    ("Closed Curve", Color32::BLUE)
+                                };
+                                ui.points(plot::Points::new(pt).color(color).name(name));
+                            }
+                        });
+                    };
+                    f("plot_cb_vis_planar", false);
+                    // f("plot_cb_vis_spherical", true);
+                });
+            });
     }
 
     fn start_syn(&mut self, lnk: &Linkages) {
