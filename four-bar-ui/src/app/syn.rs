@@ -242,56 +242,85 @@ impl Synthesis {
 
     fn cb_setting(&mut self, ui: &mut Ui) {
         ui.label("Use pre-searched dataset to increase the speed.");
-        ui.label(format!("No. of planar data: {}", self.cb.as_fb().len()));
-        ui.label(format!("No. of spherical data: {}", self.cb.as_sfb().len()));
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();
                 io::open_cb(move |cb| *queue.write() = Cache::Cb(cb));
             }
-            if ui.button("💾 Planar").clicked() {
-                io::save_cb_ask(self.cb.as_fb());
-            }
-            if ui.button("💾 Spherical").clicked() {
-                io::save_cb_ask(self.cb.as_sfb());
-            }
+            ui.group(|ui| {
+                if ui.button("☁ Point Cloud Visualize").clicked() {
+                    if !self.cb_vis_open {
+                        self.cb_vis_cache();
+                    } else {
+                        self.cb_vis.clear();
+                        self.cb_vis.shrink_to_fit();
+                    }
+                    self.cb_vis_open = !self.cb_vis_open;
+                }
+            });
         });
         ui.separator();
-        nonzero_i(ui, "Size: ", &mut self.cb_cfg.size, 1);
-        nonzero_i(ui, "Harmonic: ", &mut self.cb_cfg.harmonic, 1);
-        ui.checkbox(&mut self.cb_cfg.is_open, "Is open curve");
         ui.horizontal(|ui| {
-            macro_rules! impl_make_cb {
-                ($cb:ident, $cb_ty:ident) => {
-                    let size = self.cb_cfg.size;
-                    let cfg = cb::Cfg::new()
-                        .res(self.cfg.res)
-                        .size(size)
-                        .harmonic(self.cb_cfg.harmonic)
-                        .is_open(self.cb_cfg.is_open);
-                    let queue = self.queue.clone();
-                    let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
-                    self.cb_pg.replace(pg.clone());
-                    let f = move || {
-                        let cb = cb::$cb::make_with(cfg, |p| {
-                            let p = p as f32 / size as f32;
-                            pg.store(p.to_bits(), std::sync::atomic::Ordering::Relaxed);
-                        });
-                        *queue.write() = Cache::Cb(io::Cb::$cb_ty(cb));
-                    };
-                    #[cfg(not(target_arch = "wasm32"))]
-                    mh::rayon::spawn(f);
-                    #[cfg(target_arch = "wasm32")]
-                    f(); // Block
+            nonzero_i(ui, "Size: ", &mut self.cb_cfg.size, 1);
+            nonzero_i(ui, "Harmonic: ", &mut self.cb_cfg.harmonic, 1);
+            ui.checkbox(&mut self.cb_cfg.is_open, "Is open curve");
+        });
+        macro_rules! impl_make_cb {
+            ($cb:ident, $cb_ty:ident) => {
+                let size = self.cb_cfg.size;
+                let cfg = cb::Cfg::new()
+                    .res(self.cfg.res)
+                    .size(size)
+                    .harmonic(self.cb_cfg.harmonic)
+                    .is_open(self.cb_cfg.is_open);
+                let queue = self.queue.clone();
+                let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
+                self.cb_pg.replace(pg.clone());
+                let f = move || {
+                    let cb = cb::$cb::make_with(cfg, |p| {
+                        let p = p as f32 / size as f32;
+                        pg.store(p.to_bits(), std::sync::atomic::Ordering::Relaxed);
+                    });
+                    *queue.write() = Cache::Cb(io::Cb::$cb_ty(cb));
                 };
+                #[cfg(not(target_arch = "wasm32"))]
+                mh::rayon::spawn(f);
+                #[cfg(target_arch = "wasm32")]
+                f(); // Block
+            };
+        }
+        Grid::new("cb_cfg").show(ui, |ui| {
+            ui.label("");
+            ui.label("Planar Data");
+            ui.label("Spherical Data");
+            ui.end_row();
+            ui.label("Size");
+            ui.label(self.cb.as_fb().len().to_string());
+            ui.label(self.cb.as_sfb().len().to_string());
+            ui.end_row();
+            ui.label("Save");
+            if ui.button("💾").clicked() {
+                io::save_cb_ask(self.cb.as_fb());
             }
-            if self.cb_pg.is_none() {
-                if ui.button("✚ Planar").clicked() {
-                    impl_make_cb!(FbCodebook, P);
-                }
-                if ui.button("✚ Spherical").clicked() {
-                    impl_make_cb!(SFbCodebook, S);
-                }
+            if ui.button("💾").clicked() {
+                io::save_cb_ask(self.cb.as_sfb());
+            }
+            ui.end_row();
+            ui.label("Generate");
+            let enabled = self.cb_pg.is_none();
+            if ui.add_enabled(enabled, Button::new("✚")).clicked() {
+                impl_make_cb!(FbCodebook, P);
+            }
+            if ui.add_enabled(enabled, Button::new("✚")).clicked() {
+                impl_make_cb!(SFbCodebook, S);
+            }
+            ui.end_row();
+            ui.label("Clear");
+            if ui.button("🗑").clicked() {
+                self.cb.as_fb_mut().clear();
+            }
+            if ui.button("🗑").clicked() {
+                self.cb.as_sfb_mut().clear();
             }
         });
         if let Some(pg) = &self.cb_pg {
@@ -301,26 +330,6 @@ impl Synthesis {
                 self.cb_pg = None;
             }
         }
-        ui.group(|ui| {
-            if ui.button("☁ Visualize").clicked() {
-                if !self.cb_vis_open {
-                    self.cb_vis_cache();
-                } else {
-                    self.cb_vis.clear();
-                    self.cb_vis.shrink_to_fit();
-                }
-                self.cb_vis_open = !self.cb_vis_open;
-            }
-        });
-        ui.separator();
-        ui.horizontal(|ui| {
-            if ui.button("🗑 Clear Planar").clicked() {
-                self.cb.as_fb_mut().clear();
-            }
-            if ui.button("🗑 Clear Spherical").clicked() {
-                self.cb.as_sfb_mut().clear();
-            }
-        });
     }
 
     fn convergence_plot(&mut self, ui: &mut Ui) {
@@ -396,10 +405,9 @@ impl Synthesis {
             let data = DenseMatrix::new(cb.len(), N, data, false);
             let pca = PCA::fit(&data, Default::default()).unwrap();
             let reduced = pca.transform(&data).unwrap();
-            cb.fb_iter()
-                .zip(cb.open_iter())
+            cb.open_iter()
                 .enumerate()
-                .map(|(i, (_, is_open))| CbVis {
+                .map(|(i, is_open)| CbVis {
                     pt: [*reduced.get((i, 0)), *reduced.get((i, 1))],
                     is_open,
                     is_sphere,
@@ -439,8 +447,8 @@ impl Synthesis {
                     });
                 });
         };
-        f("cb_vis_planar", "☁ Planar Codebook Visualize", false);
-        f("cb_vis_spherical", "☁ Spherical Codebook Visualize", true);
+        f("cb_vis_planar", "☁ Planar Data Visualization", false);
+        f("cb_vis_spherical", "☁ Spherical Data Visualization", true);
     }
 
     fn start_syn(&mut self, lnk: &Linkages) {

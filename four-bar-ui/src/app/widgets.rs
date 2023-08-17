@@ -137,16 +137,6 @@ pub(crate) fn path_label(ui: &mut Ui, icon: &str, path: Option<&PathBuf>, warn: 
 }
 
 pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
-    let rows = xs.len();
-    if rows == 0 {
-        ui.group(|ui| ui.label("No curve"));
-        return;
-    }
-    let space = ui.spacing().interact_size.y;
-    if ui.button("🗑 Clear All").clicked() {
-        xs.clear();
-    }
-
     fn render<const N: usize>(ui: &mut Ui, c: &mut [f64; N]) -> bool {
         let keep = !ui.button("✖").clicked();
         for (c, label) in c.iter_mut().zip(["x: ", "y: ", "z: "]) {
@@ -159,6 +149,15 @@ pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
         keep
     }
 
+    let rows = xs.len();
+    if rows == 0 {
+        ui.group(|ui| ui.label("No curve"));
+        return;
+    }
+    if ui.button("🗑 Clear All").clicked() {
+        xs.clear();
+    }
+    let space = ui.spacing().interact_size.y;
     ui.group(|ui| {
         ScrollArea::vertical()
             .max_height(150.)
