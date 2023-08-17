@@ -249,6 +249,13 @@ where
         self.efd.len_of(Axis(1))
     }
 
+    /// Get a reference to the data.
+    ///
+    /// Data is stored in a 2D array, each row is a linkage code.
+    pub fn data(&self) -> &Array2<f64> {
+        &self.fb
+    }
+
     /// Iterate over the linkages.
     pub fn fb_iter(&self) -> impl Iterator<Item = ([f64; N], bool)> + '_ {
         self.inv

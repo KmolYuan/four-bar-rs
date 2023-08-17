@@ -20,9 +20,9 @@ default = ["native"]
 native = ["four-bar/rayon", "four-bar/clap"]
 
 [dependencies]
+smartcore = { version = "0.3", features = ["ndarray-bindings"] }
 serde = { version = "1", features = ["derive"] }
 egui-toast = "0.8"
-smartcore = "0.3"
 ron = "0.8"
 
 [dependencies.four-bar]

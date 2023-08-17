@@ -3,7 +3,6 @@ use crate::{io, io::Alert as _, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::{cb, csv, efd, mh, syn};
 use serde::{Deserialize, Serialize};
-use smartcore::linalg::basic::arrays::Array;
 use std::{borrow::Cow, sync::Arc};
 
 #[inline]
@@ -400,20 +399,14 @@ impl Synthesis {
             C: cb::Code<D, N>,
             D: efd::EfdDim,
         {
-            use smartcore::{decomposition::pca::*, linalg::basic::matrix::DenseMatrix};
-            let data = cb.fb_iter().flat_map(|(buf, _)| buf).collect::<Vec<_>>();
-            let data = DenseMatrix::new(cb.len(), N, data, false);
-            let reduced = PCA::fit(&data, Default::default())
+            use smartcore::decomposition::pca::PCA;
+            let reduced = PCA::fit(cb.data(), Default::default())
                 .unwrap()
-                .transform(&data)
+                .transform(cb.data())
                 .unwrap();
             cb.open_iter()
-                .enumerate()
-                .map(|(i, is_open)| CbVis {
-                    pt: [*reduced.get((i, 0)), *reduced.get((i, 1))],
-                    is_open,
-                    is_sphere,
-                })
+                .zip(reduced.rows())
+                .map(|(is_open, pt)| CbVis { pt: [pt[0], pt[1]], is_open, is_sphere })
                 .collect()
         }
 
