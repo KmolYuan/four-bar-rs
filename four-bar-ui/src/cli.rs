@@ -24,7 +24,7 @@ enum Cmd {
     },
     /// Synthesis function without GUI
     Syn(syn::Syn),
-    /// Generate codebook
+    /// Generate atlas library without GUI
     #[clap(alias = "cb")]
     Codebook(cb::CbCfg),
 }

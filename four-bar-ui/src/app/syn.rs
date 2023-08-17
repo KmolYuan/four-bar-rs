@@ -83,7 +83,7 @@ impl Synthesis {
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
         });
-        ui.collapsing("Codebook", |ui| self.cb_setting(ui));
+        ui.collapsing("Atlas Library", |ui| self.cb_setting(ui));
         ui.separator();
         match self.target {
             io::Curve::P(_) => ui.heading("Planar Target Curve"),
@@ -241,7 +241,7 @@ impl Synthesis {
     }
 
     fn cb_setting(&mut self, ui: &mut Ui) {
-        ui.label("Use pre-searched dataset to increase the speed.");
+        ui.label("Use pre-searched dataset to increase the synthesis performance.");
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();
