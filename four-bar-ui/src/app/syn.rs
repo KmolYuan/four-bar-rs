@@ -397,7 +397,7 @@ impl Synthesis {
     fn cb_vis_cache(&mut self) {
         fn pca<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>, is_sphere: bool) -> Vec<CbVis>
         where
-            C: cb::Code<D, N> + Send,
+            C: cb::Code<D, N>,
             D: efd::EfdDim,
         {
             use smartcore::{decomposition::pca::*, linalg::basic::matrix::DenseMatrix};
@@ -416,6 +416,7 @@ impl Synthesis {
                 })
                 .collect()
         }
+
         self.cb_vis
             .reserve(self.cb.as_fb().len() + self.cb.as_sfb().len());
         if !self.cb.as_fb().is_empty() {

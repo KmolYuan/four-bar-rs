@@ -129,12 +129,13 @@ where
 
 impl<C, D, const N: usize> Codebook<C, D, N>
 where
-    C: Code<D, N> + Send,
+    C: Code<D, N>,
     D: efd::EfdDim,
 {
     /// Takes time to generate codebook data.
     pub fn make(cfg: Cfg) -> Self
     where
+        C: Send,
         efd::Coord<D>: Sync + Send,
     {
         Self::make_with(cfg, |_| ())
@@ -143,6 +144,7 @@ where
     /// Takes time to generate codebook data with a callback function.
     pub fn make_with<CB>(cfg: Cfg, callback: CB) -> Self
     where
+        C: Send,
         CB: Fn(usize) + Sync + Send,
         efd::Coord<D>: Sync + Send,
     {
