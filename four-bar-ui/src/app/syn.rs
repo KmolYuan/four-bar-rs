@@ -395,7 +395,7 @@ impl Synthesis {
 
     // Cache the visualization of codebook
     fn cb_vis_cache(&mut self) {
-        fn t_sne<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>, is_sphere: bool) -> Vec<CbVis>
+        fn pca<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>, is_sphere: bool) -> Vec<CbVis>
         where
             C: cb::Code<D, N> + Send,
             D: efd::EfdDim,
@@ -403,8 +403,10 @@ impl Synthesis {
             use smartcore::{decomposition::pca::*, linalg::basic::matrix::DenseMatrix};
             let data = cb.fb_iter().flat_map(|(buf, _)| buf).collect::<Vec<_>>();
             let data = DenseMatrix::new(cb.len(), N, data, false);
-            let pca = PCA::fit(&data, Default::default()).unwrap();
-            let reduced = pca.transform(&data).unwrap();
+            let reduced = PCA::fit(&data, Default::default())
+                .unwrap()
+                .transform(&data)
+                .unwrap();
             cb.open_iter()
                 .enumerate()
                 .map(|(i, is_open)| CbVis {
@@ -417,10 +419,10 @@ impl Synthesis {
         self.cb_vis
             .reserve(self.cb.as_fb().len() + self.cb.as_sfb().len());
         if !self.cb.as_fb().is_empty() {
-            self.cb_vis.extend(t_sne(self.cb.as_fb(), false));
+            self.cb_vis.extend(pca(self.cb.as_fb(), false));
         }
         if !self.cb.as_sfb().is_empty() {
-            self.cb_vis.extend(t_sne(self.cb.as_sfb(), true));
+            self.cb_vis.extend(pca(self.cb.as_sfb(), true));
         }
     }
 
