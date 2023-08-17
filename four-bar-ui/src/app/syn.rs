@@ -31,8 +31,6 @@ struct CbVis {
     is_sphere: bool,
 }
 
-#[derive(Deserialize, Serialize)]
-#[serde(default)]
 struct CbCfg {
     size: usize,
     harmonic: usize,
@@ -50,6 +48,7 @@ impl Default for CbCfg {
 pub(crate) struct Synthesis {
     method: syn_cmd::SynMethod,
     cfg: syn_cmd::SynConfig,
+    #[serde(skip)]
     cb_cfg: CbCfg,
     target: io::Curve,
     tasks: Vec<Task>,
@@ -385,22 +384,16 @@ impl Synthesis {
         }
     }
 
+    // Cache the visualization of codebook
     fn cb_vis_cache(&mut self) {
-        // Cache the visualization of codebook
         fn t_sne<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>, is_sphere: bool) -> Vec<CbVis>
         where
             C: cb::Code<D, N> + Send,
             D: efd::EfdDim,
         {
             use smartcore::{decomposition::pca::*, linalg::basic::matrix::DenseMatrix};
-            let data = cb
-                .fb_iter()
-                .zip(cb.open_iter())
-                .flat_map(|((buf, inv), open)| {
-                    [buf.as_slice(), &[inv as u8 as f64, open as u8 as f64]].concat()
-                })
-                .collect::<Vec<_>>();
-            let data = DenseMatrix::new(cb.len(), N + 2, data, false);
+            let data = cb.fb_iter().flat_map(|(buf, _)| buf).collect::<Vec<_>>();
+            let data = DenseMatrix::new(cb.len(), N, data, false);
             let pca = PCA::fit(&data, Default::default()).unwrap();
             let reduced = pca.transform(&data).unwrap();
             cb.fb_iter()
@@ -427,31 +420,27 @@ impl Synthesis {
         if !self.cb_vis_open {
             return;
         }
-        // FIXME: GUI error
-        Window::new("☁ Codebook Visualization")
-            .open(&mut self.cb_vis_open)
-            .fixed_size([600., 600.])
-            .show(ui.ctx(), |ui| {
-                ui.horizontal(|ui| {
-                    let mut f = |name, draw_sphere| {
-                        static_plot(name).data_aspect(1.).show(ui, |ui| {
-                            for &CbVis { pt, is_open, is_sphere } in &self.cb_vis {
-                                if is_sphere != draw_sphere {
-                                    continue;
-                                }
-                                let (name, color) = if is_open {
-                                    ("Open Curve", Color32::RED)
-                                } else {
-                                    ("Closed Curve", Color32::BLUE)
-                                };
-                                ui.points(plot::Points::new(pt).color(color).name(name));
+        let mut f = |name, title, draw_sphere| {
+            Window::new(title)
+                .open(&mut self.cb_vis_open)
+                .show(ui.ctx(), |ui| {
+                    static_plot(name).view_aspect(1.).show(ui, |ui| {
+                        for &CbVis { pt, is_open, is_sphere } in &self.cb_vis {
+                            if is_sphere != draw_sphere {
+                                continue;
                             }
-                        });
-                    };
-                    f("plot_cb_vis_planar", false);
-                    // f("plot_cb_vis_spherical", true);
+                            let (name, color) = if is_open {
+                                ("Open Curve", Color32::RED)
+                            } else {
+                                ("Closed Curve", Color32::BLUE)
+                            };
+                            ui.points(plot::Points::new(pt).color(color).name(name));
+                        }
+                    });
                 });
-            });
+        };
+        f("cb_vis_planar", "☁ Planar Codebook Visualize", false);
+        f("cb_vis_spherical", "☁ Spherical Codebook Visualize", true);
     }
 
     fn start_syn(&mut self, lnk: &Linkages) {

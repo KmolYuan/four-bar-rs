@@ -4,8 +4,10 @@ use std::path::PathBuf;
 mod cb;
 mod syn;
 
+const APP_NAME: &str = env!("CARGO_PKG_NAME");
+
 #[derive(clap::Parser)]
-#[clap(name = "four-bar", version, author, about)]
+#[clap(name = APP_NAME, version, author, about)]
 pub(crate) struct Entry {
     /// Default to startup GUI then open file paths
     files: Vec<PathBuf>,
@@ -57,5 +59,5 @@ fn native(files: Vec<PathBuf>) {
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
-    eframe::run_native("Four-bar", opt, Box::new(|ctx| App::new(ctx, files))).unwrap();
+    eframe::run_native(APP_NAME, opt, Box::new(|ctx| App::new(ctx, files))).unwrap();
 }

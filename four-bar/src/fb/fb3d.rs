@@ -341,8 +341,10 @@ fn to_cc([theta, phi]: [f64; 2], sr: f64) -> [f64; 3] {
     [x, y, z]
 }
 
-/* Chiang, C. H. (1984). ON THE CLASSIFICATION OF SPHERICAL FOUR-BAR LINKAGES
- * (Vol. 19, Issue 3). */
+/*
+Chiang, C. H. (1984). ON THE CLASSIFICATION OF SPHERICAL FOUR-BAR LINKAGES
+(Vol. 19, Issue 3).
+*/
 #[test]
 fn spherical_loop_reduce() {
     use approx::assert_abs_diff_eq;
