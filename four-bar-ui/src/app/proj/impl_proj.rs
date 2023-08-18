@@ -18,7 +18,7 @@ pub(crate) use hotkey;
 
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type")]
-pub(crate) enum ProjSwitch {
+pub(crate) enum Project {
     Fb(FbProj),
     SFb(SFbProj),
 }
@@ -34,7 +34,7 @@ macro_rules! impl_method {
     )+};
 }
 
-impl ProjSwitch {
+impl Project {
     pub(crate) fn new(path: Option<PathBuf>, fb: io::Fb) -> Self {
         match fb {
             io::Fb::Fb(fb) => Self::Fb(FbProj::new(path, fb)),

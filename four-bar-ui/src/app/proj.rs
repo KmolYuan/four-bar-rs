@@ -1,4 +1,4 @@
-use self::switch::*;
+use self::impl_proj::*;
 use super::{link::Cfg, widgets::*};
 use crate::io;
 use eframe::egui::*;
@@ -6,7 +6,7 @@ use four_bar::{FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 
-mod switch;
+mod impl_proj;
 mod ui;
 mod undo;
 
@@ -29,11 +29,11 @@ impl Pivot {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct Queue(Arc<mutex::RwLock<Vec<ProjSwitch>>>);
+pub(crate) struct Queue(Arc<mutex::RwLock<Vec<Project>>>);
 
 impl Queue {
     pub(crate) fn push(&self, path: Option<PathBuf>, fb: io::Fb) {
-        self.0.write().push(ProjSwitch::new(path, fb));
+        self.0.write().push(Project::new(path, fb));
     }
 }
 
@@ -41,8 +41,9 @@ impl Queue {
 #[serde(default)]
 pub(crate) struct Projects {
     curr: usize,
+    list: Vec<Project>,
+    #[serde(skip)]
     pivot: Pivot,
-    list: Vec<ProjSwitch>,
     #[serde(skip)]
     queue: Queue,
     #[serde(skip)]
@@ -58,6 +59,10 @@ impl Projects {
         } else {
             self.list.iter_mut().for_each(|p| p.cache(res));
         }
+        // Current index boundary check
+        if self.curr >= self.list.len() {
+            self.curr = self.list.len() - 1;
+        }
     }
 
     fn push_fb_example(&self) {
@@ -72,7 +77,7 @@ impl Projects {
         if self.list.iter().any(|proj| proj.path() == Some(&path)) {
             return;
         }
-        if let Some(proj) = ProjSwitch::pre_open(path) {
+        if let Some(proj) = Project::pre_open(path) {
             self.list.push(proj);
         }
     }
