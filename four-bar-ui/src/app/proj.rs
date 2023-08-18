@@ -53,7 +53,6 @@ impl Projects {
     pub(crate) fn preload(&mut self, files: Vec<PathBuf>, res: usize) {
         files.into_iter().for_each(|p| self.pre_open(p));
         self.list.iter_mut().for_each(|p| p.preload());
-        self.list.retain(|p| p.path().is_some());
         if self.list.is_empty() && self.queue.0.read().is_empty() {
             self.push_fb_example();
         } else {
