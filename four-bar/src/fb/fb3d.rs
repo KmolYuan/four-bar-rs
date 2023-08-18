@@ -102,8 +102,8 @@ impl SNormFourBar {
         let mut ls = [self.l1(), self.l2(), self.l3(), self.l4()]
             .map(|d| d.rem_euclid(TAU))
             .map(|d| if d > PI { TAU - d } else { d });
-        let mut longer = Vec::new();
-        let mut shorter = Vec::new();
+        let mut longer = Vec::with_capacity(4);
+        let mut shorter = Vec::with_capacity(4);
         for d in ls.iter_mut() {
             if *d > FRAC_PI_2 {
                 longer.push(d);

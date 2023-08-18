@@ -37,13 +37,16 @@ impl Default for BpInfo {
 
 impl BluePrint {
     pub(crate) fn preload(&mut self, ctx: &Context) {
-        if let Some(img) = self.path.borrow().as_ref().and_then(pre_open) {
+        let Some(path) = &*self.path.borrow() else {
+            return;
+        };
+        if let Some(img) = pre_open(path) {
             let h = ctx.load_texture("bp", img, Default::default());
             self.info.borrow_mut().h.replace(h);
-            return;
+        } else {
+            self.path.borrow_mut().take();
+            *self.info.borrow_mut() = Default::default();
         }
-        self.path.borrow_mut().take();
-        *self.info.borrow_mut() = Default::default();
     }
 
     pub(crate) fn show(&mut self, ui: &mut Ui) {

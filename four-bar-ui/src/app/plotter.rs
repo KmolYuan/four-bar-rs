@@ -159,11 +159,10 @@ impl PlotOpt {
             }
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
-                    let Some((angle, fb)) = lnk.projs.current_fb_state() else {
-                        return;
-                    };
-                    self.plot.borrow_mut().set_fb(fb);
-                    self.angle.replace(angle);
+                    if let Some((angle, fb)) = lnk.projs.current_fb_state() {
+                        self.plot.borrow_mut().set_fb(fb);
+                        self.angle.replace(angle);
+                    }
                 }
                 lnk.projs.select(ui, false);
             });

@@ -53,7 +53,7 @@ pub(crate) struct App {
 impl App {
     pub(crate) fn new(ctx: &eframe::CreationContext, files: Vec<std::path::PathBuf>) -> Box<Self> {
         let mut font_data = BTreeMap::new();
-        let mut families = Vec::new();
+        let mut families = Vec::with_capacity(FONT.len());
         for &(name, font) in FONT {
             font_data.insert(name.to_string(), FontData::from_static(font));
             families.push(name.to_string());

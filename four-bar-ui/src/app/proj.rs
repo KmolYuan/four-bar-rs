@@ -74,11 +74,11 @@ impl Projects {
     }
 
     fn pre_open(&mut self, path: PathBuf) {
-        if self.list.iter().any(|proj| proj.path() == Some(&path)) {
-            return;
-        }
-        if let Some(proj) = Project::pre_open(path) {
-            self.list.push(proj);
+        // Check duplicates
+        if self.list.iter().all(|proj| proj.path() != Some(&path)) {
+            if let Some(proj) = Project::pre_open(path) {
+                self.list.push(proj);
+            }
         }
     }
 
