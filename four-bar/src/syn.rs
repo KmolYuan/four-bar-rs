@@ -170,7 +170,7 @@ where
             #[cfg(not(feature = "rayon"))]
             let iter = states.into_iter();
             iter.map(move |fb| (fb.curve_in(t1, t2, self.res), fb))
-                .filter(|(c, _)| c.len() > 1)
+                .filter(|(c, _)| c.len() > 2)
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
