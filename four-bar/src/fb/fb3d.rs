@@ -263,6 +263,7 @@ impl CurveGen<efd::D3> for SFourBar {
 }
 
 fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
+    // a=alpha, b=beta, g=gamma, d=delta
     let [ox, oy, oz, r, p0i, p0j, a] = fb.buf;
     let SNormFourBar { buf: [l1, l2, l3, l4, l5, g], inv } = fb.norm;
     let op0 = na::Vector3::z() * r;
@@ -272,15 +273,10 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         rx1v * rx1m * op0
     };
     let d = {
-        let k1 = l2.cos() * l4.cos() * l1.cos();
-        let k2 = l3.cos();
-        let k3 = l2.sin() * l4.cos() * l1.sin();
-        let k4 = l2.cos() * l4.sin() * l1.sin();
-        let k5 = l2.sin() * l4.sin() * l1.cos();
-        let k6 = l2.sin() * l4.sin();
-        let h1 = k1 - k2 + k3 * b.cos();
-        let h2 = -k4 + k5 * b.cos();
-        let h3 = k6 * b.sin();
+        let h1 =
+            l2.cos() * l4.cos() * l1.cos() - l3.cos() + l2.sin() * l4.cos() * l1.sin() * b.cos();
+        let h2 = -l2.cos() * l4.sin() * l1.sin() + l2.sin() * l4.sin() * l1.cos() * b.cos();
+        let h3 = l2.sin() * l4.sin() * b.sin();
         let h = (h3 * h3 - h1 * h1 + h2 * h2).sqrt() * if inv { -1. } else { 1. };
         2. * (-h3 + h).atan2(h1 - h2)
     };
