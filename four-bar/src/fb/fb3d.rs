@@ -266,7 +266,7 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     // a=alpha, b=beta, g=gamma, d=delta
     let [ox, oy, oz, r, p0i, p0j, a] = fb.buf;
     let SNormFourBar { buf: [l1, l2, l3, l4, l5, g], inv } = fb.norm;
-    let op0 = na::Vector3::z() * r;
+    let op0 = r * na::Vector3::z();
     let e1 = {
         let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), g);
         let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l5);
