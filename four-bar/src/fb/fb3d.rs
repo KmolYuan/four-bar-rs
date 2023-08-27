@@ -290,15 +290,16 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         rot1 * rot2 * op0
     };
     let op3 = {
-        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Unit::new_normalize(op1), d);
+        let rot1 = na::UnitQuaternion::from_scaled_axis(op1.normalize() * d);
         let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l4);
         rot1 * rot2 * op1
     };
     let rot = {
         let p0_axis = na::Vector3::from(to_cc([p0i, p0j], 1.));
         let rot1 = na::UnitQuaternion::from_scaled_axis(p0_axis * a);
-        let rot2 = if let Some(axis) = op0.cross(&p0_axis).try_normalize(0.) {
-            let angle = na::Vector3::z().dot(&p0_axis).acos();
+        let z_axis = na::Vector3::z();
+        let rot2 = if let Some(axis) = z_axis.cross(&p0_axis).try_normalize(0.) {
+            let angle = z_axis.dot(&p0_axis).acos();
             na::UnitQuaternion::from_scaled_axis(axis * angle)
         } else {
             na::UnitQuaternion::identity()
@@ -312,7 +313,7 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     let p3 = o + rot * op3;
     let p4 = {
         let i = op2.normalize();
-        let k = (op2.cross(&op3) / l3.sin()).normalize();
+        let k = op2.cross(&op3).normalize();
         let j = k.cross(&i);
         let op4 = na::UnitQuaternion::from_basis_unchecked(&[i, j, k]) * e1;
         o + rot * op4
