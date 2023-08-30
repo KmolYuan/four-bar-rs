@@ -215,9 +215,8 @@ where
         };
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
-            let enabled = self.undo.able_undo();
             if ui
-                .add_enabled(enabled, Button::new("⮪ Undo"))
+                .add_enabled(self.undo.able_undo(), Button::new("⮪ Undo"))
                 .on_hover_text("Ctrl+Z")
                 .clicked()
                 || hotkey!(ui, CTRL + Z)
@@ -225,9 +224,8 @@ where
                 self.undo.undo(&mut self.fb);
                 self.cache.changed = true;
             }
-            let enabled = self.undo.able_redo();
             if ui
-                .add_enabled(enabled, Button::new("⮫ Redo"))
+                .add_enabled(self.undo.able_redo(), Button::new("⮫ Redo"))
                 .on_hover_text("Ctrl+Shift+Z | Ctrl+Y")
                 .clicked()
                 || hotkey!(ui, CTRL + Y)
