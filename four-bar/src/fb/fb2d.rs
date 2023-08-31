@@ -125,7 +125,7 @@ impl From<&FourBar> for FourBarTy {
 }
 
 impl Transformable<efd::D2> for FourBar {
-    fn transform_inplace(&mut self, trans: &efd::Transform<<efd::D2 as EfdDim>::Trans>) {
+    fn transform_inplace(&mut self, trans: &efd::Transform2) {
         let [p0x, p0y] = trans.trans();
         *self.p0x_mut() += p0x;
         *self.p0y_mut() += p0y;

@@ -231,7 +231,7 @@ impl From<&SFourBar> for FourBarTy {
 }
 
 impl Transformable<efd::D3> for SFourBar {
-    fn transform_inplace(&mut self, trans: &efd::Transform<<efd::D3 as EfdDim>::Trans>) {
+    fn transform_inplace(&mut self, trans: &efd::Transform3) {
         let [ox, oy, oz] = trans.trans();
         *self.ox_mut() += ox;
         *self.oy_mut() += oy;
