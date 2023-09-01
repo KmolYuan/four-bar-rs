@@ -237,7 +237,7 @@ impl Transformable<efd::D3> for SFourBar {
         *self.oy_mut() += oy;
         *self.oz_mut() += oz;
         let p0_axis = na::Vector3::from(to_cc([self.p0i(), self.p0j()], 1.));
-        let p1_v = na::Point3::new(self.a().cos(), self.a().sin(), 0.) + p0_axis;
+        let pb = na::Point3::new(self.a().cos(), self.a().sin(), 0.) + p0_axis;
         let p0_axis = trans.rot() * p0_axis;
         [*self.p0i_mut(), *self.p0j_mut()] = to_sc([p0_axis.x, p0_axis.y, p0_axis.z]);
         let rot_inv = if let Some(axis) = p0_axis.cross(&na::Vector3::z()).try_normalize(0.) {
@@ -246,8 +246,8 @@ impl Transformable<efd::D3> for SFourBar {
         } else {
             na::UnitQuaternion::identity()
         };
-        let p1_v = rot_inv * trans.rot() * p1_v;
-        *self.a_mut() = p1_v.y.atan2(p1_v.x);
+        let pb = rot_inv * trans.rot() * pb;
+        *self.a_mut() = pb.y.atan2(pb.x);
         *self.r_mut() *= trans.scale();
     }
 }
