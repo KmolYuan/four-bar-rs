@@ -330,9 +330,9 @@ impl Curve {
         R: std::io::Read,
     {
         if let Ok(c) = csv::parse_csv(&mut r) {
-            Ok(Self::P(c))
+            Ok(Self::S(c))
         } else {
-            Ok(Self::S(csv::parse_csv(r)?))
+            Ok(Self::P(csv::parse_csv(r)?))
         }
     }
 
@@ -345,6 +345,24 @@ impl Curve {
 
     pub(crate) fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    pub(crate) fn is_planar(&self) -> bool {
+        matches!(self, Self::P(_))
+    }
+
+    pub(crate) fn convert_to_planar(&mut self) {
+        if let Self::S(c) = self {
+            let c = c.iter().map(|&[x, y, _]| [x, y]).collect();
+            *self = Self::P(c);
+        }
+    }
+
+    pub(crate) fn convert_to_spatial(&mut self) {
+        if let Self::P(c) = self {
+            let c = c.iter().map(|&[x, y]| [x, y, 0.]).collect();
+            *self = Self::S(c);
+        }
     }
 }
 

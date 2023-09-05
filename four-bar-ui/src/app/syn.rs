@@ -84,10 +84,19 @@ impl Synthesis {
         });
         ui.collapsing("Atlas Library", |ui| self.cb_setting(ui));
         ui.separator();
-        match self.target {
-            io::Curve::P(_) => ui.heading("Planar Target Curve"),
-            io::Curve::S(_) => ui.heading("Spherical Target Curve"),
-        };
+        ui.heading("Target Curve");
+        ui.horizontal(|ui| {
+            ui.label("Type: ");
+            ui.group(|ui| {
+                let is_planar = self.target.is_planar();
+                if ui.selectable_label(is_planar, "Planar").clicked() {
+                    self.target.convert_to_planar();
+                }
+                if ui.selectable_label(!is_planar, "Spatial").clicked() {
+                    self.target.convert_to_spatial();
+                }
+            });
+        });
         ui.horizontal(|ui| {
             ui.label("Mode: ");
             for (mode, name) in [
