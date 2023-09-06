@@ -10,12 +10,18 @@ where
     R: std::io::Read,
     D: DeserializeOwned,
 {
-    ReaderBuilder::new()
+    let data = ReaderBuilder::new()
         .has_headers(false)
         .comment(Some(b'#'))
         .from_reader(r)
         .deserialize()
-        .collect()
+        .collect::<Result<Vec<_>, Error>>()?;
+    if data.is_empty() {
+        let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "No data");
+        Err(Error::from(err))
+    } else {
+        Ok(data)
+    }
 }
 
 /// Dump CSV to string.

@@ -327,11 +327,12 @@ impl Default for Curve {
 impl Curve {
     pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, csv::Error>
     where
-        R: std::io::Read,
+        R: std::io::Read + std::io::Seek,
     {
         if let Ok(c) = csv::parse_csv(&mut r) {
             Ok(Self::S(c))
         } else {
+            r.rewind()?;
             Ok(Self::P(csv::parse_csv(r)?))
         }
     }
@@ -379,6 +380,7 @@ impl Cb {
         if let Ok(cb) = cb::FbCodebook::read(&mut r) {
             Ok(Self::P(cb))
         } else {
+            r.rewind().map_err(|e| cb::ReadNpzError::Zip(e.into()))?;
             Ok(Self::S(cb::SFbCodebook::read(r)?))
         }
     }
