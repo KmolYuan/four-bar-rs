@@ -158,7 +158,7 @@ impl PlotOpt {
                 ui.label("No Linkage");
             }
             ui.horizontal(|ui| {
-                if ui.button("🖴 Add from").clicked() {
+                if ui.button("🖴 Load from").clicked() {
                     if let Some((angle, fb)) = lnk.projs.current_fb_state() {
                         self.plot.borrow_mut().set_fb(fb);
                         self.angle.replace(angle);
@@ -166,7 +166,7 @@ impl PlotOpt {
                 }
                 lnk.projs.select(ui, false);
             });
-            if ui.button("🖴 Add from RON").clicked() {
+            if ui.button("🖴 Load from RON").clicked() {
                 let plot = self.plot.clone();
                 io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
             }

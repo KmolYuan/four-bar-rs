@@ -112,10 +112,10 @@ impl Synthesis {
             Cache::Cb(cb) => self.cb.merge_inplace(cb).alert("Merge Codebook"),
             Cache::Empty => (),
         }
-        toggle_btn(ui, &mut self.from_plot_open, "🖊 Add from canvas")
+        toggle_btn(ui, &mut self.from_plot_open, "🖊 Append from canvas")
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
-            if ui.button("🖴 Add from").clicked() {
+            if ui.button("🖴 Load from").clicked() {
                 if let Some(target) = lnk.projs.current_curve() {
                     self.target = target;
                 }
@@ -123,7 +123,7 @@ impl Synthesis {
             lnk.projs.select(ui, false);
         });
         ui.horizontal(|ui| {
-            if ui.button("🖴 Add from CSV").clicked() {
+            if ui.button("🖴 Load from CSV").clicked() {
                 let queue = self.queue.clone();
                 io::open_csv_single(move |_, c| *queue.write() = Cache::Curve(c));
             }
