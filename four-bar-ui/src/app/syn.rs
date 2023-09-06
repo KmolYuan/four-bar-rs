@@ -30,6 +30,7 @@ struct CbVis {
     is_sphere: bool,
 }
 
+#[derive(Deserialize, Serialize)]
 struct CbCfg {
     size: usize,
     harmonic: usize,
@@ -47,7 +48,6 @@ impl Default for CbCfg {
 pub(crate) struct Synthesis {
     method: syn_cmd::SynMethod,
     cfg: syn_cmd::SynConfig,
-    #[serde(skip)]
     cb_cfg: CbCfg,
     target: io::Curve,
     tasks: Vec<Task>,
