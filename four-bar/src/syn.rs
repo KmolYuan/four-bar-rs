@@ -35,6 +35,8 @@ pub struct Syn<D: efd::EfdDim, M> {
     mode: Mode,
     // How many points need to be generated or compared
     res: usize,
+    // Specify the origin of the result
+    origin: Option<efd::Coord<D>>,
     // Marker of the mechanism
     _marker: PhantomData<M>,
 }
@@ -53,13 +55,24 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
 
     /// Create a new task from target EFD coefficients.
     pub fn from_efd(efd: efd::Efd<D>, mode: Mode) -> Self {
-        Self { efd, mode, res: 180, _marker: PhantomData }
+        Self {
+            efd,
+            mode,
+            res: 180,
+            origin: None,
+            _marker: PhantomData,
+        }
     }
 
     /// Set the resolution during synthesis.
     pub fn res(self, res: usize) -> Self {
         assert!(res > 0);
         Self { res, ..self }
+    }
+
+    /// Set the origin of the result.
+    pub fn origin(self, origin: efd::Coord<D>) -> Self {
+        Self { origin: Some(origin), ..self }
     }
 
     /// The harmonic used of target EFD.
@@ -174,7 +187,13 @@ where
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
-                    mh::Product::new(efd.l2_norm(&self.efd), fb)
+                    let err = efd.l1_norm(&self.efd);
+                    let origin_err = if let Some(_origin) = &self.origin {
+                        unimplemented!()
+                    } else {
+                        0.
+                    };
+                    mh::Product::new(err + origin_err, fb)
                 })
         };
         match self.mode {
