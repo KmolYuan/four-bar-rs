@@ -196,6 +196,7 @@ where
         + ui::ProjUi
         + ui::ProjPlot<D>
         + Default
+        + Serialize
         + for<'a> Deserialize<'a>,
     efd::Coord<D>: Serialize,
     FourBarTy: for<'a> From<&'a M::De>,
@@ -205,7 +206,17 @@ where
     }
 
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
-        path_label(ui, "🖹", self.path.as_ref(), "Unsaved");
+        ui.horizontal(|ui| {
+            if small_btn(ui, "🔗", "Share with Link") {
+                let mut url = b"https://kmolyuan.github.io/four-bar-rs/?code=".to_vec();
+                self.fb
+                    .serialize(&mut ron::Serializer::new(&mut url, None).unwrap())
+                    .unwrap();
+                ui.ctx()
+                    .output_mut(|s| s.open_url(String::from_utf8_lossy(&url)));
+            }
+            path_label(ui, "🖹", self.path.as_ref(), "Unsaved");
+        });
         ui.label("Linkage type:");
         ui.label(FourBarTy::from(&self.fb).name());
         match self.cache.angle_bound {
