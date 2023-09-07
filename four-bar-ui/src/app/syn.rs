@@ -345,12 +345,18 @@ impl Synthesis {
             .open(&mut self.conv_open)
             .show(ui.ctx(), |ui| {
                 static_plot("plot_conv").show(ui, |ui| {
-                    for (i, task) in self.tasks.iter().enumerate() {
+                    let mut draw = |name: &str, task: &Task| {
                         let pts1 = plot::PlotPoints::from_ys_f64(&task.conv);
                         let pts2 = plot::PlotPoints::from_ys_f64(&task.conv);
-                        let name = format!("Task {}", i + 1);
-                        ui.line(plot::Line::new(pts1).fill(-1.5).name(&name));
+                        ui.line(plot::Line::new(pts1).fill(-1.5).name(name));
                         ui.points(plot::Points::new(pts2).name(name).stems(0.));
+                    };
+                    for (i, task) in self.tasks.iter().enumerate() {
+                        draw(&format!("Task {}", i), task);
+                    }
+                    for (i, task) in self.task_queue.iter().enumerate() {
+                        let (_, task) = &*task.read();
+                        draw(&format!("Queue {}", i), task);
                     }
                 });
             });
