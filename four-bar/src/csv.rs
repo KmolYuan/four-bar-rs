@@ -15,10 +15,9 @@ where
         .comment(Some(b'#'))
         .from_reader(r)
         .deserialize()
-        .collect::<Result<Vec<_>, Error>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
     if data.is_empty() {
-        let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "No data");
-        Err(Error::from(err))
+        Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "No data").into())
     } else {
         Ok(data)
     }
