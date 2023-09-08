@@ -187,7 +187,7 @@ where
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
-                    let err = efd.l1_norm(&self.efd);
+                    let err = efd.distance(&self.efd);
                     let origin_err = if let Some(_origin) = &self.origin {
                         unimplemented!()
                     } else {

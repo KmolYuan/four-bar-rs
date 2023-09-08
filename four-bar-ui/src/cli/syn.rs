@@ -402,7 +402,7 @@ impl<'a> Solver<'a> {
                     if !matches!(mode, syn::Mode::Partial) {
                         let efd =
                             efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                        let cost = efd.l2_norm(&efd_target);
+                        let cost = efd.distance(&efd_target);
                         writeln!(log, "cost={cost:.04}")?;
                     }
                     writeln!(log, "error={err:.04}")?;
@@ -475,7 +475,7 @@ impl<'a> Solver<'a> {
                     if !matches!(mode, syn::Mode::Partial) {
                         let efd =
                             efd::Efd3::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                        let cost = efd.l2_norm(&efd_target);
+                        let cost = efd.distance(&efd_target);
                         writeln!(log, "cost={cost:.04}")?;
                     }
                     writeln!(log, "error={err:.04}")?;

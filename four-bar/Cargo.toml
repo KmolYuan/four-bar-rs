@@ -25,7 +25,7 @@ ndarray-npy = { version = "0.8", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
 metaheuristics-nature = "9.2.2"
-efd = "3.3"
+efd = "4"
 
 [dependencies.plotters]
 version = "0.3"

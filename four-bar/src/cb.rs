@@ -292,7 +292,7 @@ where
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         let dis = iter
-            .map(|arr| target.l2_norm(&arr_to_efd(arr)))
+            .map(|arr| target.distance(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         if size == 1 {
             return dis
@@ -329,7 +329,7 @@ where
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
-        iter.map(|arr| target.l2_norm(&arr_to_efd(arr)))
+        iter.map(|arr| target.distance(&arr_to_efd(arr)))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(i, err)| (err, self.pick(i, target.as_trans(), is_open, res)))
@@ -359,7 +359,7 @@ where
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         let dis = iter
-            .map(|arr| target.l2_norm(&arr_to_efd(arr)))
+            .map(|arr| target.distance(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         let mut ind = (0..self.len()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
