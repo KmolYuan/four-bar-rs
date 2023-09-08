@@ -14,7 +14,8 @@
 //!     .solve()
 //!     .unwrap();
 //! ```
-use crate::{efd::Curve, *};
+use crate::*;
+use efd::{Curve, Distance};
 use std::{borrow::Cow, f64::consts::*, marker::PhantomData};
 
 /// Boundary of the planar objective variables.
@@ -162,7 +163,7 @@ impl<D, M> mh::ObjFunc for Syn<D, M>
 where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
-    efd::Coord<D>: Sync + Send,
+    efd::Coord<D>: efd::Distance + Sync + Send,
     M: SynBound + Normalized<D> + CurveGen<D>,
     M::De: Default + Clone + CurveGen<D> + Sync + Send + 'static,
 {
@@ -186,10 +187,11 @@ where
                 .filter(|(c, _)| c.len() > 2)
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
-                    let fb = fb.trans_denorm(&efd.as_trans().to(self.efd.as_trans()));
+                    let trans = efd.as_trans().to(self.efd.as_trans());
+                    let fb = fb.trans_denorm(&trans);
                     let err = efd.distance(&self.efd);
-                    let origin_err = if let Some(_origin) = &self.origin {
-                        unimplemented!()
+                    let origin_err = if let Some(origin) = &self.origin {
+                        trans.trans().l1_norm(origin)
                     } else {
                         0.
                     };
