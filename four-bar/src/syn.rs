@@ -15,7 +15,7 @@
 //!     .unwrap();
 //! ```
 use crate::*;
-use efd::{Curve, Distance};
+use efd::Curve;
 use std::{borrow::Cow, f64::consts::*, marker::PhantomData};
 
 /// Boundary of the planar objective variables.
@@ -36,8 +36,6 @@ pub struct Syn<D: efd::EfdDim, M> {
     mode: Mode,
     // How many points need to be generated or compared
     res: usize,
-    // Specify the origin of the result
-    origin: Option<efd::Coord<D>>,
     // Marker of the mechanism
     _marker: PhantomData<M>,
 }
@@ -56,24 +54,13 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
 
     /// Create a new task from target EFD coefficients.
     pub fn from_efd(efd: efd::Efd<D>, mode: Mode) -> Self {
-        Self {
-            efd,
-            mode,
-            res: 180,
-            origin: None,
-            _marker: PhantomData,
-        }
+        Self { efd, mode, res: 180, _marker: PhantomData }
     }
 
     /// Set the resolution during synthesis.
     pub fn res(self, res: usize) -> Self {
         assert!(res > 0);
         Self { res, ..self }
-    }
-
-    /// Set the origin of the result.
-    pub fn origin(self, origin: efd::Coord<D>) -> Self {
-        Self { origin: Some(origin), ..self }
     }
 
     /// The harmonic used of target EFD.
@@ -163,7 +150,7 @@ impl<D, M> mh::ObjFunc for Syn<D, M>
 where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
-    efd::Coord<D>: efd::Distance + Sync + Send,
+    efd::Coord<D>: Sync + Send,
     M: SynBound + Normalized<D> + CurveGen<D>,
     M::De: Default + Clone + CurveGen<D> + Sync + Send + 'static,
 {
@@ -190,12 +177,7 @@ where
                     let trans = efd.as_trans().to(self.efd.as_trans());
                     let fb = fb.trans_denorm(&trans);
                     let err = efd.distance(&self.efd);
-                    let origin_err = if let Some(origin) = &self.origin {
-                        trans.trans().l1_norm(origin)
-                    } else {
-                        0.
-                    };
-                    mh::Product::new(err + origin_err, fb)
+                    mh::Product::new(err, fb)
                 })
         };
         match self.mode {

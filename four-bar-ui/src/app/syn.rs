@@ -81,7 +81,6 @@ impl Synthesis {
             nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
-            ui.checkbox(&mut self.cfg.no_trans, "No translation");
         });
         ui.collapsing("Atlas Library", |ui| self.cb_setting(ui));
         ui.separator();
