@@ -92,15 +92,17 @@ struct SynCfg {
     /// Font size in the plot
     #[clap(long, default_value_t = 45.)]
     font: f64,
-    /// Reference number of competitor, default to "Ref. [?]"
+    /// Reference number of competitor, default to eliminate
+    ///
+    /// Pass `--ref-num 0` to enable and leave a placeholder
     #[clap(long)]
-    ref_num: Option<std::num::NonZeroU8>,
+    ref_num: Option<u8>,
     /// Linkage input angle (degrees) in the plot
     #[clap(long)]
     angle: Option<f64>,
     /// Legend position
     #[clap(long, default_value = "ll")]
-    legend_pos: plot::LegendPos,
+    legend: plot::LegendPos,
     #[clap(flatten)]
     inner: syn_cmd::SynConfig,
 }
@@ -112,7 +114,7 @@ impl std::fmt::Display for SynCfg {
                 write!(f, concat![stringify!($field), "={:?} "], $self.$field)?;
             )+};
         }
-        impl_fmt!(self, res, gen, pop, seed, font);
+        impl_fmt!(self, res, gen, pop, seed, legend, font);
         Ok(())
     }
 }
@@ -146,6 +148,8 @@ pub(super) fn syn(syn: Syn) {
     } = syn;
     println!("{cfg}");
     println!("-----");
+    // If codebook is provided, rerun is always enabled
+    let rerun = rerun || cb.is_some();
     // Load target files & create project folders
     let files = files
         .into_iter()
@@ -329,15 +333,14 @@ impl<'a> Solver<'a> {
     fn log(self) -> Result<(), SynErr> {
         let Self { refer, info, cfg, harmonic, result_fb, cost_t1 } = self;
         let Info { root, target, target_fb, title, mode } = info;
-        let refer = root
-            .parent()
-            .unwrap()
-            .join(refer)
-            .join(format!("{title}.ron"));
-        let competitor_str = cfg
-            .ref_num
-            .map(|n| format!("Ref. [{n}]"))
-            .unwrap_or("Ref. [?]".to_string());
+        let refer = cfg.ref_num.and_then(|n| {
+            let path = root
+                .parent()
+                .unwrap()
+                .join(refer)
+                .join(format!("{title}.ron"));
+            Some((format!("Ref. [{n}]"), std::fs::File::open(path).ok()?))
+        });
         let mut log = std::io::Cursor::new(Vec::new());
         writeln!(log, "[{title}]")?;
         match (target, &result_fb) {
@@ -352,7 +355,7 @@ impl<'a> Solver<'a> {
                 let curve = fb.curve(cfg.res);
                 let mut fig = plot2d::Figure::from(fb)
                     .font(cfg.font)
-                    .legend(cfg.legend_pos)
+                    .legend(cfg.legend)
                     .add_line("Target", target, plot::Style::Circle, plot::RED)
                     .add_line("Optimized", &curve, plot::Style::Line, plot::BLACK);
                 if let Some(angle) = cfg.angle {
@@ -394,7 +397,7 @@ impl<'a> Solver<'a> {
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "\n[optimized.fb]")?;
                 log_fb(&mut log, fb)?;
-                if let Ok(r) = std::fs::File::open(refer) {
+                if let Some((name, r)) = refer {
                     let fb = ron::de::from_reader::<_, FourBar>(r)?;
                     let c = fb.curve(cfg.res);
                     let err = curve_diff(target, &c);
@@ -408,7 +411,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_fb(&mut log, &fb)?;
-                    fig = fig.add_line(competitor_str, c, plot::Style::DashedLine, plot::BLUE);
+                    fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
                 }
                 let path = root.join(format!("{title}.curve.svg"));
                 let svg = plot::SVGBackend::new(&path, (800, 800));
@@ -425,7 +428,7 @@ impl<'a> Solver<'a> {
                 let curve = fb.curve(cfg.res);
                 let mut fig = plot3d::Figure::from(fb)
                     .font(cfg.font)
-                    .legend(cfg.legend_pos)
+                    .legend(cfg.legend)
                     .add_line("Target", target, plot::Style::Circle, plot::RED)
                     .add_line("Optimized", &curve, plot::Style::Line, plot::BLACK);
                 if let Some(angle) = cfg.angle {
@@ -467,7 +470,7 @@ impl<'a> Solver<'a> {
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "\n[optimized.fb]")?;
                 log_sfb(&mut log, fb)?;
-                if let Ok(r) = std::fs::File::open(refer) {
+                if let Some((name, r)) = refer {
                     let fb = ron::de::from_reader::<_, SFourBar>(r)?;
                     let c = fb.curve(cfg.res);
                     let err = curve_diff(target, &c);
@@ -481,7 +484,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_sfb(&mut log, &fb)?;
-                    fig = fig.add_line(competitor_str, c, plot::Style::DashedLine, plot::BLUE);
+                    fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
                 }
                 let path = root.join(format!("{title}.curve.svg"));
                 let svg = plot::SVGBackend::new(&path, (800, 800));
