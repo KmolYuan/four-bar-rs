@@ -154,6 +154,7 @@ pub(super) fn syn(syn: Syn) {
     let files = files
         .into_iter()
         .filter_map(|file| file.canonicalize().ok())
+        .filter(|file| file.is_file())
         .map(|file| {
             let mut target_fb = None;
             let ext = file.extension().and_then(OsStr::to_str);

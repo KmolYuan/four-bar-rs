@@ -12,13 +12,9 @@ use std::f64::consts::TAU;
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, crate::SFourBar, 3>;
 
 impl Figure<'_, '_> {
-    fn get_sphere_center(&self) -> Option<[f64; 3]> {
+    fn get_sphere_center_radius(&self) -> Option<(na::Vector3<f64>, f64)> {
         let fb = self.fb?;
-        Some([fb.ox(), fb.oy(), fb.oz()])
-    }
-
-    fn get_sphere_radius(&self) -> Option<f64> {
-        Some(self.fb?.r())
+        Some((na::Vector3::new(fb.ox(), fb.oy(), fb.oz()), fb.r()))
     }
 
     /// Plot 3D spherical linkage.
@@ -44,41 +40,44 @@ impl Figure<'_, '_> {
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();
-        let joints = self.get_joints();
-        let sc = na::Vector3::from(self.get_sphere_center().unwrap_or_default());
-        let sr = self.get_sphere_radius().unwrap_or(1.);
-        debug_assert!(sr > 0.);
+        let sphere = self.get_joints().zip(self.get_sphere_center_radius());
+        let [x_spec, y_spec, z_spec] = if let Some((_, (sc, r))) = sphere {
+            debug_assert!(r > 0.);
+            [sc.x - r..sc.x + r, sc.y - r..sc.y + r, sc.z - r..sc.z + r]
+        } else {
+            area3d(self.lines().flat_map(|(_, curve, ..)| curve.iter()))
+        };
         let Opt { grid, axis, legend, .. } = self.opt;
         let mut chart = ChartBuilder::on(&root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
             .margin((8).percent())
-            .build_cartesian_3d(
-                sc.y - sr..sc.y + sr,
-                sc.z - sr..sc.z + sr,
-                sc.x - sr..sc.x + sr,
-            )?;
+            .build_cartesian_3d(x_spec, y_spec, z_spec)?;
         chart.with_projection(|mut pb| {
             pb.yaw = 45f64.to_radians();
             pb.scale = 0.9;
             pb.into_matrix()
         });
         if axis {
-            chart
-                .configure_axes()
-                .light_grid_style(BLACK.mix(0.15))
+            let mut axes = chart.configure_axes();
+            if !grid {
+                axes.max_light_lines(0);
+            }
+            axes.light_grid_style(BLACK.mix(0.15))
                 .label_style(self.get_font())
-                .max_light_lines(3)
+                .axis_panel_style(TRANSPARENT)
+                .x_labels(5)
+                .z_labels(5)
                 .x_formatter(&formatter)
                 .y_formatter(&formatter)
                 .z_formatter(&formatter)
                 .draw()?;
         }
         // Draw grid
-        if grid {
+        if let Some((_, (sc, r))) = sphere {
             let t = (0..=500).map(|t| t as f64 / 500. * TAU);
-            let z = t.clone().map(|t| sr * t.cos());
-            let y = t.map(|t| sr * t.sin());
+            let z = t.clone().map(|t| r * t.cos());
+            let y = t.map(|t| r * t.sin());
             const N: usize = 96;
             for i in 0..N {
                 let phi = i as f64 / N as f64 * TAU;
@@ -93,11 +92,11 @@ impl Figure<'_, '_> {
         }
         // Draw curves
         for (label, line, style, color) in self.lines() {
-            let line = line.iter().map(|&[x, y, z]| (x, y, z));
+            let line = line.iter().map(|&c| c.into());
             style.draw(&mut chart, line, *color, label)?;
         }
         // Draw linkage
-        if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
+        if let Some((joints @ [p0, p1, p2, p3, p4], (sc, _))) = sphere {
             for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
                 let line = line
                     .windows(2)
@@ -118,8 +117,8 @@ impl Figure<'_, '_> {
                     .map(|[x, y, z]| (x, y, z));
                 chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
             }
-            let grounded = joints[..2].iter().map(|&[x, y, z]| {
-                EmptyElement::at((x, y, z))
+            let grounded = joints[..2].iter().map(|&c| {
+                EmptyElement::at(c.into())
                     + TriangleMarker::new((0, 10), dot_size + 3, BLACK.filled())
             });
             chart.draw_series(grounded)?;

@@ -79,11 +79,11 @@ impl Figure<'_, '_> {
             .build_cartesian_2d(x_spec, y_spec)?;
         let mut mesh = chart.configure_mesh();
         // Draw mesh
-        if !grid {
-            mesh.disable_mesh();
-        }
         if !axis {
             mesh.disable_axes();
+            if !grid {
+                mesh.disable_mesh();
+            }
         }
         mesh.label_style(self.get_font())
             .x_label_formatter(&formatter)
