@@ -123,15 +123,17 @@ impl<const N: usize> ExtBound<N> {
             .zip(&self.max)
             .map(|(min, max)| (max - min).abs())
             .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .unwrap()
+            * 0.5
+            * 1.2;
         // Extand to same range
         self.min
             .iter_mut()
             .zip(&mut self.max)
             .zip(&center)
             .for_each(|((min, max), center)| {
-                *min = center - width / 2.;
-                *max = center + width / 2.;
+                *min = center - width;
+                *max = center + width;
             });
         self
     }
