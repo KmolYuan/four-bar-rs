@@ -31,7 +31,7 @@ where
     let mut chart = ChartBuilder::on(&root)
         .set_label_area_size(LabelAreaPosition::Left, (10).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (10).percent())
-        .margin((8).percent())
+        .margin((4).percent())
         .build_cartesian_2d(0..history.len() - 1, 0.0..*max_fitness)?;
     chart
         .configure_mesh()
@@ -79,11 +79,11 @@ impl Figure<'_, '_> {
             .build_cartesian_2d(x_spec, y_spec)?;
         let mut mesh = chart.configure_mesh();
         // Draw mesh
+        if !grid {
+            mesh.disable_mesh();
+        }
         if !axis {
             mesh.disable_axes();
-            if !grid {
-                mesh.disable_mesh();
-            }
         }
         mesh.label_style(self.get_font())
             .x_label_formatter(&formatter)

@@ -52,7 +52,8 @@ impl Figure<'_, '_> {
         let mut chart = ChartBuilder::on(&root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
-            .margin((8).percent())
+            .margin((2).percent())
+            .margin_left((11).percent())
             .build_cartesian_3d(x_spec, y_spec, z_spec)?;
         chart.with_projection(|mut pb| {
             pb.yaw = 45f64.to_radians();
@@ -67,8 +68,8 @@ impl Figure<'_, '_> {
             axes.light_grid_style(BLACK.mix(0.15))
                 .label_style(self.get_font())
                 .axis_panel_style(TRANSPARENT)
-                .x_labels(5)
-                .z_labels(5)
+                .x_labels(4)
+                .z_labels(4)
                 .x_formatter(&formatter)
                 .y_formatter(&formatter)
                 .z_formatter(&formatter)
