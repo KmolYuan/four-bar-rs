@@ -46,11 +46,14 @@ macro_rules! inner_opt {
     )+};
 }
 
-// Rounding float numbers
+// Rounding float numbers without trailing zeros
 pub(crate) fn formatter(v: &f64) -> String {
     let mut s = format!("{v:.02}");
     let sub = s.trim_end_matches('0');
     s.truncate(sub.strip_suffix('.').unwrap_or(sub).len());
+    if s == "-0" {
+        s.remove(0);
+    }
     s
 }
 
@@ -285,11 +288,11 @@ pub enum LegendPos {
     /// Lower Middle
     LM,
     /// Upper Right
+    #[default]
     UR,
     /// Middle Right
     MR,
     /// Lower Right
-    #[default]
     LR,
     /// Coordinate
     #[cfg_attr(feature = "clap", clap(skip))]
