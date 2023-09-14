@@ -15,7 +15,6 @@
 //!     .unwrap();
 //! ```
 use crate::*;
-use efd::Curve;
 use std::{borrow::Cow, f64::consts::*, marker::PhantomData};
 
 /// Boundary of the planar objective variables.
@@ -47,7 +46,7 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
     /// Return none if harmonic is zero or the curve is less than 1.
     pub fn from_curve<C>(curve: C, mode: Mode) -> Self
     where
-        C: Curve<efd::Coord<D>>,
+        C: efd::Curve<efd::Coord<D>>,
     {
         Self::from_efd(efd::Efd::from_curve(curve, mode.is_target_open()), mode)
     }
