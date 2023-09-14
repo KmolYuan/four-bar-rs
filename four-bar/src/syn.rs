@@ -160,7 +160,7 @@ where
         #[cfg(feature = "rayon")]
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
-        let infisible = || mh::Product::new(INFEASIBLE, M::De::default());
+        let infeasible = || mh::Product::new(INFEASIBLE, M::De::default());
         let fb = M::from_slice(&xs[..M::BOUND_NUM]);
         let bound = fb.angle_bound().check_mode(self.mode.is_result_open());
         let is_open = self.mode.is_target_open();
@@ -185,10 +185,10 @@ where
                 .check_min()
                 .to_value()
                 .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
-                .unwrap_or_else(infisible),
+                .unwrap_or_else(infeasible),
             Mode::Partial => {
                 if !bound.is_valid() {
-                    return infisible();
+                    return infeasible();
                 }
                 let bound = [
                     AngleBound::Open(xs[M::BOUND_NUM], xs[M::BOUND_NUM + 1]),
@@ -201,7 +201,7 @@ where
                 iter.filter_map(|b| b.check_min().to_value())
                     .flat_map(f)
                     .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap_or_else(infisible)
+                    .unwrap_or_else(infeasible)
             }
         }
     }
