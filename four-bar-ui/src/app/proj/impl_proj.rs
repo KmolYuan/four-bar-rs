@@ -91,6 +91,8 @@ impl Project {
         fn preload(self: &mut Self);
         fn set_path(self: &mut Self, path: PathBuf);
         fn path(self: &Self) -> Option<&PathBuf>;
+        fn is_unsaved(self: &Self) -> bool;
+        fn mark_saved(self: &mut Self);
     }
 }
 
@@ -110,6 +112,8 @@ where
     angle: f64,
     hide: bool,
     #[serde(skip)]
+    unsaved: bool,
+    #[serde(skip)]
     cache: Cache<D>,
     #[serde(skip)]
     undo: undo::Undo<<M::De as undo::IntoDelta>::Delta>,
@@ -127,6 +131,7 @@ where
             fb: Default::default(),
             angle: 0.,
             hide: false,
+            unsaved: false,
             cache: Default::default(),
             undo: Default::default(),
         }
@@ -297,6 +302,7 @@ where
                 .group(|ui| angle(ui, "Theta: ", &mut self.angle, ""))
                 .inner;
             self.cache.changed |= res.changed();
+            self.unsaved |= res.changed();
         });
         self.cache(cfg.res);
     }
@@ -355,5 +361,13 @@ where
 
     fn path(&self) -> Option<&PathBuf> {
         self.path.as_ref()
+    }
+
+    fn is_unsaved(&self) -> bool {
+        self.unsaved
+    }
+
+    fn mark_saved(&mut self) {
+        self.unsaved = false;
     }
 }

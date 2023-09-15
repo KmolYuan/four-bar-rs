@@ -169,8 +169,6 @@ mod impl_io {
     }
 }
 
-static ERR_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
-
 pub(crate) trait Alert<T>: Sized {
     fn alert_then<C>(self, title: &'static str, done: C)
     where
@@ -188,24 +186,32 @@ impl<T, E: std::error::Error> Alert<T> for Result<T, E> {
     {
         match self {
             Ok(t) => done(t),
-            Err(e) => ERR_MSG.lock().unwrap().push(format!("{title} Error\n{e}")),
+            Err(e) => alert(format!("{title} Error\n{e}")),
         }
     }
 }
 
+static ERR_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+static WARN_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
 pub(crate) fn push_err_msg(toasts: &mut egui_toast::Toasts) {
     let options = egui_toast::ToastOptions::default().duration_in_seconds(10.);
-    for e in ERR_MSG.lock().unwrap().drain(..) {
-        toasts.add(egui_toast::Toast {
-            kind: egui_toast::ToastKind::Error,
-            text: e.into(),
-            options,
-        });
+    for (kind, list) in [
+        (egui_toast::ToastKind::Warning, &WARN_MSG),
+        (egui_toast::ToastKind::Error, &ERR_MSG),
+    ] {
+        for text in list.lock().unwrap().drain(..) {
+            toasts.add(egui_toast::Toast { kind, text: text.into(), options });
+        }
     }
 }
 
-pub(crate) fn alert(msg: String) {
-    ERR_MSG.lock().unwrap().push(msg);
+pub(crate) fn alert(msg: impl ToString) {
+    ERR_MSG.lock().unwrap().push(msg.to_string());
+}
+
+pub(crate) fn warn(msg: impl ToString) {
+    WARN_MSG.lock().unwrap().push(msg.to_string());
 }
 
 pub(crate) fn open_ron<C>(done: C)

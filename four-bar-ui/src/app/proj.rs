@@ -140,13 +140,18 @@ impl Projects {
         }
         ui.horizontal(|ui| {
             ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
-                self.list[i].proj_name()
+                let proj = &self.list[i];
+                if proj.is_unsaved() {
+                    proj.proj_name() + "*"
+                } else {
+                    proj.proj_name()
+                }
             });
             if !show_btn {
                 return;
             }
             if small_btn(ui, "💾", "Save (Ctrl+S)") || hotkey!(ui, CTRL + S) {
-                let proj = &self.list[self.curr];
+                let proj = &mut self.list[self.curr];
                 let (_, fb) = proj.fb_state();
                 if let Some(path) = proj.path() {
                     io::save_ron(&fb, path);
@@ -154,21 +159,34 @@ impl Projects {
                     let path = self.path.clone();
                     io::save_ron_ask(&fb, &proj.name(), move |p| _ = path.borrow_mut().replace(p));
                 }
+                proj.mark_saved();
             }
             if small_btn(ui, "💾 Save As", "Ctrl+Shift+S") || hotkey!(ui, CTRL + SHIFT + S) {
-                let proj = &self.list[self.curr];
+                let proj = &mut self.list[self.curr];
                 let (_, fb) = proj.fb_state();
                 let path = self.path.clone();
                 io::save_ron_ask(&fb, &proj.name(), move |p| _ = path.borrow_mut().replace(p));
+                proj.mark_saved();
             }
-            if small_btn(ui, "✖", "Close (Ctrl+W)") || hotkey!(ui, CTRL + W) {
-                self.list.remove(self.curr);
-                if self.curr > 0 {
-                    self.curr -= 1;
+            let close_btn = ui.small_button("✖").on_hover_text("Close (Ctrl+W)");
+            if close_btn.double_clicked() {
+                self.close_curr();
+            } else if close_btn.clicked() || hotkey!(ui, CTRL + W) {
+                if self.list[self.curr].is_unsaved() {
+                    io::warn("File unsaved.\nDouble click again to close it without saving.");
+                } else {
+                    self.close_curr();
                 }
             }
         });
         !self.list.is_empty()
+    }
+
+    fn close_curr(&mut self) {
+        self.list.remove(self.curr);
+        if self.curr > 0 {
+            self.curr -= 1;
+        }
     }
 
     pub(crate) fn current_fb_state(&self) -> Option<(f64, io::Fb)> {
