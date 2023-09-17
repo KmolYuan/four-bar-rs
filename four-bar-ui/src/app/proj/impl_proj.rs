@@ -1,3 +1,5 @@
+use crate::io::Alert;
+
 use super::*;
 use four_bar::{csv, efd, AngleBound, CurveGen, FourBarTy, NormFourBar, Normalized, SNormFourBar};
 
@@ -200,6 +202,7 @@ where
         + undo::IntoDelta
         + ui::ProjUi
         + ui::ProjPlot<D>
+        + PartialEq
         + Default
         + Serialize
         + for<'a> Deserialize<'a>,
@@ -219,6 +222,15 @@ where
                     .unwrap();
                 ui.ctx()
                     .output_mut(|s| s.open_url(String::from_utf8_lossy(&url)));
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(path) = &self.path {
+                if small_btn(ui, "", "Reload from Disk") {
+                    std::fs::File::open(path).alert_then("Failed to open file.", |r| {
+                        ron::de::from_reader(r)
+                            .alert_then("Failed to deserialize file.", |fb| self.fb = fb);
+                    });
+                }
             }
             path_label(ui, "🖹", self.path.as_ref(), "Unsaved");
         });
@@ -351,7 +363,9 @@ where
             .and_then(|p| std::fs::File::open(p).ok())
             .and_then(|r| ron::de::from_reader(r).ok())
         {
-            self.fb = fb;
+            if self.fb != fb {
+                self.unsaved = true;
+            }
         }
     }
 
