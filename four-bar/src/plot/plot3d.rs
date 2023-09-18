@@ -159,6 +159,6 @@ where
     I: IntoIterator<Item = &'a [f64; 3]>,
 {
     ExtBound::from_pts(pts)
-        .to_square()
+        .to_square(0.2)
         .map_to(|min, max| min..max)
 }

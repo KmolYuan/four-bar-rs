@@ -118,11 +118,11 @@ impl<const N: usize> ExtBound<N> {
     /// ```
     /// use four_bar::plot::ExtBound;
     ///
-    /// let ext = ExtBound { min: [0., 0.], max: [1., 2.] }.to_square();
+    /// let ext = ExtBound { min: [0., 0.], max: [1., 2.] }.to_square(0.);
     /// assert_eq!(ext.min, [-0.5, 0.]);
     /// assert_eq!(ext.max, [1.5, 2.]);
     /// ```
-    pub fn to_square(mut self) -> Self {
+    pub fn to_square(mut self, margin: f64) -> Self {
         let center = self.center();
         let width = self
             .min
@@ -132,7 +132,7 @@ impl<const N: usize> ExtBound<N> {
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap()
             * 0.5
-            * 1.2;
+            * (1. + margin);
         // Extand to same range
         self.min
             .iter_mut()
