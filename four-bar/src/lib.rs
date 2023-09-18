@@ -18,6 +18,8 @@ pub use crate::fb::*;
 pub use efd;
 #[doc(no_inline)]
 pub extern crate metaheuristics_nature as mh;
+#[cfg(feature = "plot")]
+pub use self::plot::{plot2d, plot3d};
 
 #[cfg(feature = "codebook")]
 pub mod cb;
@@ -26,8 +28,4 @@ pub mod csv;
 mod fb;
 #[cfg(feature = "plot")]
 pub mod plot;
-#[cfg(feature = "plot")]
-pub mod plot2d;
-#[cfg(feature = "plot")]
-pub mod plot3d;
 pub mod syn;

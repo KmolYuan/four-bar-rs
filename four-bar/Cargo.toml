@@ -12,7 +12,7 @@ categories.workspace = true
 
 [features]
 default = []
-plot = ["plotters"]
+plot = ["plotters", "plotters-backend"]
 serde = ["dep:serde", "metaheuristics-nature/serde"]
 clap = ["dep:clap", "metaheuristics-nature/clap"]
 rayon = ["metaheuristics-nature/rayon"]
@@ -21,6 +21,7 @@ csv = ["dep:csv", "serde"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
+plotters-backend = { version = "0.3", optional = true }
 ndarray-npy = { version = "0.8", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
@@ -29,8 +30,6 @@ efd = "4"
 
 [dependencies.plotters]
 version = "0.3"
-git = "https://github.com/KmolYuan/plotters.git"
-branch = "dash"
 default-features = false
 features = ["svg_backend", "all_series", "all_elements", "full_palette"]
 optional = true

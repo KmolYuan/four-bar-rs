@@ -26,11 +26,15 @@
 //! fig.plot(root_l).unwrap();
 //! fig.plot(root_r).unwrap();
 //! ```
+use self::dashed_line::*;
 use crate::*;
-use plotters::element::DashedPathElement;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 use std::{borrow::Cow, rc::Rc};
+
+mod dashed_line;
+pub mod plot2d;
+pub mod plot3d;
 
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
