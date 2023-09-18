@@ -101,7 +101,7 @@ struct SynCfg {
     #[clap(long)]
     angle: Option<f64>,
     /// Legend position
-    #[clap(long, default_value = "ll")]
+    #[clap(long, default_value = "ur")]
     legend: plot::LegendPos,
     #[clap(flatten)]
     inner: syn_cmd::SynConfig,
