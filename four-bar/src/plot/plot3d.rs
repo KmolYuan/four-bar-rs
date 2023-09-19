@@ -65,7 +65,7 @@ impl Figure<'_, '_> {
             if !grid {
                 axes.max_light_lines(0);
             }
-            axes.light_grid_style(BLACK.mix(0.15))
+            axes.light_grid_style(LIGHTGRAY)
                 .label_style(self.get_font())
                 .axis_panel_style(TRANSPARENT)
                 .x_labels(4)
@@ -89,7 +89,7 @@ impl Figure<'_, '_> {
                     .zip(y.clone())
                     .zip(z)
                     .map(|((x, y), z)| (sc.x + x, sc.y + y, sc.z + z));
-                chart.draw_series(LineSeries::new(iter, BLACK.mix(0.1)))?;
+                chart.draw_series(LineSeries::new(iter, LIGHTGRAY))?;
             }
         } else {
             // Draw reflections

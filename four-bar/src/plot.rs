@@ -40,6 +40,8 @@ pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBack
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
 type LineData<'a, const N: usize> = (Cow<'a, str>, Cow<'a, [[f64; N]]>, Style, ShapeStyle);
 
+define_color!(LIGHTGRAY, 200, 200, 200, "Light Gray");
+
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
         $(#[$meta])+
