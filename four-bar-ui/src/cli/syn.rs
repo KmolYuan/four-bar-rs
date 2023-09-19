@@ -32,11 +32,11 @@ impl std::fmt::Display for SynErr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Format => write!(f, "unsupported format"),
-            Self::Io(e) => write!(f, "reading file error: {e}"),
-            Self::Plot(e) => write!(f, "drawing plot error: {e}"),
-            Self::CsvSer(e) => write!(f, "csv serialization error: {e}"),
-            Self::RonSer(e) => write!(f, "ron serialization error: {e}"),
-            Self::RonDe(e) => write!(f, "ron deserialization error: {e}"),
+            Self::Io(e) => write!(f, "{e}"),
+            Self::Plot(e) => write!(f, "{e}"),
+            Self::CsvSer(e) => write!(f, "{e}"),
+            Self::RonSer(e) => write!(f, "{e}"),
+            Self::RonDe(e) => write!(f, "{e}"),
             Self::Linkage => write!(f, "invalid linkage input"),
             Self::Solver => write!(f, "solved error"),
         }
@@ -72,7 +72,7 @@ pub(super) struct Syn {
     /// Disable parallel for running all tasks, use a single loop for
     /// benchmarking
     #[clap(long)]
-    one_by_one: bool,
+    each: bool,
     /// Provide pre-generated codebook databases, support multiple paths as
     #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
     #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
@@ -135,85 +135,80 @@ struct Info {
     mode: syn::Mode,
 }
 
+fn get_info(
+    title: &str,
+    file: &Path,
+    res: usize,
+    rerun: bool,
+    clean: bool,
+) -> Result<Info, SynErr> {
+    let mut target_fb = None;
+    let ext = file.extension().and_then(OsStr::to_str);
+    let target = match ext.ok_or(SynErr::Format)? {
+        "csv" | "txt" => io::Curve::from_reader(std::fs::File::open(file)?)?,
+        "ron" => {
+            let fb = ron::de::from_reader::<_, io::Fb>(std::fs::File::open(file)?)?;
+            let curve = fb.curve(res);
+            target_fb.replace(fb);
+            curve
+        }
+        _ => {
+            println!("Ignored: {}", file.display());
+            Err(SynErr::Format)?
+        }
+    };
+    match &target {
+        io::Curve::P(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
+        io::Curve::S(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
+    }
+    let mode = match Path::new(title).extension().and_then(OsStr::to_str) {
+        Some("closed") => syn::Mode::Closed,
+        Some("partial") => syn::Mode::Partial,
+        Some("open") => syn::Mode::Open,
+        _ => Err(SynErr::Format)?,
+    };
+    let root = file.parent().unwrap().join(title);
+    if root.is_dir() {
+        if rerun {
+            // Clear the root folder
+            // Avoid file browser missing opening folders
+            for e in std::fs::read_dir(&root)? {
+                let path = e?.path();
+                if path.is_dir() {
+                    std::fs::remove_dir_all(path)?;
+                } else {
+                    std::fs::remove_file(path)?;
+                }
+            }
+        } else if clean {
+            // Just remove root folder
+            std::fs::remove_dir_all(&root)?;
+        }
+    } else if !clean || rerun {
+        std::fs::create_dir(&root)?;
+    }
+    let title = title.to_string();
+    Ok(Info { root, target, target_fb, title, mode })
+}
+
 pub(super) fn syn(syn: Syn) {
-    let Syn {
-        files,
-        one_by_one,
-        cfg,
-        cb,
-        refer,
-        method,
-        rerun,
-        clean,
-    } = syn;
-    println!("{cfg}");
-    println!("-----");
+    let Syn { files, each, cfg, cb, refer, method, rerun, clean } = syn;
+    println!("{cfg}\n-----");
     // If codebook is provided, rerun is always enabled
     let rerun = rerun || cb.is_some();
     // Load target files & create project folders
-    let files = files
+    let tasks = files
         .into_iter()
-        .filter_map(|file| file.canonicalize().ok())
-        .filter(|file| file.is_file())
-        .map(|file| {
-            let mut target_fb = None;
-            let ext = file.extension().and_then(OsStr::to_str);
-            let target = match ext.ok_or(SynErr::Format)? {
-                "csv" | "txt" => io::Curve::from_reader(std::fs::File::open(&file)?)?,
-                "ron" => {
-                    let fb = ron::de::from_reader::<_, io::Fb>(std::fs::File::open(&file)?)?;
-                    let curve = fb.curve(cfg.inner.res);
-                    target_fb.replace(fb);
-                    curve
+        .filter_map(|file| {
+            let file = file.canonicalize().ok().filter(|f| f.is_file())?;
+            let title = file.file_stem()?.to_str()?;
+            match get_info(title, &file, cfg.res, rerun, clean) {
+                Ok(info) => Some(info),
+                Err(SynErr::Format) => None,
+                Err(e) => {
+                    println!("Error in {title}: {e}");
+                    None
                 }
-                _ => {
-                    println!("Unsupported: {}", file.display());
-                    Err(SynErr::Format)?
-                }
-            };
-            match &target {
-                io::Curve::P(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
-                io::Curve::S(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
-            }
-            let title = file
-                .file_stem()
-                .ok_or(SynErr::Format)?
-                .to_string_lossy()
-                .into_owned();
-            let mode = match Path::new(&title).extension().and_then(OsStr::to_str) {
-                Some("closed") => syn::Mode::Closed,
-                Some("partial") => syn::Mode::Partial,
-                Some("open") => syn::Mode::Open,
-                _ => Err(SynErr::Format)?,
-            };
-            let root = file.parent().unwrap().join(&title);
-            if root.is_dir() {
-                if rerun {
-                    // Clear the root folder
-                    // Avoid file browser missing opening folders
-                    for e in std::fs::read_dir(&root)? {
-                        let path = e?.path();
-                        if path.is_dir() {
-                            std::fs::remove_dir_all(path)?;
-                        } else {
-                            std::fs::remove_file(path)?;
-                        }
-                    }
-                } else if clean {
-                    // Just remove root folder
-                    std::fs::remove_dir_all(&root)?;
-                }
-            } else if !clean || rerun {
-                std::fs::create_dir(&root)?;
-            }
-            Ok(Info { root, target, target_fb, title, mode })
-        })
-        .filter_map(|r| match r {
-            Ok(r) => Some(r),
-            Err(SynErr::Format) => None,
-            Err(e) => {
-                println!("Error: {e}");
-                None
             }
         })
         .collect::<Vec<_>>();
@@ -234,17 +229,17 @@ pub(super) fn syn(syn: Syn) {
         .expect("Load codebook failed!");
     // Progress bar
     const STYLE: &str = "{eta} {wide_bar} {percent}%";
-    let pb = ProgressBar::new(files.len() as u64 * cfg.gen);
+    let pb = ProgressBar::new(tasks.len() as u64 * cfg.gen);
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     // Tasks
     let method = method.unwrap_or_default();
     let run = |info| run(&pb, method.clone(), info, &cfg, &cb, &refer, rerun);
     let t0 = std::time::Instant::now();
-    if one_by_one {
-        files.into_iter().for_each(run);
+    if each {
+        tasks.into_iter().for_each(run);
     } else {
         use mh::rayon::prelude::*;
-        files.into_par_iter().for_each(run);
+        tasks.into_par_iter().for_each(run);
     }
     pb.finish_and_clear();
     println!("-----");
