@@ -11,7 +11,8 @@ where
     NormFb<N>: syn::SynBound,
 {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> [NormFb<N>; 2] {
-        let v = <NormFb<N> as syn::SynBound>::BOUND[..<NormFb<N> as syn::SynBound>::BOUND_NUM]
+        let bound = <NormFb<N> as syn::SynBound>::BOUND;
+        let v = bound[..bound.len() - 2]
             .iter()
             .map(|&[u, l]| rng.gen_range(u..l))
             .collect::<Vec<_>>();

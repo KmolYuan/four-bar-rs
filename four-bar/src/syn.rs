@@ -72,8 +72,6 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
 pub trait SynBound: Clone + Sync + Send {
     /// Lower & upper bounds
     const BOUND: &'static [[f64; 2]];
-    /// Bound number for non-partial matching
-    const BOUND_NUM: usize;
 
     /// Create entity from slice.
     fn from_slice(xs: &[f64]) -> Self;
@@ -83,19 +81,18 @@ pub trait SynBound: Clone + Sync + Send {
 
 impl SynBound for NormFourBar {
     const BOUND: &'static [[f64; 2]] = {
-        const BOUND_F: f64 = 6.;
-        const BOUND_FF: f64 = 1. / BOUND_F;
+        let bound = 6.;
+        let bound_f: f64 = 1. / bound;
         &[
-            [BOUND_FF, BOUND_F],
-            [BOUND_FF, BOUND_F],
-            [BOUND_FF, BOUND_F],
-            [BOUND_FF, BOUND_F],
+            [bound_f, bound],
+            [bound_f, bound],
+            [bound_f, bound],
+            [bound_f, bound],
             [0., TAU],
             [0., TAU],
             [0., TAU],
         ]
     };
-    const BOUND_NUM: usize = 5;
 
     fn from_slice(xs: &[f64]) -> Self {
         Self::try_from(xs).unwrap()
@@ -107,17 +104,7 @@ impl SynBound for NormFourBar {
 }
 
 impl SynBound for SNormFourBar {
-    const BOUND: &'static [[f64; 2]] = &[
-        [0., PI],
-        [0., PI],
-        [0., PI],
-        [0., PI],
-        [0., PI],
-        [0., PI],
-        [0., PI],
-        [0., PI],
-    ];
-    const BOUND_NUM: usize = 6;
+    const BOUND: &'static [[f64; 2]] = &[[1e-4, PI]; 8];
 
     fn from_slice(xs: &[f64]) -> Self {
         Self::try_from(xs).unwrap()
@@ -140,7 +127,7 @@ where
         if matches!(self.mode, Mode::Partial) {
             M::BOUND
         } else {
-            &M::BOUND[..M::BOUND_NUM]
+            &M::BOUND[..M::BOUND.len() - 2]
         }
     }
 }
@@ -160,7 +147,7 @@ where
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
         let infeasible = || mh::Product::new(INFEASIBLE, M::De::default());
-        let fb = M::from_slice(&xs[..M::BOUND_NUM]);
+        let fb = M::from_slice(&xs[..M::BOUND.len() - 2]);
         let bound = fb.angle_bound().check_mode(self.mode.is_result_open());
         let is_open = self.mode.is_target_open();
         let f = |[t1, t2]: [f64; 2]| {
@@ -189,10 +176,13 @@ where
                 if !bound.is_valid() {
                     return infeasible();
                 }
-                let bound = [
-                    AngleBound::Open(xs[M::BOUND_NUM], xs[M::BOUND_NUM + 1]),
-                    AngleBound::Open(xs[M::BOUND_NUM + 1], xs[M::BOUND_NUM]),
-                ];
+                let bound = {
+                    let end = M::BOUND.len() - 1;
+                    [
+                        AngleBound::Open(xs[end], xs[end - 1]),
+                        AngleBound::Open(xs[end - 1], xs[end]),
+                    ]
+                };
                 #[cfg(feature = "rayon")]
                 let iter = bound.into_par_iter();
                 #[cfg(not(feature = "rayon"))]
