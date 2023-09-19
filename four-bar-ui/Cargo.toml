@@ -18,6 +18,7 @@ path = "src/main.rs"
 # Turn of default in WASM
 default = ["native"]
 native = ["four-bar/rayon", "four-bar/clap"]
+native-win-release = ["winapi"]
 
 [dependencies]
 smartcore = { version = "0.3", features = ["ndarray-bindings"] }
@@ -57,7 +58,7 @@ wasm-bindgen-futures = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 # windows here!
-winapi = { version = "0.3", features = ["wincon", "winuser"] }
+winapi = { version = "0.3", features = ["wincon", "winuser"], optional = true }
 
 [target.'cfg(windows)'.build-dependencies]
 image = "0.24"

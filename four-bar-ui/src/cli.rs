@@ -55,7 +55,7 @@ fn native(files: Vec<PathBuf>) {
             ..Default::default()
         }
     };
-    #[cfg(all(windows, not(debug_assertions)))]
+    #[cfg(all(windows, feature = "native-win-release"))]
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
