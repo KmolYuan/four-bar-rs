@@ -2,6 +2,7 @@
 <!-- Disable zooming: -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
+
     <title>Four-bar</title>
     <base href="/four-bar-rs/">
     <link rel="icon" href="/four-bar-rs/favicon.png">
@@ -26,7 +27,8 @@
         }
 
         /* Allow canvas to fill entire web page: */
-        html, body {
+        html,
+        body {
             overflow: hidden;
             margin: 0 !important;
             padding: 0 !important;
@@ -83,6 +85,7 @@
             0% {
                 transform: rotate(0deg);
             }
+
             100% {
                 transform: rotate(360deg);
             }
@@ -91,16 +94,18 @@
 
 <link rel="preload" href="/four-bar-rs/four-bar-ui_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
 <link rel="modulepreload" href="/four-bar-rs/four-bar-ui.js"></head>
-<body>
-<!-- The WASM code will resize this canvas to cover the entire screen -->
-<canvas id="app"></canvas>
-<div class="centered" id="loading-text">
-    <p style="font-size: 16px">Loading…</p>
-    <div class="lds-dual-ring"></div>
-</div>
 
-<script type="module" src="main.js"></script>
-<script type="module">import init from '/four-bar-rs/four-bar-ui.js';init('/four-bar-rs/four-bar-ui_bg.wasm');</script>
+<body>
+    <!-- The WASM code will resize this canvas to cover the entire screen -->
+    <canvas id="app"></canvas>
+    <div class="centered" id="loading-text">
+        <p style="font-size: 16px">Loading…</p>
+        <div class="lds-dual-ring"></div>
+    </div>
+    
+    <script type="module" src="main.js"></script>
+    <script type="module">import init from '/four-bar-rs/four-bar-ui.js';init('/four-bar-rs/four-bar-ui_bg.wasm');</script>
+
 
 
 </body></html>
