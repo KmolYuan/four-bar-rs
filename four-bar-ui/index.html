@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <!-- Disable zooming: -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
 <head>
     <title>Four-bar</title>
-    <base data-trunk-public-url/>
+    <base data-trunk-public-url />
     <link data-trunk rel="icon" href="assets/favicon.png">
     <style>
         html {
@@ -28,7 +29,8 @@
         }
 
         /* Allow canvas to fill entire web page: */
-        html, body {
+        html,
+        body {
             overflow: hidden;
             margin: 0 !important;
             padding: 0 !important;
@@ -85,21 +87,24 @@
             0% {
                 transform: rotate(0deg);
             }
+
             100% {
                 transform: rotate(360deg);
             }
         }
     </style>
 </head>
+
 <body>
-<!-- The WASM code will resize this canvas to cover the entire screen -->
-<canvas id="app"></canvas>
-<div class="centered" id="loading-text">
-    <p style="font-size: 16px">Loading…</p>
-    <div class="lds-dual-ring"></div>
-</div>
-<link data-trunk rel="copy-file" href="assets/main.js"/>
-<script type="module" src="main.js"></script>
-<link data-trunk rel="rust" data-wasm-opt="z" data-cargo-no-default-features/>
+    <!-- The WASM code will resize this canvas to cover the entire screen -->
+    <canvas id="app"></canvas>
+    <div class="centered" id="loading-text">
+        <p style="font-size: 16px">Loading…</p>
+        <div class="lds-dual-ring"></div>
+    </div>
+    <link data-trunk rel="copy-file" href="assets/main.js" />
+    <script type="module" src="main.js"></script>
+    <link data-trunk rel="rust" data-wasm-opt="z" data-cargo-no-default-features />
 </body>
+
 </html>
