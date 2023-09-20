@@ -17,18 +17,11 @@ pub(crate) struct Cfg {
     pub(crate) int: f64,
     // resolution
     pub(crate) res: usize,
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) web_data: bool,
 }
 
 impl Default for Cfg {
     fn default() -> Self {
-        Self {
-            int: 1.,
-            res: 360,
-            #[cfg(target_arch = "wasm32")]
-            web_data: false,
-        }
+        Self { int: 1., res: 360 }
     }
 }
 
@@ -46,18 +39,6 @@ impl Linkages {
         nonzero_f(ui, "Drag interval: ", &mut self.cfg.int, 0.01);
         if nonzero_i(ui, "Curve resolution: ", &mut self.cfg.res, 1).changed() {
             self.projs.request_cache();
-        }
-        #[cfg(target_arch = "wasm32")]
-        if ui
-            .checkbox(&mut self.cfg.web_data, "Save local data")
-            .clicked()
-            && !self.cfg.web_data
-        {
-            #[wasm_bindgen::prelude::wasm_bindgen]
-            extern "C" {
-                fn clear_storage();
-            }
-            clear_storage();
         }
         ui.horizontal(|ui| {
             ui.group(|ui| {

@@ -44,6 +44,7 @@ pub(crate) struct App {
     syn: syn::Synthesis,
     bp: blueprint::BluePrint,
     plotter: plotter::Plotter,
+    save_cfg: bool,
     #[serde(skip)]
     toasts: egui_toast::Toasts,
     #[serde(skip)]
@@ -122,13 +123,11 @@ impl App {
                 ui.heading("License");
                 ui.label("This software is under AGPL v3 license.");
                 ui.label("The commercial usages under server or client side are not allowed.");
-                if cfg!(target_arch = "wasm32") {
-                    ui.separator();
-                    ui.heading("Web Storage");
-                    ui.label("The Web version disabled local storage by default.");
-                    ui.label("Check \"Save local data\" to turn it on.");
-                }
-                ui.colored_label(Color32::GREEN, "Enjoy this app!");
+                ui.separator();
+                ui.heading("Local Storage");
+                ui.label("The local storage is disabled by default.");
+                let text = WidgetText::from("Save local data").color(Color32::GREEN);
+                ui.checkbox(&mut self.save_cfg, text);
                 ui.allocate_space(ui.available_size());
             });
         self.welcome_off = !welcome;
@@ -206,10 +205,10 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        #[cfg(target_arch = "wasm32")]
-        if !self.link.cfg.web_data {
-            return;
+        if self.save_cfg {
+            eframe::set_value(storage, eframe::APP_KEY, self);
+        } else {
+            storage.set_string(eframe::APP_KEY, String::new());
         }
-        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }
