@@ -24,4 +24,3 @@ window.save_file = (s, path) => {
     a.href = URL.createObjectURL(new Blob([s], { type: "application/octet-stream" }));
     a.click();
 };
-window.clear_storage = () => window.localStorage.clear();
