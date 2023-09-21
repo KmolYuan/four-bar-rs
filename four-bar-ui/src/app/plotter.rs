@@ -24,7 +24,7 @@ impl<const N: usize> LineData<N> {
         Self { label, line, ..Self::default() }
     }
 
-    fn show(&mut self, ui: &mut Ui, id: usize) -> bool {
+    fn show(&mut self, ui: &mut Ui, id: Id) -> bool {
         // Line style settings
         let keep = ui
             .horizontal(|ui| {
@@ -34,7 +34,6 @@ impl<const N: usize> LineData<N> {
             .inner;
         ui.horizontal(|ui| {
             ui.label("Style");
-            let id = Id::new("style").with(id);
             combo_enum(ui, id, &mut self.style, fb_plot::Style::LIST, |e| e.name());
             nonzero_i(ui, "Stroke Width: ", &mut self.stroke_width, 1);
         });
@@ -105,7 +104,7 @@ impl PlotType {
         }
     }
 
-    fn show(&mut self, ui: &mut Ui) {
+    fn show(&mut self, ui: &mut Ui, i: usize) {
         if match self {
             Self::P(_, c) => c.is_empty(),
             Self::S(_, c) => c.is_empty(),
@@ -113,15 +112,15 @@ impl PlotType {
             return;
         }
         ui.group(|ui| {
-            let mut i = 0;
+            let mut j = 0;
             match self {
                 Self::P(_, c) => c.retain_mut(|data| {
-                    i += 1;
-                    data.show(ui, i)
+                    j += 1;
+                    data.show(ui, Id::new("style").with(i).with(j))
                 }),
                 Self::S(_, c) => c.retain_mut(|data| {
-                    i += 1;
-                    data.show(ui, i)
+                    j += 1;
+                    data.show(ui, Id::new("style").with(i).with(j))
                 }),
             }
         });
@@ -172,7 +171,7 @@ impl PlotOpt {
             }
         });
         ui.collapsing("Curves", |ui| {
-            self.plot.borrow_mut().show(ui);
+            self.plot.borrow_mut().show(ui, i);
             ui.horizontal(|ui| {
                 if ui.button("🖴 Add from").clicked() {
                     if let Some(c) = lnk.projs.current_curve() {
