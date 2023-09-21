@@ -39,9 +39,11 @@ impl Figure<'_, '_> {
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();
-        let sphere = self.get_joints().zip(self.get_sphere_center_radius());
-        let [x_spec, y_spec, z_spec] = if let Some((_, (sc, r))) = sphere {
-            debug_assert!(r > 0.);
+        let sphere = self
+            .get_sphere_center_radius()
+            .map(|(sc, r)| (sc, r, self.get_joints()));
+        let [x_spec, y_spec, z_spec] = if let Some((sc, r, _)) = &sphere {
+            debug_assert!(*r > 0.);
             [sc.x - r..sc.x + r, sc.y - r..sc.y + r, sc.z - r..sc.z + r]
         } else {
             area3d(self.lines().flat_map(|(_, curve, ..)| curve.iter()))
@@ -74,7 +76,7 @@ impl Figure<'_, '_> {
                 .draw()?;
         }
         // Draw grid
-        if let Some((_, (sc, r))) = &sphere {
+        if let Some((sc, r, _)) = &sphere {
             let p = (sc.x, sc.y + *r, sc.z);
             chart.draw_series(Ball::new((sc.x, sc.y, sc.z), p, LIGHTGRAY.filled()).series())?;
         }
@@ -84,7 +86,8 @@ impl Figure<'_, '_> {
             style.draw(&mut chart, line, *color, label)?;
         }
         // Draw linkage
-        if let Some((joints @ [p0, p1, p2, p3, p4], (sc, _))) = sphere {
+        if let Some((sc, _, Some(joints))) = sphere {
+            let [p0, p1, p2, p3, p4] = joints;
             for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
                 let line = line
                     .windows(2)
