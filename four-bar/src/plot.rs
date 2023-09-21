@@ -494,6 +494,12 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     pub(crate) fn get_font(&self) -> TextStyle {
         (self.get_family(), self.opt.font).into_font().color(&BLACK)
     }
+
+    pub(crate) fn get_font3d(&self) -> TextStyle {
+        (self.get_family(), self.opt.font * 1.5)
+            .into_font()
+            .color(&BLACK)
+    }
 }
 
 impl<'a, M, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> {

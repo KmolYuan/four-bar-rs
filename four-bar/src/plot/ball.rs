@@ -39,9 +39,9 @@ impl<Coord, DB: DrawingBackend> Drawable<DB> for Ball<Coord> {
         backend: &mut DB,
         _ps: (u32, u32),
     ) -> Result<(), DrawingErrorKind<DB::ErrorType>> {
-        let center = pos.next().unwrap();
-        let p = pos.next().unwrap();
-        let radius = (center.0 as f64 - p.0 as f64).hypot(center.1 as f64 - p.1 as f64);
+        let center @ (x1, y1) = pos.next().unwrap();
+        let (x2, y2) = pos.next().unwrap();
+        let radius = (x1 as f64 - x2 as f64).hypot(y1 as f64 - y2 as f64).round();
         backend.draw_circle(center, radius as u32, &self.style, self.style.filled)
     }
 }

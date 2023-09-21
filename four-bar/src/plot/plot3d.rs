@@ -64,7 +64,7 @@ impl Figure<'_, '_> {
                 axes.max_light_lines(0);
             }
             axes.light_grid_style(LIGHTGRAY)
-                .label_style(self.get_font())
+                .label_style(self.get_font3d())
                 .axis_panel_style(TRANSPARENT)
                 .x_labels(4)
                 .z_labels(4)
@@ -121,7 +121,7 @@ impl Figure<'_, '_> {
                 .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)
-                .label_font(self.get_font())
+                .label_font(self.get_font3d())
                 .draw()?;
         }
         Ok(())
