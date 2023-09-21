@@ -253,9 +253,8 @@ impl Plotter {
         // Subplot settings
         let mut i = 0;
         self.queue.retain_mut(|opt| {
-            let keep = ui.group(|ui| opt.show(ui, lnk, i)).inner;
             i += 1;
-            keep
+            ui.group(|ui| opt.show(ui, lnk, i)).inner
         });
         if ui.button("⊞ Add Subplot").clicked() {
             self.queue.push(PlotOpt::default());
