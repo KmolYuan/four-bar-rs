@@ -274,8 +274,8 @@ impl Plotter {
         use four_bar::plot::IntoDrawingArea as _;
         let mut buf = String::new();
         let size = (
-            self.size * self.shape.0 as u32,
             self.size * self.shape.1 as u32,
+            self.size * self.shape.0 as u32,
         );
         let b = fb_plot::SVGBackend::with_string(&mut buf, size);
         b.into_drawing_area()

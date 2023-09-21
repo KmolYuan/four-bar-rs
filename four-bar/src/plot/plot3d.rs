@@ -75,7 +75,7 @@ impl Figure<'_, '_> {
         }
         // Draw grid
         if let Some((_, (sc, r))) = &sphere {
-            let p = (sc.x + *r, sc.y, sc.z);
+            let p = (sc.x, sc.y + *r, sc.z);
             chart.draw_series(Ball::new((sc.x, sc.y, sc.z), p, LIGHTGRAY.filled()).series())?;
         }
         // Draw curves
