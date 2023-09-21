@@ -4,7 +4,6 @@ pub use crate::plot::*;
 use efd::na;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
-use std::f64::consts::TAU;
 
 /// Drawing option of spherical four-bar linkage and its input angle.
 ///
@@ -47,7 +46,6 @@ impl Figure<'_, '_> {
         } else {
             area3d(self.lines().flat_map(|(_, curve, ..)| curve.iter()))
         };
-        let reflect = [x_spec.start, y_spec.start, z_spec.start];
         let Opt { grid, axis, legend, .. } = self.opt;
         let mut chart = ChartBuilder::on(&root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
@@ -77,31 +75,8 @@ impl Figure<'_, '_> {
         }
         // Draw grid
         if let Some((_, (sc, r))) = &sphere {
-            let t = (0..=500).map(|t| t as f64 / 500. * TAU);
-            let z = t.clone().map(|t| r * t.cos());
-            let y = t.map(|t| r * t.sin());
-            const N: usize = 90;
-            for i in 0..N {
-                let phi = i as f64 / N as f64 * TAU;
-                let x = z.clone().map(|z| z * phi.sin());
-                let z = z.clone().map(|z| z * phi.cos());
-                let iter = x
-                    .zip(y.clone())
-                    .zip(z)
-                    .map(|((x, y), z)| (sc.x + x, sc.y + y, sc.z + z));
-                chart.draw_series(LineSeries::new(iter, LIGHTGRAY))?;
-            }
-        } else {
-            // Draw reflections
-            for (_, line, style, color) in self.lines() {
-                for (i, b) in reflect.iter().enumerate() {
-                    let line = line.iter().cloned().map(|mut c| {
-                        c[i] = *b;
-                        c.into()
-                    });
-                    style.draw(&mut chart, line, *color, "")?;
-                }
-            }
+            let p = (sc.x + *r, sc.y, sc.z);
+            chart.draw_series(Ball::new((sc.x, sc.y, sc.z), p, LIGHTGRAY.filled()).series())?;
         }
         // Draw curves
         for (label, line, style, color) in self.lines() {

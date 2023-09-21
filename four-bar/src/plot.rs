@@ -26,12 +26,13 @@
 //! fig.plot(root_l).unwrap();
 //! fig.plot(root_r).unwrap();
 //! ```
-use self::dashed_line::*;
+use self::{ball::*, dashed_line::*};
 use crate::*;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 use std::{borrow::Cow, rc::Rc};
 
+mod ball;
 mod dashed_line;
 pub mod plot2d;
 pub mod plot3d;
@@ -40,7 +41,7 @@ pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBack
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
 type LineData<'a, const N: usize> = (Cow<'a, str>, Cow<'a, [[f64; N]]>, Style, ShapeStyle);
 
-define_color!(LIGHTGRAY, 200, 200, 200, "Light Gray");
+define_color!(LIGHTGRAY, 150, 150, 150, 0.4, "Light Gray");
 
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
@@ -54,7 +55,7 @@ macro_rules! inner_opt {
 
 // Rounding float numbers without trailing zeros
 pub(crate) fn formatter(v: &f64) -> String {
-    let mut s = format!("{v:.02}");
+    let mut s = format!("{v:.04}");
     let sub = s.trim_end_matches('0');
     s.truncate(sub.strip_suffix('.').unwrap_or(sub).len());
     if s == "-0" {
@@ -231,12 +232,11 @@ impl Style {
                 }
             }
             Self::DashedLine => {
-                let series = DashedLineSeries::new(line, 10, 5, color);
+                let series = DashedPath::new(line, 10, 5, color).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
-                    anno.label(label).legend(move |(x, y)| {
-                        DashedPathElement::new([(x, y), (x + 20, y)], 10, 5, color)
-                    });
+                    anno.label(label)
+                        .legend(move |(x, y)| DashedPath::new([(x, y), (x + 20, y)], 10, 5, color));
                 }
             }
             Self::Circle => impl_marker!(Circle),

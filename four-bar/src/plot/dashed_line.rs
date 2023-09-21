@@ -4,14 +4,14 @@ use plotters::{
 };
 use plotters_backend::{BackendCoord, DrawingBackend, DrawingErrorKind};
 
-pub(crate) struct DashedPathElement<I: Iterator + Clone, Size: SizeDesc> {
+pub(crate) struct DashedPath<I: Iterator + Clone, Size: SizeDesc> {
     points: I,
     size: Size,
     spacing: Size,
     style: ShapeStyle,
 }
 
-impl<I: Iterator + Clone, Size: SizeDesc> DashedPathElement<I, Size> {
+impl<I: Iterator + Clone, Size: SizeDesc> DashedPath<I, Size> {
     pub(crate) fn new<I0, S>(points: I0, size: Size, spacing: Size, style: S) -> Self
     where
         I0: IntoIterator<IntoIter = I>,
@@ -24,20 +24,25 @@ impl<I: Iterator + Clone, Size: SizeDesc> DashedPathElement<I, Size> {
             style: style.into(),
         }
     }
+
+    pub(crate) fn series(self) -> std::iter::Once<Self> {
+        std::iter::once(self)
+    }
 }
 
 impl<'a, I: Iterator + Clone, Size: SizeDesc> PointCollection<'a, I::Item>
-    for &'a DashedPathElement<I, Size>
+    for &'a DashedPath<I, Size>
 {
     type Point = I::Item;
     type IntoIter = I;
+
     fn point_iter(self) -> Self::IntoIter {
         self.points.clone()
     }
 }
 
 impl<I0: Iterator + Clone, Size: SizeDesc, DB: DrawingBackend> Drawable<DB>
-    for DashedPathElement<I0, Size>
+    for DashedPath<I0, Size>
 {
     fn draw<I: Iterator<Item = BackendCoord>>(
         &self,
@@ -89,35 +94,5 @@ impl<I0: Iterator + Clone, Size: SizeDesc, DB: DrawingBackend> Drawable<DB>
             start = curr_f;
         }
         Ok(())
-    }
-}
-
-pub(crate) struct DashedLineSeries<I: Iterator + Clone, Size: SizeDesc> {
-    points: I,
-    size: Size,
-    spacing: Size,
-    style: ShapeStyle,
-}
-
-impl<I: Iterator + Clone, Size: SizeDesc> DashedLineSeries<I, Size> {
-    pub(crate) fn new<I0>(points: I0, size: Size, spacing: Size, style: ShapeStyle) -> Self
-    where
-        I0: IntoIterator<IntoIter = I>,
-    {
-        Self { points: points.into_iter(), size, spacing, style }
-    }
-}
-
-impl<I: Iterator + Clone, Size: SizeDesc> IntoIterator for DashedLineSeries<I, Size> {
-    type Item = DashedPathElement<I, Size>;
-    type IntoIter = std::iter::Once<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        std::iter::once(DashedPathElement::new(
-            self.points,
-            self.size,
-            self.spacing,
-            self.style,
-        ))
     }
 }
