@@ -484,7 +484,7 @@ impl<'a> Solver<'a> {
                 }
                 let path = root.join(format!("{title}.curve.svg"));
                 let svg = plot::SVGBackend::new(&path, (800, 800));
-                fig.remove_fb().plot(svg)?;
+                fig.with_fb(&fb.take_sphere()).plot(svg)?;
             }
             _ => Err(SynErr::Solver)?,
         }

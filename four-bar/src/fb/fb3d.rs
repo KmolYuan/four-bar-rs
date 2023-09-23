@@ -216,6 +216,11 @@ impl SFourBar {
     pub fn ty(&self) -> FourBarTy {
         FourBarTy::from_loop(self.norm.planar_loop())
     }
+
+    /// Take the sphere part without the linkage length.
+    pub fn take_sphere(&self) -> Self {
+        Self { buf: self.buf, ..Default::default() }
+    }
 }
 
 impl From<&SNormFourBar> for FourBarTy {

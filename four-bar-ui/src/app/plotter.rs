@@ -169,11 +169,11 @@ impl PlotOpt {
                 let plot = self.plot.clone();
                 io::open_ron(move |_, fb| plot.borrow_mut().set_fb(fb));
             }
-            if ui.button("⚾ Use Empty Sphere").clicked() {
-                self.plot
-                    .borrow_mut()
-                    .set_fb(io::Fb::SFb(SFourBar::default()));
-                self.angle.take();
+            if let PlotType::S(Some(fb), _) = &mut *self.plot.borrow_mut() {
+                if ui.button("⚾ Take Sphere").clicked() {
+                    *fb = fb.take_sphere();
+                    self.angle.take();
+                }
             }
         });
         ui.collapsing("Curves", |ui| {
