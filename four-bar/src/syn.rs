@@ -35,6 +35,8 @@ pub struct Syn<D: efd::EfdDim, M> {
     mode: Mode,
     // How many points need to be generated or compared
     res: usize,
+    // Constrain the scale of the mechanism
+    scale: Option<f64>,
     // Marker of the mechanism
     _marker: PhantomData<M>,
 }
@@ -53,13 +55,25 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
 
     /// Create a new task from target EFD coefficients.
     pub fn from_efd(efd: efd::Efd<D>, mode: Mode) -> Self {
-        Self { efd, mode, res: 180, _marker: PhantomData }
+        Self {
+            efd,
+            mode,
+            res: 180,
+            scale: None,
+            _marker: PhantomData,
+        }
     }
 
     /// Set the resolution during synthesis.
     pub fn res(self, res: usize) -> Self {
         assert!(res > 0);
         Self { res, ..self }
+    }
+
+    /// Specify the scale of the mechanism.
+    pub fn scale(self, scale: f64) -> Self {
+        assert!(scale > 0.);
+        Self { scale: Some(scale), ..self }
     }
 
     /// The harmonic used of target EFD.
@@ -162,7 +176,8 @@ where
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let trans = efd.as_trans().to(self.efd.as_trans());
                     let fb = fb.trans_denorm(&trans);
-                    let err = efd.distance(&self.efd);
+                    let s_err = self.scale.map(|s| (trans.scale() - s).abs()).unwrap_or(0.);
+                    let err = efd.distance(&self.efd).max(s_err);
                     mh::Product::new(err, fb)
                 })
         };
@@ -178,10 +193,7 @@ where
                 }
                 let bound = {
                     let end = M::BOUND.len() - 1;
-                    [
-                        AngleBound::Open(xs[end], xs[end - 1]),
-                        AngleBound::Open(xs[end - 1], xs[end]),
-                    ]
+                    AngleBound::open_and_rev_at(xs[end], xs[end - 1])
                 };
                 #[cfg(feature = "rayon")]
                 let iter = bound.into_par_iter();

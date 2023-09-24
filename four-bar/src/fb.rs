@@ -312,6 +312,11 @@ impl AngleBound {
         }
     }
 
+    /// Create a open and its reverse angle bound.
+    pub fn open_and_rev_at(a: f64, b: f64) -> [Self; 2] {
+        [Self::Open(a, b), Self::Open(b, a)]
+    }
+
     /// Check the state is the same to the provided mode.
     pub fn check_mode(self, is_open: bool) -> Self {
         match (&self, is_open) {
