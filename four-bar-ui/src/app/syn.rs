@@ -81,9 +81,6 @@ impl Synthesis {
             nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
-            check_on(ui, "Constrain scale", &mut self.cfg.scale, |ui, v| {
-                nonzero_f(ui, "", v, lnk.cfg.int)
-            });
         });
         ui.collapsing("Atlas Library", |ui| self.cb_setting(ui));
         ui.separator();
@@ -115,6 +112,9 @@ impl Synthesis {
             Cache::Cb(cb) => self.cb.merge_inplace(cb).alert("Merge Codebook"),
             Cache::Empty => (),
         }
+        check_on(ui, "Constrain scale", &mut self.cfg.scale, |ui, v| {
+            nonzero_f(ui, "", v, lnk.cfg.int)
+        });
         toggle_btn(ui, &mut self.from_plot_open, "🖊 Append from canvas")
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {
