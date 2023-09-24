@@ -225,7 +225,7 @@ where
             }
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &self.path {
-                if small_btn(ui, "", "Reload from Disk") {
+                if small_btn(ui, "🖴", "Reload from Disk") {
                     std::fs::File::open(path).alert_then("Failed to open file.", |r| {
                         ron::de::from_reader(r)
                             .alert_then("Failed to deserialize file.", |fb| self.fb = fb);
