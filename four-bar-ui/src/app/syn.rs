@@ -190,7 +190,7 @@ impl Synthesis {
                 ui.label(format!("{:.4?}", task.time));
                 ui.add(ProgressBar::new(*pg).show_percentage().animate(true));
             });
-            // FIXME: Use `drain_filter`
+            // FIXME: Use `extract_if`
             if *pg == 1. {
                 self.tasks.push(task.clone());
                 false
