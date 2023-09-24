@@ -54,7 +54,7 @@ where
     let dv = DragValue::new(val)
         .prefix(label)
         .speed(int)
-        .clamp_range(1e-4..=f64::MAX)
+        .clamp_range(1e-2..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
 }
@@ -92,7 +92,7 @@ pub(crate) fn percent(ui: &mut Ui, label: &str, val: &mut f64) -> Response {
         .prefix(label)
         .custom_formatter(|v, _| format!("{:.04}%", v * 100.))
         .speed(0.1)
-        .clamp_range(1e-4..=f64::MAX)
+        .clamp_range(1e-2..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
 }

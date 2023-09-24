@@ -71,9 +71,11 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
     }
 
     /// Specify the scale of the mechanism.
-    pub fn scale(self, scale: f64) -> Self {
-        assert!(scale > 0.);
-        Self { scale: Some(scale), ..self }
+    pub fn scale(self, scale: Option<f64>) -> Self {
+        if let Some(scale) = scale {
+            assert!(scale > 0.);
+        }
+        Self { scale, ..self }
     }
 
     /// The harmonic used of target EFD.

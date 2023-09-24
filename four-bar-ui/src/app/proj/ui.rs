@@ -217,7 +217,7 @@ impl_ui!(
     (ox_mut, unit, "X Offset: "),
     (oy_mut, unit, "Y Offset: "),
     (oz_mut, unit, "Z Offset: "),
-    (r_mut, unit, "Radius: "),
+    (r_mut, nonzero_f, "Radius: "),
     (p0i_mut, angle, "Polar angle: "),
     (p0j_mut, angle, "Azimuth angle: "),
     (a_mut, angle, "Rotation: "),

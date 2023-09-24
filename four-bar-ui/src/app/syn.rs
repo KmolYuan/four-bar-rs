@@ -81,6 +81,9 @@ impl Synthesis {
             nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
+            check_on(ui, "Constrain scale", &mut self.cfg.scale, |ui, v| {
+                nonzero_f(ui, "", v, lnk.cfg.int)
+            });
         });
         ui.collapsing("Atlas Library", |ui| self.cb_setting(ui));
         ui.separator();
