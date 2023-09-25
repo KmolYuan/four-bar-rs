@@ -349,7 +349,7 @@ impl<'a> Solver<'a> {
                 let efd_target =
                     efd::Efd2::from_curve_harmonic(target, info.mode.is_target_open(), harmonic);
                 let curve = fb.curve(cfg.res);
-                let mut fig = plot2d::Figure::from(fb)
+                let mut fig = plot2d::Figure::new_ref(Some(fb))
                     .font(cfg.font)
                     .legend(cfg.legend)
                     .add_line("Target", target, plot::Style::Circle, plot::RED)
@@ -422,7 +422,7 @@ impl<'a> Solver<'a> {
                 let efd_target =
                     efd::Efd3::from_curve_harmonic(target, info.mode.is_target_open(), harmonic);
                 let curve = fb.curve(cfg.res);
-                let mut fig = plot3d::Figure::from(fb)
+                let mut fig = plot3d::Figure::new_ref(Some(fb))
                     .font(cfg.font)
                     .legend(cfg.legend)
                     .add_line("Target", target, plot::Style::Circle, plot::RED)
@@ -484,7 +484,7 @@ impl<'a> Solver<'a> {
                 }
                 let path = root.join(format!("{title}.curve.svg"));
                 let svg = plot::SVGBackend::new(&path, (800, 800));
-                fig.with_fb(&fb.take_sphere()).plot(svg)?;
+                fig.with_fb(fb.take_sphere()).plot(svg)?;
             }
             _ => Err(SynErr::Solver)?,
         }

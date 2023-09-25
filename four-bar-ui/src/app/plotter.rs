@@ -289,7 +289,7 @@ impl Plotter {
             .zip(&self.queue)
             .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
                 PlotType::P(fb, c) => {
-                    let mut fig = plot2d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
+                    let mut fig = plot2d::Figure::new_ref(fb.as_ref()).with_opt(p_opt.opt.clone());
                     if let Some(angle) = p_opt.angle {
                         fig = fig.angle(angle);
                     }
@@ -300,7 +300,7 @@ impl Plotter {
                     fig.plot(root).alert("Plot");
                 }
                 PlotType::S(fb, c) => {
-                    let mut fig = plot3d::Figure::from(fb.as_ref()).with_opt(p_opt.opt.clone());
+                    let mut fig = plot3d::Figure::new_ref(fb.as_ref()).with_opt(p_opt.opt.clone());
                     if let Some(angle) = p_opt.angle {
                         fig = fig.angle(angle);
                     }

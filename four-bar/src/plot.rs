@@ -358,14 +358,14 @@ impl LegendPos {
 
 /// Option type base.
 #[derive(Clone)]
-pub struct FigureBase<'a, 'b, M, const N: usize> {
-    pub(crate) fb: Option<&'b M>,
+pub struct FigureBase<'a, 'b, M: Clone, const N: usize> {
+    pub(crate) fb: Option<Cow<'b, M>>,
     angle: Option<f64>,
     lines: Vec<Rc<LineData<'a, N>>>,
     pub(crate) opt: Opt<'a>,
 }
 
-impl<M, const N: usize> Default for FigureBase<'_, '_, M, N> {
+impl<M: Clone, const N: usize> Default for FigureBase<'_, '_, M, N> {
     fn default() -> Self {
         Self {
             fb: None,
@@ -376,30 +376,25 @@ impl<M, const N: usize> Default for FigureBase<'_, '_, M, N> {
     }
 }
 
-impl<'a, M, const N: usize> From<Option<&'a M>> for FigureBase<'_, 'a, M, N> {
-    fn from(opt: Option<&'a M>) -> Self {
-        match opt {
-            Some(fb) => Self::from(fb),
-            None => Self::new(),
-        }
+impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
+    /// Create a new instance with linkage.
+    pub fn new(fb: Option<M>) -> Self {
+        Self { fb: fb.map(Cow::Owned), ..Default::default() }
     }
-}
 
-impl<'a, M, const N: usize> From<&'a M> for FigureBase<'_, 'a, M, N> {
-    fn from(fb: &'a M) -> Self {
-        Self { fb: Some(fb), ..Self::default() }
-    }
-}
-
-impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
-    /// Create a default option.
-    pub fn new() -> Self {
-        Self::default()
+    /// From an optional linkage setting.
+    pub fn new_ref(fb: Option<&'b M>) -> Self {
+        Self { fb: fb.map(Cow::Borrowed), ..Default::default() }
     }
 
     /// Attach linkage.
-    pub fn with_fb<'c>(self, fb: &'c M) -> FigureBase<'a, 'c, M, N> {
-        FigureBase { fb: Some(fb), ..self }
+    pub fn with_fb(self, fb: M) -> Self {
+        FigureBase { fb: Some(Cow::Owned(fb)), ..self }
+    }
+
+    /// Attach linkage with its reference.
+    pub fn with_fb_ref(self, fb: &'b M) -> Self {
+        FigureBase { fb: Some(Cow::Borrowed(fb)), ..self }
     }
 
     /// Remove linkage.
@@ -467,7 +462,7 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     where
         M: CurveGen<D>,
     {
-        let fb = self.fb?;
+        let fb = self.fb.as_deref()?;
         let [start, end] = fb.angle_bound().to_value()?;
         let angle = match self.angle {
             Some(angle) if (start..end).contains(&angle) => angle,
@@ -502,7 +497,7 @@ impl<'a, 'b, M, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 }
 
-impl<'a, M, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> {
+impl<'a, M: Clone, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> {
     type Target = Opt<'a>;
     fn deref(&self) -> &Self::Target {
         &self.opt
