@@ -22,6 +22,18 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     }
 }
 
+pub(crate) fn counter(ui: &mut Ui, val: &mut usize, rng: std::ops::RangeInclusive<usize>) {
+    let at_min = val != rng.start();
+    if ui.add_enabled(at_min, Button::new("-")).clicked() {
+        *val -= 1;
+    }
+    ui.label(format!("{val}"));
+    let at_max = val != rng.end();
+    if ui.add_enabled(at_max, Button::new("+")).clicked() {
+        *val += 1;
+    }
+}
+
 pub(crate) fn any_i<V>(ui: &mut Ui, val: &mut V) -> Response
 where
     V: emath::Numeric,

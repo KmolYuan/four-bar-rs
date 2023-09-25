@@ -221,13 +221,19 @@ impl PlotOpt {
 #[serde(default)]
 pub(crate) struct Plotter {
     size: u32,
-    shape: (u8, u8),
+    shape: (usize, usize),
+    current: usize,
     queue: Vec<PlotOpt>,
 }
 
 impl Default for Plotter {
     fn default() -> Self {
-        Self { size: 800, shape: (1, 1), queue: Vec::new() }
+        Self {
+            size: 800,
+            shape: (1, 1),
+            current: 0,
+            queue: Vec::new(),
+        }
     }
 }
 
@@ -236,25 +242,27 @@ impl Plotter {
         ui.heading("Plotter");
         nonzero_i(ui, "Subplot size: ", &mut self.size, 1);
         ui.horizontal(|ui| {
-            ui.label("Plot grid: (");
-            ui.add(DragValue::new(&mut self.shape.0).clamp_range(1..=10));
-            ui.label(", ");
-            ui.add(DragValue::new(&mut self.shape.1).clamp_range(1..=10));
-            ui.label(")");
+            ui.label("Width:");
+            counter(ui, &mut self.shape.1, 1..=10);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Height:");
+            counter(ui, &mut self.shape.0, 1..=10);
         });
         let cap = self.shape.0 * self.shape.1;
         ui.label(format!("Capacity: {}/{cap}", self.queue.len()));
         // Grid view
-        ui.group(|ui| {
-            Grid::new("plot-grid").show(ui, |ui| {
-                for i in 0..self.shape.0 {
-                    for j in 0..self.shape.1 {
-                        let n = i * self.shape.1 + j;
-                        ui.group(|ui| ui.label(format!("{{{n}}}")));
+        Grid::new("plot-grid").show(ui, |ui| {
+            for i in 0..self.shape.0 {
+                for j in 0..self.shape.1 {
+                    let n = i * self.shape.1 + j;
+                    let checked = self.current == n;
+                    if ui.selectable_label(checked, format!("{{{n}}}")).clicked() {
+                        self.current = n;
                     }
-                    ui.end_row();
                 }
-            });
+                ui.end_row();
+            }
         });
         // Subplot settings
         let mut i = 0;
@@ -267,7 +275,7 @@ impl Plotter {
         }
         ui.separator();
         if ui.button("💾 Save Plot").clicked() {
-            if cap as usize == self.queue.len() {
+            if cap == self.queue.len() {
                 self.save_plot();
             } else {
                 io::alert(format!("Incorrect plot number: {}/{cap}", self.queue.len()));
@@ -284,7 +292,7 @@ impl Plotter {
         );
         let b = fb_plot::SVGBackend::with_string(&mut buf, size);
         b.into_drawing_area()
-            .split_evenly((self.shape.0 as usize, self.shape.1 as usize))
+            .split_evenly(self.shape)
             .into_iter()
             .zip(&self.queue)
             .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
