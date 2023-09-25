@@ -46,7 +46,8 @@ impl Figure<'_, '_> {
             debug_assert!(*r > 0.);
             [sc.x - r..sc.x + r, sc.y - r..sc.y + r, sc.z - r..sc.z + r]
         } else {
-            area3d(self.lines().flat_map(|(_, curve, ..)| curve.iter()))
+            let lines = self.lines().collect::<Vec<_>>();
+            area3d(lines.iter().flat_map(|data| data.line.iter()))
         };
         let Opt { grid, axis, legend, .. } = self.opt;
         let mut chart = ChartBuilder::on(&root)
@@ -81,9 +82,10 @@ impl Figure<'_, '_> {
             chart.draw_series(Ball::new((sc.x, sc.y, sc.z), p, LIGHTGRAY.filled()).series())?;
         }
         // Draw curves
-        for (label, line, style, color) in self.lines() {
+        for data in self.lines() {
+            let LineData { label, line, style, .. } = &*data;
             let line = line.iter().map(|&c| c.into());
-            style.draw(&mut chart, line, *color, label)?;
+            style.draw(&mut chart, line, data.color(), label)?;
         }
         // Draw linkage
         if let Some((sc, _, Some(joints))) = sphere {

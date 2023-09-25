@@ -30,7 +30,11 @@ use self::{ball::*, dashed_line::*};
 use crate::*;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
-use std::{borrow::Cow, rc::Rc};
+use std::{
+    borrow::Cow,
+    cell::{Ref, RefCell},
+    rc::Rc,
+};
 
 mod ball;
 mod dashed_line;
@@ -39,7 +43,6 @@ pub mod plot3d;
 
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
-type LineData<'a, const N: usize> = (Cow<'a, str>, Cow<'a, [[f64; N]]>, Style, ShapeStyle);
 
 define_color!(LIGHTGRAY, 150, 150, 150, 0.4, "Light Gray");
 
@@ -356,13 +359,72 @@ impl LegendPos {
     }
 }
 
+/// Drawing options of a line series.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct LineData<'a, const N: usize> {
+    /// Label of the line
+    pub label: Cow<'a, str>,
+    /// Line data
+    #[cfg_attr(
+        feature = "serde",
+        serde(bound(
+            serialize = "[f64; N]: serde::Serialize",
+            deserialize = "[f64; N]: serde::de::DeserializeOwned"
+        ))
+    )]
+    pub line: Cow<'a, [[f64; N]]>,
+    /// Line style
+    pub style: Style,
+    /// Line color
+    pub color: [u8; 3],
+    /// Stroke width
+    pub stroke_width: u32,
+    /// Whether the line is filled
+    pub filled: bool,
+}
+
+impl<'a, const N: usize> Default for LineData<'a, N> {
+    fn default() -> Self {
+        Self {
+            label: Cow::Borrowed(""),
+            line: Cow::Borrowed(&[]),
+            style: Style::default(),
+            color: [0; 3],
+            stroke_width: 1,
+            filled: false,
+        }
+    }
+}
+
+impl<'a, const N: usize> LineData<'a, N> {
+    pub(crate) fn color(&self) -> ShapeStyle {
+        ShapeStyle {
+            color: RGBAColor(self.color[0], self.color[1], self.color[2], 1.),
+            filled: self.filled,
+            stroke_width: self.stroke_width,
+        }
+    }
+}
+
 /// Option type base.
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone)]
 pub struct FigureBase<'a, 'b, M: Clone, const N: usize> {
-    pub(crate) fb: Option<Cow<'b, M>>,
-    angle: Option<f64>,
-    lines: Vec<Rc<LineData<'a, N>>>,
-    pub(crate) opt: Opt<'a>,
+    /// Linkage
+    pub fb: Option<Cow<'b, M>>,
+    /// Input angle
+    pub angle: Option<f64>,
+    /// Line data
+    #[cfg_attr(
+        feature = "serde",
+        serde(bound(
+            serialize = "[f64; N]: serde::Serialize",
+            deserialize = "[f64; N]: serde::de::DeserializeOwned"
+        ))
+    )]
+    pub lines: Vec<Rc<RefCell<LineData<'a, N>>>>,
+    /// Drawing options
+    pub opt: Opt<'a>,
 }
 
 impl<M: Clone, const N: usize> Default for FigureBase<'_, '_, M, N> {
@@ -435,20 +497,37 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     /// Add a line.
-    pub fn add_line<S, L, C>(mut self, name: S, line: L, style: Style, color: C) -> Self
+    pub fn add_line<S, L, C>(self, name: S, line: L, style: Style, color: C) -> Self
     where
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [[f64; N]]>>,
-        C: Into<ShapeStyle>,
+        ShapeStyle: From<C>,
     {
-        let line_data = (name.into(), line.into(), style, color.into());
-        self.lines.push(Rc::new(line_data));
+        let color = ShapeStyle::from(color);
+        self.add_line_data(LineData {
+            label: name.into(),
+            line: line.into(),
+            style,
+            color: [color.color.0, color.color.1, color.color.2],
+            stroke_width: color.stroke_width,
+            filled: color.filled,
+        })
+    }
+
+    /// Add a line from a [`LineData`] instance.
+    pub fn add_line_data(mut self, data: LineData<'a, N>) -> Self {
+        self.lines.push(Rc::new(RefCell::new(data)));
         self
     }
 
-    // Iterate over lines
-    pub(crate) fn lines(&self) -> impl Iterator<Item = &LineData<'a, N>> {
-        self.lines.iter().map(|packed| &**packed)
+    /// Iterate over lines.
+    pub fn lines(&self) -> impl Iterator<Item = Ref<LineData<'a, N>>> {
+        self.lines.iter().map(|packed| packed.borrow())
+    }
+
+    /// Get a mutable reference to the lines.
+    pub fn lines_mut(&mut self) -> &mut Vec<Rc<RefCell<LineData<'a, N>>>> {
+        &mut self.lines
     }
 
     #[inline]

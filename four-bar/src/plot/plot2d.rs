@@ -70,8 +70,11 @@ impl Figure<'_, '_> {
         let (stroke, dot_size) = self.get_dot_size();
         let joints = self.get_joints();
         let Opt { grid, axis, legend, .. } = self.opt;
-        let iter = self.lines().flat_map(|(_, curve, ..)| curve.iter());
-        let [x_spec, y_spec] = area2d(iter.chain(joints.iter().flatten()), root.dim_in_pixel());
+        let [x_spec, y_spec] = {
+            let lines = self.lines().collect::<Vec<_>>();
+            let iter = lines.iter().flat_map(|data| data.line.iter());
+            area2d(iter.chain(joints.iter().flatten()), root.dim_in_pixel())
+        };
         let mut chart = ChartBuilder::on(&root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
@@ -90,9 +93,10 @@ impl Figure<'_, '_> {
             .y_label_formatter(&formatter)
             .draw()?;
         // Draw curve
-        for (label, line, style, color) in self.lines() {
+        for data in self.lines() {
+            let LineData { label, line, style, .. } = &*data;
             let line = line.iter().map(|&[x, y]| (x, y));
-            style.draw(&mut chart, line, *color, label)?;
+            style.draw(&mut chart, line, data.color(), label)?;
         }
         // Draw Linkage
         if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {

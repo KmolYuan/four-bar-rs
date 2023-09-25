@@ -221,7 +221,7 @@ impl PlotOpt {
 #[serde(default)]
 pub(crate) struct Plotter {
     size: u32,
-    shape: (usize, usize),
+    shape: (u8, u8),
     queue: Vec<PlotOpt>,
 }
 
@@ -267,7 +267,7 @@ impl Plotter {
         }
         ui.separator();
         if ui.button("💾 Save Plot").clicked() {
-            if cap == self.queue.len() {
+            if cap as usize == self.queue.len() {
                 self.save_plot();
             } else {
                 io::alert(format!("Incorrect plot number: {}/{cap}", self.queue.len()));
@@ -284,7 +284,7 @@ impl Plotter {
         );
         let b = fb_plot::SVGBackend::with_string(&mut buf, size);
         b.into_drawing_area()
-            .split_evenly(self.shape)
+            .split_evenly((self.shape.0 as usize, self.shape.1 as usize))
             .into_iter()
             .zip(&self.queue)
             .for_each(|(root, p_opt)| match &*p_opt.plot.borrow() {
