@@ -24,7 +24,7 @@ fn pan_panel(ui: &mut Ui, f: impl FnOnce(&mut Ui)) {
     ScrollArea::vertical().show(ui, f);
 }
 
-#[derive(Default, PartialEq)]
+#[derive(Default, PartialEq, Eq)]
 enum Panel {
     #[default]
     Linkages,
@@ -141,11 +141,18 @@ impl App {
             (Panel::BluePrint, "🖻", "Blue Print"),
             (Panel::Options, "🛠", "Options"),
         ] {
-            ui.selectable_value(&mut self.panel, value, icon)
-                .on_hover_text(text);
-        }
-        if !matches!(self.panel, Panel::Off) && small_btn(ui, "⬅", "Close Panel") {
-            self.panel = Panel::Off;
+            let is_current = self.panel == value;
+            if ui
+                .selectable_label(is_current, icon)
+                .on_hover_text(text)
+                .clicked()
+            {
+                if is_current {
+                    self.panel = Panel::Off;
+                } else {
+                    self.panel = value;
+                }
+            }
         }
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
             if small_btn(ui, "❓", "Welcome") {
