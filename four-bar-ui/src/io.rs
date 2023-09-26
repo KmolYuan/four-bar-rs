@@ -2,6 +2,7 @@ use self::impl_io::*;
 use four_bar::*;
 use std::path::{Path, PathBuf};
 
+pub(crate) type Cache<T> = std::rc::Rc<std::cell::RefCell<Option<T>>>;
 const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
 const CSV_FMT: &str = "Delimiter-Separated Values (CSV)";
@@ -169,24 +170,42 @@ mod impl_io {
     }
 }
 
-pub(crate) trait Alert<T>: Sized {
+pub(crate) trait Alert: Sized {
+    type Output;
+
     fn alert_then<C>(self, title: &'static str, done: C)
     where
-        C: FnOnce(T);
+        C: FnOnce(Self::Output);
 
     fn alert(self, title: &'static str) {
         self.alert_then(title, |_| ());
     }
 }
 
-impl<T, E: std::error::Error> Alert<T> for Result<T, E> {
+impl<T, E: std::error::Error> Alert for Result<T, E> {
+    type Output = T;
+
     fn alert_then<C>(self, title: &'static str, done: C)
     where
-        C: FnOnce(T),
+        C: FnOnce(Self::Output),
     {
         match self {
             Ok(t) => done(t),
             Err(e) => alert(format!("{title} Error\n{e}")),
+        }
+    }
+}
+
+impl<T> Alert for Option<T> {
+    type Output = T;
+
+    fn alert_then<C>(self, msg: &'static str, done: C)
+    where
+        C: FnOnce(Self::Output),
+    {
+        match self {
+            Some(t) => done(t),
+            None => alert(msg),
         }
     }
 }
@@ -212,6 +231,14 @@ pub(crate) fn alert(msg: impl ToString) {
 
 pub(crate) fn warn(msg: impl ToString) {
     WARN_MSG.lock().unwrap().push(msg.to_string());
+}
+
+pub(crate) fn open_ron_single<C>(done: C)
+where
+    C: FnOnce(PathBuf, Fb) + 'static,
+{
+    let done = move |path, r| ron::de::from_reader(r).alert_then("Parse File", |fb| done(path, fb));
+    open_single(FMT, EXT, done);
 }
 
 pub(crate) fn open_ron<C>(done: C)
@@ -306,10 +333,6 @@ pub(crate) enum Fb {
 }
 
 impl Fb {
-    pub(crate) fn into_curve(self, res: usize) -> Curve {
-        self.curve(res)
-    }
-
     pub(crate) fn curve(&self, res: usize) -> Curve {
         match self {
             Self::Fb(fb) => Curve::P(fb.curve(res)),

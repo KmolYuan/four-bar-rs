@@ -4,7 +4,7 @@ use crate::io;
 use eframe::egui::*;
 use four_bar::{FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 mod impl_proj;
 mod ui;
@@ -47,7 +47,7 @@ pub(crate) struct Projects {
     #[serde(skip)]
     queue: Queue,
     #[serde(skip)]
-    path: Rc<RefCell<Option<PathBuf>>>,
+    path: io::Cache<PathBuf>,
 }
 
 impl Projects {
@@ -126,17 +126,18 @@ impl Projects {
             }
         });
         ui.separator();
-        if self.select(ui, true) {
-            self.list[self.curr].show(ui, &mut self.pivot, cfg);
-        } else {
+        self.select(ui, true);
+        if self.list.is_empty() {
             ui.heading("No project here!");
             ui.label("Please open or create a project.");
+        } else {
+            self.list[self.curr].show(ui, &mut self.pivot, cfg);
         }
     }
 
-    pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) -> bool {
+    pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) {
         if self.list.is_empty() {
-            return false;
+            return;
         }
         ui.horizontal(|ui| {
             ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
@@ -179,7 +180,6 @@ impl Projects {
                 }
             }
         });
-        !self.list.is_empty()
     }
 
     fn close_curr(&mut self) {

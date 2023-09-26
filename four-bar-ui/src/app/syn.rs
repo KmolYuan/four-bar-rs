@@ -174,7 +174,7 @@ impl Synthesis {
         toggle_btn(ui, &mut self.conv_open, "📉 Convergence Plot");
         self.tasks.retain(|task| {
             ui.horizontal(|ui| {
-                let keep = !small_btn(ui, "🗑", "Delete");
+                let keep = !small_btn(ui, "✖", "Delete");
                 if small_btn(ui, "💾", "Save history plot") {
                     io::save_history_ask(&task.conv, "history.svg");
                 }
@@ -327,10 +327,10 @@ impl Synthesis {
             }
             ui.end_row();
             ui.label("Clear");
-            if ui.button("🗑").clicked() {
+            if ui.button("✖").clicked() {
                 self.cb.as_fb_mut().clear();
             }
-            if ui.button("🗑").clicked() {
+            if ui.button("✖").clicked() {
                 self.cb.as_sfb_mut().clear();
             }
         });

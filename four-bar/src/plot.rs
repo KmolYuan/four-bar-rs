@@ -497,7 +497,7 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     /// Add a line.
-    pub fn add_line<S, L, C>(self, name: S, line: L, style: Style, color: C) -> Self
+    pub fn add_line<S, L, C>(self, label: S, line: L, style: Style, color: C) -> Self
     where
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [[f64; N]]>>,
@@ -505,7 +505,7 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     {
         let color = ShapeStyle::from(color);
         self.add_line_data(LineData {
-            label: name.into(),
+            label: label.into(),
             line: line.into(),
             style,
             color: [color.color.0, color.color.1, color.color.2],
@@ -516,8 +516,26 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
 
     /// Add a line from a [`LineData`] instance.
     pub fn add_line_data(mut self, data: LineData<'a, N>) -> Self {
-        self.lines.push(Rc::new(RefCell::new(data)));
+        self.push_line_data(data);
         self
+    }
+
+    /// Add a line from a [`LineData`] instance in-placed.
+    pub fn push_line_data(&mut self, data: LineData<'a, N>) {
+        self.lines.push(Rc::new(RefCell::new(data)));
+    }
+
+    /// Add a line with default settings in-placed.
+    pub fn push_line_default<S, L>(&mut self, label: S, line: L)
+    where
+        S: Into<Cow<'a, str>>,
+        L: Into<Cow<'a, [[f64; N]]>>,
+    {
+        self.push_line_data(LineData {
+            label: label.into(),
+            line: line.into(),
+            ..Default::default()
+        });
     }
 
     /// Iterate over lines.
@@ -580,6 +598,12 @@ impl<'a, M: Clone, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> 
     type Target = Opt<'a>;
     fn deref(&self) -> &Self::Target {
         &self.opt
+    }
+}
+
+impl<'a, M: Clone, const N: usize> std::ops::DerefMut for FigureBase<'a, '_, M, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.opt
     }
 }
 

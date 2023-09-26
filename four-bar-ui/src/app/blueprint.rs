@@ -15,7 +15,7 @@ fn pre_open(file: impl AsRef<std::path::Path>) -> Option<ColorImage> {
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct BluePrint {
-    path: Rc<RefCell<Option<std::path::PathBuf>>>,
+    path: io::Cache<std::path::PathBuf>,
     info: Rc<RefCell<BpInfo>>,
 }
 
@@ -65,7 +65,7 @@ impl BluePrint {
                     inner.h.replace(h);
                 });
             }
-            if self.info.borrow().h.is_some() && ui.button("🗑 Remove").clicked() {
+            if self.info.borrow().h.is_some() && ui.button("✖ Remove").clicked() {
                 self.path.borrow_mut().take();
                 *self.info.borrow_mut() = Default::default();
             }

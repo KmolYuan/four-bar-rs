@@ -22,16 +22,23 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     }
 }
 
-pub(crate) fn counter(ui: &mut Ui, val: &mut usize, rng: std::ops::RangeInclusive<usize>) {
+pub(crate) fn counter(
+    ui: &mut Ui,
+    val: &mut usize,
+    rng: std::ops::RangeInclusive<usize>,
+) -> Response {
     let at_min = val != rng.start();
-    if ui.add_enabled(at_min, Button::new("-")).clicked() {
+    let res1 = ui.add_enabled(at_min, Button::new("-"));
+    if res1.clicked() {
         *val -= 1;
     }
     ui.label(format!("{val}"));
     let at_max = val != rng.end();
-    if ui.add_enabled(at_max, Button::new("+")).clicked() {
+    let res2 = ui.add_enabled(at_max, Button::new("+"));
+    if res2.clicked() {
         *val += 1;
     }
+    res1 | res2
 }
 
 pub(crate) fn any_i<V>(ui: &mut Ui, val: &mut V) -> Response
@@ -166,7 +173,7 @@ pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
         ui.group(|ui| ui.label("No curve"));
         return;
     }
-    if ui.button("🗑 Clear All").clicked() {
+    if ui.button("✖ Clear All").clicked() {
         xs.clear();
     }
     let space = ui.spacing().interact_size.y;
