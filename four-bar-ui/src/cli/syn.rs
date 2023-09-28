@@ -370,7 +370,7 @@ impl<'a> Solver<'a> {
                     let c = fb.curve(cfg.res);
                     let efd = efd::Efd2::from_curve_harmonic(c, mode.is_result_open(), harmonic);
                     let trans = efd.as_trans().to(efd_target.as_trans());
-                    let fb = fb.trans_denorm(&trans);
+                    let fb = fb.clone().trans_denorm(&trans);
                     let c = fb.curve(cfg.res);
                     let err = curve_diff(target, &c);
                     writeln!(log, "\n[atlas]")?;
@@ -443,7 +443,7 @@ impl<'a> Solver<'a> {
                     let c = fb.curve(cfg.res);
                     let efd = efd::Efd3::from_curve_harmonic(c, mode.is_result_open(), harmonic);
                     let trans = efd.as_trans().to(efd_target.as_trans());
-                    let fb = fb.trans_denorm(&trans);
+                    let fb = fb.clone().trans_denorm(&trans);
                     let c = fb.curve(cfg.res);
                     let err = curve_diff(target, &c);
                     writeln!(log, "\n[atlas]")?;
@@ -527,18 +527,10 @@ fn run(
     }
 }
 
-macro_rules! impl_fmt {
-    ($w:ident, $fb:ident, $($field:ident),+) => {{
-        $(writeln!($w, concat![stringify!($field), "={:.04}"], $fb.$field())?;)+
-        writeln!($w, "inv={}", $fb.inv())?;
-        Ok(())
-    }};
-}
-
 fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
-    impl_fmt!(w, fb, p0x, p0y, a, l1, l2, l3, l4, l5, g)
+    writeln!(w, "{}", toml::to_string(fb).unwrap())
 }
 
 fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
-    impl_fmt!(w, fb, ox, oy, oz, r, p0i, p0j, a, l1, l2, l3, l4, l5, g)
+    writeln!(w, "{}", toml::to_string(fb).unwrap())
 }

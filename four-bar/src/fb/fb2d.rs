@@ -1,7 +1,35 @@
 use super::*;
 use std::f64::consts::FRAC_PI_6;
 
-/// Normalized four-bar linkage.
+/// Unnormalized part of four-bar linkage.
+///
+/// Please see [`FourBar`] for more information.
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct UnNorm {
+    /// X offset of the driver link pivot
+    pub p0x: f64,
+    /// Y offset of the driver link pivot
+    pub p0y: f64,
+    /// Angle offset of the ground link
+    pub a: f64,
+    /// Length of the driver link
+    pub l2: f64,
+}
+
+impl UnNorm {
+    /// Create a new instance.
+    pub const fn new() -> Self {
+        Self::from_driver(1.)
+    }
+
+    /// Create a new instance from the driver link length.
+    pub const fn from_driver(l2: f64) -> Self {
+        Self { p0x: 0., p0y: 0., a: 0., l2 }
+    }
+}
+
+/// Normalized part of four-bar linkage.
 ///
 /// + Buffer order: `[l1, l3, l4, l5, g]`
 ///
@@ -13,7 +41,40 @@ use std::f64::consts::FRAC_PI_6;
 /// + Follower link `l4`
 /// + Extanded link `l5`
 /// + Coupler link angle `g`
-pub type NormFourBar = NormFourBarBase<[f64; 5]>;
+/// + Inverse coupler and follower to another circuit
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct NormFourBar {
+    /// Length of the ground link
+    pub l1: f64,
+    /// Length of the coupler link
+    pub l3: f64,
+    /// Length of the follower link
+    pub l4: f64,
+    /// Length of the extended link
+    pub l5: f64,
+    /// Angle of the extended link on the coupler
+    pub g: f64,
+    /// Inverse coupler and follower to another circuit
+    pub stat: bool,
+}
+
+impl crate::vectorized::FromVectorized for NormFourBar {
+    type Dim = crate::efd::na::U5;
+
+    fn from_vectorized(v: &[f64], stat: u8) -> Result<Self, std::array::TryFromSliceError> {
+        let [l1, l3, l4, l5, g] = <[f64; 5]>::try_from(v)?;
+        Ok(Self { l1, l3, l4, l5, g, stat: stat != 0 })
+    }
+}
+
+impl crate::vectorized::IntoVectorized for NormFourBar {
+    fn into_vectorized(self) -> (Vec<f64>, u8) {
+        let code = vec![self.l1, self.l3, self.l4, self.l5, self.g];
+        (code, self.stat as u8)
+    }
+}
+
 /// Four-bar linkage with offset.
 ///
 /// + Buffer 1 order: `[p0x, p0y, a, l2]`
@@ -30,119 +91,89 @@ pub type NormFourBar = NormFourBarBase<[f64; 5]>;
 /// + Follower link `l4`
 /// + Extanded link `l5`
 /// + Coupler link angle `g`
-pub type FourBar = FourBarBase<[f64; 4], [f64; 5]>;
+pub type FourBar = FourBarBase<UnNorm, NormFourBar>;
 
 impl Normalized<efd::D2> for NormFourBar {
     type De = FourBar;
 
-    fn denormalize(&self) -> Self::De {
-        FourBar { buf: [0., 0., 0., self.l2()], norm: self.clone() }
+    fn denormalize(self) -> Self::De {
+        FourBar { unnorm: UnNorm::new(), norm: self }
     }
 
-    fn normalize(de: &Self::De) -> Self {
-        let l2 = de.l2();
-        let mut norm = de.norm.clone();
-        norm.buf[..4].iter_mut().for_each(|x| *x /= l2);
-        norm
-    }
-}
-
-impl NormFourBar {
-    impl_parm_method! {
-        /// X offset of the driver link pivot.
-        fn p0x(self) -> f64 { 0. }
-        /// Y offset of the driver link pivot.
-        fn p0y(self) -> f64 { 0. }
-        /// Angle offset of the ground link.
-        fn a(self) -> f64 { 0. }
-        /// Length of the ground link.
-        fn l1, l1_mut(self) -> f64 { self.buf[0] }
-        /// Length of the driver link.
-        fn l2(self) -> f64 { 1. }
-        /// Length of the coupler link.
-        fn l3, l3_mut(self) -> f64 { self.buf[1] }
-        /// Length of the follower link.
-        fn l4, l4_mut(self) -> f64 { self.buf[2] }
-        /// Length of the extended link.
-        fn l5, l5_mut(self) -> f64 { self.buf[3] }
-        /// Angle of the extended link on the coupler.
-        fn g, g_mut(self) -> f64 { self.buf[4] }
-        /// Inverse coupler and follower to another circuit.
-        fn inv, inv_mut(self) -> bool { self.inv }
+    fn normalize(mut de: Self::De) -> Self {
+        Self::normalize_inplace(&mut de);
+        de.norm
     }
 
-    /// Return the type of this linkage.
-    pub fn ty(&self) -> FourBarTy {
-        FourBarTy::from_loop([self.l1(), self.l2(), self.l3(), self.l4()])
+    fn normalize_inplace(de: &mut Self::De) {
+        let l2 = de.unnorm.l2;
+        de.norm.l1 /= l2;
+        de.norm.l3 /= l2;
+        de.norm.l4 /= l2;
+        de.norm.l5 /= l2;
     }
 }
 
 impl FourBar {
     /// An example crank rocker.
     pub const fn example() -> Self {
-        Self::new([0., 0., 0., 35.], [90., 70., 70., 45., FRAC_PI_6], false)
-    }
-
-    impl_parm_method! {
-        /// X offset of the driver link pivot.
-        fn p0x, p0x_mut(self) -> f64 { self.buf[0] }
-        /// Y offset of the driver link pivot.
-        fn p0y, p0y_mut(self) -> f64 { self.buf[1] }
-        /// Angle offset of the ground link.
-        fn a, a_mut(self) -> f64 { self.buf[2] }
-        /// Length of the ground link.
-        fn l1, l1_mut(self) -> f64 { self.norm.buf[0] }
-        /// Length of the driver link.
-        fn l2, l2_mut(self) -> f64 { self.buf[3] }
-        /// Length of the coupler link.
-        fn l3, l3_mut(self) -> f64 { self.norm.buf[1] }
-        /// Length of the follower link.
-        fn l4, l4_mut(self) -> f64 { self.norm.buf[2] }
-        /// Length of the extended link.
-        fn l5, l5_mut(self) -> f64 { self.norm.buf[3] }
-        /// Angle of the extended link on the coupler.
-        fn g, g_mut(self) -> f64 { self.norm.buf[4] }
-        /// Inverse coupler and follower to another circuit.
-        fn inv, inv_mut(self) -> bool { self.norm.inv }
-    }
-
-    /// Return the type of this linkage.
-    pub fn ty(&self) -> FourBarTy {
-        FourBarTy::from_loop([self.l1(), self.l2(), self.l3(), self.l4()])
+        let norm = NormFourBar {
+            l1: 90.,
+            l3: 70.,
+            l4: 70.,
+            l5: 45.,
+            g: FRAC_PI_6,
+            stat: false,
+        };
+        Self::new(UnNorm::from_driver(35.), norm)
     }
 }
 
-impl From<&NormFourBar> for FourBarTy {
-    fn from(fb: &NormFourBar) -> Self {
-        Self::from_loop([fb.l1(), fb.l2(), fb.l3(), fb.l4()])
+impl Statable for NormFourBar {
+    fn stat(&self) -> u8 {
+        self.stat as u8
+    }
+
+    fn set_stat(&mut self, stat: u8) {
+        self.stat = stat != 0;
+    }
+
+    fn get_states(self) -> Vec<Self> {
+        let s1 = self.clone().with_stat(1);
+        vec![self, s1]
     }
 }
 
-impl From<&FourBar> for FourBarTy {
-    fn from(fb: &FourBar) -> Self {
-        Self::from_loop([fb.l1(), fb.l2(), fb.l3(), fb.l4()])
+impl PlanarLoop for NormFourBar {
+    fn planar_loop(&self) -> [f64; 4] {
+        [self.l1, 1., self.l3, self.l4]
+    }
+}
+
+impl PlanarLoop for FourBar {
+    fn planar_loop(&self) -> [f64; 4] {
+        [self.l1, self.unnorm.l2, self.l3, self.l4]
     }
 }
 
 impl Transformable<efd::D2> for FourBar {
     fn transform_inplace(&mut self, trans: &efd::Transform2) {
         let [p0x, p0y] = trans.trans();
-        *self.p0x_mut() += p0x;
-        *self.p0y_mut() += p0y;
-        *self.a_mut() += trans.rot().angle();
+        self.unnorm.p0x += p0x;
+        self.unnorm.p0y += p0y;
+        self.unnorm.a += trans.rot().angle();
         let scale = trans.scale();
-        *self.l2_mut() *= scale;
-        self.norm.buf[..4].iter_mut().for_each(|x| *x *= scale);
+        self.unnorm.l2 *= scale;
+        self.l1 *= scale;
+        self.l3 *= scale;
+        self.l4 *= scale;
+        self.l5 *= scale;
     }
 }
 
 impl CurveGen<efd::D2> for FourBar {
     fn pos(&self, t: f64) -> Option<[efd::Coord<efd::D2>; 5]> {
         curve_interval(self, t)
-    }
-
-    fn angle_bound(&self) -> AngleBound {
-        AngleBound::from_planar_loop([self.l1(), self.l2(), self.l3(), self.l4()])
     }
 }
 
@@ -172,8 +203,8 @@ fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) 
 }
 
 fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
-    let [p0x, p0y, a, l2] = fb.buf;
-    let NormFourBar { buf: [l1, l3, l4, l5, g], inv } = fb.norm;
+    let UnNorm { p0x, p0y, a, l2 } = fb.unnorm;
+    let NormFourBar { l1, l3, l4, l5, g, stat: inv } = fb.norm;
     let p0 = [p0x, p0y];
     let p1 = angle(p0, l1, a);
     let p2 = angle(p0, l2, a + b);

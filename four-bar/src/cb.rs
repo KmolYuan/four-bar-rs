@@ -1,5 +1,5 @@
 //! Create a codebook database for four-bar linkages.
-pub use self::distr::Code;
+pub use self::distr::{Code, NormFbDistr};
 use super::{NormFourBar, SNormFourBar};
 use mh::{
     random::{Rng, SeedOption},
@@ -11,9 +11,9 @@ use std::{marker::PhantomData, sync::Mutex};
 mod distr;
 
 /// Planar four-bar codebook type.
-pub type FbCodebook = Codebook<NormFourBar, efd::D2, 5>;
+pub type FbCodebook = Codebook<NormFourBar, efd::D2>;
 /// Spherical four-bar codebook type.
-pub type SFbCodebook = Codebook<SNormFourBar, efd::D3, 6>;
+pub type SFbCodebook = Codebook<SNormFourBar, efd::D3>;
 
 fn to_arr<A, S, D>(stack: Mutex<Vec<ArrayBase<S, D>>>, n: usize) -> Array<A, D::Larger>
 where
@@ -86,50 +86,50 @@ impl Cfg {
 }
 
 /// Codebook type.
-pub struct Codebook<C, D, const N: usize>
+pub struct Codebook<C, D>
 where
-    C: Code<D, N>,
+    C: Code<D>,
     D: efd::EfdDim,
 {
     fb: Array2<f64>,
-    inv: Array1<bool>,
+    stat: Array1<u8>,
     efd: Array3<f64>,
     _marker: PhantomData<(C, D)>,
 }
 
-impl<C, D, const N: usize> Clone for Codebook<C, D, N>
+impl<C, D> Clone for Codebook<C, D>
 where
-    C: Code<D, N>,
+    C: Code<D>,
     D: efd::EfdDim,
 {
     fn clone(&self) -> Self {
         Self {
             fb: self.fb.clone(),
-            inv: self.inv.clone(),
+            stat: self.stat.clone(),
             efd: self.efd.clone(),
             _marker: PhantomData,
         }
     }
 }
 
-impl<C, D, const N: usize> Default for Codebook<C, D, N>
+impl<C, D> Default for Codebook<C, D>
 where
-    C: Code<D, N>,
+    C: Code<D>,
     D: efd::EfdDim,
 {
     fn default() -> Self {
         Self {
-            fb: Array2::default([0, N]),
-            inv: Array1::default(0),
+            fb: Array2::default([0, C::dim()]),
+            stat: Array1::default(0),
             efd: Array3::default([0, 0, <D::Trans as efd::Trans>::dim() * 2]),
             _marker: PhantomData,
         }
     }
 }
 
-impl<C, D, const N: usize> Codebook<C, D, N>
+impl<C, D> Codebook<C, D>
 where
-    C: Code<D, N>,
+    C: Code<D>,
     D: efd::EfdDim,
 {
     /// Takes time to generate codebook data.
@@ -151,7 +151,7 @@ where
         let Cfg { is_open, size, res, harmonic, seed } = cfg;
         let rng = Rng::new(seed);
         let fb_stack = Mutex::new(Vec::with_capacity(size));
-        let inv_stack = Mutex::new(Vec::with_capacity(size));
+        let stat_stack = Mutex::new(Vec::with_capacity(size));
         let efd_stack = Mutex::new(Vec::with_capacity(size));
         loop {
             let len = efd_stack.lock().unwrap().len();
@@ -160,26 +160,26 @@ where
             let iter = rng.stream(n).into_par_iter();
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
-            iter.flat_map(|rng| rng.sample(C::distr()))
+            iter.flat_map(|rng| rng.sample(NormFbDistr::<C>::new()))
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(curve, is_open, harmonic);
                     efd_stack.lock().unwrap().push(efd_to_arr(efd));
-                    let (code, inv) = fb.to_code();
+                    let (code, stat) = fb.to_code();
                     let mut stack = fb_stack.lock().unwrap();
                     stack.push(arr1(&code));
                     callback(stack.len());
-                    inv_stack.lock().unwrap().push(arr0(inv));
+                    stat_stack.lock().unwrap().push(arr0(stat));
                 });
             if efd_stack.lock().unwrap().len() >= size {
                 break;
             }
         }
         let fb = to_arr(fb_stack, size);
-        let inv = to_arr(inv_stack, size);
+        let stat = to_arr(stat_stack, size);
         let efd = to_arr(efd_stack, size);
-        Self { fb, inv, efd, _marker: PhantomData }
+        Self { fb, stat, efd, _marker: PhantomData }
     }
 
     /// Read codebook from NPZ file.
@@ -206,8 +206,8 @@ where
                 }
             };
         }
-        let cb = impl_read!(r, fb, inv, efd);
-        impl_check!(cb.fb.len_of(Axis(1)), N);
+        let cb = impl_read!(r, fb, stat, efd);
+        impl_check!(cb.fb.len_of(Axis(1)), C::dim());
         impl_check!(cb.efd.len_of(Axis(2)), <D::Trans as efd::Trans>::dim() * 2);
         Ok(cb)
     }
@@ -224,7 +224,7 @@ where
                 $($w.add_array(stringify!($field), $field)?;)+
             };
         }
-        impl_write!(w, fb, inv, efd);
+        impl_write!(w, fb, stat, efd);
         w.finish()?;
         Ok(())
     }
@@ -257,11 +257,11 @@ where
     }
 
     /// Iterate over the linkages.
-    pub fn fb_iter(&self) -> impl Iterator<Item = ([f64; N], bool)> + '_ {
-        self.inv
+    pub fn fb_iter(&self) -> impl Iterator<Item = (Vec<f64>, u8)> + '_ {
+        self.stat
             .iter()
             .zip(self.fb.rows())
-            .map(|(inv, arr)| (arr.to_vec().try_into().unwrap(), *inv))
+            .map(|(stat, arr)| (arr.to_vec(), *stat))
     }
 
     /// Iterate over the EFD coefficients.
@@ -370,14 +370,8 @@ where
     }
 
     fn pick_norm(&self, i: usize) -> C {
-        let code = self
-            .fb
-            .slice(s![i, ..])
-            .as_slice()
-            .unwrap()
-            .try_into()
-            .unwrap();
-        C::from_code(code, self.inv[i])
+        let code = self.fb.slice(s![i, ..]);
+        C::from_code(code.as_slice().unwrap(), self.stat[i])
     }
 
     fn pick(&self, i: usize, trans: &efd::Transform<D::Trans>, is_open: bool, res: usize) -> C::De {
@@ -404,15 +398,15 @@ where
                     self.$field = ndarray::concatenate(Axis(0), &[self.$field.view(), rhs.$field.view()])?;
                 )+};
             }
-            merge!(fb, inv, efd);
+            merge!(fb, stat, efd);
         }
         Ok(())
     }
 }
 
-impl<C, D, const N: usize> FromIterator<Self> for Codebook<C, D, N>
+impl<C, D> FromIterator<Self> for Codebook<C, D>
 where
-    C: Code<D, N> + Send,
+    C: Code<D> + Send,
     D: efd::EfdDim,
 {
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {

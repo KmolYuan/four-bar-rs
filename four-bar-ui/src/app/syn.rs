@@ -412,9 +412,9 @@ impl Synthesis {
 
     // Cache the visualization of codebook
     fn cb_vis_cache(&mut self) {
-        fn pca<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>, is_sphere: bool) -> Vec<CbVis>
+        fn pca<C, D>(cb: &cb::Codebook<C, D>, is_sphere: bool) -> Vec<CbVis>
         where
-            C: cb::Code<D, N>,
+            C: cb::Code<D>,
             D: efd::EfdDim,
         {
             use smartcore::decomposition::pca::PCA;

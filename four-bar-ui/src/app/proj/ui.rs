@@ -144,7 +144,7 @@ impl ProjPlot<efd::D3> for SFourBar {
     ) {
         const N: usize = 150;
         const STEP: f64 = std::f64::consts::TAU / N as f64;
-        let r = self.r();
+        let r = self.unnorm.r;
         let oc @ [ox, oy, oz] = self.oc();
         draw_joint(ui, [ox, oy], true, |p| p.shape(plot::MarkerShape::Diamond));
         let circle = (0..=N)
@@ -184,14 +184,14 @@ fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
 
 macro_rules! impl_ui {
     ($name:ty, $(($m_mut: ident, $ui:ident, $des:literal),)+
-        .., $(($p_m_mut: ident, $p_ui:ident, $p_des:literal),)+
+        .., $(($(@$unnorm: ident,)? $p_m_mut: ident, $p_ui:ident, $p_des:literal),)+
         .., $(($b_m_mut: ident, $b_des:literal)),+ $(,)?) => {
         impl ProjUi for $name {
             fn delta_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
-                let mut res = $($ui(ui, $des, self.$m_mut(), cfg.int))|+;
+                let mut res = $($ui(ui, $des, &mut self.unnorm.$m_mut, cfg.int))|+;
                 ui.heading("Parameters");
-                res |= $($p_ui(ui, $p_des, self.$p_m_mut(), cfg.int))|+;
-                res | $(ui.checkbox(self.$b_m_mut(), $b_des))|+
+                res |= $($p_ui(ui, $p_des, &mut self.$($unnorm.)?$p_m_mut, cfg.int))|+;
+                res | $(ui.checkbox(&mut self.$b_m_mut, $b_des))|+
             }
         }
     };
@@ -199,35 +199,35 @@ macro_rules! impl_ui {
 
 impl_ui!(
     FourBar,
-    (p0x_mut, unit, "X Offset: "),
-    (p0y_mut, unit, "Y Offset: "),
-    (a_mut, angle, "Rotation: "),
+    (p0x, unit, "X Offset: "),
+    (p0y, unit, "Y Offset: "),
+    (a, angle, "Rotation: "),
     ..,
-    (l1_mut, nonzero_f, "Ground: "),
-    (l2_mut, nonzero_f, "Driver: "),
-    (l3_mut, nonzero_f, "Coupler: "),
-    (l4_mut, nonzero_f, "Follower: "),
-    (l5_mut, nonzero_f, "Extended: "),
-    (g_mut, angle, "Extended angle: "),
+    (l1, nonzero_f, "Ground: "),
+    (@unnorm, l2, nonzero_f, "Driver: "),
+    (l3, nonzero_f, "Coupler: "),
+    (l4, nonzero_f, "Follower: "),
+    (l5, nonzero_f, "Extended: "),
+    (g, angle, "Extended angle: "),
     ..,
-    (inv_mut, "Invert follower and coupler"),
+    (stat, "Invert follower and coupler"),
 );
 impl_ui!(
     SFourBar,
-    (ox_mut, unit, "X Offset: "),
-    (oy_mut, unit, "Y Offset: "),
-    (oz_mut, unit, "Z Offset: "),
-    (r_mut, nonzero_f, "Radius: "),
-    (p0i_mut, angle, "Polar angle: "),
-    (p0j_mut, angle, "Azimuth angle: "),
-    (a_mut, angle, "Rotation: "),
+    (ox, unit, "X Offset: "),
+    (oy, unit, "Y Offset: "),
+    (oz, unit, "Z Offset: "),
+    (r, nonzero_f, "Radius: "),
+    (p0i, angle, "Polar angle: "),
+    (p0j, angle, "Azimuth angle: "),
+    (a, angle, "Rotation: "),
     ..,
-    (l1_mut, angle, "Ground: "),
-    (l2_mut, angle, "Driver: "),
-    (l3_mut, angle, "Coupler: "),
-    (l4_mut, angle, "Follower: "),
-    (l5_mut, angle, "Extended: "),
-    (g_mut, angle, "Extended angle: "),
+    (l1, angle, "Ground: "),
+    (l2, angle, "Driver: "),
+    (l3, angle, "Coupler: "),
+    (l4, angle, "Follower: "),
+    (l5, angle, "Extended: "),
+    (g, angle, "Extended angle: "),
     ..,
-    (inv_mut, "Invert follower and coupler"),
+    (stat, "Invert follower and coupler"),
 );

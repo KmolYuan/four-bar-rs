@@ -29,3 +29,4 @@ mod fb;
 #[cfg(feature = "plot")]
 pub mod plot;
 pub mod syn;
+pub mod vectorized;

@@ -1,36 +1,63 @@
-use crate::*;
+use crate::{
+    fb::{CurveGen, Normalized, Statable},
+    syn,
+    vectorized::{FromVectorized, IntoVectorized},
+};
+use efd::na;
 use mh::rand::{Distribution, Rng};
 
 /// Uniform distribution of the [`NormFourBarBase`] type.
-pub struct NormFbDistr<const N: usize>;
+pub struct NormFbDistr<M> {
+    _marker: std::marker::PhantomData<M>,
+}
 
-type NormFb<const N: usize> = NormFourBarBase<[f64; N]>;
+impl<M> NormFbDistr<M> {
+    /// Create a new instance.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self { _marker: std::marker::PhantomData }
+    }
+}
 
-impl<const N: usize> Distribution<[NormFb<N>; 2]> for NormFbDistr<N>
+impl<M> Distribution<Vec<M>> for NormFbDistr<M>
 where
-    NormFb<N>: syn::SynBound,
+    M: syn::SynBound + Statable + FromVectorized + Sync + Clone,
 {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> [NormFb<N>; 2] {
-        let bound = <NormFb<N> as syn::SynBound>::BOUND;
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<M> {
+        let bound = <M as syn::SynBound>::BOUND;
         let v = bound[..bound.len() - 2]
             .iter()
             .map(|&[u, l]| rng.gen_range(u..l))
             .collect::<Vec<_>>();
-        [false, true].map(|inv| NormFb::<N>::try_from(v.as_slice()).unwrap().with_inv(inv))
+        M::from_vectorized(&v, 0).unwrap().get_states()
     }
 }
 
 /// Implement this trait to support codebook functions.
-pub trait Code<D: efd::EfdDim, const N: usize>: Normalized<D> + CurveGen<D> + Sized {
-    /// Random distribution
-    type Distr: Distribution<[Self; 2]> + Sync;
+pub trait Code<D: efd::EfdDim>:
+    Normalized<D>
+    + CurveGen<D>
+    + syn::SynBound
+    + Statable
+    + FromVectorized
+    + IntoVectorized
+    + Clone
+    + 'static
+{
+    /// The dimension of the code.
+    fn dim() -> usize {
+        <<Self as FromVectorized>::Dim as na::DimName>::dim()
+    }
 
-    /// Return the distribution.
-    fn distr() -> Self::Distr;
     /// Create entities from code.
-    fn from_code(code: [f64; N], inv: bool) -> Self;
+    fn from_code(code: &[f64], stat: u8) -> Self {
+        Self::from_vectorized(code, stat).unwrap()
+    }
+
     /// Convert entities to code.
-    fn to_code(self) -> ([f64; N], bool);
+    fn to_code(self) -> (Vec<f64>, u8) {
+        self.into_vectorized()
+    }
 
     /// Generate curve and check the curve type.
     fn get_curve(&self, res: usize, is_open: bool) -> Option<Vec<efd::Coord<D>>> {
@@ -41,21 +68,13 @@ pub trait Code<D: efd::EfdDim, const N: usize>: Normalized<D> + CurveGen<D> + Si
     }
 }
 
-impl<D: efd::EfdDim, const N: usize> Code<D, N> for NormFb<N>
-where
-    Self: Normalized<D> + CurveGen<D> + syn::SynBound,
+impl<D: efd::EfdDim, M> Code<D> for M where
+    M: Normalized<D>
+        + CurveGen<D>
+        + syn::SynBound
+        + Statable
+        + FromVectorized
+        + IntoVectorized
+        + 'static
 {
-    type Distr = NormFbDistr<N>;
-
-    fn distr() -> Self::Distr {
-        NormFbDistr
-    }
-
-    fn from_code(code: [f64; N], inv: bool) -> Self {
-        Self::new(code, inv)
-    }
-
-    fn to_code(self) -> ([f64; N], bool) {
-        (self.buf, self.inv)
-    }
 }

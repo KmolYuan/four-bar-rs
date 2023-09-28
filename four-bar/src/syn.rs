@@ -15,7 +15,7 @@
 //!     .unwrap();
 //! ```
 use crate::*;
-use std::{borrow::Cow, f64::consts::*, marker::PhantomData};
+use std::{f64::consts::*, marker::PhantomData};
 
 /// Boundary of the planar objective variables.
 pub const BOUND2D: &[[f64; 2]] = <NormFourBar as SynBound>::BOUND;
@@ -88,11 +88,6 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
 pub trait SynBound: Clone + Sync + Send {
     /// Lower & upper bounds
     const BOUND: &'static [[f64; 2]];
-
-    /// Create entity from slice.
-    fn from_slice(xs: &[f64]) -> Self;
-    /// List all the states of the design.
-    fn get_states(&self) -> Vec<Cow<Self>>;
 }
 
 impl SynBound for NormFourBar {
@@ -109,26 +104,10 @@ impl SynBound for NormFourBar {
             [0., TAU],
         ]
     };
-
-    fn from_slice(xs: &[f64]) -> Self {
-        Self::try_from(xs).unwrap()
-    }
-
-    fn get_states(&self) -> Vec<Cow<Self>> {
-        vec![Cow::Borrowed(self), Cow::Owned(self.clone().with_inv(true))]
-    }
 }
 
 impl SynBound for SNormFourBar {
     const BOUND: &'static [[f64; 2]] = &[[1e-4, PI]; 8];
-
-    fn from_slice(xs: &[f64]) -> Self {
-        Self::try_from(xs).unwrap()
-    }
-
-    fn get_states(&self) -> Vec<Cow<Self>> {
-        vec![Cow::Borrowed(self), Cow::Owned(self.clone().with_inv(true))]
-    }
 }
 
 impl<D, M> mh::Bounded for Syn<D, M>
@@ -153,7 +132,7 @@ where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
     efd::Coord<D>: Sync + Send,
-    M: SynBound + Normalized<D> + CurveGen<D>,
+    M: SynBound + Statable + vectorized::FromVectorized + Normalized<D> + CurveGen<D>,
     M::De: Default + Clone + CurveGen<D> + Sync + Send + 'static,
 {
     type Fitness = mh::Product<M::De, f64>;
@@ -163,21 +142,21 @@ where
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
         let infeasible = || mh::Product::new(INFEASIBLE, M::De::default());
-        let fb = M::from_slice(&xs[..M::BOUND.len() - 2]);
+        let fb = M::from_vectorized(&xs[..M::BOUND.len() - 2], 0).unwrap();
         let bound = fb.angle_bound().check_mode(self.mode.is_result_open());
         let is_open = self.mode.is_target_open();
+        let states = fb.get_states();
         let f = |[t1, t2]: [f64; 2]| {
-            let states = fb.get_states();
             #[cfg(feature = "rayon")]
-            let iter = states.into_par_iter();
+            let iter = states.par_iter();
             #[cfg(not(feature = "rayon"))]
-            let iter = states.into_iter();
+            let iter = states.iter();
             iter.map(move |fb| (fb.curve_in(t1, t2, self.res), fb))
                 .filter(|(c, _)| c.len() > 2)
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let trans = efd.as_trans().to(self.efd.as_trans());
-                    let fb = fb.trans_denorm(&trans);
+                    let fb = fb.clone().trans_denorm(&trans);
                     let s_err = self.scale.map(|s| (trans.scale() - s).abs()).unwrap_or(0.);
                     let err = efd.distance(&self.efd).max(s_err);
                     mh::Product::new(err, fb)

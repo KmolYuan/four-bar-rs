@@ -291,9 +291,9 @@ where
     save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
 }
 
-pub(crate) fn save_cb_ask<C, D, const N: usize>(cb: &cb::Codebook<C, D, N>)
+pub(crate) fn save_cb_ask<C, D>(cb: &cb::Codebook<C, D>)
 where
-    C: cb::Code<D, N> + Send,
+    C: cb::Code<D> + Send,
     D: efd::EfdDim,
 {
     save_bin_ask("cb.npz", CB_FMT, CB_EXT, |w| cb.write(w));

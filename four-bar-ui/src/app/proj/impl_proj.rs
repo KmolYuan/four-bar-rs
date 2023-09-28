@@ -1,7 +1,7 @@
 use crate::io::Alert;
 
 use super::*;
-use four_bar::{csv, efd, AngleBound, CurveGen, FourBarTy, NormFourBar, Normalized, SNormFourBar};
+use four_bar::{csv, efd, AngleBound, CurveGen, NormFourBar, Normalized, PlanarLoop, SNormFourBar};
 
 macro_rules! hotkey {
     ($ui:ident, $mod1:ident + $key:ident) => {
@@ -67,11 +67,9 @@ impl Project {
     }
 
     pub(crate) fn get_sphere(&self) -> Option<[f64; 4]> {
-        if let Self::SFb(proj) = self {
-            let [x, y, z] = proj.fb.oc();
-            Some([x, y, z, proj.fb.r()])
-        } else {
-            None
+        match self {
+            Self::SFb(proj) => Some(proj.fb.ocr()),
+            _ => None,
         }
     }
 
@@ -199,6 +197,7 @@ where
     D: efd::EfdDim,
     M: Normalized<D>,
     M::De: CurveGen<D>
+        + PlanarLoop
         + undo::IntoDelta
         + ui::ProjUi
         + ui::ProjPlot<D>
@@ -207,7 +206,6 @@ where
         + Serialize
         + for<'a> Deserialize<'a>,
     efd::Coord<D>: Serialize,
-    FourBarTy: for<'a> From<&'a M::De>,
 {
     fn new(path: Option<PathBuf>, fb: M::De) -> Self {
         Self { path, fb, ..Self::default() }
@@ -235,7 +233,7 @@ where
             path_label(ui, "🖹", self.path.as_ref(), "Unsaved");
         });
         ui.label("Linkage type:");
-        ui.label(FourBarTy::from(&self.fb).name());
+        ui.label(self.fb.ty().name());
         match self.cache.angle_bound {
             AngleBound::Closed => ui.label("This linkage has a closed curve."),
             AngleBound::Open(_, _) => ui.label("This linkage has an open curve."),

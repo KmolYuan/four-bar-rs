@@ -12,8 +12,8 @@ pub type Figure<'a, 'b> = FigureBase<'a, 'b, crate::SFourBar, 3>;
 
 impl Figure<'_, '_> {
     fn get_sphere_center_radius(&self) -> Option<(na::Vector3<f64>, f64)> {
-        let fb = self.fb.as_deref()?;
-        Some((na::Vector3::new(fb.ox(), fb.oy(), fb.oz()), fb.r()))
+        let fb = &self.fb.as_deref()?.unnorm;
+        Some((na::Vector3::new(fb.ox, fb.oy, fb.oz), fb.r))
     }
 
     /// Plot 3D spherical linkage.

@@ -129,14 +129,21 @@ impl<'a> Solver<'a> {
                     .then(|| $cb.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
                 {
+                    use four_bar::vectorized::IntoVectorized;
+                    use mh::ndarray::Array2;
                     cb_fb.replace(candi[0].clone());
-                    s = s.pop_num(candi.len());
+                    let pop = candi.len();
+                    s = s.pop_num(pop);
                     let fitness = candi
                         .iter()
-                        .map(|(f, fb)| mh::Product::new(*f, fb.denormalize()))
+                        .map(|(f, fb)| mh::Product::new(*f, fb.clone().denormalize()))
                         .collect();
-                    let pool = candi.into_iter().map(|(_, fb)| fb.buf).collect::<Vec<_>>();
-                    s = s.pool_and_fitness(mh::ndarray::arr2(&pool), fitness);
+                    let pool = candi
+                        .into_iter()
+                        .flat_map(|(_, fb)| fb.into_vectorized().0)
+                        .collect::<Vec<_>>();
+                    let pool = Array2::from_shape_vec((pop, pool.len() / pop), pool).unwrap();
+                    s = s.pool_and_fitness(pool, fitness);
                 } else {
                     s = s.pop_num(pop);
                 }

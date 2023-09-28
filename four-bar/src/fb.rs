@@ -1,24 +1,11 @@
 pub use self::{fb2d::*, fb3d::*};
 use crate::efd::EfdDim;
 #[cfg(feature = "serde")]
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::f64::consts::TAU;
 
 mod fb2d;
 mod fb3d;
-
-macro_rules! impl_parm_method {
-    ($(#[doc = $doc:literal] fn $name:ident $(,$name_mut:ident)? ($self:ident) -> $ty:ty {$expr:expr})+) => {$(
-        #[doc = concat![$doc, "\n\nGet the value."]]
-        #[inline]
-        pub const fn $name(&$self) -> $ty { $expr }
-        $(#[doc = concat![$doc, "\n\nModify the value."]]
-        #[inline]
-        pub fn $name_mut(&mut $self) -> &mut $ty { &mut $expr })?
-    )+};
-}
-
-pub(crate) use impl_parm_method;
 
 /// Type of the four-bar linkage.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -96,123 +83,51 @@ impl FourBarTy {
     }
 }
 
-/// Normalized four-bar base.
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
-#[derive(Clone, Default, Debug, PartialEq)]
-pub struct NormFourBarBase<B> {
-    /// Buffer
-    #[cfg_attr(feature = "serde", serde(alias = "v"))]
-    pub buf: B,
-    /// Inverse
-    pub inv: bool,
-}
-
 /// Four-bar base.
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
 #[derive(Clone, Default, Debug, PartialEq)]
-pub struct FourBarBase<B, NB> {
+pub struct FourBarBase<UN, NM> {
     /// Buffer
-    #[cfg_attr(feature = "serde", serde(alias = "v"))]
-    pub buf: B,
+    #[cfg_attr(feature = "serde", serde(flatten))]
+    pub unnorm: UN,
     /// Normalized base
-    #[cfg_attr(
-        feature = "serde",
-        serde(bound(deserialize = "NormFourBarBase<NB>: DeserializeOwned"))
-    )]
-    pub norm: NormFourBarBase<NB>,
+    #[cfg_attr(feature = "serde", serde(flatten))]
+    pub norm: NM,
 }
 
-impl<B> From<B> for NormFourBarBase<B> {
-    fn from(buf: B) -> Self {
-        Self { buf, inv: false }
-    }
-}
-
-impl<B, NB> From<NB> for FourBarBase<B, NB>
-where
-    B: Default,
-{
-    fn from(norm: NB) -> Self {
-        Self {
-            buf: B::default(),
-            norm: NormFourBarBase::from(norm),
-        }
-    }
-}
-
-impl<A: Copy, const N: usize> TryFrom<&[A]> for NormFourBarBase<[A; N]> {
-    type Error = std::array::TryFromSliceError;
-
-    fn try_from(buf: &[A]) -> Result<Self, Self::Error> {
-        Ok(Self::from(<[A; N]>::try_from(buf)?))
-    }
-}
-
-impl<A: Copy, const N: usize, const NB: usize> TryFrom<&[A]> for FourBarBase<[A; N], [A; NB]> {
-    type Error = std::array::TryFromSliceError;
-
-    fn try_from(buf: &[A]) -> Result<Self, Self::Error> {
-        let buf_norm = &buf[N..];
-        let buf = buf[..N].try_into()?;
-        Ok(Self { buf, norm: NormFourBarBase::try_from(buf_norm)? })
-    }
-}
-
-impl<B> NormFourBarBase<B> {
-    /// Create a new value from buffer.
-    pub const fn new(buf: B, inv: bool) -> Self {
-        Self { buf, inv }
+impl<UN, NM> FourBarBase<UN, NM> {
+    /// Create a new value from inner values.
+    pub const fn new(unnorm: UN, norm: NM) -> Self {
+        Self { unnorm, norm }
     }
 
     /// Build with inverter.
-    pub const fn with_inv(mut self, inv: bool) -> Self {
-        self.inv = inv;
-        self
-    }
-
-    /// Denormalization.
-    pub fn denormalize<D: EfdDim>(&self) -> <Self as Normalized<D>>::De
+    pub fn with_stat(self, stat: u8) -> Self
     where
-        Self: Normalized<D>,
+        NM: Statable,
     {
-        <Self as Normalized<D>>::denormalize(self)
+        Self { norm: self.norm.with_stat(stat), ..self }
     }
 
-    /// Generator for coupler curve.
-    pub fn curve<D: EfdDim>(&self, res: usize) -> Vec<efd::Coord<D>>
+    /// Get the state.
+    pub fn stat(&self) -> u8
     where
-        Self: CurveGen<D>,
+        NM: Statable,
     {
-        <Self as CurveGen<D>>::curve(self, res)
+        self.norm.stat()
     }
 
-    /// Check if the data is valid.
-    pub fn is_valid<D: EfdDim>(&self) -> bool
+    /// Return the type of this linkage.
+    pub fn ty(&self) -> FourBarTy
     where
-        Self: CurveGen<D>,
+        Self: PlanarLoop,
     {
-        <Self as CurveGen<D>>::angle_bound(self).is_valid()
-    }
-}
-
-impl<B, NB> FourBarBase<B, NB> {
-    /// Create a new value from buffer.
-    pub const fn new(buf: B, buf_norm: NB, inv: bool) -> Self {
-        Self { buf, norm: NormFourBarBase { buf: buf_norm, inv } }
-    }
-
-    /// Build with inverter.
-    pub const fn with_inv(mut self, inv: bool) -> Self {
-        self.norm.inv = inv;
-        self
+        PlanarLoop::ty(self)
     }
 
     /// Normalization.
-    pub fn normalize<D: EfdDim, N>(&self) -> N
-    where
-        N: Normalized<D, De = Self>,
-    {
-        N::normalize(self)
+    pub fn normalize(self) -> NM {
+        self.norm
     }
 
     /// Curve generation for coupler curve.
@@ -232,22 +147,40 @@ impl<B, NB> FourBarBase<B, NB> {
     }
 }
 
+impl<UN, NM> std::ops::Deref for FourBarBase<UN, NM> {
+    type Target = NM;
+
+    fn deref(&self) -> &Self::Target {
+        &self.norm
+    }
+}
+
+impl<UN, NM> std::ops::DerefMut for FourBarBase<UN, NM> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.norm
+    }
+}
+
 /// A normalized data type. This type can denormalized to another.
+///
+/// Usually, this type is smaller than the denormalized type.
 pub trait Normalized<D: efd::EfdDim>: Sized {
     /// Denormalized target, which should be transformable.
     type De: Transformable<D>;
     /// Method to convert types.
-    fn denormalize(&self) -> Self::De;
+    ///
+    /// Usually, the data will become bigger.
+    fn denormalize(self) -> Self::De;
     /// Inverse method to convert types.
-    fn normalize(de: &Self::De) -> Self;
+    fn normalize(de: Self::De) -> Self;
 
     /// Normalize in-placed.
-    fn normalize_inplace(de: &mut Self::De) {
-        *de = Self::normalize(de).denormalize();
-    }
+    ///
+    /// For optimization reason, this method is required to specialize.
+    fn normalize_inplace(de: &mut Self::De);
 
     /// Denormalized with transformation.
-    fn trans_denorm(&self, trans: &efd::Transform<D::Trans>) -> Self::De {
+    fn trans_denorm(self, trans: &efd::Transform<D::Trans>) -> Self::De {
         self.denormalize().transform(trans)
     }
 }
@@ -261,6 +194,33 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
     fn transform(mut self, trans: &efd::Transform<D::Trans>) -> Self {
         self.transform_inplace(trans);
         self
+    }
+}
+
+/// State of the linkage.
+pub trait Statable: Clone {
+    /// Get the state.
+    fn stat(&self) -> u8;
+    /// Set the state.
+    fn set_stat(&mut self, stat: u8);
+    /// Get all states from a linkage.
+    fn get_states(self) -> Vec<Self>;
+
+    /// Build with state.
+    fn with_stat(mut self, stat: u8) -> Self {
+        self.set_stat(stat);
+        self
+    }
+}
+
+/// Planar loop of the linkage.
+pub trait PlanarLoop {
+    /// Get the planar loop.
+    fn planar_loop(&self) -> [f64; 4];
+
+    /// Return the type of this linkage.
+    fn ty(&self) -> FourBarTy {
+        FourBarTy::from_loop(self.planar_loop())
     }
 }
 
@@ -359,11 +319,14 @@ impl AngleBound {
 }
 
 /// Curve-generating behavior.
-pub trait CurveGen<D: efd::EfdDim>: Sized {
+pub trait CurveGen<D: efd::EfdDim>: PlanarLoop {
     /// Get the position with input angle.
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
+
     /// Input angle bounds of the linkage.
-    fn angle_bound(&self) -> AngleBound;
+    fn angle_bound(&self) -> AngleBound {
+        AngleBound::from_planar_loop(self.planar_loop())
+    }
 
     /// Generator for all curves in specified angle.
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
@@ -401,15 +364,27 @@ pub trait CurveGen<D: efd::EfdDim>: Sized {
 impl<D, N> CurveGen<D> for N
 where
     D: efd::EfdDim,
-    N: Normalized<D>,
+    N: Normalized<D> + PlanarLoop + Clone,
     N::De: CurveGen<D>,
 {
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]> {
-        self.denormalize().pos(t)
+        self.clone().denormalize().pos(t)
     }
 
-    fn angle_bound(&self) -> AngleBound {
-        self.denormalize().angle_bound()
+    fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
+        let de = self.clone().denormalize();
+        curve_in(
+            start,
+            end,
+            res,
+            |t| de.pos(t),
+            |[.., p2, p3, p4]| [p2, p3, p4],
+        )
+    }
+
+    fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<efd::Coord<D>> {
+        let de = self.clone().denormalize();
+        curve_in(start, end, res, |t| de.pos(t), |[.., p4]| p4)
     }
 }
 
