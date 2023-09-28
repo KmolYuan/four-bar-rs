@@ -1,4 +1,15 @@
 /* Ullah, I., and Kota, S. (December 1, 1997). "Optimal Synthesis of Mechanisms
    for Path Generation Using Fourier Descriptors and Global Search Methods."
    ASME. J. Mech. Des. December 1997; 119(4): 504–510. https://doi.org/10.1115/1.2826396 */
-(buf:(-11.77,5.38,4.9031534676276705,1.41),norm:(buf:(9.33,7.39,3.6,13.57,0.7452555906015788),inv:false))
+(
+   p0x: -11.77,
+   p0y: 5.38,
+   a: 4.9031534676276705,
+   l1: 9.33,
+   l2: 1.41,
+   l3: 7.39,
+   l4: 3.6,
+   l5: 13.57,
+   g: 0.7452555906015788,
+   stat: false
+)

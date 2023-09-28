@@ -84,7 +84,11 @@ impl FourBarTy {
 }
 
 /// Four-bar base.
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Deserialize, Serialize),
+    serde(deny_unknown_fields)
+)]
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct FourBarBase<UN, NM> {
     /// Buffer

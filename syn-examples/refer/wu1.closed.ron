@@ -2,4 +2,15 @@
    descriptor based method for planar four-bar linkage synthesis for generation of
    open and closed paths. Journal of Mechanisms and Robotics, 3(3).
    https://doi.org/10.1115/1.4004227 */
-(buf:(10.0022,13.9988,0.1743,5.9969),norm:(buf:(10.8390,7.9621,9.9527,7.0004,0.6867),inv:false))
+(
+   p0x: 10.0022,
+   p0y: 13.9988,
+   a: 0.1743,
+   l1: 10.8390,
+   l2: 5.9969,
+   l3: 7.9621,
+   l4: 9.9527,
+   l5: 7.0004,
+   g: 0.6867,
+   stat: false
+)

@@ -286,8 +286,8 @@ impl<'a> Solver<'a> {
         let svg = plot::SVGBackend::new(&path, (800, 600));
         plot2d::history(svg, history)?;
         match &result_fb {
-            syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(result_path, ron::to_string(fb)?)?,
-            syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(result_path, ron::to_string(fb)?)?,
+            syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(result_path, io::ron_string(fb))?,
+            syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(result_path, io::ron_string(fb))?,
         }
         Ok(Self {
             refer,
@@ -380,7 +380,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "\n[atlas.fb]")?;
                     log_fb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
-                    std::fs::write(path, ron::to_string(&fb)?)?;
+                    std::fs::write(path, io::ron_string(&fb))?;
                     fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::full_palette::GREEN_600);
                 }
                 writeln!(log, "\n[optimized]")?;
@@ -453,7 +453,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "\n[atlas.fb]")?;
                     log_sfb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
-                    std::fs::write(path, ron::to_string(&fb)?)?;
+                    std::fs::write(path, io::ron_string(&fb))?;
                     fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::CYAN);
                 }
                 writeln!(log, "\n[optimized]")?;

@@ -304,14 +304,14 @@ where
     S: serde::Serialize,
     C: FnOnce(PathBuf) + 'static,
 {
-    save_ask(&ron::to_string(fb).unwrap(), name, FMT, EXT, done);
+    save_ask(&ron_string(fb), name, FMT, EXT, done);
 }
 
 pub(crate) fn save_ron<S>(fb: &S, path: &Path)
 where
     S: serde::Serialize,
 {
-    save(&ron::to_string(fb).unwrap(), path);
+    save(&ron_string(fb), path);
 }
 
 pub(crate) fn save_svg_ask(buf: &str, name: &str) {
@@ -323,6 +323,14 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 600));
     plot2d::history(svg, history).unwrap();
     save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
+}
+
+pub(crate) fn ron_string<S>(value: &S) -> String
+where
+    S: serde::Serialize,
+{
+    // Use default options to serialize the data
+    ron::ser::to_string_pretty(value, Default::default()).unwrap()
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
