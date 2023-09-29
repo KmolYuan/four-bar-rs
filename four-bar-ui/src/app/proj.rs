@@ -132,32 +132,26 @@ impl Projects {
             }
             self.select(ui);
             if small_btn(ui, "💾", "Save (Ctrl+S)") || hotkey!(ui, CTRL + S) {
-                let proj = &mut self.list[self.curr];
-                let (_, fb) = proj.fb_state();
-                if let Some(path) = proj.path() {
-                    io::save_ron(&fb, path);
-                } else {
-                    let path = self.path.clone();
-                    io::save_ron_ask(&fb, &proj.name(), move |p| _ = path.borrow_mut().replace(p));
-                }
-                proj.mark_saved();
+                self.save_curr(self.list[self.curr].path().is_none());
             }
             if small_btn(ui, "💾 Save As", "Ctrl+Shift+S") || hotkey!(ui, CTRL + SHIFT + S) {
-                let proj = &mut self.list[self.curr];
-                let (_, fb) = proj.fb_state();
-                let path = self.path.clone();
-                io::save_ron_ask(&fb, &proj.name(), move |p| _ = path.borrow_mut().replace(p));
-                proj.mark_saved();
+                self.save_curr(true);
             }
-            let close_btn = ui.small_button("✖").on_hover_text("Close (Ctrl+W)");
-            if close_btn.double_clicked() {
+            if self.list[self.curr].is_unsaved() {
+                ui.menu_button("✖?", |ui| {
+                    if ui.button("✖ Close Without Save").clicked() {
+                        self.close_curr();
+                    }
+                })
+                .response
+                .on_hover_text("Close Options");
+            } else if ui
+                .small_button("✖")
+                .on_hover_text("Close (Ctrl+W)")
+                .clicked()
+                || hotkey!(ui, CTRL + W)
+            {
                 self.close_curr();
-            } else if close_btn.clicked() || hotkey!(ui, CTRL + W) {
-                if self.list[self.curr].is_unsaved() {
-                    // TODO: ask for save
-                } else {
-                    self.close_curr();
-                }
             }
         });
         if self.list.is_empty() {
@@ -168,11 +162,22 @@ impl Projects {
         }
     }
 
+    fn save_curr(&mut self, ask: bool) {
+        let proj = &self.list[self.curr];
+        let (_, fb) = proj.fb_state();
+        match proj.path() {
+            Some(path) if !ask => io::save_ron(&fb, path),
+            _ => {
+                let path = self.path.clone();
+                io::save_ron_ask(&fb, &proj.name(), move |p| _ = path.borrow_mut().replace(p));
+            }
+        }
+        self.list[self.curr].mark_saved();
+    }
+
     pub(crate) fn select(&mut self, ui: &mut Ui) {
         if self.list.is_empty() {
-            ComboBox::from_id_source("proj").show_ui(ui, |ui| {
-                ui.label("No Project");
-            });
+            ComboBox::from_id_source("proj").show_ui(ui, |ui| ui.label("No Project"));
         } else {
             ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
                 let proj = &self.list[i];
