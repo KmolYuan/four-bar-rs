@@ -159,12 +159,13 @@ impl PlanarLoop for FourBar {
 
 impl Transformable<efd::D2> for FourBar {
     fn transform_inplace(&mut self, trans: &efd::Transform2) {
+        let fb = &mut self.unnorm;
         let [p0x, p0y] = trans.trans();
-        self.unnorm.p0x += p0x;
-        self.unnorm.p0y += p0y;
-        self.unnorm.a += trans.rot().angle();
+        fb.p0x += p0x;
+        fb.p0y += p0y;
+        fb.a += trans.rot().angle();
         let scale = trans.scale();
-        self.unnorm.l2 *= scale;
+        fb.l2 *= scale;
         self.l1 *= scale;
         self.l3 *= scale;
         self.l4 *= scale;
