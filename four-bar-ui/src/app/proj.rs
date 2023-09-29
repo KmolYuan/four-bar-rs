@@ -60,7 +60,7 @@ impl Projects {
             self.list.iter_mut().for_each(|p| p.cache(res));
         }
         // Current index boundary check
-        if self.curr >= self.list.len() {
+        if !self.list.is_empty() && self.curr >= self.list.len() {
             self.curr = self.list.len() - 1;
         }
     }

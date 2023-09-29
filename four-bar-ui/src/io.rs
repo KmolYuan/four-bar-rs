@@ -216,22 +216,23 @@ impl<T> Alert for Option<T> {
 static ERR_MSG: std::sync::Mutex<Option<(Cow<'static, str>, Cow<'static, str>)>> =
     std::sync::Mutex::new(None);
 
+#[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
 pub(crate) fn push_err_msg(parent: &eframe::Frame) {
     if let Some((title, msg)) = ERR_MSG.lock().unwrap().take() {
-        macro_rules! impl_msg {
-            ($ty:ident) => {
+        macro_rules! msg {
+            ($ty:ident $(, $parent: ident)?) => {
                 rfd::$ty::new()
                     .set_level(rfd::MessageLevel::Error)
                     .set_title(&*title)
                     .set_description(&*msg)
-                    .set_parent(parent)
+                    $(.set_parent($parent))?
                     .show()
             };
         }
         #[cfg(not(target_arch = "wasm32"))]
-        impl_msg!(MessageDialog);
+        msg!(MessageDialog, parent);
         #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(impl_msg!(AsyncMessageDialog));
+        wasm_bindgen_futures::spawn_local(async move { _ = msg!(AsyncMessageDialog).await });
     }
 }
 
@@ -348,15 +349,6 @@ where
 pub(crate) enum Fb {
     Fb(FourBar),
     SFb(SFourBar),
-}
-
-impl Fb {
-    pub(crate) fn curve(&self, res: usize) -> Curve {
-        match self {
-            Self::Fb(fb) => Curve::P(fb.curve(res)),
-            Self::SFb(fb) => Curve::S(fb.curve(res)),
-        }
-    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone)]

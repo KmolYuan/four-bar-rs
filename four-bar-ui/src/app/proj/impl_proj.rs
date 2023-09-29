@@ -1,5 +1,4 @@
 use super::*;
-use crate::io::Alert;
 use four_bar::{csv, efd, fb, NormFourBar, SNormFourBar};
 
 macro_rules! hotkey {
@@ -223,6 +222,7 @@ where
             }
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &self.path {
+                use crate::io::Alert;
                 if small_btn(ui, "🖴", "Reload from Disk") {
                     std::fs::File::open(path).alert_then("Failed to open file.", |r| {
                         ron::de::from_reader(r)

@@ -148,7 +148,10 @@ fn get_info(
         "csv" | "txt" => io::Curve::from_reader(std::fs::File::open(file)?)?,
         "ron" => {
             let fb = ron::de::from_reader::<_, io::Fb>(std::fs::File::open(file)?)?;
-            let curve = fb.curve(res);
+            let curve = match &fb {
+                io::Fb::Fb(fb) => io::Curve::P(fb.curve(res)),
+                io::Fb::SFb(fb) => io::Curve::S(fb.curve(res)),
+            };
             target_fb.replace(fb);
             curve
         }
