@@ -1,17 +1,15 @@
 use crate::{
-    fb::{CurveGen, Normalized, Statable},
+    fb::{CurveGen, FromVectorized, IntoVectorized, Normalized, Statable},
     syn,
-    vectorized::{FromVectorized, IntoVectorized},
 };
-use efd::na;
 use mh::rand::{Distribution, Rng};
 
-/// Uniform distribution of the [`NormFourBarBase`] type.
-pub struct NormFbDistr<M> {
+/// Uniform distribution for mechinism types.
+pub struct Distr<M> {
     _marker: std::marker::PhantomData<M>,
 }
 
-impl<M> NormFbDistr<M> {
+impl<M> Distr<M> {
     /// Create a new instance.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -19,7 +17,7 @@ impl<M> NormFbDistr<M> {
     }
 }
 
-impl<M> Distribution<Vec<M>> for NormFbDistr<M>
+impl<M> Distribution<Vec<M>> for Distr<M>
 where
     M: syn::SynBound + Statable + FromVectorized + Sync + Clone,
 {
@@ -46,7 +44,7 @@ pub trait Code<D: efd::EfdDim>:
 {
     /// The dimension of the code.
     fn dim() -> usize {
-        <<Self as FromVectorized>::Dim as na::DimName>::dim()
+        <<Self as FromVectorized>::Dim as efd::na::DimName>::dim()
     }
 
     /// Create entities from code.

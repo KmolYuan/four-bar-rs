@@ -132,8 +132,8 @@ where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
     efd::Coord<D>: Sync + Send,
-    M: SynBound + Statable + vectorized::FromVectorized + Normalized<D> + CurveGen<D>,
-    M::De: Default + Clone + CurveGen<D> + Sync + Send + 'static,
+    M: SynBound + fb::Statable + fb::FromVectorized + fb::Normalized<D> + fb::CurveGen<D>,
+    M::De: Default + Clone + fb::CurveGen<D> + Sync + Send + 'static,
 {
     type Fitness = mh::Product<M::De, f64>;
 
@@ -174,7 +174,7 @@ where
                 }
                 let bound = {
                     let end = M::BOUND.len() - 1;
-                    AngleBound::open_and_rev_at(xs[end], xs[end - 1])
+                    fb::AngleBound::open_and_rev_at(xs[end], xs[end - 1])
                 };
                 #[cfg(feature = "rayon")]
                 let iter = bound.into_par_iter();

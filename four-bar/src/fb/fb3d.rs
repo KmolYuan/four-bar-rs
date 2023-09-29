@@ -1,3 +1,4 @@
+//! Spherical four-bar linkages.
 use super::*;
 use crate::efd::na;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
@@ -25,10 +26,12 @@ pub struct UnNorm {
 }
 
 impl UnNorm {
+    /// Create a new instance.
     pub const fn new() -> Self {
         Self::from_radius(1.)
     }
 
+    /// Create a new instance from the sphere radius.
     pub const fn from_radius(r: f64) -> Self {
         Self { ox: 0., oy: 0., oz: 0., r, p0i: 0., p0j: 0., a: 0. }
     }
@@ -65,7 +68,7 @@ pub struct SNormFourBar {
     pub stat: bool,
 }
 
-impl crate::vectorized::FromVectorized for SNormFourBar {
+impl FromVectorized for SNormFourBar {
     type Dim = na::U6;
 
     fn from_vectorized(v: &[f64], stat: u8) -> Result<Self, std::array::TryFromSliceError> {
@@ -74,7 +77,7 @@ impl crate::vectorized::FromVectorized for SNormFourBar {
     }
 }
 
-impl crate::vectorized::IntoVectorized for SNormFourBar {
+impl IntoVectorized for SNormFourBar {
     fn into_vectorized(self) -> (Vec<f64>, u8) {
         let Self { l1, l2, l3, l4, l5, g, stat } = self;
         (vec![l1, l2, l3, l4, l5, g], stat as u8)

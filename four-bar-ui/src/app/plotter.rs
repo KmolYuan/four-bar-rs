@@ -1,7 +1,7 @@
 use super::widgets::*;
 use crate::io::{self, Alert as _};
 use eframe::egui::*;
-use four_bar::{efd, plot as fb_plot, CurveGen};
+use four_bar::{efd, fb, plot as fb_plot};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
@@ -14,7 +14,7 @@ fn fig_ui<D, M, const N: usize>(
 ) where
     D: efd::EfdDim,
     D::Trans: efd::Trans<Coord = [f64; N]>,
-    M: Clone + CurveGen<D>,
+    M: Clone + fb::CurveGen<D>,
 {
     ui.collapsing("Linkage", |ui| {
         if fig.borrow().fb.is_some() {

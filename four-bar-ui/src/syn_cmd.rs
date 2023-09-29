@@ -129,7 +129,7 @@ impl<'a> Solver<'a> {
                     .then(|| $cb.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
                 {
-                    use four_bar::vectorized::IntoVectorized;
+                    use four_bar::fb::{IntoVectorized as _, Normalized as _};
                     use mh::ndarray::Array2;
                     cb_fb.replace(candi[0].clone());
                     let pop = candi.len();

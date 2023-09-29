@@ -327,6 +327,7 @@ impl<'a> Solver<'a> {
     }
 
     fn log(self) -> Result<(), SynErr> {
+        use four_bar::fb::{CurveGen as _, Normalized as _};
         let Self { refer, info, cfg, harmonic, result_fb, cost_t1 } = self;
         let Info { root, target, target_fb, title, mode } = info;
         let refer = cfg.ref_num.and_then(|n| {
@@ -437,7 +438,7 @@ impl<'a> Solver<'a> {
                 }
                 if let Some(io::Fb::SFb(fb)) = target_fb {
                     writeln!(log, "\n[target.fb]")?;
-                    log_sfb(&mut log, fb)?;
+                    log_fb(&mut log, fb)?;
                 }
                 if let Some((cost, fb)) = cb_fb {
                     let c = fb.curve(cfg.res);
@@ -451,7 +452,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "cost={cost:.04}")?;
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[atlas.fb]")?;
-                    log_sfb(&mut log, &fb)?;
+                    log_fb(&mut log, &fb)?;
                     let path = root.join(format!("{title}_atlas.ron"));
                     std::fs::write(path, io::ron_string(&fb))?;
                     fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::CYAN);
@@ -465,7 +466,7 @@ impl<'a> Solver<'a> {
                 writeln!(log, "error={err:.04}")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "\n[optimized.fb]")?;
-                log_sfb(&mut log, fb)?;
+                log_fb(&mut log, fb)?;
                 if let Some((name, r)) = refer {
                     let fb = ron::de::from_reader::<_, SFourBar>(r)?;
                     let c = fb.curve(cfg.res);
@@ -479,7 +480,7 @@ impl<'a> Solver<'a> {
                     }
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
-                    log_sfb(&mut log, &fb)?;
+                    log_fb(&mut log, &fb)?;
                     fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
                 }
                 let path = root.join(format!("{title}.curve.svg"));
@@ -527,10 +528,9 @@ fn run(
     }
 }
 
-fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
-    writeln!(w, "{}", toml::to_string(fb).unwrap())
-}
-
-fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
+fn log_fb<S>(mut w: impl std::io::Write, fb: &S) -> std::io::Result<()>
+where
+    S: serde::Serialize,
+{
     writeln!(w, "{}", toml::to_string(fb).unwrap())
 }

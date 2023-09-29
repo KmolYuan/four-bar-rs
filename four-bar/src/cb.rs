@@ -1,5 +1,5 @@
 //! Create a codebook database for four-bar linkages.
-pub use self::distr::{Code, NormFbDistr};
+pub use self::distr::{Code, Distr};
 use super::{NormFourBar, SNormFourBar};
 use mh::{
     random::{Rng, SeedOption},
@@ -160,7 +160,7 @@ where
             let iter = rng.stream(n).into_par_iter();
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
-            iter.flat_map(|rng| rng.sample(NormFbDistr::<C>::new()))
+            iter.flat_map(|rng| rng.sample(Distr::<C>::new()))
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {

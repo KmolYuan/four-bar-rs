@@ -1,7 +1,6 @@
-use crate::io::Alert;
-
 use super::*;
-use four_bar::{csv, efd, AngleBound, CurveGen, NormFourBar, Normalized, PlanarLoop, SNormFourBar};
+use crate::io::Alert;
+use four_bar::{csv, efd, fb, NormFourBar, SNormFourBar};
 
 macro_rules! hotkey {
     ($ui:ident, $mod1:ident + $key:ident) => {
@@ -104,8 +103,8 @@ type SFbProj = ProjInner<efd::D3, SNormFourBar>;
 pub(crate) struct ProjInner<D, M>
 where
     D: efd::EfdDim,
-    M: Normalized<D>,
-    M::De: CurveGen<D> + undo::IntoDelta,
+    M: fb::Normalized<D>,
+    M::De: fb::CurveGen<D> + undo::IntoDelta,
 {
     path: Option<PathBuf>,
     fb: M::De,
@@ -122,8 +121,8 @@ where
 impl<D, M> Default for ProjInner<D, M>
 where
     D: efd::EfdDim,
-    M: Normalized<D>,
-    M::De: CurveGen<D> + undo::IntoDelta + Default,
+    M: fb::Normalized<D>,
+    M::De: fb::CurveGen<D> + undo::IntoDelta + Default,
 {
     fn default() -> Self {
         Self {
@@ -140,7 +139,7 @@ where
 
 struct Cache<D: efd::EfdDim> {
     changed: bool,
-    angle_bound: AngleBound,
+    angle_bound: fb::AngleBound,
     joints: Option<[efd::Coord<D>; 5]>,
     curves: Vec<[efd::Coord<D>; 3]>,
 }
@@ -149,7 +148,7 @@ impl<D: efd::EfdDim> Default for Cache<D> {
     fn default() -> Self {
         Self {
             changed: true,
-            angle_bound: AngleBound::Invalid,
+            angle_bound: fb::AngleBound::Invalid,
             joints: None,
             curves: Vec::new(),
         }
@@ -195,16 +194,16 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
 impl<D, M> ProjInner<D, M>
 where
     D: efd::EfdDim,
-    M: Normalized<D>,
-    M::De: CurveGen<D>
-        + PlanarLoop
+    M: fb::Normalized<D>,
+    M::De: fb::CurveGen<D>
+        + fb::PlanarLoop
         + undo::IntoDelta
         + ui::ProjUi
         + ui::ProjPlot<D>
         + PartialEq
         + Default
         + Serialize
-        + for<'a> Deserialize<'a>,
+        + serde::de::DeserializeOwned,
     efd::Coord<D>: Serialize,
 {
     fn new(path: Option<PathBuf>, fb: M::De) -> Self {
@@ -212,6 +211,7 @@ where
     }
 
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
+        use four_bar::fb::PlanarLoop as _;
         ui.horizontal(|ui| {
             if small_btn(ui, "🔗", "Share with Link") {
                 let mut url = b"https://kmolyuan.github.io/four-bar-rs/?code=".to_vec();
@@ -235,9 +235,9 @@ where
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
         match self.cache.angle_bound {
-            AngleBound::Closed => ui.label("This linkage has a closed curve."),
-            AngleBound::Open(_, _) => ui.label("This linkage has an open curve."),
-            AngleBound::Invalid => ui.label("This linkage is invalid."),
+            fb::AngleBound::Closed => ui.label("This linkage has a closed curve."),
+            fb::AngleBound::Open(_, _) => ui.label("This linkage has an open curve."),
+            fb::AngleBound::Invalid => ui.label("This linkage is invalid."),
         };
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
@@ -269,6 +269,7 @@ where
     }
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
+        use four_bar::fb::CurveGen as _;
         let get_curve = |pivot, fb: &M::De, n| -> Vec<_> {
             let curve = fb.curves(n).into_iter();
             match pivot {
@@ -318,6 +319,7 @@ where
     }
 
     fn cache(&mut self, res: usize) {
+        use four_bar::fb::CurveGen as _;
         if self.cache.changed {
             // Recalculation
             self.cache.changed = false;

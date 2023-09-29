@@ -1,7 +1,4 @@
 //! Vectorized number support.
-//!
-//! + `FromVectorized`: Support a type transforming from a vectored number.
-//! + `IntoVectorized`: Support a type transforming to a vectored number.
 use crate::*;
 use efd::na;
 

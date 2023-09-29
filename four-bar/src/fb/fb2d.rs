@@ -1,3 +1,4 @@
+//! Planar four-bar linkages.
 use super::*;
 use std::f64::consts::FRAC_PI_6;
 
@@ -59,7 +60,7 @@ pub struct NormFourBar {
     pub stat: bool,
 }
 
-impl crate::vectorized::FromVectorized for NormFourBar {
+impl FromVectorized for NormFourBar {
     type Dim = crate::efd::na::U5;
 
     fn from_vectorized(v: &[f64], stat: u8) -> Result<Self, std::array::TryFromSliceError> {
@@ -68,7 +69,7 @@ impl crate::vectorized::FromVectorized for NormFourBar {
     }
 }
 
-impl crate::vectorized::IntoVectorized for NormFourBar {
+impl IntoVectorized for NormFourBar {
     fn into_vectorized(self) -> (Vec<f64>, u8) {
         let code = vec![self.l1, self.l3, self.l4, self.l5, self.g];
         (code, self.stat as u8)

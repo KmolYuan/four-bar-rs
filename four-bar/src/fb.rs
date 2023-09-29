@@ -1,11 +1,17 @@
-pub use self::{fb2d::*, fb3d::*};
+//! Four-bar linkage types.
+pub use self::{
+    fb2d::{FourBar, NormFourBar},
+    fb3d::{SFourBar, SNormFourBar},
+    vectorized::*,
+};
 use crate::efd::EfdDim;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::f64::consts::TAU;
 
-mod fb2d;
-mod fb3d;
+pub mod fb2d;
+pub mod fb3d;
+mod vectorized;
 
 /// Type of the four-bar linkage.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -148,6 +154,15 @@ impl<UN, NM> FourBarBase<UN, NM> {
         Self: CurveGen<D>,
     {
         <Self as CurveGen<D>>::angle_bound(self).is_valid()
+    }
+
+    /// Input angle bounds of the linkage.
+    pub fn angle_bound<D>(&self) -> AngleBound
+    where
+        D: efd::EfdDim,
+        Self: CurveGen<D>,
+    {
+        CurveGen::angle_bound(self)
     }
 }
 

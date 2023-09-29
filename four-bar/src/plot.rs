@@ -466,8 +466,9 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
 
     /// Set the input angle of the linkage.
     ///
-    /// If the angle value is not in the range of [`FourBar::angle_bound()`],
-    /// the actual angle will be the midpoint.
+    /// If the angle value is not in the range of
+    /// [`fb::FourBarBase::angle_bound()`], the actual angle will be the
+    /// midpoint.
     pub fn angle(self, angle: f64) -> Self {
         Self { angle: Some(angle), ..self }
     }
@@ -557,7 +558,7 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
 
     pub(crate) fn get_joints<D: efd::EfdDim>(&self) -> Option<[efd::Coord<D>; 5]>
     where
-        M: CurveGen<D>,
+        M: fb::CurveGen<D>,
     {
         let fb = self.fb.as_deref()?;
         let [start, end] = fb.angle_bound().to_value()?;

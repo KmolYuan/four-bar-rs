@@ -13,20 +13,19 @@
 #![warn(missing_docs)]
 #![warn(clippy::semicolon_if_nothing_returned)]
 
-pub use crate::fb::*;
+pub use crate::fb::{FourBar, NormFourBar, SFourBar, SNormFourBar};
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
 pub extern crate metaheuristics_nature as mh;
 #[cfg(feature = "plot")]
-pub use self::plot::{plot2d, plot3d};
+pub use crate::plot::{plot2d, plot3d};
 
 #[cfg(feature = "codebook")]
 pub mod cb;
 #[cfg(feature = "csv")]
 pub mod csv;
-mod fb;
+pub mod fb;
 #[cfg(feature = "plot")]
 pub mod plot;
 pub mod syn;
-pub mod vectorized;
