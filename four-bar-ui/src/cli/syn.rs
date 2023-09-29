@@ -147,7 +147,7 @@ fn get_info(
     let target = match ext.ok_or(SynErr::Format)? {
         "csv" | "txt" => io::Curve::from_reader(std::fs::File::open(file)?)?,
         "ron" => {
-            let fb = ron::de::from_reader::<_, io::Fb>(std::fs::File::open(file)?)?;
+            let fb = ron::de::from_reader(std::fs::File::open(file)?)?;
             let curve = match &fb {
                 io::Fb::Fb(fb) => io::Curve::P(fb.curve(res)),
                 io::Fb::SFb(fb) => io::Curve::S(fb.curve(res)),
