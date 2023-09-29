@@ -57,7 +57,7 @@ impl Linkages {
         ui.label("Reset: Double-click");
     }
 
-    pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
+    pub(crate) fn plot(&self, ui: &mut egui_plot::PlotUi) {
         self.projs.plot(ui);
     }
 

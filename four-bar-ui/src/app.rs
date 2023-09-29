@@ -46,8 +46,6 @@ pub(crate) struct App {
     plotter: plotter::Plotter,
     save_cfg: bool,
     #[serde(skip)]
-    toasts: egui_toast::Toasts,
-    #[serde(skip)]
     panel: Panel,
 }
 
@@ -84,10 +82,6 @@ impl App {
             .unwrap_or_default();
         app.bp.preload(&ctx.egui_ctx);
         app.link.preload(files, app.link.cfg.res);
-        app.toasts = app
-            .toasts
-            .anchor(Align2::RIGHT_BOTTOM, [-10., -10.])
-            .direction(Direction::BottomUp);
         #[cfg(target_arch = "wasm32")]
         {
             #[wasm_bindgen::prelude::wasm_bindgen]
@@ -162,10 +156,10 @@ impl App {
     }
 
     fn canvas(&mut self, ui: &mut Ui) {
-        plot::Plot::new("canvas")
+        egui_plot::Plot::new("canvas")
             .data_aspect(1.)
             .legend(Default::default())
-            .coordinates_formatter(plot::Corner::LeftBottom, Default::default())
+            .coordinates_formatter(egui_plot::Corner::LeftBottom, Default::default())
             .show(ui, |ui| {
                 self.bp.plot(ui);
                 self.link.plot(ui);
@@ -198,7 +192,7 @@ impl App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
         self.welcome(ctx);
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         if ctx.input(|s| s.screen_rect.width()) < 600. {
@@ -207,8 +201,7 @@ impl eframe::App for App {
             self.pc_view(ctx);
         }
         self.link.poll(ctx);
-        crate::io::push_err_msg(&mut self.toasts);
-        self.toasts.show(ctx);
+        crate::io::push_err_msg(frame);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

@@ -10,38 +10,37 @@ fn pick_color(i: usize) -> Color32 {
     Color32::from_rgb(r, g, b).gamma_multiply(0.8)
 }
 
-fn draw_joint<F>(ui: &mut plot::PlotUi, p: [f64; 2], fixed: bool, point_f: F)
+fn draw_joint<F>(ui: &mut egui_plot::PlotUi, p: [f64; 2], fixed: bool, point_f: F)
 where
-    F: Fn(plot::Points) -> plot::Points,
+    F: Fn(egui_plot::Points) -> egui_plot::Points,
 {
-    use plot::MarkerShape::*;
-    let p = plot::Points::new(p)
+    use egui_plot::MarkerShape::*;
+    let p = egui_plot::Points::new(p)
         .radius(if fixed { 10. } else { 5. })
         .shape(if fixed { Up } else { Circle })
         .color(JOINT_COLOR);
     ui.points(point_f(p));
 }
 
-fn draw_link2d(ui: &mut plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
+fn draw_link2d(ui: &mut egui_plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
     let width = if is_main { 3. } else { 1. };
     if points.len() == 2 {
-        let line = plot::Line::new(points.to_vec())
+        let line = egui_plot::Line::new(points.to_vec())
             .width(width)
             .color(LINK_COLOR);
         ui.line(line);
     } else {
-        let polygon = plot::Polygon::new(points.to_vec())
-            .width(width)
-            .fill_alpha(if is_main { 0.8 } else { 0.2 })
-            .color(LINK_COLOR);
+        let polygon = egui_plot::Polygon::new(points.to_vec())
+            .stroke((width, LINK_COLOR))
+            .fill_color(LINK_COLOR.gamma_multiply(if is_main { 0.8 } else { 0.2 }));
         ui.polygon(polygon);
     }
 }
 
-fn draw_sline<I, F>(ui: &mut plot::PlotUi, oz: f64, iter: I, line_f: F)
+fn draw_sline<I, F>(ui: &mut egui_plot::PlotUi, oz: f64, iter: I, line_f: F)
 where
     I: IntoIterator<Item = [f64; 3]>,
-    F: Fn(plot::Line) -> plot::Line,
+    F: Fn(egui_plot::Line) -> egui_plot::Line,
 {
     let mut iter = iter.into_iter().peekable();
     let Some([.., first_z]) = iter.peek() else {
@@ -57,16 +56,16 @@ where
         if curve.is_empty() {
             break;
         }
-        let mut line = line_f(plot::Line::new(curve));
+        let mut line = line_f(egui_plot::Line::new(curve));
         if !is_front {
-            line = line.style(plot::LineStyle::dashed_dense());
+            line = line.style(egui_plot::LineStyle::dashed_dense());
         }
         ui.line(line);
         is_front = !is_front;
     }
 }
 
-fn draw_link3d(ui: &mut plot::PlotUi, oc: [f64; 3], points: &[[f64; 3]], is_main: bool) {
+fn draw_link3d(ui: &mut egui_plot::PlotUi, oc: [f64; 3], points: &[[f64; 3]], is_main: bool) {
     let width = if is_main { 3. } else { 1. };
     let oc = na::Point3::from(oc);
     let iter = points.windows(2).flat_map(|w| {
@@ -83,10 +82,9 @@ fn draw_link3d(ui: &mut plot::PlotUi, oc: [f64; 3], points: &[[f64; 3]], is_main
     });
     if points.len() > 2 {
         let points = iter.clone().map(|[x, y, _]| [x, y]).collect::<Vec<_>>();
-        let polygon = plot::Polygon::new(points)
-            .width(width)
-            .fill_alpha(if is_main { 0.8 } else { 0.2 })
-            .color(LINK_COLOR);
+        let polygon = egui_plot::Polygon::new(points)
+            .stroke((width, LINK_COLOR))
+            .fill_color(LINK_COLOR.gamma_multiply(if is_main { 0.8 } else { 0.2 }));
         ui.polygon(polygon);
     }
     draw_sline(ui, oc.z, iter, |line| line.width(width).color(LINK_COLOR));
@@ -95,7 +93,7 @@ fn draw_link3d(ui: &mut plot::PlotUi, oc: [f64; 3], points: &[[f64; 3]], is_main
 pub(crate) trait ProjPlot<D: efd::EfdDim> {
     fn delta_plot(
         &self,
-        ui: &mut plot::PlotUi,
+        ui: &mut egui_plot::PlotUi,
         joints: Option<&[efd::Coord<D>; 5]>,
         curves: &[[efd::Coord<D>; 3]],
         is_main: bool,
@@ -105,7 +103,7 @@ pub(crate) trait ProjPlot<D: efd::EfdDim> {
 impl ProjPlot<efd::D2> for FourBar {
     fn delta_plot(
         &self,
-        ui: &mut plot::PlotUi,
+        ui: &mut egui_plot::PlotUi,
         joints: Option<&[[f64; 2]; 5]>,
         curves: &[[[f64; 2]; 3]],
         is_main: bool,
@@ -125,7 +123,7 @@ impl ProjPlot<efd::D2> for FourBar {
             .enumerate()
         {
             let iter = curves.iter().map(|c| c[i]).collect::<Vec<_>>();
-            let line = plot::Line::new(iter)
+            let line = egui_plot::Line::new(iter)
                 .name(name)
                 .width(3.)
                 .color(pick_color(i));
@@ -137,7 +135,7 @@ impl ProjPlot<efd::D2> for FourBar {
 impl ProjPlot<efd::D3> for SFourBar {
     fn delta_plot(
         &self,
-        ui: &mut plot::PlotUi,
+        ui: &mut egui_plot::PlotUi,
         joints: Option<&[efd::Coord<efd::D3>; 5]>,
         curves: &[[efd::Coord<efd::D3>; 3]],
         is_main: bool,
@@ -146,12 +144,14 @@ impl ProjPlot<efd::D3> for SFourBar {
         const STEP: f64 = std::f64::consts::TAU / N as f64;
         let r = self.unnorm.r;
         let oc @ [ox, oy, oz] = self.oc();
-        draw_joint(ui, [ox, oy], true, |p| p.shape(plot::MarkerShape::Diamond));
+        draw_joint(ui, [ox, oy], true, |p| {
+            p.shape(egui_plot::MarkerShape::Diamond)
+        });
         let circle = (0..=N)
             .map(|i| i as f64 * STEP)
             .map(|t| [r * t.cos() + ox, r * t.sin() + oy])
             .collect::<Vec<_>>();
-        ui.line(plot::Line::new(circle).style(plot::LineStyle::dashed_dense()));
+        ui.line(egui_plot::Line::new(circle).style(egui_plot::LineStyle::dashed_dense()));
         if let Some(joints) = joints {
             draw_link3d(ui, oc, &[joints[0], joints[2]], is_main);
             draw_link3d(ui, oc, &[joints[1], joints[3]], is_main);

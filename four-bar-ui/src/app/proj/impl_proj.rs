@@ -83,7 +83,7 @@ impl Project {
 
     impl_method! {
         fn show(self: &mut Self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg);
-        fn plot(self: &Self, ui: &mut plot::PlotUi, ind: usize, id: usize);
+        fn plot(self: &Self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize);
         fn cache(self: &mut Self, res: usize);
         fn request_cache(self: &mut Self);
         fn name(self: &Self) -> String;
@@ -218,8 +218,8 @@ where
                 self.fb
                     .serialize(&mut ron::Serializer::new(&mut url, None).unwrap())
                     .unwrap();
-                ui.ctx()
-                    .output_mut(|s| s.open_url(String::from_utf8_lossy(&url)));
+                let url = String::from_utf8_lossy(&url);
+                ui.ctx().open_url(OpenUrl::new_tab(url));
             }
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &self.path {
@@ -329,7 +329,7 @@ where
         }
     }
 
-    fn plot(&self, ui: &mut plot::PlotUi, ind: usize, id: usize) {
+    fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize) {
         if !self.hide {
             let joints = self.cache.joints.as_ref();
             ui::ProjPlot::delta_plot(&self.fb, ui, joints, &self.cache.curves, ind == id);

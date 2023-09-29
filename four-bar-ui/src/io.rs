@@ -1,6 +1,9 @@
 use self::impl_io::*;
 use four_bar::*;
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 pub(crate) type Cache<T> = std::rc::Rc<std::cell::RefCell<Option<T>>>;
 const FMT: &str = "Rusty Object Notation (RON)";
@@ -191,7 +194,7 @@ impl<T, E: std::error::Error> Alert for Result<T, E> {
     {
         match self {
             Ok(t) => done(t),
-            Err(e) => alert(format!("{title} Error\n{e}")),
+            Err(e) => alert(title, format!("{e}")),
         }
     }
 }
@@ -205,32 +208,39 @@ impl<T> Alert for Option<T> {
     {
         match self {
             Some(t) => done(t),
-            None => alert(msg),
+            None => alert("", msg),
         }
     }
 }
 
-static ERR_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
-static WARN_MSG: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+static ERR_MSG: std::sync::Mutex<Option<(Cow<'static, str>, Cow<'static, str>)>> =
+    std::sync::Mutex::new(None);
 
-pub(crate) fn push_err_msg(toasts: &mut egui_toast::Toasts) {
-    let options = egui_toast::ToastOptions::default().duration_in_seconds(10.);
-    for (kind, list) in [
-        (egui_toast::ToastKind::Warning, &WARN_MSG),
-        (egui_toast::ToastKind::Error, &ERR_MSG),
-    ] {
-        for text in list.lock().unwrap().drain(..) {
-            toasts.add(egui_toast::Toast { kind, text: text.into(), options });
+pub(crate) fn push_err_msg(parent: &eframe::Frame) {
+    if let Some((title, msg)) = ERR_MSG.lock().unwrap().take() {
+        macro_rules! impl_msg {
+            ($ty:ident) => {
+                rfd::$ty::new()
+                    .set_level(rfd::MessageLevel::Error)
+                    .set_title(&*title)
+                    .set_description(&*msg)
+                    .set_parent(parent)
+                    .show()
+            };
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        impl_msg!(MessageDialog);
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(impl_msg!(AsyncMessageDialog));
     }
 }
 
-pub(crate) fn alert(msg: impl ToString) {
-    ERR_MSG.lock().unwrap().push(msg.to_string());
-}
-
-pub(crate) fn warn(msg: impl ToString) {
-    WARN_MSG.lock().unwrap().push(msg.to_string());
+pub(crate) fn alert<S1, S2>(title: S1, msg: S2)
+where
+    S1: Into<Cow<'static, str>>,
+    S2: Into<Cow<'static, str>>,
+{
+    ERR_MSG.lock().unwrap().replace((title.into(), msg.into()));
 }
 
 pub(crate) fn open_ron_single<C>(done: C)

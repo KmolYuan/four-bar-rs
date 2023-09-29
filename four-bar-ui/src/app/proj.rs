@@ -126,31 +126,11 @@ impl Projects {
             }
         });
         ui.separator();
-        self.select(ui, true);
-        if self.list.is_empty() {
-            ui.heading("No project here!");
-            ui.label("Please open or create a project.");
-        } else {
-            self.list[self.curr].show(ui, &mut self.pivot, cfg);
-        }
-    }
-
-    pub(crate) fn select(&mut self, ui: &mut Ui, show_btn: bool) {
-        if self.list.is_empty() {
-            return;
-        }
         ui.horizontal(|ui| {
-            ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
-                let proj = &self.list[i];
-                if proj.is_unsaved() {
-                    proj.proj_name() + "*"
-                } else {
-                    proj.proj_name()
-                }
-            });
-            if !show_btn {
+            if self.list.is_empty() {
                 return;
             }
+            self.select(ui);
             if small_btn(ui, "💾", "Save (Ctrl+S)") || hotkey!(ui, CTRL + S) {
                 let proj = &mut self.list[self.curr];
                 let (_, fb) = proj.fb_state();
@@ -174,12 +154,35 @@ impl Projects {
                 self.close_curr();
             } else if close_btn.clicked() || hotkey!(ui, CTRL + W) {
                 if self.list[self.curr].is_unsaved() {
-                    io::warn("File unsaved.\nDouble click again to close it without saving.");
+                    // TODO: ask for save
                 } else {
                     self.close_curr();
                 }
             }
         });
+        if self.list.is_empty() {
+            ui.heading("No project here!");
+            ui.label("Please open or create a project.");
+        } else {
+            self.list[self.curr].show(ui, &mut self.pivot, cfg);
+        }
+    }
+
+    pub(crate) fn select(&mut self, ui: &mut Ui) {
+        if self.list.is_empty() {
+            ComboBox::from_id_source("proj").show_ui(ui, |ui| {
+                ui.label("No Project");
+            });
+        } else {
+            ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
+                let proj = &self.list[i];
+                if proj.is_unsaved() {
+                    proj.proj_name() + "*"
+                } else {
+                    proj.proj_name()
+                }
+            });
+        }
     }
 
     fn close_curr(&mut self) {
@@ -207,7 +210,7 @@ impl Projects {
         }
     }
 
-    pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
+    pub(crate) fn plot(&self, ui: &mut egui_plot::PlotUi) {
         for (i, proj) in self.list.iter().enumerate() {
             proj.plot(ui, i, self.curr);
         }

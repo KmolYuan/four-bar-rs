@@ -40,7 +40,7 @@ fn fig_ui<D, M, const N: usize>(
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
             }
-            lnk.projs.select(ui, false);
+            lnk.projs.select(ui);
         });
         if ui.button("🖴 Load from RON").clicked() {
             let fig = fig.clone();
@@ -69,7 +69,7 @@ fn fig_ui<D, M, const N: usize>(
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
             }
-            lnk.projs.select(ui, false);
+            lnk.projs.select(ui);
         });
         if ui.button("🖴 Add from CSV").clicked() {
             let fig = fig.clone();

@@ -123,7 +123,7 @@ impl Synthesis {
                     self.target = target;
                 }
             }
-            lnk.projs.select(ui, false);
+            lnk.projs.select(ui);
         });
         ui.horizontal(|ui| {
             if ui.button("🖴 Load from CSV").clicked() {
@@ -349,10 +349,10 @@ impl Synthesis {
             .show(ui.ctx(), |ui| {
                 static_plot("plot_conv").show(ui, |ui| {
                     let mut draw = |name: &str, task: &Task| {
-                        let pts1 = plot::PlotPoints::from_ys_f64(&task.conv);
-                        let pts2 = plot::PlotPoints::from_ys_f64(&task.conv);
-                        ui.line(plot::Line::new(pts1).fill(-1.5).name(name));
-                        ui.points(plot::Points::new(pts2).name(name).stems(0.));
+                        let pts1 = egui_plot::PlotPoints::from_ys_f64(&task.conv);
+                        let pts2 = egui_plot::PlotPoints::from_ys_f64(&task.conv);
+                        ui.line(egui_plot::Line::new(pts1).fill(-1.5).name(name));
+                        ui.points(egui_plot::Points::new(pts2).name(name).stems(0.));
                     };
                     for (i, task) in self.tasks.iter().enumerate() {
                         draw(&format!("Task {}", i), task);
@@ -365,25 +365,25 @@ impl Synthesis {
             });
     }
 
-    pub(crate) fn plot(&mut self, ui: &mut plot::PlotUi, lnk: &Linkages) {
+    pub(crate) fn plot(&mut self, ui: &mut egui_plot::PlotUi, lnk: &Linkages) {
         if !self.target.is_empty() {
             const NAME: &str = "Synthesis target";
             let target = match &self.target {
                 io::Curve::P(t) => t.clone(),
                 io::Curve::S(t) => t.iter().map(|[x, y, _]| [*x, *y]).collect(),
             };
-            let line = plot::Line::new(target.clone())
+            let line = egui_plot::Line::new(target.clone())
                 .name(NAME)
-                .style(plot::LineStyle::dashed_loose())
+                .style(egui_plot::LineStyle::dashed_loose())
                 .width(3.);
             ui.line(line);
-            let points = plot::Points::new(target)
+            let points = egui_plot::Points::new(target)
                 .name(NAME)
                 .filled(false)
                 .radius(5.);
             ui.points(points);
         }
-        if !self.from_plot_open || !ui.plot_clicked() {
+        if !self.from_plot_open || !ui.response().clicked() {
             return;
         }
         // Add target curve from canvas
@@ -400,8 +400,8 @@ impl Synthesis {
                 if let Some(c) = f() {
                     t.push(c);
                 } else {
-                    let p = plot::Points::new([p.x, p.y])
-                        .shape(plot::MarkerShape::Cross)
+                    let p = egui_plot::Points::new([p.x, p.y])
+                        .shape(egui_plot::MarkerShape::Cross)
                         .color(Color32::RED)
                         .radius(30.);
                     ui.points(p);
@@ -456,7 +456,7 @@ impl Synthesis {
                             } else {
                                 ("Closed Curve", Color32::BLUE)
                             };
-                            ui.points(plot::Points::new(pt).color(color).name(name));
+                            ui.points(egui_plot::Points::new(pt).color(color).name(name));
                         }
                     });
                 });

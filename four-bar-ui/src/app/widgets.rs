@@ -18,7 +18,7 @@ pub(crate) fn small_btn(ui: &mut Ui, icon: &str, tip: &str) -> bool {
 
 pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     if small_btn(ui, icon, tip) {
-        ui.ctx().output_mut(|s| s.open_url(url));
+        ui.ctx().open_url(OpenUrl::new_tab(url));
     }
 }
 
@@ -214,8 +214,8 @@ pub(crate) fn combo_enum<H, E, F, T, const N: usize>(
     }
 }
 
-pub(crate) fn static_plot(name: &str) -> plot::Plot {
-    plot::Plot::new(name)
+pub(crate) fn static_plot(name: &str) -> egui_plot::Plot {
+    egui_plot::Plot::new(name)
         .legend(Default::default())
         .allow_drag(false)
         .allow_zoom(false)

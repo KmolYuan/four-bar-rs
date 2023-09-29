@@ -79,12 +79,12 @@ impl BluePrint {
         }
     }
 
-    pub(crate) fn plot(&self, ui: &mut plot::PlotUi) {
+    pub(crate) fn plot(&self, ui: &mut egui_plot::PlotUi) {
         let inner = self.info.borrow();
         if let Some(h) = inner.h.as_ref() {
-            let center = plot::PlotPoint::new(inner.x, inner.y);
+            let center = egui_plot::PlotPoint::new(inner.x, inner.y);
             let size = h.size().map(|s| s as f32 * inner.s);
-            ui.image(plot::PlotImage::new(h, center, size));
+            ui.image(egui_plot::PlotImage::new(h, center, size));
         }
     }
 }
