@@ -11,6 +11,8 @@ use std::f64::consts::TAU;
 
 pub mod fb2d;
 pub mod fb3d;
+#[cfg(feature = "serde")]
+mod fb_serde;
 mod vectorized;
 
 /// Type of the four-bar linkage.
@@ -90,11 +92,7 @@ impl FourBarTy {
 }
 
 /// Four-bar base.
-#[cfg_attr(
-    feature = "serde",
-    derive(Deserialize, Serialize),
-    serde(deny_unknown_fields)
-)]
+#[cfg_attr(feature = "serde", derive(Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Default, Debug, PartialEq)]
 pub struct FourBarBase<UN, NM> {
     /// Buffer

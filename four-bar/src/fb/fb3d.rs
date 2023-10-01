@@ -6,7 +6,7 @@ use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 /// Unnormalized part of spherical four-bar linkage.
 ///
 /// Please see [`SFourBar`] for more information.
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct UnNorm {
     /// X offset of the sphere center
@@ -49,7 +49,7 @@ impl UnNorm {
 /// + Follower link `l4`
 /// + Extanded link `l5`
 /// + Coupler link angle `g`
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize), serde(default))]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct SNormFourBar {
     /// Length of the ground link
@@ -86,10 +86,9 @@ impl IntoVectorized for SNormFourBar {
 
 /// Spherical four-bar linkage.
 ///
-/// + Buffer 1 order: `[ox, oy, oz, r, p0i, p0j, a]`
-/// + Buffer 2 order: `[l1, l2, l3, l4, l5, g]`
-///
 /// # Parameters
+///
+/// There have 13 parameters in total.
 ///
 /// + Sphere X offset `ox`
 /// + Sphere Y offset `oy`

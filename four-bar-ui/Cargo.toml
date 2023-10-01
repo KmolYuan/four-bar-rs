@@ -44,7 +44,6 @@ features = ["ico", "jpeg"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
-toml = { version = "0.8", default-features = false, features = ["display"] }
 indicatif = { version = "0.17", features = ["improved_unicode"] }
 clap = { version = "4", features = ["derive"] }
 wild = "2"

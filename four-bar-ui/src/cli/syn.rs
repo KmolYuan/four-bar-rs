@@ -32,11 +32,11 @@ impl std::fmt::Display for SynErr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Format => write!(f, "unsupported format"),
-            Self::Io(e) => write!(f, "{e}"),
-            Self::Plot(e) => write!(f, "{e}"),
-            Self::CsvSer(e) => write!(f, "{e}"),
-            Self::RonSer(e) => write!(f, "{e}"),
-            Self::RonDe(e) => write!(f, "{e}"),
+            Self::Io(e) => write!(f, "[IO] {e}"),
+            Self::Plot(e) => write!(f, "[Plot] {e}"),
+            Self::CsvSer(e) => write!(f, "[CSV] {e}"),
+            Self::RonSer(e) => write!(f, "[RON] {e}"),
+            Self::RonDe(e) => write!(f, "[RON] {e}"),
             Self::Linkage => write!(f, "invalid linkage input"),
             Self::Solver => write!(f, "solved error"),
         }
@@ -268,7 +268,7 @@ impl<'a> Solver<'a> {
         refer: &'a Path,
         result_path: impl AsRef<Path>,
     ) -> Result<Self, SynErr> {
-        let Info { root, target, title, mode, .. } = info;
+        let Info { root, target, mode, .. } = info;
         let mut history = Vec::with_capacity(cfg.gen as usize);
         let t0 = std::time::Instant::now();
         let s = {
@@ -285,7 +285,7 @@ impl<'a> Solver<'a> {
         };
         let (cost, harmonic, result_fb) = s.solve_verbose().map_err(|_| SynErr::Solver)?;
         let t1 = t0.elapsed();
-        let path = root.join(format!("{title}.history.svg"));
+        let path = root.join("history.svg");
         let svg = plot::SVGBackend::new(&path, (800, 600));
         plot2d::history(svg, history)?;
         match &result_fb {
@@ -341,8 +341,7 @@ impl<'a> Solver<'a> {
                 .join(format!("{title}.ron"));
             Some((format!("Ref. [{n}]"), std::fs::File::open(path).ok()?))
         });
-        let mut log = std::io::Cursor::new(Vec::new());
-        writeln!(log, "[{title}]")?;
+        let mut log = OptionLogger::new(root.join(format!("{title}.log")))?;
         match (target, &result_fb) {
             (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
                 let curve_diff = if matches!(info.mode, syn::Mode::Partial) {
@@ -362,7 +361,7 @@ impl<'a> Solver<'a> {
                     fig = fig.angle(angle.to_radians());
                 }
                 {
-                    let path = root.join(format!("{title}.linkage.svg"));
+                    let path = root.join("linkage.svg");
                     let svg = plot::SVGBackend::new(&path, (800, 800));
                     fig.plot(svg)?;
                 }
@@ -383,8 +382,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[atlas.fb]")?;
                     log_fb(&mut log, &fb)?;
-                    let path = root.join(format!("{title}_atlas.ron"));
-                    std::fs::write(path, io::ron_string(&fb))?;
+                    std::fs::write(root.join("atlas.ron"), io::ron_string(&fb))?;
                     fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::full_palette::GREEN_600);
                 }
                 writeln!(log, "\n[optimized]")?;
@@ -413,7 +411,7 @@ impl<'a> Solver<'a> {
                     log_fb(&mut log, &fb)?;
                     fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
                 }
-                let path = root.join(format!("{title}.curve.svg"));
+                let path = root.join("curve.svg");
                 let svg = plot::SVGBackend::new(&path, (800, 800));
                 fig.remove_fb().plot(svg)?;
             }
@@ -435,13 +433,13 @@ impl<'a> Solver<'a> {
                     fig = fig.angle(angle.to_radians());
                 }
                 {
-                    let path = root.join(format!("{title}.linkage.svg"));
+                    let path = root.join("linkage.svg");
                     let svg = plot::SVGBackend::new(&path, (800, 800));
                     fig.plot(svg)?;
                 }
                 if let Some(io::Fb::SFb(fb)) = target_fb {
                     writeln!(log, "\n[target.fb]")?;
-                    log_fb(&mut log, fb)?;
+                    log_sfb(&mut log, fb)?;
                 }
                 if let Some((cost, fb)) = cb_fb {
                     let c = fb.curve(cfg.res);
@@ -455,9 +453,8 @@ impl<'a> Solver<'a> {
                     writeln!(log, "cost={cost:.04}")?;
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[atlas.fb]")?;
-                    log_fb(&mut log, &fb)?;
-                    let path = root.join(format!("{title}_atlas.ron"));
-                    std::fs::write(path, io::ron_string(&fb))?;
+                    log_sfb(&mut log, &fb)?;
+                    std::fs::write(root.join("atlas.ron"), io::ron_string(&fb))?;
                     fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::CYAN);
                 }
                 writeln!(log, "\n[optimized]")?;
@@ -469,7 +466,7 @@ impl<'a> Solver<'a> {
                 writeln!(log, "error={err:.04}")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "\n[optimized.fb]")?;
-                log_fb(&mut log, fb)?;
+                log_sfb(&mut log, fb)?;
                 if let Some((name, r)) = refer {
                     let fb = ron::de::from_reader::<_, SFourBar>(r)?;
                     let c = fb.curve(cfg.res);
@@ -483,21 +480,16 @@ impl<'a> Solver<'a> {
                     }
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
-                    log_fb(&mut log, &fb)?;
+                    log_sfb(&mut log, &fb)?;
                     fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
                 }
-                let path = root.join(format!("{title}.curve.svg"));
+                let path = root.join("curve.svg");
                 let svg = plot::SVGBackend::new(&path, (800, 800));
                 fig.with_fb(fb.take_sphere()).plot(svg)?;
             }
             _ => Err(SynErr::Solver)?,
         }
-        // Check the previous log file
-        let log_path = root.join(format!("{title}.log"));
-        if !log_path.is_file() {
-            log.flush()?;
-            std::fs::write(log_path, log.into_inner())?;
-        }
+        log.flush()?;
         Ok(())
     }
 }
@@ -512,7 +504,7 @@ fn run(
     rerun: bool,
 ) {
     let title = &info.title;
-    let result_path = info.root.join(format!("{title}.linkage.ron"));
+    let result_path = info.root.join("linkage.ron");
     let f = || {
         if !rerun && result_path.is_file() {
             // Just redraw the plots
@@ -531,9 +523,54 @@ fn run(
     }
 }
 
-fn log_fb<S>(mut w: impl std::io::Write, fb: &S) -> std::io::Result<()>
-where
-    S: serde::Serialize,
-{
-    writeln!(w, "{}", toml::to_string(fb).unwrap())
+macro_rules! write_fields {
+    ($w: ident, $obj: expr $(, $fields: ident)+ $(,)?) => {
+        $(writeln!($w, concat![stringify!($fields), "={:.04}"], $obj.$fields)?;)+
+    };
+}
+
+fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
+    write_fields!(w, fb.unnorm, p0x, p0y, a);
+    write_fields!(w, fb, l1);
+    write_fields!(w, fb.unnorm, l2);
+    write_fields!(w, fb, l3, l4, l5, g);
+    write!(w, "stat={}", fb.stat)?;
+    Ok(())
+}
+
+fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
+    write_fields!(w, fb.unnorm, ox, oy, oz, r, p0i, p0j, a);
+    write_fields!(w, fb, l1, l2, l3, l4, l5, g);
+    write!(w, "stat={}", fb.stat)?;
+    Ok(())
+}
+
+struct OptionLogger(Option<std::fs::File>);
+
+impl OptionLogger {
+    fn new(path: impl AsRef<Path>) -> std::io::Result<Self> {
+        let path = path.as_ref();
+        if !path.is_file() {
+            Ok(Self(Some(std::fs::File::create(path)?)))
+        } else {
+            Ok(Self(None))
+        }
+    }
+}
+
+impl std::io::Write for OptionLogger {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match &mut self.0 {
+            Some(f) => f.write(buf),
+            None => Ok(buf.len()),
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        match &mut self.0 {
+            Some(f) => f.flush(),
+            None => Ok(()),
+        }
+    }
 }
