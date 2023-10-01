@@ -50,7 +50,7 @@ macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
         $(#[$meta])+
         pub fn $name(mut self, $name: $ty) -> Self {
-            self.opt.$name = $name;
+            self.$name = $name;
             self
         }
     )+};
@@ -475,7 +475,7 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
 
     /// Set the font family.
     pub fn font_family(mut self, family: impl Into<Cow<'a, str>>) -> Self {
-        self.opt.font_family.replace(family.into());
+        self.font_family.replace(family.into());
         self
     }
 
@@ -577,19 +577,18 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     #[inline]
     fn get_family(&self) -> &str {
         const DEFAULT_FONT: &str = "Times New Roman";
-        self.opt
-            .font_family
+        self.font_family
             .as_ref()
             .map(|s| s.as_ref())
             .unwrap_or(DEFAULT_FONT)
     }
 
     pub(crate) fn get_font(&self) -> TextStyle {
-        (self.get_family(), self.opt.font).into_font().color(&BLACK)
+        (self.get_family(), self.font).into_font().color(&BLACK)
     }
 
     pub(crate) fn get_font3d(&self) -> TextStyle {
-        (self.get_family(), self.opt.font * 1.5)
+        (self.get_family(), self.font * 1.5)
             .into_font()
             .color(&BLACK)
     }

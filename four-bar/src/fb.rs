@@ -44,7 +44,7 @@ impl FourBarTy {
         fb_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         let [s, p, q, l] = fb_loop;
         macro_rules! arms {
-            ($d:expr => $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
+            ($d:expr, $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
                 match $d {
                     d if d == l1 => $c1,
                     d if d == l2 => $c2,
@@ -55,9 +55,9 @@ impl FourBarTy {
             };
         }
         if s + l < p + q {
-            arms! { s => Self::GCCC, Self::GCRR, Self::GRCR, Self::GRRC }
+            arms!(s, Self::GCCC, Self::GCRR, Self::GRCR, Self::GRRC)
         } else {
-            arms! { l => Self::RRR1, Self::RRR2, Self::RRR3, Self::RRR4 }
+            arms!(l, Self::RRR1, Self::RRR2, Self::RRR3, Self::RRR4)
         }
     }
 
