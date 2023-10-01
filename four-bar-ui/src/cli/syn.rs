@@ -341,7 +341,13 @@ impl<'a> Solver<'a> {
                 .join(format!("{title}.ron"));
             Some((format!("Ref. [{n}]"), std::fs::File::open(path).ok()?))
         });
-        let mut log = OptionLogger::new(root.join(format!("{title}.log")))?;
+        let path = root.join(format!("{title}.log"));
+        let mut log = if path.is_file() {
+            // Do not overwrite the exist log file
+            OptionLogger(None)
+        } else {
+            OptionLogger(Some(std::fs::File::create(path)?))
+        };
         match (target, &result_fb) {
             (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
                 let curve_diff = if matches!(info.mode, syn::Mode::Partial) {
@@ -546,17 +552,6 @@ fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
 }
 
 struct OptionLogger(Option<std::fs::File>);
-
-impl OptionLogger {
-    fn new(path: impl AsRef<Path>) -> std::io::Result<Self> {
-        let path = path.as_ref();
-        if !path.is_file() {
-            Ok(Self(Some(std::fs::File::create(path)?)))
-        } else {
-            Ok(Self(None))
-        }
-    }
-}
 
 impl std::io::Write for OptionLogger {
     #[inline]
