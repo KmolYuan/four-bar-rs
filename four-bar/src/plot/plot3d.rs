@@ -82,14 +82,10 @@ impl Figure<'_, '_> {
             let p = (sc.x, sc.y + *r, sc.z);
             chart.draw_series(Ball::new((sc.x, sc.y, sc.z), p, LIGHTGRAY.filled()).series())?;
         }
-        // Draw curves
-        for data in self.lines() {
-            let LineData { label, line, style, .. } = &*data;
-            let line = line.iter().map(|&c| c.into());
-            style.draw(&mut chart, line, data.color(), label)?;
-        }
-        // Draw linkage
-        // FIXME: Don't cover the curves
+        // Draw layer 1: Draw linkage in the back of the sphere
+        let mut link_front = Vec::new();
+        let mut grounded_front = Vec::new();
+        let mut joints_front = Vec::new();
         if let Some((sc, _, Some(joints))) = sphere {
             let [p0, p1, p2, p3, p4] = joints;
             for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
@@ -123,18 +119,28 @@ impl Figure<'_, '_> {
                         line.insert(0, pre_pt);
                     }
                     last_pt = line.last().copied();
-                    let is_front = *is_front.get().unwrap();
+                    let is_front = is_front.into_inner().unwrap();
                     let color = if is_front { BLACK } else { DARK_GRAY };
-                    chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?;
+                    let line = LineSeries::new(line, color.stroke_width(stroke));
+                    if is_front {
+                        link_front.push(line);
+                    } else {
+                        chart.draw_series(line)?;
+                    }
                 }
             }
-            let grounded = joints[..2].iter().map(|&[x, y, z]| {
+            for &[x, y, z] in &joints[..2] {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
                 let style = if is_front { BLACK } else { DARK_GRAY }.filled();
-                EmptyElement::at((x, y, z)) + TriangleMarker::new((0, 10), dot_size + 3, style)
-            });
-            chart.draw_series(grounded)?;
-            let joints = joints.iter().map(|&[x, y, z]| {
+                let grounded =
+                    EmptyElement::at((x, y, z)) + TriangleMarker::new((0, 10), dot_size + 3, style);
+                if is_front {
+                    grounded_front.push(grounded);
+                } else {
+                    chart.draw_series([grounded])?;
+                }
+            }
+            for [x, y, z] in joints {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
                 let style = ShapeStyle {
                     color: if is_front {
@@ -145,10 +151,27 @@ impl Figure<'_, '_> {
                     filled: is_front,
                     stroke_width: stroke,
                 };
-                Circle::new((x, y, z), dot_size, style)
-            });
-            chart.draw_series(joints)?;
+                let joint = Circle::new((x, y, z), dot_size, style);
+                if is_front {
+                    joints_front.push(joint);
+                } else {
+                    chart.draw_series([joint])?;
+                }
+            }
         }
+        // Draw layer 2: Draw curves
+        for data in self.lines() {
+            let LineData { label, line, style, .. } = &*data;
+            let line = line.iter().map(|&c| c.into());
+            style.draw(&mut chart, line, data.color(), label)?;
+        }
+        // Draw layer 3: Draw linkage in the front of the sphere
+        for line in link_front {
+            chart.draw_series(line)?;
+        }
+        chart.draw_series(grounded_front)?;
+        chart.draw_series(joints_front)?;
+        // Draw legend
         if let Some(legend) = legend.to_plotter_pos() {
             chart
                 .configure_series_labels()

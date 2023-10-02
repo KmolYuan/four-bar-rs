@@ -114,6 +114,7 @@ impl Figure<'_, '_> {
                 .map(|&[x, y]| Circle::new((x, y), dot_size, BLACK.filled()));
             chart.draw_series(joints)?;
         }
+        // Draw legend
         if let Some(legend) = legend.to_plotter_pos() {
             chart
                 .configure_series_labels()
