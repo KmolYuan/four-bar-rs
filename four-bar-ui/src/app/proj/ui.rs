@@ -22,62 +22,61 @@ where
     ui.points(point_f(p));
 }
 
-fn draw_link2d(ui: &mut egui_plot::PlotUi, points: &[[f64; 2]], is_main: bool) {
+fn draw_link2d(ui: &mut egui_plot::PlotUi, line: &[[f64; 2]], is_main: bool) {
     let width = if is_main { 3. } else { 1. };
-    if points.len() == 2 {
-        let line = egui_plot::Line::new(points.to_vec())
+    if line.len() == 2 {
+        let line = egui_plot::Line::new(line.to_vec())
             .width(width)
             .color(LINK_COLOR);
         ui.line(line);
     } else {
-        let polygon = egui_plot::Polygon::new(points.to_vec())
+        let polygon = egui_plot::Polygon::new(line.to_vec())
             .stroke((width, LINK_COLOR))
             .fill_color(LINK_COLOR.gamma_multiply(if is_main { 0.8 } else { 0.2 }));
         ui.polygon(polygon);
     }
 }
 
-fn draw_sline<I, F>(ui: &mut egui_plot::PlotUi, oz: f64, iter: I, line_f: F)
+fn draw_sline<I, F>(ui: &mut egui_plot::PlotUi, oz: f64, line: I, line_f: F)
 where
     I: IntoIterator<Item = [f64; 3]>,
     F: Fn(egui_plot::Line) -> egui_plot::Line,
 {
-    let mut iter = iter.into_iter().peekable();
-    let Some([.., first_z]) = iter.peek() else {
-        return;
-    };
-    let mut is_front = *first_z > oz;
+    let mut line = line.into_iter();
     loop {
-        let curve = iter
+        let is_front = std::cell::OnceCell::new();
+        let line = line
             .by_ref()
-            .take_while(|[.., z]| if is_front { *z > oz } else { *z <= oz })
+            .take_while(|&[.., z]| {
+                let stat = z >= oz;
+                *is_front.get_or_init(|| stat) == stat
+            })
             .map(|[x, y, _]| [x, y])
             .collect::<Vec<_>>();
-        if curve.is_empty() {
+        if line.is_empty() {
             break;
         }
-        let mut line = line_f(egui_plot::Line::new(curve));
-        if !is_front {
+        let mut line = line_f(egui_plot::Line::new(line));
+        if !is_front.get().unwrap() {
             line = line.style(egui_plot::LineStyle::dashed_dense());
         }
         ui.line(line);
-        is_front = !is_front;
     }
 }
 
-fn draw_link3d(ui: &mut egui_plot::PlotUi, oc: [f64; 3], points: &[[f64; 3]], is_main: bool) {
+fn draw_link3d(ui: &mut egui_plot::PlotUi, sc: [f64; 3], points: &[[f64; 3]], is_main: bool) {
     let width = if is_main { 3. } else { 1. };
-    let oc = na::Point3::from(oc);
+    let sc = na::Point3::from(sc);
     let iter = points.windows(2).flat_map(|w| {
-        let a = na::Point3::from(w[0]) - oc;
-        let b = na::Point3::from(w[1]) - oc;
+        let a = na::Point3::from(w[0]) - sc;
+        let b = na::Point3::from(w[1]) - sc;
         let axis = a.cross(&b).normalize();
         let angle = a.normalize().dot(&b.normalize()).acos();
         const N: usize = 150;
         let step = angle / N as f64;
         (0..=N).map(move |i| {
             let p = na::UnitQuaternion::from_scaled_axis(axis * i as f64 * step) * a;
-            [oc.x + p.x, oc.y + p.y, oc.z + p.z]
+            [sc.x + p.x, sc.y + p.y, sc.z + p.z]
         })
     });
     if points.len() > 2 {
@@ -87,11 +86,11 @@ fn draw_link3d(ui: &mut egui_plot::PlotUi, oc: [f64; 3], points: &[[f64; 3]], is
             .fill_color(LINK_COLOR.gamma_multiply(if is_main { 0.8 } else { 0.2 }));
         ui.polygon(polygon);
     }
-    draw_sline(ui, oc.z, iter, |line| line.width(width).color(LINK_COLOR));
+    draw_sline(ui, sc.z, iter, |line| line.width(width).color(LINK_COLOR));
 }
 
 pub(crate) trait ProjPlot<D: efd::EfdDim> {
-    fn delta_plot(
+    fn proj_plot(
         &self,
         ui: &mut egui_plot::PlotUi,
         joints: Option<&[efd::Coord<D>; 5]>,
@@ -101,7 +100,7 @@ pub(crate) trait ProjPlot<D: efd::EfdDim> {
 }
 
 impl ProjPlot<efd::D2> for FourBar {
-    fn delta_plot(
+    fn proj_plot(
         &self,
         ui: &mut egui_plot::PlotUi,
         joints: Option<&[[f64; 2]; 5]>,
@@ -133,7 +132,7 @@ impl ProjPlot<efd::D2> for FourBar {
 }
 
 impl ProjPlot<efd::D3> for SFourBar {
-    fn delta_plot(
+    fn proj_plot(
         &self,
         ui: &mut egui_plot::PlotUi,
         joints: Option<&[efd::Coord<efd::D3>; 5]>,
@@ -143,7 +142,7 @@ impl ProjPlot<efd::D3> for SFourBar {
         const N: usize = 150;
         const STEP: f64 = std::f64::consts::TAU / N as f64;
         let r = self.unnorm.r;
-        let oc @ [ox, oy, oz] = self.oc();
+        let sc @ [ox, oy, oz] = self.sc();
         draw_joint(ui, [ox, oy], true, |p| {
             p.shape(egui_plot::MarkerShape::Diamond)
         });
@@ -153,9 +152,9 @@ impl ProjPlot<efd::D3> for SFourBar {
             .collect::<Vec<_>>();
         ui.line(egui_plot::Line::new(circle).style(egui_plot::LineStyle::dashed_dense()));
         if let Some(joints) = joints {
-            draw_link3d(ui, oc, &[joints[0], joints[2]], is_main);
-            draw_link3d(ui, oc, &[joints[1], joints[3]], is_main);
-            draw_link3d(ui, oc, &joints[2..], is_main);
+            draw_link3d(ui, sc, &[joints[0], joints[2]], is_main);
+            draw_link3d(ui, sc, &[joints[1], joints[3]], is_main);
+            draw_link3d(ui, sc, &joints[2..], is_main);
             for (js, fixed) in [(&joints[2..], false), (&joints[..2], true)] {
                 for &[x, y, z] in js {
                     draw_joint(ui, [x, y], fixed, |p| p.filled(z > oz));

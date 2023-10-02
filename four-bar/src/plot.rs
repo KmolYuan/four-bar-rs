@@ -45,6 +45,7 @@ pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBack
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
 
 define_color!(LIGHTGRAY, 150, 150, 150, 0.4, "Light Gray");
+define_color!(DARK_GRAY, 90, 90, 90, "Dark Gray");
 
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
@@ -588,7 +589,7 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     pub(crate) fn get_font3d(&self) -> TextStyle {
-        (self.get_family(), self.font * 1.5)
+        (self.get_family(), self.font * 1.3)
             .into_font()
             .color(&BLACK)
     }

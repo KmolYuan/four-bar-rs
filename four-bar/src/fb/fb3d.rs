@@ -192,14 +192,19 @@ impl SFourBar {
     }
 
     /// Get the sphere center.
-    pub fn oc(&self) -> [f64; 3] {
+    pub fn sc(&self) -> [f64; 3] {
         [self.unnorm.ox, self.unnorm.oy, self.unnorm.oz]
     }
 
     /// Get the sphere center and radius.
-    pub fn ocr(&self) -> [f64; 4] {
+    pub fn scr(&self) -> [f64; 4] {
         let fb = &self.unnorm;
         [fb.ox, fb.oy, fb.oz, fb.r]
+    }
+
+    /// Get the sphere radius.
+    pub fn sr(&self) -> f64 {
+        self.unnorm.r
     }
 }
 

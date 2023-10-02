@@ -1,6 +1,6 @@
 //! The functions used to plot the 3D curve and synthesis result.
 #[doc(no_inline)]
-pub use crate::plot::*;
+pub use super::*;
 use efd::na;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
@@ -11,9 +11,9 @@ pub use plotters::{prelude::*, *};
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, crate::SFourBar, 3>;
 
 impl Figure<'_, '_> {
-    fn get_sphere_center_radius(&self) -> Option<(na::Vector3<f64>, f64)> {
+    fn get_sphere_center_radius(&self) -> Option<(na::Point3<f64>, f64)> {
         let fb = &self.fb.as_deref()?.unnorm;
-        Some((na::Vector3::new(fb.ox, fb.oy, fb.oz), fb.r))
+        Some((na::Point3::new(fb.ox, fb.oy, fb.oz), fb.r))
     }
 
     /// Plot 3D spherical linkage.
@@ -56,8 +56,9 @@ impl Figure<'_, '_> {
             .margin((2).percent())
             .margin_left((11).percent())
             .build_cartesian_3d(x_spec, y_spec, z_spec)?;
+        let yaw = std::f64::consts::FRAC_PI_4;
         chart.with_projection(|mut pb| {
-            pb.yaw = 45f64.to_radians();
+            pb.yaw = yaw;
             pb.scale = 0.9;
             pb.into_matrix()
         });
@@ -88,36 +89,64 @@ impl Figure<'_, '_> {
             style.draw(&mut chart, line, data.color(), label)?;
         }
         // Draw linkage
+        // FIXME: Don't cover the curves
         if let Some((sc, _, Some(joints))) = sphere {
             let [p0, p1, p2, p3, p4] = joints;
             for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
-                let line = line
-                    .windows(2)
-                    .flat_map(|w| {
-                        let sc = na::Point3::from(sc);
-                        let a = na::Point3::from(w[0]) - sc;
-                        let b = na::Point3::from(w[1]) - sc;
-                        let axis = a.cross(&b).normalize();
-                        let angle = a.normalize().dot(&b.normalize()).acos();
-                        const N: usize = 150;
-                        let step = angle / N as f64;
-                        (0..=N).map(move |i| {
-                            let p =
-                                na::UnitQuaternion::from_scaled_axis(axis * i as f64 * step) * a;
-                            [sc.x + p.x, sc.y + p.y, sc.z + p.z]
-                        })
+                let mut line = line.windows(2).flat_map(|w| {
+                    let a = na::Point3::from(w[0]) - sc;
+                    let b = na::Point3::from(w[1]) - sc;
+                    let axis = a.cross(&b).normalize();
+                    let angle = a.normalize().dot(&b.normalize()).acos();
+                    const N: usize = 150;
+                    let step = angle / N as f64;
+                    (0..=N).map(move |i| {
+                        let p = na::UnitQuaternion::from_scaled_axis(axis * i as f64 * step) * a;
+                        [sc.x + p.x, sc.y + p.y, sc.z + p.z]
                     })
-                    .map(|[x, y, z]| (x, y, z));
-                chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
+                });
+                let mut last_pt = None;
+                loop {
+                    let is_front = std::cell::OnceCell::new();
+                    let mut line = line
+                        .by_ref()
+                        .take_while(|&[x, y, z]| {
+                            let stat = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
+                            *is_front.get_or_init(|| stat) == stat
+                        })
+                        .map(|[x, y, z]| (x, y, z))
+                        .collect::<Vec<_>>();
+                    if line.is_empty() {
+                        break;
+                    }
+                    if let Some(pre_pt) = last_pt {
+                        line.insert(0, pre_pt);
+                    }
+                    last_pt = line.last().copied();
+                    let is_front = *is_front.get().unwrap();
+                    let color = if is_front { BLACK } else { DARK_GRAY };
+                    chart.draw_series(LineSeries::new(line, color.stroke_width(stroke)))?;
+                }
             }
-            let grounded = joints[..2].iter().map(|&c| {
-                EmptyElement::at(c.into())
-                    + TriangleMarker::new((0, 10), dot_size + 3, BLACK.filled())
+            let grounded = joints[..2].iter().map(|&[x, y, z]| {
+                let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
+                let style = if is_front { BLACK } else { DARK_GRAY }.filled();
+                EmptyElement::at((x, y, z)) + TriangleMarker::new((0, 10), dot_size + 3, style)
             });
             chart.draw_series(grounded)?;
-            let joints = joints
-                .iter()
-                .map(|&[x, y, z]| Circle::new((x, y, z), dot_size, BLACK.filled()));
+            let joints = joints.iter().map(|&[x, y, z]| {
+                let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
+                let style = ShapeStyle {
+                    color: if is_front {
+                        BLACK.to_rgba()
+                    } else {
+                        DARK_GRAY.to_rgba()
+                    },
+                    filled: is_front,
+                    stroke_width: stroke,
+                };
+                Circle::new((x, y, z), dot_size, style)
+            });
             chart.draw_series(joints)?;
         }
         if let Some(legend) = legend.to_plotter_pos() {
@@ -141,4 +170,11 @@ where
     ExtBound::from_pts(pts)
         .to_square(0.2)
         .map_to(|min, max| min..max)
+}
+
+/// Check the point is in front of the sphere.
+pub fn is_front_of_sphere(sc: na::Point3<f64>, pt: na::Point3<f64>, yaw: f64) -> bool {
+    let dir = na::Vector3::new(yaw.sin(), 0., yaw.cos());
+    let pt = pt - sc;
+    pt.dot(&dir).acos() < std::f64::consts::FRAC_PI_2
 }

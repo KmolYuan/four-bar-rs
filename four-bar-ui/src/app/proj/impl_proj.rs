@@ -66,7 +66,7 @@ impl Project {
 
     pub(crate) fn get_sphere(&self) -> Option<[f64; 4]> {
         match self {
-            Self::SFb(proj) => Some(proj.fb.ocr()),
+            Self::SFb(proj) => Some(proj.fb.scr()),
             _ => None,
         }
     }
@@ -330,9 +330,10 @@ where
     }
 
     fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize) {
+        use ui::ProjPlot as _;
         if !self.hide {
             let joints = self.cache.joints.as_ref();
-            ui::ProjPlot::delta_plot(&self.fb, ui, joints, &self.cache.curves, ind == id);
+            self.fb.proj_plot(ui, joints, &self.cache.curves, ind == id);
         }
     }
 
