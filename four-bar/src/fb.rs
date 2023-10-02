@@ -243,7 +243,7 @@ pub trait PlanarLoop {
 
 /// Angle boundary types. The input angle range.
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, PartialEq, Default)]
 pub enum AngleBound {
     /// Closed curve
     Closed,
