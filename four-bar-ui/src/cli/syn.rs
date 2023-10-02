@@ -22,8 +22,8 @@ enum SynErr {
     Io(std::io::Error),
     Plot(plot::DrawingAreaErrorKind<std::io::Error>),
     CsvSer(csv::Error),
-    RonSer(ron::error::SpannedError),
-    RonDe(ron::error::Error),
+    RonSerde(ron::error::SpannedError),
+    RonIo(ron::error::Error),
     Linkage,
     Solver,
 }
@@ -35,8 +35,8 @@ impl std::fmt::Display for SynErr {
             Self::Io(e) => write!(f, "[IO] {e}"),
             Self::Plot(e) => write!(f, "[Plot] {e}"),
             Self::CsvSer(e) => write!(f, "[CSV] {e}"),
-            Self::RonSer(e) => write!(f, "[RON] {e}"),
-            Self::RonDe(e) => write!(f, "[RON] {e}"),
+            Self::RonSerde(e) => write!(f, "[RON-Serde] {e}"),
+            Self::RonIo(e) => write!(f, "[RON-IO] {e}"),
             Self::Linkage => write!(f, "invalid linkage input"),
             Self::Solver => write!(f, "solved error"),
         }
@@ -49,8 +49,8 @@ impl_err_from! {
     impl std::io::Error => Io
     impl plot::DrawingAreaErrorKind<std::io::Error> => Plot
     impl csv::Error => CsvSer
-    impl ron::error::SpannedError => RonSer
-    impl ron::error::Error => RonDe
+    impl ron::error::SpannedError => RonSerde
+    impl ron::error::Error => RonIo
 }
 
 #[derive(clap::Args)]
@@ -266,7 +266,7 @@ impl<'a> Solver<'a> {
         cfg: &'a SynCfg,
         cb: &io::CbPool,
         refer: &'a Path,
-        result_path: impl AsRef<Path>,
+        lnk_path: impl AsRef<Path>,
     ) -> Result<Self, SynErr> {
         let Info { root, target, mode, .. } = info;
         let mut history = Vec::with_capacity(cfg.gen as usize);
@@ -289,8 +289,8 @@ impl<'a> Solver<'a> {
         let svg = plot::SVGBackend::new(&path, (800, 600));
         plot2d::history(svg, history)?;
         match &result_fb {
-            syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(result_path, io::ron_string(fb))?,
-            syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(result_path, io::ron_string(fb))?,
+            syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
+            syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
         }
         Ok(Self {
             refer,
@@ -510,17 +510,22 @@ fn run(
     rerun: bool,
 ) {
     let title = &info.title;
-    let result_path = info.root.join("linkage.ron");
+    let lnk_path = info.root.join("linkage.ron");
     let f = || {
-        if !rerun && result_path.is_file() {
+        if !rerun && lnk_path.is_file() {
             // Just redraw the plots
-            let result_fb = match ron::de::from_reader(std::fs::File::open(result_path)?)? {
-                io::Fb::Fb(fb) => syn_cmd::SolvedFb::Fb(fb, None),
-                io::Fb::SFb(fb) => syn_cmd::SolvedFb::SFb(fb, None),
+            let result_fb = match ron::de::from_reader(std::fs::File::open(&lnk_path)?) {
+                Ok(io::Fb::Fb(fb)) => syn_cmd::SolvedFb::Fb(fb, None),
+                Ok(io::Fb::SFb(fb)) => syn_cmd::SolvedFb::SFb(fb, None),
+                Err(e) => {
+                    println!("Error in {title}: {e}", e = SynErr::from(e));
+                    return Solver::from_runtime(pb, method, &info, cfg, cb, refer, lnk_path)?
+                        .log();
+                }
             };
             Solver::from_exist(pb, &info, cfg, refer, result_fb).log()
         } else {
-            Solver::from_runtime(pb, method, &info, cfg, cb, refer, result_path)?.log()
+            Solver::from_runtime(pb, method, &info, cfg, cb, refer, lnk_path)?.log()
         }
     };
     match f() {
