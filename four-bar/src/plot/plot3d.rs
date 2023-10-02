@@ -142,15 +142,8 @@ impl Figure<'_, '_> {
             }
             for [x, y, z] in joints {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
-                let style = ShapeStyle {
-                    color: if is_front {
-                        BLACK.to_rgba()
-                    } else {
-                        DARK_GRAY.to_rgba()
-                    },
-                    filled: is_front,
-                    stroke_width: stroke,
-                };
+                let color = if is_front { BLACK } else { DARK_GRAY }.to_rgba();
+                let style = ShapeStyle { color, filled: is_front, stroke_width: stroke };
                 let joint = Circle::new((x, y, z), dot_size, style);
                 if is_front {
                     joints_front.push(joint);
@@ -198,6 +191,5 @@ where
 /// Check the point is in front of the sphere.
 pub fn is_front_of_sphere(sc: na::Point3<f64>, pt: na::Point3<f64>, yaw: f64) -> bool {
     let dir = na::Vector3::new(yaw.sin(), 0., yaw.cos());
-    let pt = pt - sc;
-    pt.dot(&dir).acos() < std::f64::consts::FRAC_PI_2
+    (pt - sc).dot(&dir).acos() < std::f64::consts::FRAC_PI_2
 }
