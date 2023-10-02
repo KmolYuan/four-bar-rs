@@ -254,7 +254,7 @@ struct Solver<'a> {
     info: &'a Info,
     cfg: &'a SynCfg,
     harmonic: usize,
-    result_fb: syn_cmd::SolvedFb,
+    lnk_fb: syn_cmd::SolvedFb,
     cost_t1: Option<(f64, std::time::Duration)>,
 }
 
@@ -297,7 +297,7 @@ impl<'a> Solver<'a> {
             info,
             cfg,
             harmonic,
-            result_fb,
+            lnk_fb: result_fb,
             cost_t1: Some((cost, t1)),
         })
     }
@@ -307,10 +307,10 @@ impl<'a> Solver<'a> {
         info: &'a Info,
         cfg: &'a SynCfg,
         refer: &'a Path,
-        result_fb: syn_cmd::SolvedFb,
+        lnk_fb: syn_cmd::SolvedFb,
     ) -> Self {
         let is_open = info.mode.is_result_open();
-        let harmonic = match &result_fb {
+        let harmonic = match &lnk_fb {
             syn_cmd::SolvedFb::Fb(fb, _) => {
                 efd::Efd2::from_curve(fb.curve(cfg.res), is_open).harmonic()
             }
@@ -319,19 +319,19 @@ impl<'a> Solver<'a> {
             }
         };
         pb.inc(cfg.gen);
-        Self {
-            refer,
-            info,
-            cfg,
-            harmonic,
-            result_fb,
-            cost_t1: None,
-        }
+        Self { refer, info, cfg, harmonic, lnk_fb, cost_t1: None }
     }
 
     fn log(self) -> Result<(), SynErr> {
         use four_bar::fb::{CurveGen as _, Normalized as _};
-        let Self { refer, info, cfg, harmonic, result_fb, cost_t1 } = self;
+        let Self {
+            refer,
+            info,
+            cfg,
+            harmonic,
+            lnk_fb: result_fb,
+            cost_t1,
+        } = self;
         let Info { root, target, target_fb, title, mode } = info;
         let refer = cfg.ref_num.and_then(|n| {
             let path = root
@@ -513,20 +513,19 @@ fn run(
     let lnk_path = info.root.join("linkage.ron");
     let f = || {
         if !rerun && lnk_path.is_file() {
-            // Just redraw the plots
-            let result_fb = match ron::de::from_reader(std::fs::File::open(&lnk_path)?) {
-                Ok(io::Fb::Fb(fb)) => syn_cmd::SolvedFb::Fb(fb, None),
-                Ok(io::Fb::SFb(fb)) => syn_cmd::SolvedFb::SFb(fb, None),
-                Err(e) => {
-                    println!("Error in {title}: {e}", e = SynErr::from(e));
-                    return Solver::from_runtime(pb, method, &info, cfg, cb, refer, lnk_path)?
-                        .log();
+            match ron::de::from_reader(std::fs::File::open(&lnk_path)?) {
+                Ok(fb) => {
+                    // Just redraw the plots
+                    let lnk_fb = match fb {
+                        io::Fb::Fb(fb) => syn_cmd::SolvedFb::Fb(fb, None),
+                        io::Fb::SFb(fb) => syn_cmd::SolvedFb::SFb(fb, None),
+                    };
+                    return Solver::from_exist(pb, &info, cfg, refer, lnk_fb).log();
                 }
-            };
-            Solver::from_exist(pb, &info, cfg, refer, result_fb).log()
-        } else {
-            Solver::from_runtime(pb, method, &info, cfg, cb, refer, lnk_path)?.log()
+                Err(e) => println!("Rerun {title}: {}", SynErr::from(e)),
+            }
         }
+        Solver::from_runtime(pb, method, &info, cfg, cb, refer, lnk_path)?.log()
     };
     match f() {
         Ok(()) => pb.println(format!("Finished: {title}")),
