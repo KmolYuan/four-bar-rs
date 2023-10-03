@@ -244,9 +244,10 @@ where
     ERR_MSG.lock().unwrap().replace((title.into(), msg.into()));
 }
 
-pub(crate) fn open_ron_single<C>(done: C)
+pub(crate) fn open_ron_single<S, C>(done: C)
 where
-    C: FnOnce(PathBuf, Fb) + 'static,
+    S: serde::de::DeserializeOwned,
+    C: FnOnce(PathBuf, S) + 'static,
 {
     let done = move |path, r| ron::de::from_reader(r).alert_then("Parse File", |fb| done(path, fb));
     open_single(FMT, EXT, done);
@@ -319,11 +320,11 @@ where
     save_ask(&ron_string(s), name, FMT, EXT, done);
 }
 
-pub(crate) fn save_ron<S>(fb: &S, path: &Path)
+pub(crate) fn save_ron<S>(s: &S, path: &Path)
 where
     S: serde::Serialize,
 {
-    save(&ron_string(fb), path);
+    save(&ron_string(s), path);
 }
 
 pub(crate) fn save_svg_ask(buf: &str, name: &str) {
