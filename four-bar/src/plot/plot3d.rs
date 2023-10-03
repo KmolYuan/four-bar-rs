@@ -27,7 +27,7 @@ impl Figure<'_, '_> {
     /// Figure::from(&fb)
     ///     .axis(false)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
-    ///     .plot(SVGBackend::with_string(&mut buf, (800, 800)))
+    ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))
     ///     .unwrap();
     /// ```
     pub fn plot<B, R>(&self, root: R) -> PResult<(), B>
@@ -156,7 +156,9 @@ impl Figure<'_, '_> {
         for data in self.lines() {
             let LineData { label, line, style, .. } = &*data;
             let line = line.iter().map(|&c| c.into());
-            style.draw(&mut chart, line, data.color(), label)?;
+            let (color, filled) = data.color();
+            let color = ShapeStyle { color, filled, stroke_width: stroke };
+            style.draw(&mut chart, line, color, label, self.font as i32)?;
         }
         // Draw layer 3: Draw linkage in the front of the sphere
         for line in link_front {
@@ -168,6 +170,7 @@ impl Figure<'_, '_> {
         if let Some(legend) = legend.to_plotter_pos() {
             chart
                 .configure_series_labels()
+                .legend_area_size(self.font)
                 .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)

@@ -124,7 +124,6 @@ fn fig_line_ui<const N: usize>(
         ui.label("Style");
         let id = Id::new("sty").with(i);
         combo_enum(ui, id, &mut line.style, fb_plot::Style::LIST, |e| e.name());
-        nonzero_i(ui, "Stroke Width: ", &mut line.stroke_width, 1);
     });
     ui.horizontal(|ui| {
         ui.color_edit_button_srgb(&mut line.color);

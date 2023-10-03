@@ -10,7 +10,7 @@
 //!
 //! let fig = plot2d::Figure::new().add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
 //! let mut buf = String::new();
-//! let svg = SVGBackend::with_string(&mut buf, (800, 800));
+//! let svg = SVGBackend::with_string(&mut buf, (1600, 1600));
 //! fig.plot(svg).unwrap();
 //! ```
 //!
@@ -206,6 +206,7 @@ impl Style {
         line: I,
         color: ShapeStyle,
         label: &str,
+        font: i32,
     ) -> PResult<(), DB>
     where
         DB: DrawingBackend + 'a,
@@ -213,8 +214,8 @@ impl Style {
         CT::From: Clone + 'static,
         I: Iterator<Item = CT::From> + Clone,
     {
-        let color = color.stroke_width((color.stroke_width as f32 * 1.5) as u32);
-        let dot_size = (color.stroke_width as f32 * 2.6) as u32;
+        let dot_size = color.stroke_width;
+        let gap = color.stroke_width as i32;
         let has_label = !label.is_empty();
         macro_rules! impl_marker {
             ($mk:ident) => {{
@@ -222,7 +223,7 @@ impl Style {
                 let anno = chart.draw_series(line)?;
                 if has_label {
                     anno.label(label)
-                        .legend(move |(x, y)| $mk::new((x + 10, y), dot_size, color));
+                        .legend(move |(x, y)| $mk::new((x + font / 2, y), dot_size, color));
                 }
             }};
         }
@@ -231,16 +232,18 @@ impl Style {
                 let line = LineSeries::new(line, color);
                 let anno = chart.draw_series(line)?;
                 if has_label {
-                    anno.label(label)
-                        .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], color));
+                    anno.label(label).legend(move |(x, y)| {
+                        PathElement::new([(x + gap, y), (x + font - gap, y)], color)
+                    });
                 }
             }
             Self::DashedLine => {
                 let series = DashedPath::new(line, 10, 5, color).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
-                    anno.label(label)
-                        .legend(move |(x, y)| DashedPath::new([(x, y), (x + 20, y)], 10, 5, color));
+                    anno.label(label).legend(move |(x, y)| {
+                        DashedPath::new([(x + gap, y), (x + font - gap, y)], 10, 5, color)
+                    });
                 }
             }
             Self::Circle => impl_marker!(Circle),
@@ -251,23 +254,23 @@ impl Style {
                 if has_label {
                     anno.label(label).legend(move |c| {
                         EmptyElement::at(c)
-                            + Circle::new((0, 0), dot_size, color)
-                            + Circle::new((10, 0), dot_size, color)
-                            + Circle::new((20, 0), dot_size, color)
+                            + Circle::new((gap, 0), dot_size, color)
+                            + Circle::new((font / 2, 0), dot_size, color)
+                            + Circle::new((font - gap, 0), dot_size, color)
                     });
                 }
             }
             Self::Triangle => impl_marker!(TriangleMarker),
             Self::Cross => impl_marker!(Cross),
             Self::Square => {
-                let r = dot_size as i32;
+                let r = color.stroke_width as i32;
                 let line = line
                     .into_iter()
                     .map(|c| EmptyElement::at(c) + Rectangle::new([(r, r), (-r, -r)], color));
                 let anno = chart.draw_series(line)?;
                 if has_label {
                     anno.label(label).legend(move |(x, y)| {
-                        EmptyElement::at((x + dot_size as i32 / 2, y))
+                        EmptyElement::at((x + font / 2, y))
                             + Rectangle::new([(r, r), (-r, -r)], color)
                     });
                 }
@@ -374,8 +377,6 @@ pub struct LineData<'a, C: Clone> {
     pub style: Style,
     /// Line color
     pub color: [u8; 3],
-    /// Stroke width
-    pub stroke_width: u32,
     /// Whether the line is filled
     pub filled: bool,
 }
@@ -387,19 +388,15 @@ impl<'a, C: Clone> Default for LineData<'a, C> {
             line: Cow::Borrowed(&[]),
             style: Style::default(),
             color: [0; 3],
-            stroke_width: 1,
             filled: false,
         }
     }
 }
 
 impl<'a, C: Clone> LineData<'a, C> {
-    pub(crate) fn color(&self) -> ShapeStyle {
-        ShapeStyle {
-            color: RGBAColor(self.color[0], self.color[1], self.color[2], 1.),
-            filled: self.filled,
-            stroke_width: self.stroke_width,
-        }
+    pub(crate) fn color(&self) -> (RGBAColor, bool) {
+        let color = RGBAColor(self.color[0], self.color[1], self.color[2], 1.);
+        (color, self.filled)
     }
 }
 
@@ -492,11 +489,10 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     }
 
     /// Add a line.
-    pub fn add_line<S, L, Color>(self, label: S, line: L, style: Style, color: Color) -> Self
+    pub fn add_line<S, L>(self, label: S, line: L, style: Style, color: RGBColor) -> Self
     where
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [C]>>,
-        ShapeStyle: From<Color>,
     {
         let color = ShapeStyle::from(color);
         self.add_line_data(LineData {
@@ -504,7 +500,6 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             line: line.into(),
             style,
             color: [color.color.0, color.color.1, color.color.2],
-            stroke_width: color.stroke_width,
             filled: color.filled,
         })
     }
@@ -626,8 +621,8 @@ pub struct Opt<'a> {
 impl Default for Opt<'_> {
     fn default() -> Self {
         Self {
-            stroke: 5,
-            font: 45.,
+            stroke: 10,
+            font: 90.,
             font_family: None,
             grid: false,
             axis: true,

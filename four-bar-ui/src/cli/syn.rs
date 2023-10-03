@@ -90,7 +90,7 @@ pub(super) struct Syn {
 #[derive(clap::Args)]
 struct SynCfg {
     /// Font size in the plot
-    #[clap(long, default_value_t = 45.)]
+    #[clap(long, default_value_t = 90.)]
     font: f64,
     /// Reference number of competitor, default to eliminate
     ///
@@ -368,7 +368,7 @@ impl<'a> Solver<'a> {
                 }
                 {
                     let path = root.join("linkage.svg");
-                    let svg = plot::SVGBackend::new(&path, (800, 800));
+                    let svg = plot::SVGBackend::new(&path, (1600, 1600));
                     fig.plot(svg)?;
                 }
                 if let Some(io::Fb::Fb(fb)) = target_fb {
@@ -418,7 +418,7 @@ impl<'a> Solver<'a> {
                     fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
                 }
                 let path = root.join("curve.svg");
-                let svg = plot::SVGBackend::new(&path, (800, 800));
+                let svg = plot::SVGBackend::new(&path, (1600, 1600));
                 fig.remove_fb().plot(svg)?;
             }
             (io::Curve::S(target), syn_cmd::SolvedFb::SFb(fb, cb_fb)) if fb.is_valid() => {
@@ -440,7 +440,7 @@ impl<'a> Solver<'a> {
                 }
                 {
                     let path = root.join("linkage.svg");
-                    let svg = plot::SVGBackend::new(&path, (800, 800));
+                    let svg = plot::SVGBackend::new(&path, (1600, 1600));
                     fig.plot(svg)?;
                 }
                 if let Some(io::Fb::SFb(fb)) = target_fb {
@@ -490,7 +490,7 @@ impl<'a> Solver<'a> {
                     fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
                 }
                 let path = root.join("curve.svg");
-                let svg = plot::SVGBackend::new(&path, (800, 800));
+                let svg = plot::SVGBackend::new(&path, (1600, 1600));
                 fig.with_fb(fb.take_sphere()).plot(svg)?;
             }
             _ => Err(SynErr::Solver)?,

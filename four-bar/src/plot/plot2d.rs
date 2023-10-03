@@ -56,7 +56,7 @@ impl Figure<'_, '_> {
     /// plot2d::Figure::from(&fb)
     ///     .axis(false)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
-    ///     .plot(SVGBackend::with_string(&mut buf, (800, 800)))
+    ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))
     ///     .unwrap();
     /// ```
     pub fn plot<B, R>(&self, root: R) -> PResult<(), B>
@@ -96,7 +96,9 @@ impl Figure<'_, '_> {
         for data in self.lines() {
             let LineData { label, line, style, .. } = &*data;
             let line = line.iter().map(|&[x, y]| (x, y));
-            style.draw(&mut chart, line, data.color(), label)?;
+            let (color, filled) = data.color();
+            let color = ShapeStyle { color, filled, stroke_width: stroke };
+            style.draw(&mut chart, line, color, label, self.font as i32)?;
         }
         // Draw Linkage
         if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
@@ -118,6 +120,7 @@ impl Figure<'_, '_> {
         if let Some(legend) = legend.to_plotter_pos() {
             chart
                 .configure_series_labels()
+                .legend_area_size(self.font)
                 .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)
