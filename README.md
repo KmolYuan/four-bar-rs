@@ -58,9 +58,8 @@ sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbc
 Then run with cargo directly:
 
 ```bash
-cargo run
-# CLI Mode
-cargo run -- --help
+cargo build --release
+cargo run --release -- --help
 ```
 
 ### WebAssembly
