@@ -213,8 +213,8 @@ impl Style {
         CT::From: Clone + 'static,
         I: Iterator<Item = CT::From> + Clone,
     {
-        let color = color.stroke_width(color.stroke_width + 2);
-        let dot_size = color.stroke_width + 5;
+        let color = color.stroke_width((color.stroke_width as f32 * 1.5) as u32);
+        let dot_size = (color.stroke_width as f32 * 2.6) as u32;
         let has_label = !label.is_empty();
         macro_rules! impl_marker {
             ($mk:ident) => {{
@@ -246,7 +246,6 @@ impl Style {
             Self::Circle => impl_marker!(Circle),
             Self::Dot => {
                 let color = color.filled();
-                let dot_size = dot_size - 4;
                 let line = line.into_iter().map(|c| Circle::new(c, dot_size, color));
                 let anno = chart.draw_series(line)?;
                 if has_label {
@@ -361,19 +360,16 @@ impl LegendPos {
 }
 
 /// Drawing options of a line series.
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LineData<'a, const N: usize> {
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
+pub struct LineData<'a, C: Clone> {
     /// Label of the line
     pub label: Cow<'a, str>,
     /// Line data
-    #[cfg_attr(
-        feature = "serde",
-        serde(bound(
-            serialize = "[f64; N]: serde::Serialize",
-            deserialize = "[f64; N]: serde::de::DeserializeOwned"
-        ))
-    )]
-    pub line: Cow<'a, [[f64; N]]>,
+    pub line: Cow<'a, [C]>,
     /// Line style
     pub style: Style,
     /// Line color
@@ -384,7 +380,7 @@ pub struct LineData<'a, const N: usize> {
     pub filled: bool,
 }
 
-impl<'a, const N: usize> Default for LineData<'a, N> {
+impl<'a, C: Clone> Default for LineData<'a, C> {
     fn default() -> Self {
         Self {
             label: Cow::Borrowed(""),
@@ -397,7 +393,7 @@ impl<'a, const N: usize> Default for LineData<'a, N> {
     }
 }
 
-impl<'a, const N: usize> LineData<'a, N> {
+impl<'a, C: Clone> LineData<'a, C> {
     pub(crate) fn color(&self) -> ShapeStyle {
         ShapeStyle {
             color: RGBAColor(self.color[0], self.color[1], self.color[2], 1.),
@@ -408,27 +404,24 @@ impl<'a, const N: usize> LineData<'a, N> {
 }
 
 /// Option type base.
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(default)
+)]
 #[derive(Clone)]
-pub struct FigureBase<'a, 'b, M: Clone, const N: usize> {
+pub struct FigureBase<'a, 'b, M: Clone, C: Clone> {
     /// Linkage
     pub fb: Option<Cow<'b, M>>,
     /// Input angle
     pub angle: Option<f64>,
     /// Line data
-    #[cfg_attr(
-        feature = "serde",
-        serde(bound(
-            serialize = "[f64; N]: serde::Serialize",
-            deserialize = "[f64; N]: serde::de::DeserializeOwned"
-        ))
-    )]
-    pub lines: Vec<Rc<RefCell<LineData<'a, N>>>>,
+    pub lines: Vec<Rc<RefCell<LineData<'a, C>>>>,
     /// Drawing options
     pub opt: Opt<'a>,
 }
 
-impl<M: Clone, const N: usize> Default for FigureBase<'_, '_, M, N> {
+impl<M: Clone, C: Clone> Default for FigureBase<'_, '_, M, C> {
     fn default() -> Self {
         Self {
             fb: None,
@@ -439,7 +432,7 @@ impl<M: Clone, const N: usize> Default for FigureBase<'_, '_, M, N> {
     }
 }
 
-impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
+impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     /// Create a new instance with linkage.
     pub fn new(fb: Option<M>) -> Self {
         Self { fb: fb.map(Cow::Owned), ..Default::default() }
@@ -499,11 +492,11 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     /// Add a line.
-    pub fn add_line<S, L, C>(self, label: S, line: L, style: Style, color: C) -> Self
+    pub fn add_line<S, L, Color>(self, label: S, line: L, style: Style, color: Color) -> Self
     where
         S: Into<Cow<'a, str>>,
-        L: Into<Cow<'a, [[f64; N]]>>,
-        ShapeStyle: From<C>,
+        L: Into<Cow<'a, [C]>>,
+        ShapeStyle: From<Color>,
     {
         let color = ShapeStyle::from(color);
         self.add_line_data(LineData {
@@ -517,13 +510,13 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     /// Add a line from a [`LineData`] instance.
-    pub fn add_line_data(mut self, data: LineData<'a, N>) -> Self {
+    pub fn add_line_data(mut self, data: LineData<'a, C>) -> Self {
         self.push_line_data(data);
         self
     }
 
     /// Add a line from a [`LineData`] instance in-placed.
-    pub fn push_line_data(&mut self, data: LineData<'a, N>) {
+    pub fn push_line_data(&mut self, data: LineData<'a, C>) {
         self.lines.push(Rc::new(RefCell::new(data)));
     }
 
@@ -531,7 +524,7 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     pub fn push_line_default<S, L>(&mut self, label: S, line: L)
     where
         S: Into<Cow<'a, str>>,
-        L: Into<Cow<'a, [[f64; N]]>>,
+        L: Into<Cow<'a, [C]>>,
     {
         self.push_line_data(LineData {
             label: label.into(),
@@ -541,12 +534,12 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 
     /// Iterate over lines.
-    pub fn lines(&self) -> impl Iterator<Item = Ref<LineData<'a, N>>> {
+    pub fn lines(&self) -> impl Iterator<Item = Ref<LineData<'a, C>>> {
         self.lines.iter().map(|packed| packed.borrow())
     }
 
     /// Get a mutable reference to the lines.
-    pub fn lines_mut(&mut self) -> &mut Vec<Rc<RefCell<LineData<'a, N>>>> {
+    pub fn lines_mut(&mut self) -> &mut Vec<Rc<RefCell<LineData<'a, C>>>> {
         &mut self.lines
     }
 
@@ -572,7 +565,7 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
 
     // (stroke, dot_size)
     pub(crate) fn get_dot_size(&self) -> (u32, u32) {
-        (self.stroke, self.stroke + 3)
+        (self.stroke, (self.stroke as f32 * 1.5) as u32)
     }
 
     #[inline]
@@ -595,14 +588,14 @@ impl<'a, 'b, M: Clone, const N: usize> FigureBase<'a, 'b, M, N> {
     }
 }
 
-impl<'a, M: Clone, const N: usize> std::ops::Deref for FigureBase<'a, '_, M, N> {
+impl<'a, M: Clone, C: Clone> std::ops::Deref for FigureBase<'a, '_, M, C> {
     type Target = Opt<'a>;
     fn deref(&self) -> &Self::Target {
         &self.opt
     }
 }
 
-impl<'a, M: Clone, const N: usize> std::ops::DerefMut for FigureBase<'a, '_, M, N> {
+impl<'a, M: Clone, C: Clone> std::ops::DerefMut for FigureBase<'a, '_, M, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.opt
     }

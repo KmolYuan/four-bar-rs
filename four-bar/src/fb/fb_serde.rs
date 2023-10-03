@@ -1,5 +1,6 @@
+// Flatten is unsupported in RON, so we have to manually implement it.
 use super::{FourBar, SFourBar};
-use serde::ser::*;
+use serde::{de::*, ser::*};
 
 macro_rules! ser_fields {
     ($s: ident, $obj: expr $(, $fields: ident)+ $(,)?) => {
@@ -7,7 +8,6 @@ macro_rules! ser_fields {
     };
 }
 
-/// Flatten is unsupported in RON, so we have to manually implement it.
 impl Serialize for FourBar {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -22,7 +22,6 @@ impl Serialize for FourBar {
     }
 }
 
-/// Flatten is unsupported in RON, so we have to manually implement it.
 impl Serialize for SFourBar {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -34,3 +33,105 @@ impl Serialize for SFourBar {
         s.end()
     }
 }
+
+macro_rules! impl_de {
+    ($ty: ident, [$(($field: ident $(, $unnorm: ident)?)),+ $(,)?]) => {
+        impl<'de> Deserialize<'de> for $ty {
+            fn deserialize<D>(deserializer: D) -> Result<$ty, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                const FIELDS: &[&str] = &[$(stringify!($field)),+];
+                #[allow(non_camel_case_types)]
+                enum Field {
+                    $($field),+
+                }
+                impl<'de> Deserialize<'de> for Field {
+                    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                    where
+                        D: Deserializer<'de>,
+                    {
+                        struct FieldVisitor;
+                        impl<'de> Visitor<'de> for FieldVisitor {
+                            type Value = Field;
+                            fn expecting(&self, w: &mut std::fmt::Formatter) -> std::fmt::Result {
+                                write!(w, "fields: {FIELDS:?}")
+                            }
+                            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                            where
+                                E: serde::de::Error,
+                            {
+                                match v {
+                                    $(stringify!($field) => Ok(Field::$field),)+
+                                    _ => Err(serde::de::Error::unknown_field(v, FIELDS)),
+                                }
+                            }
+                        }
+                        deserializer.deserialize_identifier(FieldVisitor)
+                    }
+                }
+                struct StructVisitor;
+                impl<'de> Visitor<'de> for StructVisitor {
+                    type Value = $ty;
+                    fn expecting(&self, w: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        write!(w, concat!["struct ", stringify!($ty)])
+                    }
+                    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+                    where
+                        A: MapAccess<'de>,
+                    {
+                        $(let $field = std::cell::OnceCell::new();)+
+                        while let Some(k) = map.next_key()? {
+                            match k {
+                                $(Field::$field => $field
+                                    .set(map.next_value()?)
+                                    .map_err(|_| serde::de::Error::duplicate_field(stringify!($field)))?,)+
+                            }
+                        }
+                        let mut fb = $ty::default();
+                        $(fb.$($unnorm.)?$field = $field
+                            .into_inner()
+                            .ok_or(serde::de::Error::missing_field(stringify!($field)))?;)+
+                        Ok(fb)
+                    }
+                }
+                deserializer.deserialize_struct(stringify!($ty), FIELDS, StructVisitor)
+            }
+        }
+    };
+}
+
+impl_de!(
+    FourBar,
+    [
+        (p0x, unnorm),
+        (p0y, unnorm),
+        (a, unnorm),
+        (l1),
+        (l2, unnorm),
+        (l3),
+        (l4),
+        (l5),
+        (g),
+        (stat),
+    ]
+);
+impl_de!(
+    SFourBar,
+    [
+        (ox, unnorm),
+        (oy, unnorm),
+        (oz, unnorm),
+        (r, unnorm),
+        (p0i, unnorm),
+        (p0j, unnorm),
+        (a, unnorm),
+        (l1),
+        (l2),
+        (l3),
+        (l4),
+        (l5),
+        (g),
+        (stat),
+    ]
+);

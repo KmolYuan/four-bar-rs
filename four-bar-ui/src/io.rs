@@ -252,11 +252,12 @@ where
     open_single(FMT, EXT, done);
 }
 
-pub(crate) fn open_ron<C>(done: C)
+pub(crate) fn open_ron<S, C>(done: C)
 where
-    C: Fn(PathBuf, Fb) + 'static,
+    S: serde::de::DeserializeOwned,
+    C: Fn(PathBuf, S) + 'static,
 {
-    let done = move |path, r| ron::de::from_reader(r).alert_then("Parse File", |fb| done(path, fb));
+    let done = move |path, r| ron::de::from_reader(r).alert_then("Parse File", |s| done(path, s));
     open(FMT, EXT, done);
 }
 
@@ -310,12 +311,12 @@ where
     save_bin_ask("cb.npz", CB_FMT, CB_EXT, |w| cb.write(w));
 }
 
-pub(crate) fn save_ron_ask<S, C>(fb: &S, name: &str, done: C)
+pub(crate) fn save_ron_ask<S, C>(s: &S, name: &str, done: C)
 where
     S: serde::Serialize,
     C: FnOnce(PathBuf) + 'static,
 {
-    save_ask(&ron_string(fb), name, FMT, EXT, done);
+    save_ask(&ron_string(s), name, FMT, EXT, done);
 }
 
 pub(crate) fn save_ron<S>(fb: &S, path: &Path)

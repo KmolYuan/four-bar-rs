@@ -11,7 +11,7 @@ pub use super::*;
 /// // Without linkage
 /// let figure = Figure::new();
 /// ```
-pub type Figure<'a, 'b> = FigureBase<'a, 'b, crate::FourBar, 2>;
+pub type Figure<'a, 'b> = FigureBase<'a, 'b, FourBar, [f64; 2]>;
 
 /// Plot the synthesis history.
 pub fn history<B, R, H>(root: R, history: H) -> PResult<(), B>

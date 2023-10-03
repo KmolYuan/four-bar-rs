@@ -8,7 +8,7 @@ pub use plotters::{prelude::*, *};
 /// Drawing option of spherical four-bar linkage and its input angle.
 ///
 /// Please see [`Figure::plot()`] for more information.
-pub type Figure<'a, 'b> = FigureBase<'a, 'b, crate::SFourBar, 3>;
+pub type Figure<'a, 'b> = FigureBase<'a, 'b, SFourBar, [f64; 3]>;
 
 impl Figure<'_, '_> {
     fn get_sphere_center_radius(&self) -> Option<(na::Point3<f64>, f64)> {
@@ -132,8 +132,8 @@ impl Figure<'_, '_> {
             for &[x, y, z] in &joints[..2] {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
                 let style = if is_front { BLACK } else { DARK_GRAY }.filled();
-                let grounded =
-                    EmptyElement::at((x, y, z)) + TriangleMarker::new((0, 10), dot_size + 3, style);
+                let grounded = EmptyElement::at((x, y, z))
+                    + TriangleMarker::new((0, dot_size as i32), dot_size * 2, style);
                 if is_front {
                     grounded_front.push(grounded);
                 } else {

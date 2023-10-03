@@ -7,7 +7,7 @@ use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
 fn fig_ui<D, M, const N: usize>(
     ui: &mut Ui,
-    fig: &mut Rc<RefCell<fb_plot::FigureBase<'static, 'static, M, N>>>,
+    fig: &mut Rc<RefCell<fb_plot::FigureBase<'static, 'static, M, [f64; N]>>>,
     lnk: &mut super::link::Linkages,
     get_fb: impl Fn(io::Fb) -> Option<M> + Copy + 'static,
     get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; N]>> + Copy + 'static,
@@ -85,11 +85,10 @@ fn fig_ui<D, M, const N: usize>(
             let res = lnk.cfg.res;
             let fig = fig.clone();
             io::open_ron(move |_, fb| {
-                let done = |fb: M| {
+                get_fb(fb).alert_then("Wrong linkage type", |fb| {
                     fig.borrow_mut()
                         .push_line_default("New Curve", fb.curve(res));
-                };
-                get_fb(fb).alert_then("Wrong linkage type", done);
+                });
             });
         }
     });
@@ -103,19 +102,18 @@ fn fig_ui<D, M, const N: usize>(
         ui.checkbox(&mut fig.grid, "Show grid");
         ui.checkbox(&mut fig.axis, "Show axis");
         ui.horizontal(|ui| {
+            use fb_plot::LegendPos;
             ui.label("Legend");
-            combo_enum(
-                ui,
-                "legend",
-                &mut fig.legend,
-                fb_plot::LegendPos::LIST,
-                |e| e.name(),
-            );
+            combo_enum(ui, "legend", &mut fig.legend, LegendPos::LIST, |e| e.name());
         });
     });
 }
 
-fn fig_line_ui<const N: usize>(ui: &mut Ui, i: usize, line: &mut fb_plot::LineData<N>) -> bool {
+fn fig_line_ui<const N: usize>(
+    ui: &mut Ui,
+    i: usize,
+    line: &mut fb_plot::LineData<[f64; N]>,
+) -> bool {
     let keep = ui
         .horizontal(|ui| {
             ui.text_edit_singleline(line.label.to_mut());
@@ -201,8 +199,9 @@ impl PlotType {
 pub(crate) struct Plotter {
     size: u32,
     shape: (usize, usize),
-    curr: usize,
     queue: Vec<Option<PlotType>>,
+    #[serde(skip)]
+    curr: usize,
 }
 
 impl Default for Plotter {
@@ -254,6 +253,13 @@ impl Plotter {
         // Subplot settings
         if let Some(plot) = &mut self.queue[self.curr] {
             plot.show(ui, lnk);
+            if ui.button("💾 Save Plot Settings").clicked() {
+                let name = "plot.fig.ron";
+                match plot {
+                    PlotType::P(fig) => io::save_ron_ask(&*fig.borrow(), name, |_| ()),
+                    PlotType::S(fig) => io::save_ron_ask(&*fig.borrow(), name, |_| ()),
+                }
+            }
             if ui.button("✖ Delete Plot").clicked() {
                 self.queue[self.curr].take();
             }
@@ -265,6 +271,22 @@ impl Plotter {
                 }
                 if ui.button("✚ Spatial").clicked() {
                     self.queue[self.curr].replace(PlotType::new_s());
+                }
+            });
+            ui.horizontal(|ui| {
+                if ui.button("🖴 Load Planar").clicked() {
+                    let PlotType::P(fig) = self.queue[self.curr].insert(PlotType::new_p()) else {
+                        unreachable!()
+                    };
+                    let fig = fig.clone();
+                    io::open_ron(move |_, cfg| *fig.borrow_mut() = cfg);
+                }
+                if ui.button("🖴 Load Spherical").clicked() {
+                    let PlotType::S(fig) = self.queue[self.curr].insert(PlotType::new_s()) else {
+                        unreachable!()
+                    };
+                    let fig = fig.clone();
+                    io::open_ron(move |_, cfg| *fig.borrow_mut() = cfg);
                 }
             });
             ui.menu_button("Copy From ⏷", |ui| {

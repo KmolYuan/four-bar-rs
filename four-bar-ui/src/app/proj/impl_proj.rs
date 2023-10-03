@@ -303,6 +303,7 @@ where
             }
         });
         let mut res = ui::ProjUi::delta_ui(&mut self.fb, ui, cfg);
+        self.unsaved |= res.changed();
         ui.separator();
         ui.heading("Angle");
         if let Some([start, end]) = self.cache.angle_bound.to_value() {
@@ -313,7 +314,6 @@ where
                 .group(|ui| angle(ui, "Theta: ", &mut self.angle, ""))
                 .inner;
             self.cache.changed |= res.changed();
-            self.unsaved |= res.changed();
         });
         self.cache(cfg.res);
     }
