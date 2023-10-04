@@ -140,10 +140,10 @@ impl Figure<'_, '_> {
                     chart.draw_series([grounded])?;
                 }
             }
-            for [x, y, z] in joints {
+            for (n, [x, y, z]) in joints.into_iter().enumerate() {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
                 let color = if is_front { BLACK } else { DARK_GRAY }.to_rgba();
-                let style = ShapeStyle { color, filled: is_front, stroke_width: stroke };
+                let style = ShapeStyle { color, filled: n == 4, stroke_width: stroke };
                 let joint = Circle::new((x, y, z), dot_size, style);
                 if is_front {
                     joints_front.push(joint);
