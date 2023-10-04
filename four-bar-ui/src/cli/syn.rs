@@ -3,7 +3,6 @@ use four_bar::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{
     borrow::Cow,
-    ffi::OsStr,
     io::Write as _,
     path::{Path, PathBuf},
 };
@@ -76,55 +75,20 @@ pub(super) struct Syn {
     /// Provide pre-generated codebook databases, support multiple paths as
     #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
     #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
+    ///
+    /// If the codebook is provided, the rerun flag will be enabled
     #[clap(long)]
     cb: Option<std::ffi::OsString>,
     /// Competitor path starting from file root with the same filename
     #[clap(short, long, default_value = "refer")]
     refer: PathBuf,
+    /// Disable reference comparison
+    #[clap(long)]
+    no_ref: bool,
     #[clap(flatten)]
-    cfg: SynCfg,
+    cfg: syn_cmd::SynCfg,
     #[clap(subcommand)]
-    method: Option<crate::syn_cmd::SynMethod>,
-}
-
-#[derive(clap::Args)]
-struct SynCfg {
-    /// Font size in the plot
-    #[clap(long, default_value_t = 90.)]
-    font: f64,
-    /// Reference number of competitor, default to eliminate
-    ///
-    /// Pass `--ref-num 0` to enable and leave a placeholder
-    #[clap(long)]
-    ref_num: Option<u8>,
-    /// Linkage input angle (degrees) in the plot
-    #[clap(long)]
-    angle: Option<f64>,
-    /// Legend position
-    #[clap(long, default_value = "ur")]
-    legend: plot::LegendPos,
-    #[clap(flatten)]
-    inner: syn_cmd::SynConfig,
-}
-
-impl std::fmt::Display for SynCfg {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        macro_rules! impl_fmt {
-            ($self:ident, $($field:ident),+) => {$(
-                write!(f, concat![stringify!($field), "={:?} "], $self.$field)?;
-            )+};
-        }
-        impl_fmt!(self, res, gen, pop, seed, legend, font);
-        Ok(())
-    }
-}
-
-impl std::ops::Deref for SynCfg {
-    type Target = syn_cmd::SynConfig;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
+    method: Option<syn_cmd::SynMethod>,
 }
 
 struct Info {
@@ -143,7 +107,7 @@ fn get_info(
     clean: bool,
 ) -> Result<Info, SynErr> {
     let mut target_fb = None;
-    let ext = file.extension().and_then(OsStr::to_str);
+    let ext = file.extension().and_then(|p| p.to_str());
     let target = match ext.ok_or(SynErr::Format)? {
         "csv" | "txt" => io::Curve::from_reader(std::fs::File::open(file)?)?,
         "ron" => {
@@ -164,7 +128,7 @@ fn get_info(
         io::Curve::P(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
         io::Curve::S(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
     }
-    let mode = match Path::new(title).extension().and_then(OsStr::to_str) {
+    let mode = match Path::new(title).extension().and_then(|p| p.to_str()) {
         Some("closed") => syn::Mode::Closed,
         Some("partial") => syn::Mode::Partial,
         Some("open") => syn::Mode::Open,
@@ -195,8 +159,21 @@ fn get_info(
 }
 
 pub(super) fn syn(syn: Syn) {
-    let Syn { files, each, cfg, cb, refer, method, rerun, clean } = syn;
-    println!("{cfg}\n-----");
+    let Syn {
+        files,
+        each,
+        cfg,
+        cb,
+        refer,
+        no_ref,
+        method,
+        rerun,
+        clean,
+    } = syn;
+    println!(
+        "seed={:?} gen={} pop={} res={}\n-----",
+        cfg.seed, cfg.gen, cfg.pop, cfg.res
+    );
     // If codebook is provided, rerun is always enabled
     let rerun = rerun || cb.is_some();
     // Load target files & create project folders
@@ -236,7 +213,8 @@ pub(super) fn syn(syn: Syn) {
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     // Tasks
     let method = method.unwrap_or_default();
-    let run = |info| run(&pb, method.clone(), info, &cfg, &cb, &refer, rerun);
+    let refer = (!no_ref).then_some(refer.as_path());
+    let run = |info| run(&pb, method.clone(), info, &cfg, &cb, refer, rerun);
     let t0 = std::time::Instant::now();
     if each {
         tasks.into_iter().for_each(run);
@@ -260,22 +238,22 @@ fn from_runtime(
     pb: &ProgressBar,
     method: syn_cmd::SynMethod,
     info: &Info,
-    cfg: &SynCfg,
+    cfg: &syn_cmd::SynCfg,
     cb: &io::CbPool,
-    refer: &Path,
+    refer: Option<&Path>,
 ) -> Result<(), SynErr> {
     use four_bar::fb::{CurveGen as _, Normalized as _};
     use plot::full_palette::*;
     let Info { root, target, target_fb, title, mode } = info;
+    let mode = *mode;
     let mut history = Vec::with_capacity(cfg.gen as usize);
     let t0 = std::time::Instant::now();
     let s = {
-        let mut cfg = cfg.inner.clone();
-        cfg.mode = *mode;
         let target = match &target {
             io::Curve::P(t) => syn_cmd::Target::P(Cow::Borrowed(t), Cow::Borrowed(cb.as_fb())),
             io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(cb.as_sfb())),
         };
+        let cfg = syn_cmd::SynCfg { mode, ..cfg.clone() };
         syn_cmd::Solver::new(method, target, cfg, |best_f, _| {
             history.push(best_f);
             pb.inc(1);
@@ -294,14 +272,6 @@ fn from_runtime(
         syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
     }
     // Log results
-    let refer = cfg.ref_num.and_then(|n| {
-        let path = root
-            .parent()
-            .unwrap()
-            .join(refer)
-            .join(format!("{title}.ron"));
-        Some((format!("Ref. [{n}]"), std::fs::File::open(path).ok()?))
-    });
     let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
     match (target, &lnk_fb) {
         (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
@@ -314,11 +284,8 @@ fn from_runtime(
                 efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
             let mut fig = plot2d::Figure::new_ref(Some(fb))
-                .font(cfg.font)
-                .legend(cfg.legend)
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
-            fig.angle = cfg.angle;
             {
                 std::fs::write(root.join(LNK_FIG), io::ron_string(&fig))?;
                 let path = root.join(LNK_SVG);
@@ -353,8 +320,9 @@ fn from_runtime(
             writeln!(log, "harmonic={harmonic}")?;
             writeln!(log, "\n[optimized.fb]")?;
             log_fb(&mut log, fb)?;
-            if let Some((name, r)) = refer {
-                let fb = ron::de::from_reader::<_, FourBar>(r)?;
+            if let Some(refer) = refer {
+                let path = root.join("..").join(refer).join(format!("{title}.ron"));
+                let fb = ron::de::from_reader::<_, FourBar>(std::fs::File::open(path)?)?;
                 let c = fb.curve(cfg.res);
                 let err = curve_diff(target, &c);
                 writeln!(log, "\n[competitor]")?;
@@ -366,7 +334,7 @@ fn from_runtime(
                 writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[competitor.fb]")?;
                 log_fb(&mut log, &fb)?;
-                fig.push_line(name, c, plot::Style::DashedLine, ORANGE_900);
+                fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
             }
             fig.fb = None;
             std::fs::write(root.join(CURVE_FIG), io::ron_string(&fig))?;
@@ -384,11 +352,8 @@ fn from_runtime(
                 efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
             let mut fig = plot3d::Figure::new_ref(Some(fb))
-                .font(cfg.font)
-                .legend(cfg.legend)
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
-            fig.angle = cfg.angle;
             {
                 std::fs::write(root.join(LNK_FIG), io::ron_string(&fig))?;
                 let path = root.join(LNK_SVG);
@@ -423,8 +388,9 @@ fn from_runtime(
             writeln!(log, "harmonic={harmonic}")?;
             writeln!(log, "\n[optimized.fb]")?;
             log_sfb(&mut log, fb)?;
-            if let Some((name, r)) = refer {
-                let fb = ron::de::from_reader::<_, SFourBar>(r)?;
+            if let Some(refer) = refer {
+                let path = root.join("..").join(refer).join(format!("{title}.ron"));
+                let fb = ron::de::from_reader::<_, SFourBar>(std::fs::File::open(path)?)?;
                 let c = fb.curve(cfg.res);
                 let err = curve_diff(target, &c);
                 writeln!(log, "\n[competitor]")?;
@@ -436,7 +402,7 @@ fn from_runtime(
                 writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[competitor.fb]")?;
                 log_sfb(&mut log, &fb)?;
-                fig.push_line(name, c, plot::Style::DashedLine, ORANGE_900);
+                fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
             }
             fig.fb = Some(Cow::Owned(fb.take_sphere()));
             std::fs::write(root.join(CURVE_FIG), io::ron_string(&fig))?;
@@ -477,9 +443,9 @@ fn run(
     pb: &ProgressBar,
     method: syn_cmd::SynMethod,
     info: Info,
-    cfg: &SynCfg,
+    cfg: &syn_cmd::SynCfg,
     cb: &io::CbPool,
-    refer: &Path,
+    refer: Option<&Path>,
     rerun: bool,
 ) {
     let f = || {

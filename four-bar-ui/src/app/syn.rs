@@ -47,7 +47,7 @@ impl Default for CbCfg {
 #[serde(default)]
 pub(crate) struct Synthesis {
     method: syn_cmd::SynMethod,
-    cfg: syn_cmd::SynConfig,
+    cfg: syn_cmd::SynCfg,
     cb_cfg: CbCfg,
     target: io::Curve,
     tasks: Vec<Task>,

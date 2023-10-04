@@ -64,7 +64,7 @@ impl SynMethod {
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[serde(default)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(clap::Args))]
-pub(crate) struct SynConfig {
+pub(crate) struct SynCfg {
     /// Fix the seed to get a determined result, default to random
     #[cfg_attr(not(target_arch = "wasm32"), clap(short, long))]
     pub(crate) seed: Option<u64>,
@@ -84,7 +84,7 @@ pub(crate) struct SynConfig {
     pub(crate) mode: syn::Mode,
 }
 
-impl Default for SynConfig {
+impl Default for SynCfg {
     fn default() -> Self {
         Self {
             seed: None,
@@ -112,11 +112,11 @@ pub(crate) enum Solver<'a> {
 }
 
 impl<'a> Solver<'a> {
-    pub(crate) fn new<C>(method: SynMethod, target: Target, cfg: SynConfig, mut f: C) -> Self
+    pub(crate) fn new<C>(method: SynMethod, target: Target, cfg: SynCfg, mut f: C) -> Self
     where
         C: FnMut(f64, u64) + Send + 'a,
     {
-        let SynConfig { seed, gen, pop, mode, res, scale } = cfg;
+        let SynCfg { seed, gen, pop, mode, res, scale } = cfg;
         macro_rules! impl_solve {
             ($target:ident, $cb:ident, $syn:ident) => {{
                 let mut s = method
