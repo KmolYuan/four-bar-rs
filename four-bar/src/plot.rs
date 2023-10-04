@@ -553,7 +553,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         let [start, end] = fb.angle_bound().to_value()?;
         let angle = match self.angle {
             Some(angle) if (start..end).contains(&angle) => angle,
-            _ => start + (end - start) * 0.25,
+            _ => start + (end - start) * 0.75,
         };
         fb.pos(angle)
     }

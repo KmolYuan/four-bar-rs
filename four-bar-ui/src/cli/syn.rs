@@ -372,7 +372,7 @@ impl<'a> Solver<'a> {
                     fig.plot(svg)?;
                 }
                 if let Some(io::Fb::Fb(fb)) = target_fb {
-                    writeln!(log, "\n[target.fb]")?;
+                    writeln!(log, "[target.fb]")?;
                     log_fb(&mut log, fb)?;
                 }
                 if let Some((cost, fb)) = cb_fb {
@@ -444,7 +444,7 @@ impl<'a> Solver<'a> {
                     fig.plot(svg)?;
                 }
                 if let Some(io::Fb::SFb(fb)) = target_fb {
-                    writeln!(log, "\n[target.fb]")?;
+                    writeln!(log, "[target.fb]")?;
                     log_sfb(&mut log, fb)?;
                 }
                 if let Some((cost, fb)) = cb_fb {

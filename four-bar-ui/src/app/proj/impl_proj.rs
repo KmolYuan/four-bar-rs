@@ -319,7 +319,7 @@ where
     }
 
     fn cache(&mut self, res: usize) {
-        use four_bar::fb::CurveGen as _;
+        use four_bar::fb::{CurveGen as _, PlanarLoop as _};
         if self.cache.changed {
             // Recalculation
             self.cache.changed = false;

@@ -144,20 +144,19 @@ impl<UN, NM> FourBarBase<UN, NM> {
     }
 
     /// Check if the data is valid.
-    pub fn is_valid<D: EfdDim>(&self) -> bool
+    pub fn is_valid(&self) -> bool
     where
-        Self: CurveGen<D>,
+        Self: PlanarLoop,
     {
-        <Self as CurveGen<D>>::angle_bound(self).is_valid()
+        self.angle_bound().is_valid()
     }
 
     /// Input angle bounds of the linkage.
-    pub fn angle_bound<D>(&self) -> AngleBound
+    pub fn angle_bound(&self) -> AngleBound
     where
-        D: efd::EfdDim,
-        Self: CurveGen<D>,
+        Self: PlanarLoop,
     {
-        CurveGen::angle_bound(self)
+        PlanarLoop::angle_bound(self)
     }
 }
 
@@ -236,15 +235,20 @@ pub trait PlanarLoop {
     fn ty(&self) -> FourBarTy {
         FourBarTy::from_loop(self.planar_loop())
     }
+
+    /// Input angle bounds of the linkage.
+    fn angle_bound(&self) -> AngleBound {
+        AngleBound::from_planar_loop(self.planar_loop())
+    }
 }
 
 /// Angle boundary types. The input angle range.
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
-#[derive(Copy, Clone, PartialEq, Default)]
+#[derive(Copy, Clone, PartialEq, Default, Debug)]
 pub enum AngleBound {
     /// Closed curve
     Closed,
-    /// Open curve
+    /// Open curve (start, end)
     Open(f64, f64),
     /// Invalid
     #[default]
@@ -318,10 +322,7 @@ impl AngleBound {
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
             Self::Closed => Some([0., TAU]),
-            Self::Open(a, b) => {
-                let b = if b > a { b } else { b + TAU };
-                Some([a, b])
-            }
+            Self::Open(a, b) => Some([a, if b > a { b } else { b + TAU }]),
             Self::Invalid => None,
         }
     }
@@ -336,11 +337,6 @@ impl AngleBound {
 pub trait CurveGen<D: efd::EfdDim>: PlanarLoop {
     /// Get the position with input angle.
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
-
-    /// Input angle bounds of the linkage.
-    fn angle_bound(&self) -> AngleBound {
-        AngleBound::from_planar_loop(self.planar_loop())
-    }
 
     /// Generator for all curves in specified angle.
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
