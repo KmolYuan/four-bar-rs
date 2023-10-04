@@ -194,5 +194,6 @@ where
 /// Check the point is in front of the sphere.
 pub fn is_front_of_sphere(sc: na::Point3<f64>, pt: na::Point3<f64>, yaw: f64) -> bool {
     let dir = na::Vector3::new(yaw.sin(), 0., yaw.cos());
-    (pt - sc).dot(&dir).acos() < std::f64::consts::FRAC_PI_2
+    let v = pt - sc;
+    (v.dot(&dir) / (v.norm() * dir.norm())).acos() < std::f64::consts::FRAC_PI_2
 }
