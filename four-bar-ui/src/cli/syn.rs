@@ -264,7 +264,9 @@ fn from_runtime(
     cb: &io::CbPool,
     refer: &Path,
 ) -> Result<(), SynErr> {
-    let Info { root, target, mode, .. } = info;
+    use four_bar::fb::{CurveGen as _, Normalized as _};
+    use plot::full_palette::*;
+    let Info { root, target, target_fb, title, mode } = info;
     let mut history = Vec::with_capacity(cfg.gen as usize);
     let t0 = std::time::Instant::now();
     let s = {
@@ -291,11 +293,7 @@ fn from_runtime(
         syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
         syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
     }
-    let cost_t1 = Some((cost, t1));
-    // Log
-    use four_bar::fb::{CurveGen as _, Normalized as _};
-    use plot::full_palette::*;
-    let Info { root, target, target_fb, title, mode } = info;
+    // Log results
     let refer = cfg.ref_num.and_then(|n| {
         let path = root
             .parent()
@@ -349,10 +347,8 @@ fn from_runtime(
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
-            if let Some((cost, t1)) = cost_t1 {
-                writeln!(log, "time={t1:?}")?;
-                writeln!(log, "cost={cost:.04}")?;
-            }
+            writeln!(log, "time={t1:?}")?;
+            writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
             writeln!(log, "\n[optimized.fb]")?;
@@ -421,10 +417,8 @@ fn from_runtime(
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
-            if let Some((cost, t1)) = cost_t1 {
-                writeln!(log, "time={t1:?}")?;
-                writeln!(log, "cost={cost:.04}")?;
-            }
+            writeln!(log, "time={t1:?}")?;
+            writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
             writeln!(log, "\n[optimized.fb]")?;
@@ -524,23 +518,4 @@ fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
     write_fields!(w, fb, l1, l2, l3, l4, l5, g);
     write!(w, "stat={}", fb.stat)?;
     Ok(())
-}
-
-struct OptionLogger(Option<std::fs::File>);
-
-impl std::io::Write for OptionLogger {
-    #[inline]
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        match &mut self.0 {
-            Some(f) => f.write(buf),
-            None => Ok(buf.len()),
-        }
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        match &mut self.0 {
-            Some(f) => f.flush(),
-            None => Ok(()),
-        }
-    }
 }
