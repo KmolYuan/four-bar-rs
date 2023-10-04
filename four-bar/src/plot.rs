@@ -45,7 +45,6 @@ pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBack
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
 
 define_color!(LIGHTGRAY, 150, 150, 150, 0.4, "Light Gray");
-define_color!(DARK_GRAY, 120, 120, 120, "Dark Gray");
 
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
@@ -510,6 +509,22 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         self
     }
 
+    /// Add a line in-placed.
+    pub fn push_line<S, L>(&mut self, label: S, line: L, style: Style, color: RGBColor)
+    where
+        S: Into<Cow<'a, str>>,
+        L: Into<Cow<'a, [C]>>,
+    {
+        let color = ShapeStyle::from(color);
+        self.push_line_data(LineData {
+            label: label.into(),
+            line: line.into(),
+            style,
+            color: [color.color.0, color.color.1, color.color.2],
+            filled: color.filled,
+        });
+    }
+
     /// Add a line from a [`LineData`] instance in-placed.
     pub fn push_line_data(&mut self, data: LineData<'a, C>) {
         self.lines.push(Rc::new(RefCell::new(data)));
@@ -621,7 +636,7 @@ pub struct Opt<'a> {
 impl Default for Opt<'_> {
     fn default() -> Self {
         Self {
-            stroke: 10,
+            stroke: 7,
             font: 90.,
             font_family: None,
             grid: false,

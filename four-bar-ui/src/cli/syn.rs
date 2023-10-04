@@ -324,6 +324,7 @@ impl<'a> Solver<'a> {
 
     fn log(self) -> Result<(), SynErr> {
         use four_bar::fb::{CurveGen as _, Normalized as _};
+        use plot::full_palette::*;
         let Self {
             refer,
             info,
@@ -361,11 +362,9 @@ impl<'a> Solver<'a> {
                 let mut fig = plot2d::Figure::new_ref(Some(fb))
                     .font(cfg.font)
                     .legend(cfg.legend)
-                    .add_line("Target", target, plot::Style::Circle, plot::RED)
-                    .add_line("Optimized", &curve, plot::Style::Line, plot::BLACK);
-                if let Some(angle) = cfg.angle {
-                    fig = fig.angle(angle.to_radians());
-                }
+                    .add_line("Target", target, plot::Style::Circle, RED)
+                    .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
+                fig.angle = cfg.angle;
                 {
                     let path = root.join("linkage.svg");
                     let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -389,7 +388,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "\n[atlas.fb]")?;
                     log_fb(&mut log, &fb)?;
                     std::fs::write(root.join("atlas.ron"), io::ron_string(&fb))?;
-                    fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::full_palette::GREEN_600);
+                    fig.push_line("Atlas", c, plot::Style::Dot, GREEN_900);
                 }
                 writeln!(log, "\n[optimized]")?;
                 let err = curve_diff(target, &curve);
@@ -415,7 +414,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_fb(&mut log, &fb)?;
-                    fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
+                    fig.push_line(name, c, plot::Style::DashedLine, ORANGE_900);
                 }
                 let path = root.join("curve.svg");
                 let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -433,11 +432,9 @@ impl<'a> Solver<'a> {
                 let mut fig = plot3d::Figure::new_ref(Some(fb))
                     .font(cfg.font)
                     .legend(cfg.legend)
-                    .add_line("Target", target, plot::Style::Circle, plot::RED)
-                    .add_line("Optimized", &curve, plot::Style::Line, plot::BLACK);
-                if let Some(angle) = cfg.angle {
-                    fig = fig.angle(angle.to_radians());
-                }
+                    .add_line("Target", target, plot::Style::Circle, RED)
+                    .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
+                fig.angle = cfg.angle;
                 {
                     let path = root.join("linkage.svg");
                     let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -461,7 +458,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "\n[atlas.fb]")?;
                     log_sfb(&mut log, &fb)?;
                     std::fs::write(root.join("atlas.ron"), io::ron_string(&fb))?;
-                    fig = fig.add_line("Atlas", c, plot::Style::Dot, plot::CYAN);
+                    fig.push_line("Atlas", c, plot::Style::Dot, CYAN);
                 }
                 writeln!(log, "\n[optimized]")?;
                 let err = curve_diff(target, &curve);
@@ -487,7 +484,7 @@ impl<'a> Solver<'a> {
                     writeln!(log, "error={err:.04}")?;
                     writeln!(log, "\n[competitor.fb]")?;
                     log_sfb(&mut log, &fb)?;
-                    fig = fig.add_line(name, c, plot::Style::DashedLine, plot::BLUE);
+                    fig.push_line(name, c, plot::Style::DashedLine, ORANGE_900);
                 }
                 let path = root.join("curve.svg");
                 let svg = plot::SVGBackend::new(&path, (1600, 1600));
