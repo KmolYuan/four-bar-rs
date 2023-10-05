@@ -639,7 +639,7 @@ impl Default for Opt<'_> {
             font_family: None,
             grid: false,
             axis: true,
-            legend: LegendPos::Hide,
+            legend: LegendPos::default(),
         }
     }
 }
