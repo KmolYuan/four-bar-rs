@@ -1,7 +1,7 @@
-// Utility functions
+/* Utility functions */
 
 // Preload
-window.preload = () => new URLSearchParams(window.location.search).get('code') || "";
+window.load_url = () => new URLSearchParams(window.location.search).get('code') || "";
 window.loading_finished = () => document.getElementById("loading-text").remove();
 
 // IO
