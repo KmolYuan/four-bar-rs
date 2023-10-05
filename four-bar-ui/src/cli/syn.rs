@@ -272,6 +272,9 @@ fn from_runtime(
         syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
     }
     // Log results
+    let refer = refer
+        .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
+        .filter(|p| p.is_file());
     let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
     match (target, &lnk_fb) {
         (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
@@ -321,8 +324,7 @@ fn from_runtime(
             writeln!(log, "\n[optimized.fb]")?;
             log_fb(&mut log, fb)?;
             if let Some(refer) = refer {
-                let path = root.join("..").join(refer).join(format!("{title}.ron"));
-                let fb = ron::de::from_reader::<_, FourBar>(std::fs::File::open(path)?)?;
+                let fb = ron::de::from_reader::<_, FourBar>(std::fs::File::open(refer)?)?;
                 let c = fb.curve(cfg.res);
                 let err = curve_diff(target, &c);
                 writeln!(log, "\n[competitor]")?;
@@ -389,8 +391,7 @@ fn from_runtime(
             writeln!(log, "\n[optimized.fb]")?;
             log_sfb(&mut log, fb)?;
             if let Some(refer) = refer {
-                let path = root.join("..").join(refer).join(format!("{title}.ron"));
-                let fb = ron::de::from_reader::<_, SFourBar>(std::fs::File::open(path)?)?;
+                let fb = ron::de::from_reader::<_, SFourBar>(std::fs::File::open(refer)?)?;
                 let c = fb.curve(cfg.res);
                 let err = curve_diff(target, &c);
                 writeln!(log, "\n[competitor]")?;
