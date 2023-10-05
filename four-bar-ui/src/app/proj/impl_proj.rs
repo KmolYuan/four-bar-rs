@@ -286,7 +286,7 @@ where
                 io::save_csv_ask(&get_curve(*pivot, &self.fb, cfg.res));
             }
             if small_btn(ui, "🗐", "Copy") {
-                let t = csv::dump_csv(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
+                let t = csv::csv_string(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
                 ui.output_mut(|s| s.copied_text = t);
             }
         });

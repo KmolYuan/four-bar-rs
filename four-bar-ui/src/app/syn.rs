@@ -140,8 +140,8 @@ impl Synthesis {
         ui.horizontal_wrapped(|ui| {
             if ui.button("🗐 Copy CSV").clicked() {
                 let text = match &self.target {
-                    io::Curve::P(t) => csv::dump_csv(t).unwrap(),
-                    io::Curve::S(t) => csv::dump_csv(t).unwrap(),
+                    io::Curve::P(t) => csv::csv_string(t).unwrap(),
+                    io::Curve::S(t) => csv::csv_string(t).unwrap(),
                 };
                 ui.output_mut(|s| s.copied_text = text);
             }

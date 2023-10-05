@@ -19,16 +19,14 @@ const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
-    use super::Alert as _;
+    use super::Alert;
     use std::path::{Path, PathBuf};
     use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
     #[wasm_bindgen]
     extern "C" {
         fn open_file(ext: &str, done: JsValue, is_multiple: bool, is_bin: bool);
-        fn save_file(s: &str, path: &str);
-        #[wasm_bindgen(js_name = save_file)]
-        fn save_bin(s: &[u8], path: &str);
+        fn save_file(s: &[u8], path: &str);
     }
 
     fn js_ext(ext: &[&str]) -> String {
@@ -72,33 +70,31 @@ mod impl_io {
         open_file(&js_ext(ext), Closure::once_into_js(done), false, true);
     }
 
-    pub(super) fn save_ask<C>(s: &str, name: &str, _fmt: &str, _ext: &[&str], done: C)
+    pub(super) fn save_ask<W, E, C>(name: &str, _fmt: &str, _ext: &[&str], write: W, done: C)
     where
-        C: FnOnce(PathBuf) + 'static,
+        W: FnOnce(std::io::Cursor<&mut [u8]>) -> E,
+        E: Alert,
+        C: FnOnce(PathBuf),
     {
-        let name = PathBuf::from(name);
-        save(s, &name);
-        done(name);
+        let path = PathBuf::from(name);
+        save(&path, write);
+        done(path);
     }
 
-    pub(super) fn save(s: &str, name: &Path) {
-        save_file(s, name.to_str().unwrap());
-    }
-
-    pub(super) fn save_bin_ask<C, E>(name: &str, _fmt: &str, _ext: &[&str], write: C)
+    pub(super) fn save<W, E>(name: &Path, write: W)
     where
-        C: FnOnce(std::io::Cursor<&mut [u8]>) -> Result<(), E>,
-        E: std::error::Error,
+        W: FnOnce(std::io::Cursor<&mut [u8]>) -> E,
+        E: Alert,
     {
         let mut buf = Vec::new();
-        write(std::io::Cursor::new(&mut buf)).alert("Save File");
-        save_bin(&buf, name);
+        write(std::io::Cursor::new(&mut buf)).alert("Write File");
+        save_file(&buf, name.as_os_str().to_str().unwrap());
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod impl_io {
-    use super::Alert as _;
+    use super::Alert;
     use std::path::{Path, PathBuf};
 
     pub(super) fn open<C>(fmt: &str, ext: &[&str], done: C)
@@ -141,35 +137,29 @@ mod impl_io {
         }
     }
 
-    pub(super) fn save_ask<C>(s: &str, name: &str, fmt: &str, ext: &[&str], done: C)
+    pub(super) fn save_ask<W, E, C>(name: &str, fmt: &str, ext: &[&str], write: W, done: C)
     where
-        C: FnOnce(PathBuf) + 'static,
+        W: FnOnce(std::fs::File) -> E,
+        E: Alert,
+        C: FnOnce(PathBuf),
     {
         if let Some(path) = rfd::FileDialog::new()
             .set_file_name(name)
             .add_filter(fmt, ext)
             .save_file()
         {
-            std::fs::write(&path, s).alert_then("Save File", |_| done(path));
+            std::fs::File::create(&path).alert_then("Save File", |w| {
+                write(w).alert_then("Write File", |_| done(path));
+            });
         }
     }
 
-    pub(super) fn save(s: &str, path: &Path) {
-        std::fs::write(path, s).alert("Save File");
-    }
-
-    pub(super) fn save_bin_ask<C, E>(name: &str, fmt: &str, ext: &[&str], write: C)
+    pub(super) fn save<W, E>(path: &Path, write: W)
     where
-        C: FnOnce(std::fs::File) -> Result<(), E>,
-        E: std::error::Error,
+        W: FnOnce(std::fs::File) -> E,
+        E: Alert,
     {
-        if let Some(path) = rfd::FileDialog::new()
-            .set_file_name(name)
-            .add_filter(fmt, ext)
-            .save_file()
-        {
-            std::fs::File::create(path).alert_then("Create File", |f| write(f).alert("Save File"));
-        }
+        std::fs::File::create(path).alert_then("Save File", |w| write(w).alert("Write File"));
     }
 }
 
@@ -296,12 +286,17 @@ where
     open_bin_single(IMG_FMT, IMG_EXT, done);
 }
 
-pub(crate) fn save_csv_ask<S>(curve: &[S])
+pub(crate) fn save_csv_ask<S>(c: &[S])
 where
     S: serde::Serialize + Clone,
 {
-    let s = csv::dump_csv(curve).unwrap();
-    save_ask(&s, "curve.csv", CSV_FMT, CSV_EXT, |_| ());
+    save_ask(
+        "curve.csv",
+        CSV_FMT,
+        CSV_EXT,
+        |w| csv::dump_csv(w, c),
+        |_| (),
+    );
 }
 
 pub(crate) fn save_cb_ask<C, D>(cb: &cb::Codebook<C, D>)
@@ -309,7 +304,15 @@ where
     C: cb::Code<D> + Send,
     D: efd::EfdDim,
 {
-    save_bin_ask("cb.npz", CB_FMT, CB_EXT, |w| cb.write(w));
+    save_ask("cb.npz", CB_FMT, CB_EXT, |w| cb.write(w), |_| ());
+}
+
+fn write_ron<W, S>(w: W, s: &S) -> Result<(), ron::Error>
+where
+    W: std::io::Write,
+    S: serde::Serialize,
+{
+    ron::ser::to_writer_pretty(w, s, Default::default())
 }
 
 pub(crate) fn save_ron_ask<S, C>(s: &S, name: &str, done: C)
@@ -317,33 +320,32 @@ where
     S: serde::Serialize,
     C: FnOnce(PathBuf) + 'static,
 {
-    save_ask(&ron_string(s), name, FMT, EXT, done);
+    save_ask(name, FMT, EXT, |w| write_ron(w, s), done);
 }
 
 pub(crate) fn save_ron<S>(s: &S, path: &Path)
 where
     S: serde::Serialize,
 {
-    save(&ron_string(s), path);
+    save(path, |w| write_ron(w, s));
 }
 
 pub(crate) fn save_svg_ask(buf: &str, name: &str) {
-    save_ask(buf, name, SVG_FMT, SVG_EXT, |_| ());
+    use std::io::Write as _;
+    save_ask(
+        name,
+        SVG_FMT,
+        SVG_EXT,
+        |mut w| w.write_all(buf.as_bytes()),
+        |_| (),
+    );
 }
 
 pub(crate) fn save_history_ask(history: &[f64], name: &str) {
     let mut buf = String::new();
     let svg = plot::SVGBackend::with_string(&mut buf, (800, 600));
     plot2d::history(svg, history).unwrap();
-    save_ask(&buf, name, SVG_FMT, SVG_EXT, |_| ());
-}
-
-pub(crate) fn ron_string<S>(value: &S) -> String
-where
-    S: serde::Serialize,
-{
-    // Use default options to serialize the data
-    ron::ser::to_string_pretty(value, Default::default()).unwrap()
+    save_svg_ask(&buf, name);
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone)]

@@ -86,10 +86,10 @@ impl App {
         {
             #[wasm_bindgen::prelude::wasm_bindgen]
             extern "C" {
-                fn preload() -> String;
+                fn load_url() -> String;
                 fn loading_finished();
             }
-            if let Ok(fb) = ron::from_str(&preload()) {
+            if let Ok(fb) = ron::from_str(&load_url()) {
                 app.link.projs.queue().push(None, fb);
             }
             loading_finished();

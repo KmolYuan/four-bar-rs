@@ -268,8 +268,8 @@ fn from_runtime(
     }
     let lnk_path = root.join(LNK_RON);
     match &lnk_fb {
-        syn_cmd::SolvedFb::Fb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
-        syn_cmd::SolvedFb::SFb(fb, _) => std::fs::write(lnk_path, io::ron_string(fb))?,
+        syn_cmd::SolvedFb::Fb(fb, _) => write_ron(lnk_path, fb)?,
+        syn_cmd::SolvedFb::SFb(fb, _) => write_ron(lnk_path, fb)?,
     }
     // Log results
     let refer = refer
@@ -290,7 +290,7 @@ fn from_runtime(
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
             {
-                std::fs::write(root.join(LNK_FIG), io::ron_string(&fig))?;
+                write_ron(root.join(LNK_FIG), &fig)?;
                 let path = root.join(LNK_SVG);
                 let svg = plot::SVGBackend::new(&path, (1600, 1600));
                 fig.plot(svg)?;
@@ -312,7 +312,7 @@ fn from_runtime(
                 writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[atlas.fb]")?;
                 log_fb(&mut log, &fb)?;
-                std::fs::write(root.join("atlas.ron"), io::ron_string(&fb))?;
+                write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Dot, GREEN_900);
             }
             writeln!(log, "\n[optimized]")?;
@@ -339,7 +339,7 @@ fn from_runtime(
                 fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
             }
             fig.fb = None;
-            std::fs::write(root.join(CURVE_FIG), io::ron_string(&fig))?;
+            write_ron(root.join(CURVE_FIG), &fig)?;
             let path = root.join(CURVE_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
@@ -357,7 +357,7 @@ fn from_runtime(
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
             {
-                std::fs::write(root.join(LNK_FIG), io::ron_string(&fig))?;
+                write_ron(root.join(LNK_FIG), &fig)?;
                 let path = root.join(LNK_SVG);
                 let svg = plot::SVGBackend::new(&path, (1600, 1600));
                 fig.plot(svg)?;
@@ -379,7 +379,7 @@ fn from_runtime(
                 writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[atlas.fb]")?;
                 log_sfb(&mut log, &fb)?;
-                std::fs::write(root.join("atlas.ron"), io::ron_string(&fb))?;
+                write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Dot, CYAN);
             }
             writeln!(log, "\n[optimized]")?;
@@ -406,7 +406,7 @@ fn from_runtime(
                 fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
             }
             fig.fb = Some(Cow::Owned(fb.take_sphere()));
-            std::fs::write(root.join(CURVE_FIG), io::ron_string(&fig))?;
+            write_ron(root.join(CURVE_FIG), &fig)?;
             let path = root.join(CURVE_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
@@ -484,5 +484,13 @@ fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
     write_fields!(w, fb.unnorm, ox, oy, oz, r, p0i, p0j, a);
     write_fields!(w, fb, l1, l2, l3, l4, l5, g);
     write!(w, "stat={}", fb.stat)?;
+    Ok(())
+}
+
+fn write_ron<S>(path: impl AsRef<Path>, s: &S) -> Result<(), SynErr>
+where
+    S: serde::Serialize,
+{
+    ron::ser::to_writer_pretty(std::fs::File::create(path)?, s, Default::default())?;
     Ok(())
 }

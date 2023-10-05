@@ -2,7 +2,6 @@
 pub use csv::Error;
 use csv::{ReaderBuilder, Writer};
 use serde::{de::DeserializeOwned, Serialize};
-use std::borrow::Cow;
 
 /// Parse CSV from string.
 pub fn parse_csv<D, R>(r: R) -> Result<Vec<D>, Error>
@@ -23,14 +22,26 @@ where
     }
 }
 
-/// Dump CSV to string.
-pub fn dump_csv<'a, C, S>(c: C) -> Result<String, Box<dyn std::error::Error>>
+/// Dump CSV to a writer.
+pub fn dump_csv<'a, W, C, S>(w: W, c: C) -> Result<(), csv::Error>
 where
-    Cow<'a, [S]>: From<C>,
+    W: std::io::Write,
+    C: AsRef<[S]>,
     S: Serialize + Clone + 'a,
 {
-    let mut w = Writer::from_writer(Vec::new());
-    let v = Cow::from(c).into_owned();
-    v.into_iter().try_for_each(|c| w.serialize(c))?;
-    Ok(String::from_utf8(w.into_inner()?)?)
+    let mut w = Writer::from_writer(w);
+    c.as_ref().iter().try_for_each(|c| w.serialize(c))?;
+    w.flush()?;
+    Ok(())
+}
+
+/// Dump CSV to string.
+pub fn csv_string<'a, C, S>(c: C) -> Result<String, csv::Error>
+where
+    C: AsRef<[S]>,
+    S: Serialize + Clone + 'a,
+{
+    let mut w = Vec::new();
+    dump_csv(&mut w, c)?;
+    Ok(String::from_utf8(w).unwrap())
 }
