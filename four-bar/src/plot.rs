@@ -44,8 +44,6 @@ pub mod plot3d;
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
 pub(crate) type Canvas<B> = DrawingArea<B, coord::Shift>;
 
-define_color!(LIGHTGRAY, 150, 150, 150, 0.4, "Light Gray");
-
 macro_rules! inner_opt {
     ($($(#[$meta:meta])+ fn $name:ident($ty:ty))+) => {$(
         $(#[$meta])+

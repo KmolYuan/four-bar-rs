@@ -6,6 +6,8 @@ use full_palette::GREY_600;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 
+const LIGHTGRAY: RGBAColor = RGBAColor(150, 150, 150, 0.4);
+
 /// Drawing option of spherical four-bar linkage and its input angle.
 ///
 /// Please see [`Figure::plot()`] for more information.
