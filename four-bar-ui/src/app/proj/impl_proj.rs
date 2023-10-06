@@ -1,5 +1,6 @@
 use super::*;
 use four_bar::{csv, efd, fb, NormFourBar, SNormFourBar};
+use std::path::Path;
 
 macro_rules! hotkey {
     ($ui:ident, $mod1:ident + $key:ident) => {
@@ -88,7 +89,7 @@ impl Project {
         fn name(self: &Self) -> String;
         fn preload(self: &mut Self);
         fn set_path(self: &mut Self, path: PathBuf);
-        fn path(self: &Self) -> Option<&PathBuf>;
+        fn path(self: &Self) -> Option<&Path>;
         fn is_unsaved(self: &Self) -> bool;
         fn mark_saved(self: &mut Self);
     }
@@ -286,7 +287,7 @@ where
                 io::save_csv_ask(&get_curve(*pivot, &self.fb, cfg.res));
             }
             if small_btn(ui, "🗐", "Copy") {
-                let t = csv::csv_string(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
+                let t = csv::to_string(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
                 ui.output_mut(|s| s.copied_text = t);
             }
         });
@@ -358,24 +359,22 @@ where
         if cfg!(target_arch = "wasm32") {
             return;
         }
-        if let Some(fb) = self
-            .path
-            .as_ref()
-            .and_then(|p| std::fs::File::open(p).ok())
-            .and_then(|r| ron::de::from_reader(r).ok())
-        {
-            if self.fb != fb {
+        // FIXME: Try block, ignore errors
+        (|| {
+            let r = std::fs::File::open(self.path.as_ref()?).ok()?;
+            if self.fb != ron::de::from_reader(r).ok()? {
                 self.unsaved = true;
             }
-        }
+            Some(())
+        })();
     }
 
     fn set_path(&mut self, path: PathBuf) {
         self.path.replace(path);
     }
 
-    fn path(&self) -> Option<&PathBuf> {
-        self.path.as_ref()
+    fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 
     fn is_unsaved(&self) -> bool {

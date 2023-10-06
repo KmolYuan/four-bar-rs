@@ -288,13 +288,13 @@ where
 
 pub(crate) fn save_csv_ask<S>(c: &[S])
 where
-    S: serde::Serialize + Clone,
+    S: serde::Serialize,
 {
     save_ask(
         "curve.csv",
         CSV_FMT,
         CSV_EXT,
-        |w| csv::dump_csv(w, c),
+        |w| csv::to_writer(w, c),
         |_| (),
     );
 }
@@ -372,11 +372,11 @@ impl Curve {
     where
         R: std::io::Read + std::io::Seek,
     {
-        if let Ok(c) = csv::parse_csv(&mut r) {
+        if let Ok(c) = csv::from_reader(&mut r) {
             Ok(Self::S(c))
         } else {
             r.rewind()?;
-            Ok(Self::P(csv::parse_csv(r)?))
+            Ok(Self::P(csv::from_reader(r)?))
         }
     }
 

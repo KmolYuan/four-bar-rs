@@ -2,32 +2,32 @@
 pub use csv::Error;
 use csv::{ReaderBuilder, Writer};
 use serde::{de::DeserializeOwned, Serialize};
+use std::io::ErrorKind::InvalidData;
 
 /// Parse CSV from string.
-pub fn parse_csv<D, R>(r: R) -> Result<Vec<D>, Error>
+pub fn from_reader<R, D>(r: R) -> Result<Vec<D>, Error>
 where
     R: std::io::Read,
     D: DeserializeOwned,
 {
-    let data = ReaderBuilder::new()
+    ReaderBuilder::new()
         .has_headers(false)
         .comment(Some(b'#'))
         .from_reader(r)
         .deserialize()
-        .collect::<Result<Vec<_>, _>>()?;
-    if data.is_empty() {
-        Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "No data").into())
-    } else {
-        Ok(data)
-    }
+        .collect::<Result<Vec<_>, _>>()
+        .and_then(|data| match data.is_empty() {
+            true => Err(std::io::Error::new(InvalidData, "Empty data"))?,
+            false => Ok(data),
+        })
 }
 
 /// Dump CSV to a writer.
-pub fn dump_csv<'a, W, C, S>(w: W, c: C) -> Result<(), csv::Error>
+pub fn to_writer<W, C, S>(w: W, c: C) -> Result<(), csv::Error>
 where
     W: std::io::Write,
     C: AsRef<[S]>,
-    S: Serialize + Clone + 'a,
+    S: Serialize,
 {
     let mut w = Writer::from_writer(w);
     c.as_ref().iter().try_for_each(|c| w.serialize(c))?;
@@ -36,12 +36,12 @@ where
 }
 
 /// Dump CSV to string.
-pub fn csv_string<'a, C, S>(c: C) -> Result<String, csv::Error>
+pub fn to_string<C, S>(c: C) -> Result<String, csv::Error>
 where
     C: AsRef<[S]>,
-    S: Serialize + Clone + 'a,
+    S: Serialize,
 {
     let mut w = Vec::new();
-    dump_csv(&mut w, c)?;
+    to_writer(&mut w, c)?;
     Ok(String::from_utf8(w).unwrap())
 }

@@ -579,10 +579,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     #[inline]
     fn get_family(&self) -> &str {
         const DEFAULT_FONT: &str = "Times New Roman";
-        self.font_family
-            .as_ref()
-            .map(|s| s.as_ref())
-            .unwrap_or(DEFAULT_FONT)
+        self.font_family.as_deref().unwrap_or(DEFAULT_FONT)
     }
 
     pub(crate) fn get_font(&self) -> TextStyle {
