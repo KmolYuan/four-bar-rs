@@ -170,12 +170,14 @@ pub(super) fn syn(syn: Syn) {
         rerun,
         clean,
     } = syn;
-    println!(
-        "seed={:?} gen={} pop={} res={}\n-----",
-        cfg.seed, cfg.gen, cfg.pop, cfg.res
-    );
+    if let Some(seed) = cfg.seed {
+        println!("seed={seed}");
+    }
+    println!("gen={} pop={} res={}", cfg.gen, cfg.pop, cfg.res);
     // If codebook is provided, rerun is always enabled
     let rerun = rerun || cb.is_some();
+    println!("rerun={rerun} clean={clean}");
+    println!("-----");
     // Load target files & create project folders
     let tasks = files
         .into_iter()
