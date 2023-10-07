@@ -88,7 +88,7 @@ pub(super) struct Syn {
     #[clap(flatten)]
     cfg: syn_cmd::SynCfg,
     #[clap(subcommand)]
-    method: Option<syn_cmd::SynMethod>,
+    alg: Option<syn_cmd::SynAlg>,
 }
 
 struct Info {
@@ -166,7 +166,7 @@ pub(super) fn syn(syn: Syn) {
         cb,
         refer,
         no_ref,
-        method,
+        alg,
         rerun,
         clean,
     } = syn;
@@ -212,9 +212,9 @@ pub(super) fn syn(syn: Syn) {
     let pb = ProgressBar::new(tasks.len() as u64 * cfg.gen);
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     // Tasks
-    let method = method.unwrap_or_default();
+    let alg = alg.unwrap_or_default();
     let refer = (!no_ref).then_some(refer.as_path());
-    let run = |info| run(&pb, method.clone(), info, &cfg, &cb, refer, rerun);
+    let run = |info| run(&pb, alg.clone(), info, &cfg, &cb, refer, rerun);
     let t0 = std::time::Instant::now();
     if each {
         tasks.into_iter().for_each(run);
@@ -236,7 +236,7 @@ const CURVE_FIG: &str = "curve.fig.ron";
 
 fn from_runtime(
     pb: &ProgressBar,
-    method: syn_cmd::SynMethod,
+    alg: syn_cmd::SynAlg,
     info: &Info,
     cfg: &syn_cmd::SynCfg,
     cb: &io::CbPool,
@@ -254,7 +254,8 @@ fn from_runtime(
             io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(cb.as_sfb())),
         };
         let cfg = syn_cmd::SynCfg { mode, ..cfg.clone() };
-        syn_cmd::Solver::new(method, target, cfg, |best_f, _| {
+        let stop = || false;
+        syn_cmd::Solver::new(alg, target, cfg, stop, |best_f, _| {
             history.push(best_f);
             pb.inc(1);
         })
@@ -442,7 +443,7 @@ fn from_exist(info: &Info) -> Result<(), SynErr> {
 
 fn run(
     pb: &ProgressBar,
-    method: syn_cmd::SynMethod,
+    alg: syn_cmd::SynAlg,
     info: Info,
     cfg: &syn_cmd::SynCfg,
     cb: &io::CbPool,
@@ -455,7 +456,7 @@ fn run(
             pb.inc(cfg.gen);
             from_exist(&info)
         } else {
-            from_runtime(pb, method, &info, cfg, cb, refer)
+            from_runtime(pb, alg, &info, cfg, cb, refer)
         }
     };
     let title = &info.title;

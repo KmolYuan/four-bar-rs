@@ -24,7 +24,7 @@ macro_rules! impl_method {
 
 #[derive(Deserialize, Serialize, Clone, PartialEq)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(clap::Subcommand))]
-pub(crate) enum SynMethod {
+pub(crate) enum SynAlg {
     De(mh::De),
     Fa(mh::Fa),
     Pso(mh::Pso),
@@ -32,13 +32,13 @@ pub(crate) enum SynMethod {
     Tlbo(mh::Tlbo),
 }
 
-impl Default for SynMethod {
+impl Default for SynAlg {
     fn default() -> Self {
         Self::De(mh::De::default())
     }
 }
 
-impl SynMethod {
+impl SynAlg {
     impl_method! {
         fn de, De, "DE", "Differential Evolution", "https://en.wikipedia.org/wiki/Differential_evolution"
         fn fa, Fa, "FA", "Firefly Algorithm", "https://en.wikipedia.org/wiki/Firefly_algorithm"
@@ -112,18 +112,25 @@ pub(crate) enum Solver<'a> {
 }
 
 impl<'a> Solver<'a> {
-    pub(crate) fn new<C>(method: SynMethod, target: Target, cfg: SynCfg, mut f: C) -> Self
+    pub(crate) fn new<S, C>(
+        alg: SynAlg,
+        target: Target,
+        cfg: SynCfg,
+        stop: S,
+        mut callback: C,
+    ) -> Self
     where
+        S: Fn() -> bool + Send + 'a,
         C: FnMut(f64, u64) + Send + 'a,
     {
         let SynCfg { seed, gen, pop, mode, res, scale } = cfg;
         macro_rules! impl_solve {
             ($target:ident, $cb:ident, $syn:ident) => {{
-                let mut s = method
+                let mut s = alg
                     .build_solver(syn::$syn::from_curve(&$target, mode).res(res).scale(scale))
                     .seed(seed)
-                    .task(move |ctx| ctx.gen >= gen)
-                    .callback(move |ctx| f(ctx.best_f.fitness(), ctx.gen));
+                    .task(move |ctx| !stop() && ctx.gen >= gen)
+                    .callback(move |ctx| callback(ctx.best_f.fitness(), ctx.gen));
                 let mut cb_fb = None;
                 if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
                     .then(|| $cb.fetch_raw(&$target, mode.is_target_open(), pop))

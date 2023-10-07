@@ -46,7 +46,7 @@ impl Default for CbCfg {
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub(crate) struct Synthesis {
-    method: syn_cmd::SynMethod,
+    alg: syn_cmd::SynAlg,
     cfg: syn_cmd::SynCfg,
     cb_cfg: CbCfg,
     target: io::Curve,
@@ -75,7 +75,7 @@ impl Synthesis {
             ui.heading("Synthesis");
             reset_button(ui, &mut self.cfg);
         });
-        ui.collapsing("Method", |ui| {
+        ui.collapsing("Algorithm", |ui| {
             ui.group(|ui| self.opt_setting(ui));
             check_on(ui, "Random seed", &mut self.cfg.seed, any_i);
             nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
@@ -216,14 +216,14 @@ impl Synthesis {
 
     fn opt_setting(&mut self, ui: &mut Ui) {
         ui.horizontal_wrapped(|ui| {
-            for &(name, abbr, f) in syn_cmd::SynMethod::LIST {
-                let c = self.method.abbr() == abbr;
+            for &(name, abbr, f) in syn_cmd::SynAlg::LIST {
+                let c = self.alg.abbr() == abbr;
                 if ui.selectable_label(c, abbr).on_hover_text(name).clicked() && !c {
-                    self.method = f();
+                    self.alg = f();
                 }
             }
         });
-        let m = &mut self.method;
+        let m = &mut self.alg;
         ui.horizontal_wrapped(|ui| {
             ui.hyperlink_to(m.name(), m.link())
                 .on_hover_text(format!("More about {}", m.name()));
@@ -233,7 +233,7 @@ impl Synthesis {
                 percent(ui, concat![stringify!($name), ": "], &mut $s.$name);
             )+}};
         }
-        use syn_cmd::SynMethod::*;
+        use syn_cmd::SynAlg::*;
         match m {
             De(s) => {
                 use mh::de::Strategy::*;
@@ -476,7 +476,7 @@ impl Synthesis {
         };
         let task = Arc::new(mutex::RwLock::new((0., task)));
         self.task_queue.push(task.clone());
-        let method = self.method.clone();
+        let alg = self.alg.clone();
         let target = match self.target.clone() {
             io::Curve::P(t) => Target::P(t.into(), Cow::Owned(self.cb.as_fb().clone())),
             io::Curve::S(t) => Target::S(t.into(), Cow::Owned(self.cb.as_sfb().clone())),
@@ -486,7 +486,11 @@ impl Synthesis {
         let queue = lnk.projs.queue();
         let f = move || {
             let t0 = Instant::now();
-            let s = syn_cmd::Solver::new(method, target, cfg, move |best_f, gen| {
+            let stop = {
+                let task = task.clone();
+                move || task.read().0 == 1.
+            };
+            let s = syn_cmd::Solver::new(alg, target, cfg, stop, move |best_f, gen| {
                 let (pg, task) = &mut *task.write();
                 *pg = gen as f32 / total_gen as f32;
                 task.conv.push(best_f);
