@@ -211,7 +211,7 @@ impl Style {
         CT::From: Clone + 'static,
         I: Iterator<Item = CT::From> + Clone,
     {
-        let dot_size = color.stroke_width;
+        let dot_size = color.stroke_width * 2;
         let gap = color.stroke_width as i32;
         let has_label = !label.is_empty();
         macro_rules! impl_marker {
