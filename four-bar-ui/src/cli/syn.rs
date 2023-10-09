@@ -307,7 +307,7 @@ fn from_runtime(
                 let efd = efd::Efd2::from_curve_harmonic(c, mode.is_result_open(), harmonic);
                 let trans = efd.as_trans().to(efd_target.as_trans());
                 let fb = fb.clone().trans_denorm(&trans);
-                let c = fb.curve(cfg.res);
+                let c = fb.curve(cfg.res.min(30));
                 let err = curve_diff(target, &c);
                 writeln!(log, "\n[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
@@ -316,7 +316,7 @@ fn from_runtime(
                 writeln!(log, "\n[atlas.fb]")?;
                 log_fb(&mut log, &fb)?;
                 write_ron(root.join("atlas.ron"), &fb)?;
-                fig.push_line("Atlas", c, plot::Style::Dot, GREEN_900);
+                fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
@@ -374,7 +374,7 @@ fn from_runtime(
                 let efd = efd::Efd3::from_curve_harmonic(c, mode.is_result_open(), harmonic);
                 let trans = efd.as_trans().to(efd_target.as_trans());
                 let fb = fb.clone().trans_denorm(&trans);
-                let c = fb.curve(cfg.res);
+                let c = fb.curve(cfg.res.min(30));
                 let err = curve_diff(target, &c);
                 writeln!(log, "\n[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
@@ -383,7 +383,7 @@ fn from_runtime(
                 writeln!(log, "\n[atlas.fb]")?;
                 log_sfb(&mut log, &fb)?;
                 write_ron(root.join("atlas.ron"), &fb)?;
-                fig.push_line("Atlas", c, plot::Style::Dot, CYAN);
+                fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
