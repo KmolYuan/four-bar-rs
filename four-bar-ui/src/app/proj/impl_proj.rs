@@ -274,16 +274,17 @@ where
     }
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
-        use four_bar::fb::CurveGen as _;
         ui.heading("Curve");
         check_on(ui, "In range", &mut self.curve_range, |ui, [start, end]| {
-            angle(ui, "start: ", start, "") | angle(ui, "end: ", end, "")
+            ui.vertical(|ui| angle(ui, "start: ", start, "") | angle(ui, "end: ", end, ""))
+                .inner
         });
         nonzero_i(ui, "Resolution: ", &mut self.curve_res, 1);
         ui.horizontal(|ui| {
             const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];
             combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
             let get_curve = |pivot, fb: &M::De| -> Vec<_> {
+                use four_bar::fb::CurveGen as _;
                 let curve = if let Some([start, end]) = self.curve_range {
                     fb.curves_in(start, end, self.curve_res).into_iter()
                 } else {

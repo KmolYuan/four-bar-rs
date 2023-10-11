@@ -322,7 +322,7 @@ impl AngleBound {
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
             Self::Closed => Some([0., TAU]),
-            Self::Open(a, b) => Some([a, if b > a { b } else { b + TAU }]),
+            Self::Open(a, b) => Some([a, b]),
             Self::Invalid => None,
         }
     }
@@ -382,19 +382,11 @@ where
     }
 
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
-        let de = self.clone().denormalize();
-        curve_in(
-            start,
-            end,
-            res,
-            |t| de.pos(t),
-            |[.., p2, p3, p4]| [p2, p3, p4],
-        )
+        self.clone().denormalize().curves_in(start, end, res)
     }
 
     fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<efd::Coord<D>> {
-        let de = self.clone().denormalize();
-        curve_in(start, end, res, |t| de.pos(t), |[.., p4]| p4)
+        self.clone().denormalize().curve_in(start, end, res)
     }
 }
 
@@ -404,6 +396,7 @@ where
     F: Fn(f64) -> Option<[C; 5]>,
     M: Fn([C; 5]) -> B + Copy,
 {
+    let end = if end > start { end } else { end + TAU };
     let interval = (end - start) / res as f64;
     let mut iter = (0..res).map(move |n| start + n as f64 * interval).map(f);
     let mut last = Vec::new();

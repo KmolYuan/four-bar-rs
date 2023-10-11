@@ -562,11 +562,13 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     where
         M: fb::CurveGen<D>,
     {
+        use std::f64::consts::TAU;
         let fb = self.fb.as_deref()?;
         let [start, end] = fb.angle_bound().to_value()?;
+        let end = if end > start { end } else { end + TAU };
         let angle = match self.angle {
             Some(angle) if (start..end).contains(&angle) => angle,
-            _ => start + (end - start) * 0.75,
+            _ => start + (end - start) * 0.8,
         };
         fb.pos(angle)
     }
