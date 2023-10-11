@@ -184,7 +184,7 @@ impl<T, E: std::error::Error> Alert for Result<T, E> {
     {
         match self {
             Ok(t) => done(t),
-            Err(e) => alert(title, format!("{e}")),
+            Err(e) => alert(title, e.to_string()),
         }
     }
 }

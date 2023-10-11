@@ -32,7 +32,7 @@ pub(crate) fn counter(
     if res1.clicked() {
         *val -= 1;
     }
-    ui.label(format!("{val}"));
+    ui.label(val.to_string());
     let at_max = val != rng.end();
     let res2 = ui.add_enabled(at_max, Button::new("+"));
     if res2.clicked() {
