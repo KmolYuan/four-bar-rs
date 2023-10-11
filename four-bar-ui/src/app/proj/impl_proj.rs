@@ -303,7 +303,7 @@ where
                 self.cache.changed = true;
             }
         });
-        let mut res = ui::ProjUi::delta_ui(&mut self.fb, ui, cfg);
+        let mut res = ui::ProjUi::proj_ui(&mut self.fb, ui, cfg);
         self.unsaved |= res.changed();
         ui.separator();
         ui.heading("Angle");

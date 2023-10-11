@@ -173,7 +173,7 @@ impl ProjPlot<efd::D3> for SFourBar {
 }
 
 pub(crate) trait ProjUi {
-    fn delta_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response;
+    fn proj_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response;
 }
 
 // A dummy UI function for angles.
@@ -186,7 +186,7 @@ macro_rules! impl_ui {
         .., $(($(@$unnorm: ident,)? $p_m_mut: ident, $p_ui:ident, $p_des:literal),)+
         .., $(($b_m_mut: ident, $b_des:literal)),+ $(,)?) => {
         impl ProjUi for $name {
-            fn delta_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
+            fn proj_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
                 let mut res = $($ui(ui, $des, &mut self.unnorm.$m_mut, cfg.int))|+;
                 ui.heading("Parameters");
                 res |= $($p_ui(ui, $p_des, &mut self.$($unnorm.)?$p_m_mut, cfg.int))|+;
