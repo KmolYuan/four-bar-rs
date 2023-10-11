@@ -177,7 +177,7 @@ impl Projects {
 
     pub(crate) fn select(&mut self, ui: &mut Ui) {
         if self.list.is_empty() {
-            ComboBox::from_id_source("proj").show_ui(ui, |ui| ui.label("No Project"));
+            ComboBox::from_id_source("proj").show_ui(ui, |_| ());
         } else {
             ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
                 let proj = &self.list[i];
