@@ -155,22 +155,22 @@ impl<D: efd::EfdDim> Default for Cache<D> {
     }
 }
 
-fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Response {
-    ui.group(|ui| {
-        fn copy_btn(ui: &mut Ui, start: f64, end: f64, suffix: &str) {
-            ui.horizontal(|ui| {
-                let s_str = format!("{start:.04}");
-                if ui.selectable_label(false, &s_str).clicked() {
-                    ui.output_mut(|s| s.copied_text = s_str);
-                }
-                let e_str = format!("{end:.04}");
-                if ui.selectable_label(false, &e_str).clicked() {
-                    ui.output_mut(|s| s.copied_text = e_str);
-                }
-                ui.label(suffix);
-            });
-        }
-        ui.label("Click to copy angle bounds:");
+fn angle_bound_ui(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Response {
+    fn copy_btn(ui: &mut Ui, start: f64, end: f64, suffix: &str) {
+        ui.horizontal(|ui| {
+            let s_str = format!("{start:.04}");
+            if ui.selectable_label(false, &s_str).clicked() {
+                ui.output_mut(|s| s.copied_text = s_str);
+            }
+            let e_str = format!("{end:.04}");
+            if ui.selectable_label(false, &e_str).clicked() {
+                ui.output_mut(|s| s.copied_text = e_str);
+            }
+            ui.label(suffix);
+        });
+    }
+    let res = ui.collapsing("Angle bound", |ui| {
+        ui.label("Click to copy values:");
         copy_btn(ui, start, end, "rad");
         copy_btn(ui, start.to_degrees(), end.to_degrees(), "deg");
         ui.horizontal(|ui| {
@@ -187,8 +187,8 @@ fn angle_bound_btns(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Resp
             res1 | res2
         })
         .inner
-    })
-    .inner
+    });
+    res.body_returned.unwrap_or(res.header_response)
 }
 
 impl<D, M> ProjInner<D, M>
@@ -308,14 +308,10 @@ where
         ui.separator();
         ui.heading("Angle");
         if let Some([start, end]) = self.cache.angle_bound.to_value() {
-            res |= angle_bound_btns(ui, &mut self.angle, start, end);
+            res |= angle_bound_ui(ui, &mut self.angle, start, end);
         }
-        ui.horizontal(|ui| {
-            res |= ui
-                .group(|ui| angle(ui, "Theta: ", &mut self.angle, ""))
-                .inner;
-            self.cache.changed |= res.changed();
-        });
+        res |= angle(ui, "Theta: ", &mut self.angle, "");
+        self.cache.changed |= res.changed();
         self.cache(cfg.res);
     }
 
