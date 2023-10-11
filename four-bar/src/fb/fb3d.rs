@@ -274,10 +274,10 @@ impl Transformable<efd::D3> for SFourBar {
         fb.ox += ox;
         fb.oy += oy;
         fb.oz += oz;
-        let p0_axis = na::Vector3::from(to_cc([fb.p0i, fb.p0j], 1.));
+        let p0_axis = na::Vector3::from(to_cc(fb.p0i, fb.p0j, 1.));
         let pb = na::Point3::new(fb.a.cos(), fb.a.sin(), 0.) + p0_axis;
         let p0_axis = trans.rot() * p0_axis;
-        [fb.p0i, fb.p0j] = to_sc([p0_axis.x, p0_axis.y, p0_axis.z]);
+        [fb.p0i, fb.p0j] = to_sc(p0_axis.x, p0_axis.y, p0_axis.z);
         let rot_inv = if let Some(axis) = p0_axis.cross(&na::Vector3::z()).try_normalize(0.) {
             let angle = p0_axis.dot(&na::Vector3::z()).acos();
             na::UnitQuaternion::from_scaled_axis(axis * angle)
@@ -329,7 +329,7 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         rot1 * rot2 * op1
     };
     let rot = {
-        let p0_axis = na::Vector3::from(to_cc([p0i, p0j], 1.));
+        let p0_axis = na::Vector3::from(to_cc(p0i, p0j, 1.));
         let rot1 = na::UnitQuaternion::from_scaled_axis(p0_axis * a);
         let z_axis = na::Vector3::z();
         let rot2 = if let Some(axis) = z_axis.cross(&p0_axis).try_normalize(0.) {
@@ -359,16 +359,20 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     js.iter().flatten().all(|x| x.is_finite()).then_some(js)
 }
 
-// To spherical coordinate
-fn to_sc([x, y, z]: [f64; 3]) -> [f64; 2] {
+/// To spherical coordinate.
+///
+/// Return `[p0i, p0j]`, ignore the radius.
+pub fn to_sc(x: f64, y: f64, z: f64) -> [f64; 2] {
     [x.hypot(y).atan2(z), y.atan2(x)]
 }
 
-// To Cartesian coordinate
-fn to_cc([theta, phi]: [f64; 2], sr: f64) -> [f64; 3] {
-    let x = sr * theta.sin() * phi.cos();
-    let y = sr * theta.sin() * phi.sin();
-    let z = sr * theta.cos();
+/// To Cartesian coordinate.
+///
+/// Return `[x, y, z]`.
+pub fn to_cc(p0i: f64, p0j: f64, sr: f64) -> [f64; 3] {
+    let x = sr * p0i.sin() * p0j.cos();
+    let y = sr * p0i.sin() * p0j.sin();
+    let z = sr * p0i.cos();
     [x, y, z]
 }
 
