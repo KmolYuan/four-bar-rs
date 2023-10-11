@@ -109,6 +109,8 @@ where
     path: Option<PathBuf>,
     fb: M::De,
     angle: f64,
+    curve_range: Option<[f64; 2]>,
+    curve_res: usize,
     hide: bool,
     #[serde(skip)]
     unsaved: bool,
@@ -129,6 +131,8 @@ where
             path: Default::default(),
             fb: Default::default(),
             angle: 0.,
+            curve_range: None,
+            curve_res: 40,
             hide: false,
             unsaved: false,
             cache: Default::default(),
@@ -271,23 +275,31 @@ where
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
         use four_bar::fb::CurveGen as _;
-        let get_curve = |pivot, fb: &M::De, n| -> Vec<_> {
-            let curve = fb.curves(n).into_iter();
-            match pivot {
-                Pivot::Driver => curve.map(|[c, _, _]| c).collect(),
-                Pivot::Follower => curve.map(|[_, c, _]| c).collect(),
-                Pivot::Coupler => curve.map(|[_, _, c]| c).collect(),
-            }
-        };
         ui.heading("Curve");
+        check_on(ui, "In range", &mut self.curve_range, |ui, [start, end]| {
+            angle(ui, "start: ", start, "") | angle(ui, "end: ", end, "")
+        });
+        nonzero_i(ui, "Resolution: ", &mut self.curve_res, 1);
         ui.horizontal(|ui| {
             const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];
             combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
+            let get_curve = |pivot, fb: &M::De| -> Vec<_> {
+                let curve = if let Some([start, end]) = self.curve_range {
+                    fb.curves_in(start, end, self.curve_res).into_iter()
+                } else {
+                    fb.curves(self.curve_res).into_iter()
+                };
+                match pivot {
+                    Pivot::Driver => curve.map(|[c, _, _]| c).collect(),
+                    Pivot::Follower => curve.map(|[_, c, _]| c).collect(),
+                    Pivot::Coupler => curve.map(|[_, _, c]| c).collect(),
+                }
+            };
             if small_btn(ui, "💾", "Save") {
-                io::save_csv_ask(&get_curve(*pivot, &self.fb, cfg.res));
+                io::save_csv_ask(&get_curve(*pivot, &self.fb));
             }
             if small_btn(ui, "🗐", "Copy") {
-                let t = csv::to_string(get_curve(*pivot, &self.fb, cfg.res)).unwrap();
+                let t = csv::to_string(get_curve(*pivot, &self.fb)).unwrap();
                 ui.output_mut(|s| s.copied_text = t);
             }
         });
