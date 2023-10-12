@@ -479,14 +479,14 @@ fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
     write_fields!(w, fb, l1);
     write_fields!(w, fb.unnorm, l2);
     write_fields!(w, fb, l3, l4, l5, g);
-    write!(w, "stat={}", fb.stat)?;
+    writeln!(w, "stat={}", fb.stat)?;
     Ok(())
 }
 
 fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
     write_fields!(w, fb.unnorm, ox, oy, oz, r, p0i, p0j, a);
     write_fields!(w, fb, l1, l2, l3, l4, l5, g);
-    write!(w, "stat={}", fb.stat)?;
+    writeln!(w, "stat={}", fb.stat)?;
     Ok(())
 }
 
