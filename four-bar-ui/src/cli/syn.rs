@@ -279,6 +279,7 @@ fn from_runtime(
         .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
         .filter(|p| p.is_file());
     let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
+    writeln!(log, "title={title}")?;
     match (target, &lnk_fb) {
         (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
             let curve_diff = if matches!(mode, syn::Mode::Partial) {
@@ -320,7 +321,7 @@ fn from_runtime(
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
-            writeln!(log, "time={t1:?}")?;
+            writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
@@ -387,7 +388,7 @@ fn from_runtime(
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
-            writeln!(log, "time={t1:?}")?;
+            writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
