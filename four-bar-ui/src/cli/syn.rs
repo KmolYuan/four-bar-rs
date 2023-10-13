@@ -279,6 +279,7 @@ fn from_runtime(
         .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
         .filter(|p| p.is_file());
     let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
+    writeln!(log, "title={title}")?;
     match (target, &lnk_fb) {
         (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
             let curve_diff = if matches!(mode, syn::Mode::Partial) {
@@ -320,7 +321,7 @@ fn from_runtime(
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
-            writeln!(log, "time={t1:?}")?;
+            writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
@@ -387,7 +388,7 @@ fn from_runtime(
             }
             writeln!(log, "\n[optimized]")?;
             let err = curve_diff(target, &curve);
-            writeln!(log, "time={t1:?}")?;
+            writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
@@ -479,14 +480,14 @@ fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
     write_fields!(w, fb, l1);
     write_fields!(w, fb.unnorm, l2);
     write_fields!(w, fb, l3, l4, l5, g);
-    write!(w, "stat={}", fb.stat)?;
+    writeln!(w, "stat={}", fb.stat)?;
     Ok(())
 }
 
 fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
     write_fields!(w, fb.unnorm, ox, oy, oz, r, p0i, p0j, a);
     write_fields!(w, fb, l1, l2, l3, l4, l5, g);
-    write!(w, "stat={}", fb.stat)?;
+    writeln!(w, "stat={}", fb.stat)?;
     Ok(())
 }
 
