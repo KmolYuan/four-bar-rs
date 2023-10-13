@@ -84,6 +84,27 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
     }
 }
 
+// Concat const slices, currently only support non-generic slices.
+macro_rules! concat_slices {
+    ($a:ident $(, $b:ident)+) => {{
+        let mut out = [$a[0]; { $a.len() $(+ $b.len())+ }];
+        let mut i = 0;
+        while i < $a.len() {
+            out[i] = $a[i];
+            i += 1;
+        }
+        $(
+            let mut j = 0;
+            while j < $b.len() {
+                out[i] = $b[j];
+                i += 1;
+                j += 1;
+            }
+        )+
+        out
+    }};
+}
+
 /// Synthesis bounds.
 pub trait SynBound: Clone + Sync + Send {
     /// Lower & upper bounds
@@ -92,31 +113,23 @@ pub trait SynBound: Clone + Sync + Send {
 
 impl SynBound for NormFourBar {
     const BOUND: &'static [[f64; 2]] = {
-        let bound = 6.;
-        let bound_f: f64 = 1. / bound;
-        &[
-            [bound_f, bound],
-            [bound_f, bound],
-            [bound_f, bound],
-            [bound_f, bound],
-            [0., TAU],
-            [0., TAU],
-            [0., TAU],
-        ]
+        const LNK: &[[f64; 2]] = {
+            let bound = 6.;
+            let bound_f = 1. / bound;
+            &[[bound_f, bound]; 4]
+        };
+        const ANG: &[[f64; 2]] = &[[0., TAU]; 3];
+        &concat_slices!(LNK, ANG)
     };
 }
 
 impl SynBound for SNormFourBar {
-    const BOUND: &'static [[f64; 2]] = &[
-        [1e-4, PI],
-        [1e-4, PI],
-        [1e-4, PI],
-        [1e-4, PI],
-        [1e-4, PI],
-        [0., TAU],
-        [0., TAU],
-        [0., TAU],
-    ];
+    const BOUND: &'static [[f64; 2]] = {
+        const LNK: &[[f64; 2]] = &[[1e-4, PI]; 5];
+        const GMA: &[[f64; 2]] = &[[0., PI]; 1];
+        const ANG: &[[f64; 2]] = &[[0., TAU]; 2];
+        &concat_slices!(LNK, GMA, ANG)
+    };
 }
 
 impl<D, M> mh::Bounded for Syn<D, M>
