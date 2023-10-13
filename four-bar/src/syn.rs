@@ -107,7 +107,16 @@ impl SynBound for NormFourBar {
 }
 
 impl SynBound for SNormFourBar {
-    const BOUND: &'static [[f64; 2]] = &[[1e-4, PI]; 8];
+    const BOUND: &'static [[f64; 2]] = &[
+        [1e-4, PI],
+        [1e-4, PI],
+        [1e-4, PI],
+        [1e-4, PI],
+        [1e-4, PI],
+        [0., TAU],
+        [0., TAU],
+        [0., TAU],
+    ];
 }
 
 impl<D, M> mh::Bounded for Syn<D, M>
