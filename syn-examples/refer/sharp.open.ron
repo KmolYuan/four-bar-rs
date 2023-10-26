@@ -2,8 +2,8 @@
    Generation Using Fourier Descriptor.” Master’s Thesis, Department of Mechanical
    Engineering, National Taiwan University, Taiwan. */
 (
-   p0x: -2.008,
-   p0y: -2.996,
+   p1x: -2.008,
+   p1y: -2.996,
    a: 0.199,
    l1: 7.006,
    l2: 10.007,

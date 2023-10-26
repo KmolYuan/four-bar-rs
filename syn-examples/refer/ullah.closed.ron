@@ -2,8 +2,8 @@
    for Path Generation Using Fourier Descriptors and Global Search Methods."
    ASME. J. Mech. Des. December 1997; 119(4): 504–510. https://doi.org/10.1115/1.2826396 */
 (
-   p0x: -11.77,
-   p0y: 5.38,
+   p1x: -11.77,
+   p1y: 5.38,
    a: 4.9031534676276705,
    l1: 9.33,
    l2: 1.41,

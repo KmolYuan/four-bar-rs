@@ -101,8 +101,8 @@ impl Figure<'_, '_> {
             style.draw(&mut chart, line, color, label, self.font as i32)?;
         }
         // Draw Linkage
-        if let Some(joints @ [p0, p1, p2, p3, p4]) = joints {
-            for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
+        if let Some(joints @ [p1, p2, p3, p4, p5]) = joints {
+            for line in [[p1, p3].as_slice(), &[p3, p5, p4, p3], &[p2, p4]] {
                 let line = line.iter().map(|&[x, y]| (x, y));
                 chart.draw_series(LineSeries::new(line, BLACK.stroke_width(stroke)))?;
             }

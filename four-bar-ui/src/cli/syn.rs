@@ -476,7 +476,7 @@ macro_rules! write_fields {
 }
 
 fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
-    write_fields!(w, fb.unnorm, p0x, p0y, a);
+    write_fields!(w, fb.unnorm, p1x, p1y, a);
     write_fields!(w, fb, l1);
     write_fields!(w, fb.unnorm, l2);
     write_fields!(w, fb, l3, l4, l5, g);
@@ -485,7 +485,7 @@ fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
 }
 
 fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
-    write_fields!(w, fb.unnorm, ox, oy, oz, r, p0i, p0j, a);
+    write_fields!(w, fb.unnorm, ox, oy, oz, r, p1i, p1j, a);
     write_fields!(w, fb, l1, l2, l3, l4, l5, g);
     writeln!(w, "stat={}", fb.stat)?;
     Ok(())

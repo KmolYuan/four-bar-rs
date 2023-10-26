@@ -2,8 +2,8 @@
    mechanisms from a library. Mechanism and Machine Theory, 29(2), 223–235.
    https://doi.org/10.1016/0094-114X(94)90032-9 */
 (
-   p0x: 54.6,
-   p0y: -35.5,
+   p1x: 54.6,
+   p1y: -35.5,
    a: 1.95,
    l1: 47.5,
    l2: 24.3,

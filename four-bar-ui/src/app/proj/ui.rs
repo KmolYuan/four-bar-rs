@@ -198,8 +198,8 @@ macro_rules! impl_ui {
 
 impl_ui!(
     FourBar,
-    (p0x, unit, "X Offset: "),
-    (p0y, unit, "Y Offset: "),
+    (p1x, unit, "X Offset: "),
+    (p1y, unit, "Y Offset: "),
     (a, angle, "Rotation: "),
     ..,
     (l1, nonzero_f, "Ground: "),
@@ -217,8 +217,8 @@ impl_ui!(
     (oy, unit, "Y Offset: "),
     (oz, unit, "Z Offset: "),
     (r, nonzero_f, "Radius: "),
-    (p0i, angle, "Polar angle: "),
-    (p0j, angle, "Azimuth angle: "),
+    (p1i, angle, "Polar angle: "),
+    (p1j, angle, "Azimuth angle: "),
     (a, angle, "Rotation: "),
     ..,
     (l1, angle, "Ground: "),

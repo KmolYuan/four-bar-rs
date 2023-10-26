@@ -90,8 +90,8 @@ impl Figure<'_, '_> {
         let mut grounded_front = Vec::new();
         let mut joints_front = Vec::new();
         if let Some((sc, _, Some(joints))) = sphere {
-            let [p0, p1, p2, p3, p4] = joints;
-            for line in [[p0, p2].as_slice(), &[p2, p4, p3, p2], &[p1, p3]] {
+            let [p1, p2, p3, p4, p5] = joints;
+            for line in [[p1, p3].as_slice(), &[p3, p5, p4, p3], &[p2, p4]] {
                 let mut line = line.windows(2).flat_map(|w| {
                     let a = na::Point3::from(w[0]) - sc;
                     let b = na::Point3::from(w[1]) - sc;

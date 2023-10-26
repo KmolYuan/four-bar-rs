@@ -3,8 +3,8 @@
    synthesis of a four-bar linkage. Mechanism and Machine Theory, 95, 1–21.
    https://doi.org/10.1016/j.mechmachtheory.2015.08.004 */
 (
-   p0x: -2.31301,
-   p0y: 2.86189,
+   p1x: -2.31301,
+   p1y: 2.86189,
    a: -0.61763,
    l1: 9.99432,
    l2: 1.93027,

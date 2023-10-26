@@ -2,8 +2,8 @@
    synthesis method of a four-bar linkage.” Mechanism and Machine Theory,
    vol. 42, no. 4, pp. 383–392. */
 (
-   p0x: -11.55,
-   p0y: -20.14,
+   p1x: -11.55,
+   p1y: -20.14,
    a: 2.981022362406315,
    l1: 65.87,
    l2: 17.43,

@@ -14,7 +14,7 @@ impl Serialize for FourBar {
         S: Serializer,
     {
         let mut s = serializer.serialize_struct("FourBar", 9)?;
-        ser_fields!(s, self.unnorm, p0x, p0y, a);
+        ser_fields!(s, self.unnorm, p1x, p1y, a);
         ser_fields!(s, self, l1);
         ser_fields!(s, self.unnorm, l2);
         ser_fields!(s, self, l3, l4, l5, g, stat);
@@ -28,7 +28,7 @@ impl Serialize for SFourBar {
         S: Serializer,
     {
         let mut s = serializer.serialize_struct("SFourBar", 13)?;
-        ser_fields!(s, self.unnorm, ox, oy, oz, r, p0i, p0j, a);
+        ser_fields!(s, self.unnorm, ox, oy, oz, r, p1i, p1j, a);
         ser_fields!(s, self, l1, l2, l3, l4, l5, g, stat);
         s.end()
     }
@@ -104,8 +104,8 @@ macro_rules! impl_de {
 impl_de!(
     FourBar,
     [
-        (p0x, unnorm),
-        (p0y, unnorm),
+        (p1x, unnorm),
+        (p1y, unnorm),
         (a, unnorm),
         (l1),
         (l2, unnorm),
@@ -123,8 +123,8 @@ impl_de!(
         (oy, unnorm),
         (oz, unnorm),
         (r, unnorm),
-        (p0i, unnorm),
-        (p0j, unnorm),
+        (p1i, unnorm),
+        (p1j, unnorm),
         (a, unnorm),
         (l1),
         (l2),

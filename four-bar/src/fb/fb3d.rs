@@ -18,9 +18,9 @@ pub struct UnNorm {
     /// Radius of the sphere
     pub r: f64,
     /// Sphere polar angle offset of the driver link pivot
-    pub p0i: f64,
+    pub p1i: f64,
     /// Sphere azimuth angle offset of the driver link pivot
-    pub p0j: f64,
+    pub p1j: f64,
     /// Angle offset of the ground link
     pub a: f64,
 }
@@ -33,7 +33,7 @@ impl UnNorm {
 
     /// Create a new instance from the sphere radius.
     pub const fn from_radius(r: f64) -> Self {
-        Self { ox: 0., oy: 0., oz: 0., r, p0i: 0., p0j: 0., a: 0. }
+        Self { ox: 0., oy: 0., oz: 0., r, p1i: 0., p1j: 0., a: 0. }
     }
 }
 
@@ -94,8 +94,8 @@ impl IntoVectorized for SNormFourBar {
 /// + Sphere Y offset `oy`
 /// + Sphere Z offset `oz`
 /// + Sphere radius `r`
-/// + Sphere polar offset `p0i` (theta)
-/// + Sphere azimuth offset `p0j` (phi)
+/// + Sphere polar offset `p1i` (theta)
+/// + Sphere azimuth offset `p1j` (phi)
 /// + Angle offset `a`
 /// + Ground link `l1`
 /// + Driver link `l2`
@@ -151,8 +151,8 @@ impl SFourBar {
     /// Create with linkage lengths in degrees.
     pub fn to_radians(self) -> Self {
         let unnorm = UnNorm {
-            p0i: self.unnorm.p0i.to_radians(),
-            p0j: self.unnorm.p0j.to_radians(),
+            p1i: self.unnorm.p1i.to_radians(),
+            p1j: self.unnorm.p1j.to_radians(),
             a: self.unnorm.a.to_radians(),
             ..self.unnorm
         };
@@ -162,12 +162,12 @@ impl SFourBar {
     /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
     pub fn new_wrap(fb: &FourBar, center: [f64; 3], r: f64, w: f64) -> Self {
         assert!(r > 0.);
-        let fb2d::UnNorm { p0x, p0y, a, l2 } = fb.unnorm;
+        let fb2d::UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
         let NormFourBar { l1, l3, l4, l5, g, stat } = fb.norm;
-        let [p0i, p0j, l1, l2, l3, l4, l5] = [p0x, p0y, l1, l2, l3, l4, l5].map(|x| x / w * TAU);
+        let [p1i, p1j, l1, l2, l3, l4, l5] = [p1x, p1y, l1, l2, l3, l4, l5].map(|x| x / w * TAU);
         let [ox, oy, oz] = center;
         Self {
-            unnorm: UnNorm { ox, oy, oz, r, p0j: FRAC_PI_2 - p0j, p0i, a },
+            unnorm: UnNorm { ox, oy, oz, r, p1j: FRAC_PI_2 - p1j, p1i, a },
             norm: SNormFourBar { l1, l2, l3, l4, l5, g, stat },
         }
     }
@@ -274,12 +274,12 @@ impl Transformable<efd::D3> for SFourBar {
         fb.ox += ox;
         fb.oy += oy;
         fb.oz += oz;
-        let p0_axis = na::Vector3::from(to_cc(fb.p0i, fb.p0j, 1.));
-        let pb = na::Point3::new(fb.a.cos(), fb.a.sin(), 0.) + p0_axis;
-        let p0_axis = trans.rot() * p0_axis;
-        [fb.p0i, fb.p0j] = to_sc(p0_axis.x, p0_axis.y, p0_axis.z);
-        let rot_inv = if let Some(axis) = p0_axis.cross(&na::Vector3::z()).try_normalize(0.) {
-            let angle = p0_axis.dot(&na::Vector3::z()).acos();
+        let p1_axis = na::Vector3::from(to_cc(fb.p1i, fb.p1j, 1.));
+        let pb = na::Point3::new(fb.a.cos(), fb.a.sin(), 0.) + p1_axis;
+        let p1_axis = trans.rot() * p1_axis;
+        [fb.p1i, fb.p1j] = to_sc(p1_axis.x, p1_axis.y, p1_axis.z);
+        let rot_inv = if let Some(axis) = p1_axis.cross(&na::Vector3::z()).try_normalize(0.) {
+            let angle = p1_axis.dot(&na::Vector3::z()).acos();
             na::UnitQuaternion::from_scaled_axis(axis * angle)
         } else {
             na::UnitQuaternion::identity()
@@ -298,13 +298,13 @@ impl CurveGen<efd::D3> for SFourBar {
 
 fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     // a=alpha, b=beta, g=gamma, d=delta
-    let UnNorm { ox, oy, oz, r, p0i, p0j, a } = fb.unnorm;
+    let UnNorm { ox, oy, oz, r, p1i, p1j, a } = fb.unnorm;
     let SNormFourBar { l1, l2, l3, l4, l5, g, stat: inv } = fb.norm;
-    let op0 = r * na::Vector3::z();
+    let op1 = r * na::Vector3::z();
     let e1 = {
         let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), g);
         let rx1m = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l5);
-        rx1v * rx1m * op0
+        rx1v * rx1m * op1
     };
     let d = {
         let h1 =
@@ -314,26 +314,26 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         let h = (h3 * h3 - h1 * h1 + h2 * h2).sqrt() * if inv { -1. } else { 1. };
         2. * (-h3 + h).atan2(h1 - h2)
     };
-    let op1 = {
-        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l1);
-        rot * op0
-    };
     let op2 = {
-        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), b);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l2);
-        rot1 * rot2 * op0
+        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l1);
+        rot * op1
     };
     let op3 = {
-        let rot1 = na::UnitQuaternion::from_scaled_axis(op1.normalize() * d);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l4);
+        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), b);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l2);
         rot1 * rot2 * op1
     };
+    let op4 = {
+        let rot1 = na::UnitQuaternion::from_scaled_axis(op2.normalize() * d);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l4);
+        rot1 * rot2 * op2
+    };
     let rot = {
-        let p0_axis = na::Vector3::from(to_cc(p0i, p0j, 1.));
-        let rot1 = na::UnitQuaternion::from_scaled_axis(p0_axis * a);
+        let p1_axis = na::Vector3::from(to_cc(p1i, p1j, 1.));
+        let rot1 = na::UnitQuaternion::from_scaled_axis(p1_axis * a);
         let z_axis = na::Vector3::z();
-        let rot2 = if let Some(axis) = z_axis.cross(&p0_axis).try_normalize(0.) {
-            let angle = z_axis.dot(&p0_axis).acos();
+        let rot2 = if let Some(axis) = z_axis.cross(&p1_axis).try_normalize(0.) {
+            let angle = z_axis.dot(&p1_axis).acos();
             na::UnitQuaternion::from_scaled_axis(axis * angle)
         } else {
             na::UnitQuaternion::identity()
@@ -341,27 +341,27 @@ fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
         rot1 * rot2
     };
     let o = na::Point3::new(ox, oy, oz);
-    let p0 = o + rot * op0;
     let p1 = o + rot * op1;
     let p2 = o + rot * op2;
     let p3 = o + rot * op3;
-    let p4 = {
-        let i = op2.normalize();
-        let k = op2.cross(&op3).normalize();
+    let p4 = o + rot * op4;
+    let p5 = {
+        let i = op3.normalize();
+        let k = op3.cross(&op4).normalize();
         let j = k.cross(&i);
-        let op4 = na::UnitQuaternion::from_basis_unchecked(&[i, j, k]) * e1;
-        o + rot * op4
+        let op5 = na::UnitQuaternion::from_basis_unchecked(&[i, j, k]) * e1;
+        o + rot * op5
     };
     macro_rules! build_coords {
         [$($p:ident),+] => { [$([$p.x, $p.y, $p.z]),+] }
     }
-    let js = build_coords![p0, p1, p2, p3, p4];
+    let js = build_coords![p1, p2, p3, p4, p5];
     js.iter().flatten().all(|x| x.is_finite()).then_some(js)
 }
 
 /// To spherical coordinate.
 ///
-/// Return `[p0i, p0j]`, ignore the radius.
+/// Return `[p1i, p1j]`, ignore the radius.
 pub fn to_sc(x: f64, y: f64, z: f64) -> [f64; 2] {
     [x.hypot(y).atan2(z), y.atan2(x)]
 }
@@ -369,10 +369,10 @@ pub fn to_sc(x: f64, y: f64, z: f64) -> [f64; 2] {
 /// To Cartesian coordinate.
 ///
 /// Return `[x, y, z]`.
-pub fn to_cc(p0i: f64, p0j: f64, sr: f64) -> [f64; 3] {
-    let x = sr * p0i.sin() * p0j.cos();
-    let y = sr * p0i.sin() * p0j.sin();
-    let z = sr * p0i.cos();
+pub fn to_cc(p1i: f64, p1j: f64, sr: f64) -> [f64; 3] {
+    let x = sr * p1i.sin() * p1j.cos();
+    let y = sr * p1i.sin() * p1j.sin();
+    let z = sr * p1i.cos();
     [x, y, z]
 }
 

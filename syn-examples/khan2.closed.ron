@@ -2,8 +2,8 @@
    linkages using artificial neural networks and Fourier descriptors. Mechanical
    Sciences. 6(1): p. 29-34. */
 (
-   p0x: 0.0,
-   p0y: 0.0,
+   p1x: 0.0,
+   p1y: 0.0,
    a: 0.0,
    l1: 3.0,
    l2: 1.0,

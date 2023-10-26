@@ -3,8 +3,8 @@
    open and closed paths. Journal of Mechanisms and Robotics, 3(3).
    https://doi.org/10.1115/1.4004227 */
 (
-   p0x: 198.6,
-   p0y: -82.5,
+   p1x: 198.6,
+   p1y: -82.5,
    a: 2.670353755551324,
    l1: 368.5,
    l2: 74.0,

@@ -345,13 +345,13 @@ pub trait CurveGen<D: efd::EfdDim>: PlanarLoop {
             end,
             res,
             |t| self.pos(t),
-            |[.., p2, p3, p4]| [p2, p3, p4],
+            |[.., p3, p4, p5]| [p3, p4, p5],
         )
     }
 
     /// Generator for coupler curve in specified angle.
     fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<efd::Coord<D>> {
-        curve_in(start, end, res, |t| self.pos(t), |[.., p4]| p4)
+        curve_in(start, end, res, |t| self.pos(t), |[.., p5]| p5)
     }
 
     /// Generator for curves.

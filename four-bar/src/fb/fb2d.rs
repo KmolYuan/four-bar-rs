@@ -9,9 +9,9 @@ use std::f64::consts::FRAC_PI_6;
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct UnNorm {
     /// X offset of the driver link pivot
-    pub p0x: f64,
+    pub p1x: f64,
     /// Y offset of the driver link pivot
-    pub p0y: f64,
+    pub p1y: f64,
     /// Angle offset of the ground link
     pub a: f64,
     /// Length of the driver link
@@ -26,7 +26,7 @@ impl UnNorm {
 
     /// Create a new instance from the driver link length.
     pub const fn from_driver(l2: f64) -> Self {
-        Self { p0x: 0., p0y: 0., a: 0., l2 }
+        Self { p1x: 0., p1y: 0., a: 0., l2 }
     }
 }
 
@@ -82,8 +82,8 @@ impl IntoVectorized for NormFourBar {
 ///
 /// There are 9 parameters in total.
 ///
-/// + X offset `p0x`
-/// + Y offset `p0y`
+/// + X offset `p1x`
+/// + Y offset `p1y`
 /// + Angle offset `a`
 /// + Ground link `l1`
 /// + Driver link `l2`
@@ -159,9 +159,9 @@ impl PlanarLoop for FourBar {
 impl Transformable<efd::D2> for FourBar {
     fn transform_inplace(&mut self, trans: &efd::Transform2) {
         let fb = &mut self.unnorm;
-        let [p0x, p0y] = trans.trans();
-        fb.p0x += p0x;
-        fb.p0y += p0y;
+        let [p1x, p1y] = trans.trans();
+        fb.p1x += p1x;
+        fb.p1y += p1y;
         fb.a += trans.rot().angle();
         let scale = trans.scale();
         fb.l2 *= scale;
@@ -204,25 +204,25 @@ fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) 
 }
 
 fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
-    let UnNorm { p0x, p0y, a, l2 } = fb.unnorm;
+    let UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
     let NormFourBar { l1, l3, l4, l5, g, stat: inv } = fb.norm;
-    let p0 = [p0x, p0y];
-    let p1 = angle(p0, l1, a);
-    let p2 = angle(p0, l2, a + b);
-    let p3 = if (l1 - l3).abs() < f64::EPSILON && (l2 - l4).abs() < f64::EPSILON {
+    let p1 = [p1x, p1y];
+    let p2 = angle(p1, l1, a);
+    let p3 = angle(p1, l2, a + b);
+    let p4 = if (l1 - l3).abs() < f64::EPSILON && (l2 - l4).abs() < f64::EPSILON {
         // Special case
-        let [p0x, p0y] = p0;
         let [p1x, p1y] = p1;
         let [p2x, p2y] = p2;
-        let dx = p2x - p0x;
-        let dy = p2y - p0y;
+        let [p3x, p3y] = p3;
+        let dx = p3x - p1x;
+        let dy = p3y - p1y;
         let d = dx.hypot(dy);
         let a = dy.atan2(dx);
-        [p1x + d * a.cos(), p1y + d * a.sin()]
+        [p2x + d * a.cos(), p2y + d * a.sin()]
     } else {
-        circle2(p2, p1, l3, l4, inv)
+        circle2(p3, p2, l3, l4, inv)
     };
-    let p4 = angle_with(p2, p3, l5, g);
-    let js = [p0, p1, p2, p3, p4];
+    let p5 = angle_with(p3, p4, l5, g);
+    let js = [p1, p2, p3, p4, p5];
     js.iter().flatten().all(|x| x.is_finite()).then_some(js)
 }
