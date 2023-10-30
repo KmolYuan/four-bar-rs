@@ -125,8 +125,8 @@ fn get_info(
         }
     };
     match &target {
-        io::Curve::P(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
-        io::Curve::S(t) => _ = efd::valid_curve(t).ok_or(SynErr::Linkage)?,
+        io::Curve::P(t) => _ = efd::util::valid_curve(t).ok_or(SynErr::Linkage)?,
+        io::Curve::S(t) => _ = efd::util::valid_curve(t).ok_or(SynErr::Linkage)?,
     }
     let mode = match Path::new(title).extension().and_then(|p| p.to_str()) {
         Some("closed") => syn::Mode::Closed,
@@ -282,11 +282,6 @@ fn from_runtime(
     writeln!(log, "title=\"{title}\"")?;
     match (target, &lnk_fb) {
         (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
-            let curve_diff = if matches!(mode, syn::Mode::Partial) {
-                efd::partial_curve_diff
-            } else {
-                efd::curve_diff
-            };
             let efd_target =
                 efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
@@ -309,35 +304,29 @@ fn from_runtime(
                 let trans = efd.as_trans().to(efd_target.as_trans());
                 let fb = fb.clone().trans_denorm(&trans);
                 let c = fb.curve(cfg.res.min(30));
-                let err = curve_diff(target, &c);
                 writeln!(log, "\n[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "cost={cost:.04}")?;
-                writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[atlas.fb]")?;
                 log_fb(&mut log, &fb)?;
                 write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
             writeln!(log, "\n[optimized]")?;
-            let err = curve_diff(target, &curve);
             writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
-            writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
             writeln!(log, "\n[optimized.fb]")?;
             log_fb(&mut log, fb)?;
             if let Some(refer) = refer {
                 let fb = ron::de::from_reader::<_, FourBar>(std::fs::File::open(refer)?)?;
                 let c = fb.curve(cfg.res);
-                let err = curve_diff(target, &c);
                 writeln!(log, "\n[competitor]")?;
                 if !matches!(mode, syn::Mode::Partial) {
                     let efd = efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
                     let cost = efd.distance(&efd_target);
                     writeln!(log, "cost={cost:.04}")?;
                 }
-                writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[competitor.fb]")?;
                 log_fb(&mut log, &fb)?;
                 fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
@@ -349,11 +338,6 @@ fn from_runtime(
             fig.plot(svg)?;
         }
         (io::Curve::S(target), syn_cmd::SolvedFb::SFb(fb, cb_fb)) if fb.is_valid() => {
-            let curve_diff = if matches!(mode, syn::Mode::Partial) {
-                efd::partial_curve_diff
-            } else {
-                efd::curve_diff
-            };
             let efd_target =
                 efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
@@ -376,35 +360,29 @@ fn from_runtime(
                 let trans = efd.as_trans().to(efd_target.as_trans());
                 let fb = fb.clone().trans_denorm(&trans);
                 let c = fb.curve(cfg.res.min(30));
-                let err = curve_diff(target, &c);
                 writeln!(log, "\n[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "cost={cost:.04}")?;
-                writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[atlas.fb]")?;
                 log_sfb(&mut log, &fb)?;
                 write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
             writeln!(log, "\n[optimized]")?;
-            let err = curve_diff(target, &curve);
             writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
-            writeln!(log, "error={err:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
             writeln!(log, "\n[optimized.fb]")?;
             log_sfb(&mut log, fb)?;
             if let Some(refer) = refer {
                 let fb = ron::de::from_reader::<_, SFourBar>(std::fs::File::open(refer)?)?;
                 let c = fb.curve(cfg.res);
-                let err = curve_diff(target, &c);
                 writeln!(log, "\n[competitor]")?;
                 if !matches!(mode, syn::Mode::Partial) {
                     let efd = efd::Efd3::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
                     let cost = efd.distance(&efd_target);
                     writeln!(log, "cost={cost:.04}")?;
                 }
-                writeln!(log, "error={err:.04}")?;
                 writeln!(log, "\n[competitor.fb]")?;
                 log_sfb(&mut log, &fb)?;
                 fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
