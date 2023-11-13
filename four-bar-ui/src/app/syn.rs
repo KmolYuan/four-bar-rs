@@ -1,7 +1,7 @@
 use super::{link::Linkages, widgets::*};
 use crate::{io, io::Alert as _, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
-use four_bar::{cb, csv, efd, mh, syn};
+use four_bar::{atlas, csv, efd, mh, syn};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, sync::Arc};
 
@@ -21,23 +21,23 @@ enum Cache {
     #[default]
     Empty,
     Curve(io::Curve),
-    Cb(io::Cb),
+    Atlas(io::Atlas),
 }
 
-struct CbVis {
+struct AtlasVis {
     pt: [f64; 2],
     is_open: bool,
     is_sphere: bool,
 }
 
 #[derive(Deserialize, Serialize)]
-struct CbCfg {
+struct AtlasCfg {
     size: usize,
     harmonic: usize,
     is_open: bool,
 }
 
-impl Default for CbCfg {
+impl Default for AtlasCfg {
     fn default() -> Self {
         Self { size: 10000, harmonic: 20, is_open: false }
     }
@@ -48,13 +48,13 @@ impl Default for CbCfg {
 pub(crate) struct Synthesis {
     alg: syn_cmd::SynAlg,
     cfg: syn_cmd::SynCfg,
-    cb_cfg: CbCfg,
+    cb_cfg: AtlasCfg,
     target: io::Curve,
     tasks: Vec<Task>,
     #[serde(skip)]
-    cb: io::CbPool,
+    atlas: io::AtlasPool,
     #[serde(skip)]
-    cb_vis: Vec<CbVis>,
+    cb_vis: Vec<AtlasVis>,
     #[serde(skip)]
     cb_pg: Option<Arc<std::sync::atomic::AtomicU32>>,
     #[serde(skip)]
@@ -82,7 +82,7 @@ impl Synthesis {
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
         });
-        ui.collapsing("Atlas Library", |ui| self.cb_setting(ui));
+        ui.collapsing("Atlas Database", |ui| self.cb_setting(ui));
         ui.separator();
         ui.heading("Target Curve");
         ui.horizontal(|ui| {
@@ -109,7 +109,7 @@ impl Synthesis {
         });
         match std::mem::replace(&mut *self.queue.write(), Cache::Empty) {
             Cache::Curve(curve) => self.target = curve,
-            Cache::Cb(cb) => self.cb.merge_inplace(cb).alert("Merge Codebook"),
+            Cache::Atlas(atlas) => self.atlas.merge_inplace(atlas).alert("Merge Atlas"),
             Cache::Empty => (),
         }
         check_on(ui, "Constrain scale", &mut self.cfg.scale, |ui, v| {
@@ -256,7 +256,7 @@ impl Synthesis {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();
-                io::open_cb(move |cb| *queue.write() = Cache::Cb(cb));
+                io::open_cb(move |atlas| *queue.write() = Cache::Atlas(atlas));
             }
             ui.group(|ui| {
                 if ui.button("☁ Point Cloud Visualize").clicked() {
@@ -277,9 +277,9 @@ impl Synthesis {
             ui.checkbox(&mut self.cb_cfg.is_open, "Is open curve");
         });
         macro_rules! impl_make_cb {
-            ($cb:ident, $cb_ty:ident) => {
+            ($atlas:ident, $cb_ty:ident) => {
                 let size = self.cb_cfg.size;
-                let cfg = cb::Cfg::new()
+                let cfg = atlas::Cfg::new()
                     .res(self.cfg.res)
                     .size(size)
                     .harmonic(self.cb_cfg.harmonic)
@@ -288,11 +288,11 @@ impl Synthesis {
                 let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
                 self.cb_pg.replace(pg.clone());
                 let f = move || {
-                    let cb = cb::$cb::make_with(cfg, |p| {
+                    let atlas = atlas::$atlas::make_with(cfg, |p| {
                         let p = p as f32 / size as f32;
                         pg.store(p.to_bits(), std::sync::atomic::Ordering::Relaxed);
                     });
-                    *queue.write() = Cache::Cb(io::Cb::$cb_ty(cb));
+                    *queue.write() = Cache::Atlas(io::Atlas::$cb_ty(atlas));
                 };
                 #[cfg(not(target_arch = "wasm32"))]
                 mh::rayon::spawn(f);
@@ -306,32 +306,32 @@ impl Synthesis {
             ui.label("Spherical Data");
             ui.end_row();
             ui.label("Size");
-            ui.label(self.cb.as_fb().len().to_string());
-            ui.label(self.cb.as_sfb().len().to_string());
+            ui.label(self.atlas.as_fb().len().to_string());
+            ui.label(self.atlas.as_sfb().len().to_string());
             ui.end_row();
             ui.label("Save");
             if ui.button("💾").clicked() {
-                io::save_cb_ask(self.cb.as_fb());
+                io::save_cb_ask(self.atlas.as_fb());
             }
             if ui.button("💾").clicked() {
-                io::save_cb_ask(self.cb.as_sfb());
+                io::save_cb_ask(self.atlas.as_sfb());
             }
             ui.end_row();
             ui.label("Generate");
             let enabled = self.cb_pg.is_none();
             if ui.add_enabled(enabled, Button::new("✚")).clicked() {
-                impl_make_cb!(FbCodebook, P);
+                impl_make_cb!(FbAtlas, P);
             }
             if ui.add_enabled(enabled, Button::new("✚")).clicked() {
-                impl_make_cb!(SFbCodebook, S);
+                impl_make_cb!(SFbAtlas, S);
             }
             ui.end_row();
             ui.label("Clear");
             if ui.button("✖").clicked() {
-                self.cb.as_fb_mut().clear();
+                self.atlas.as_fb_mut().clear();
             }
             if ui.button("✖").clicked() {
-                self.cb.as_sfb_mut().clear();
+                self.atlas.as_sfb_mut().clear();
             }
         });
         if let Some(pg) = &self.cb_pg {
@@ -410,31 +410,32 @@ impl Synthesis {
         }
     }
 
-    // Cache the visualization of codebook
+    // Cache the visualization of atlas
     fn cb_vis_cache(&mut self) {
-        fn pca<C, D>(cb: &cb::Codebook<C, D>, is_sphere: bool) -> Vec<CbVis>
+        fn pca<C, D>(atlas: &atlas::Atlas<C, D>, is_sphere: bool) -> Vec<AtlasVis>
         where
-            C: cb::Code<D>,
+            C: atlas::Code<D>,
             D: efd::EfdDim,
         {
             use smartcore::decomposition::pca::PCA;
-            let reduced = PCA::fit(cb.data(), Default::default())
+            let reduced = PCA::fit(atlas.data(), Default::default())
                 .unwrap()
-                .transform(cb.data())
+                .transform(atlas.data())
                 .unwrap();
-            cb.open_iter()
+            atlas
+                .open_iter()
                 .zip(reduced.rows())
-                .map(|(is_open, pt)| CbVis { pt: [pt[0], pt[1]], is_open, is_sphere })
+                .map(|(is_open, pt)| AtlasVis { pt: [pt[0], pt[1]], is_open, is_sphere })
                 .collect()
         }
 
         self.cb_vis
-            .reserve(self.cb.as_fb().len() + self.cb.as_sfb().len());
-        if !self.cb.as_fb().is_empty() {
-            self.cb_vis.extend(pca(self.cb.as_fb(), false));
+            .reserve(self.atlas.as_fb().len() + self.atlas.as_sfb().len());
+        if !self.atlas.as_fb().is_empty() {
+            self.cb_vis.extend(pca(self.atlas.as_fb(), false));
         }
-        if !self.cb.as_sfb().is_empty() {
-            self.cb_vis.extend(pca(self.cb.as_sfb(), true));
+        if !self.atlas.as_sfb().is_empty() {
+            self.cb_vis.extend(pca(self.atlas.as_sfb(), true));
         }
     }
 
@@ -447,7 +448,7 @@ impl Synthesis {
                 .open(&mut self.cb_vis_open)
                 .show(ui.ctx(), |ui| {
                     static_plot(name).view_aspect(1.).show(ui, |ui| {
-                        for &CbVis { pt, is_open, is_sphere } in &self.cb_vis {
+                        for &AtlasVis { pt, is_open, is_sphere } in &self.cb_vis {
                             if is_sphere != draw_sphere {
                                 continue;
                             }
@@ -478,8 +479,8 @@ impl Synthesis {
         self.task_queue.push(task.clone());
         let alg = self.alg.clone();
         let target = match self.target.clone() {
-            io::Curve::P(t) => Target::P(t.into(), Cow::Owned(self.cb.as_fb().clone())),
-            io::Curve::S(t) => Target::S(t.into(), Cow::Owned(self.cb.as_sfb().clone())),
+            io::Curve::P(t) => Target::P(t.into(), Cow::Owned(self.atlas.as_fb().clone())),
+            io::Curve::S(t) => Target::S(t.into(), Cow::Owned(self.atlas.as_sfb().clone())),
         };
         let cfg = self.cfg.clone();
         let total_gen = self.cfg.gen;

@@ -71,7 +71,7 @@ pub(crate) struct SynCfg {
     /// Number of generation
     #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = 50))]
     pub(crate) gen: u64,
-    /// Number of population (the fetch number in codebook)
+    /// Number of population (the fetch number in atlas)
     #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = 200))]
     pub(crate) pop: usize,
     /// Number of the points (resolution) in curve production
@@ -99,8 +99,8 @@ impl Default for SynCfg {
 
 #[derive(Clone)]
 pub(crate) enum Target<'a> {
-    P(Cow<'a, [[f64; 2]]>, Cow<'a, cb::FbCodebook>),
-    S(Cow<'a, [[f64; 3]]>, Cow<'a, cb::SFbCodebook>),
+    P(Cow<'a, [[f64; 2]]>, Cow<'a, atlas::FbAtlas>),
+    S(Cow<'a, [[f64; 3]]>, Cow<'a, atlas::SFbAtlas>),
 }
 
 type FbBuilder<'a> = mh::utility::SolverBuilder<'a, syn::FbSyn>;
@@ -125,7 +125,7 @@ impl<'a> Solver<'a> {
     {
         let SynCfg { seed, gen, pop, mode, res, scale } = cfg;
         macro_rules! impl_solve {
-            ($target:ident, $cb:ident, $syn:ident) => {{
+            ($target:ident, $atlas:ident, $syn:ident) => {{
                 let mut s = alg
                     .build_solver(syn::$syn::from_curve(&$target, mode).res(res).scale(scale))
                     .seed(seed)
@@ -133,7 +133,7 @@ impl<'a> Solver<'a> {
                     .callback(move |ctx| callback(ctx.best_f.fitness(), ctx.gen));
                 let mut cb_fb = None;
                 if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
-                    .then(|| $cb.fetch_raw(&$target, mode.is_target_open(), pop))
+                    .then(|| $atlas.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
                 {
                     use four_bar::fb::{IntoVectorized as _, Normalized as _};
@@ -158,8 +158,8 @@ impl<'a> Solver<'a> {
             }};
         }
         match target {
-            Target::P(target, cb) => impl_solve!(target, cb, FbSyn),
-            Target::S(target, cb) => impl_solve!(target, cb, SFbSyn),
+            Target::P(target, atlas) => impl_solve!(target, atlas, FbSyn),
+            Target::S(target, atlas) => impl_solve!(target, atlas, SFbSyn),
         }
     }
 

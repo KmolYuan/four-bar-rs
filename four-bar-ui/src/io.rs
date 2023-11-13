@@ -272,9 +272,9 @@ where
 
 pub(crate) fn open_cb<C>(done: C)
 where
-    C: Fn(Cb) + 'static,
+    C: Fn(Atlas) + 'static,
 {
-    let done = move |b| Cb::from_reader(b).alert_then("Parse File", &done);
+    let done = move |b| Atlas::from_reader(b).alert_then("Parse File", &done);
     open_bin(CB_FMT, CB_EXT, done);
 }
 
@@ -299,12 +299,12 @@ where
     );
 }
 
-pub(crate) fn save_cb_ask<C, D>(cb: &cb::Codebook<C, D>)
+pub(crate) fn save_cb_ask<C, D>(atlas: &atlas::Atlas<C, D>)
 where
-    C: cb::Code<D> + Send,
+    C: atlas::Code<D> + Send,
     D: efd::EfdDim,
 {
-    save_ask("cb.npz", CB_FMT, CB_EXT, |w| cb.write(w), |_| ());
+    save_ask("atlas.npz", CB_FMT, CB_EXT, |w| atlas.write(w), |_| ());
 }
 
 fn write_ron<W, S>(w: W, s: &S) -> Result<(), ron::Error>
@@ -410,60 +410,61 @@ impl Curve {
     }
 }
 
-pub(crate) enum Cb {
-    P(cb::FbCodebook),
-    S(cb::SFbCodebook),
+pub(crate) enum Atlas {
+    P(atlas::FbAtlas),
+    S(atlas::SFbAtlas),
 }
 
-impl Cb {
-    pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, cb::ReadNpzError>
+impl Atlas {
+    pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, atlas::ReadNpzError>
     where
         R: std::io::Read + std::io::Seek,
     {
-        if let Ok(cb) = cb::FbCodebook::read(&mut r) {
-            Ok(Self::P(cb))
+        if let Ok(atlas) = atlas::FbAtlas::read(&mut r) {
+            Ok(Self::P(atlas))
         } else {
-            r.rewind().map_err(|e| cb::ReadNpzError::Zip(e.into()))?;
-            Ok(Self::S(cb::SFbCodebook::read(r)?))
+            r.rewind().map_err(|e| atlas::ReadNpzError::Zip(e.into()))?;
+            Ok(Self::S(atlas::SFbAtlas::read(r)?))
         }
     }
 }
 
 #[derive(Default)]
-pub(crate) struct CbPool {
-    fb: cb::FbCodebook,
-    sfb: cb::SFbCodebook,
+pub(crate) struct AtlasPool {
+    fb: atlas::FbAtlas,
+    sfb: atlas::SFbAtlas,
 }
 
-impl CbPool {
-    pub(crate) fn merge_inplace(&mut self, cb: Cb) -> Result<(), mh::ndarray::ShapeError> {
-        match cb {
-            Cb::P(cb) => self.fb.merge_inplace(&cb),
-            Cb::S(cb) => self.sfb.merge_inplace(&cb),
+impl AtlasPool {
+    pub(crate) fn merge_inplace(&mut self, atlas: Atlas) -> Result<(), mh::ndarray::ShapeError> {
+        match atlas {
+            Atlas::P(atlas) => self.fb.merge_inplace(&atlas),
+            Atlas::S(atlas) => self.sfb.merge_inplace(&atlas),
         }
     }
 
-    pub(crate) fn as_fb(&self) -> &cb::FbCodebook {
+    pub(crate) fn as_fb(&self) -> &atlas::FbAtlas {
         &self.fb
     }
 
-    pub(crate) fn as_sfb(&self) -> &cb::SFbCodebook {
+    pub(crate) fn as_sfb(&self) -> &atlas::SFbAtlas {
         &self.sfb
     }
 
-    pub(crate) fn as_fb_mut(&mut self) -> &mut cb::FbCodebook {
+    pub(crate) fn as_fb_mut(&mut self) -> &mut atlas::FbAtlas {
         &mut self.fb
     }
 
-    pub(crate) fn as_sfb_mut(&mut self) -> &mut cb::SFbCodebook {
+    pub(crate) fn as_sfb_mut(&mut self) -> &mut atlas::SFbAtlas {
         &mut self.sfb
     }
 }
 
-impl FromIterator<Cb> for CbPool {
-    fn from_iter<T: IntoIterator<Item = Cb>>(iter: T) -> Self {
+impl FromIterator<Atlas> for AtlasPool {
+    fn from_iter<T: IntoIterator<Item = Atlas>>(iter: T) -> Self {
         let mut pool = Self::default();
-        iter.into_iter().for_each(|cb| _ = pool.merge_inplace(cb));
+        iter.into_iter()
+            .for_each(|atlas| _ = pool.merge_inplace(atlas));
         pool
     }
 }

@@ -1,7 +1,7 @@
 use self::widgets::*;
 use eframe::egui::*;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::PathBuf};
 
 mod blueprint;
 mod link;
@@ -50,7 +50,11 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn new(ctx: &eframe::CreationContext, files: Vec<std::path::PathBuf>) -> Box<Self> {
+    pub(crate) fn create(files: Vec<PathBuf>) -> eframe::AppCreator {
+        Box::new(|ctx| Self::new_boxed(ctx, files))
+    }
+
+    fn new_boxed(ctx: &eframe::CreationContext, files: Vec<PathBuf>) -> Box<Self> {
         let mut font_data = BTreeMap::new();
         let mut families = Vec::with_capacity(FONT.len());
         for &(name, font) in FONT {

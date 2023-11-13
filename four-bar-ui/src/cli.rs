@@ -1,10 +1,8 @@
-use crate::app::App;
+use crate::{app::App, APP_NAME};
 use std::path::PathBuf;
 
-mod cb;
+mod atlas;
 mod syn;
-
-const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[derive(clap::Parser)]
 #[clap(name = APP_NAME, version, author, about)]
@@ -24,9 +22,8 @@ enum Cmd {
     },
     /// Synthesis function without GUI
     Syn(syn::Syn),
-    /// Generate atlas library without GUI
-    #[clap(alias = "cb")]
-    Codebook(cb::CbCfg),
+    /// Generate atlas database without GUI
+    Atlas(atlas::AtlasCfg),
 }
 
 impl Entry {
@@ -36,7 +33,7 @@ impl Entry {
             None => native(entry.files),
             Some(Cmd::Ui { files }) => native(files),
             Some(Cmd::Syn(syn)) => syn::syn(syn),
-            Some(Cmd::Codebook(cb)) => cb::codebook(cb),
+            Some(Cmd::Atlas(atlas)) => atlas::atlas(atlas),
         }
     }
 }
@@ -59,5 +56,5 @@ fn native(files: Vec<PathBuf>) {
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
-    eframe::run_native(APP_NAME, opt, Box::new(|ctx| App::new(ctx, files))).unwrap();
+    eframe::run_native(APP_NAME, opt, App::create(files)).unwrap();
 }

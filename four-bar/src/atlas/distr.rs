@@ -31,7 +31,7 @@ where
     }
 }
 
-/// Implement this trait to support codebook functions.
+/// Implement this trait to support atlas functions.
 pub trait Code<D: efd::EfdDim>:
     Normalized<D>
     + CurveGen<D>

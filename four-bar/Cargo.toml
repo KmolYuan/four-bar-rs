@@ -16,7 +16,7 @@ plot = ["plotters", "plotters-backend"]
 serde = ["dep:serde", "metaheuristics-nature/serde"]
 clap = ["dep:clap", "metaheuristics-nature/clap"]
 rayon = ["metaheuristics-nature/rayon"]
-codebook = ["ndarray-npy"]
+atlas = ["ndarray-npy"]
 csv = ["dep:csv", "serde"]
 
 [dependencies]

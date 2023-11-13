@@ -21,8 +21,8 @@ pub extern crate metaheuristics_nature as mh;
 #[cfg(feature = "plot")]
 pub use crate::plot::{plot2d, plot3d};
 
-#[cfg(feature = "codebook")]
-pub mod cb;
+#[cfg(feature = "atlas")]
+pub mod atlas;
 #[cfg(feature = "csv")]
 pub mod csv;
 pub mod fb;

@@ -72,13 +72,13 @@ pub(super) struct Syn {
     /// benchmarking
     #[clap(long)]
     each: bool,
-    /// Provide pre-generated codebook databases, support multiple paths as
+    /// Provide pre-generated atlas databases, support multiple paths as
     #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
     #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
     ///
-    /// If the codebook is provided, the rerun flag will be enabled
+    /// If the atlas is provided, the rerun flag will be enabled
     #[clap(long)]
-    cb: Option<std::ffi::OsString>,
+    atlas: Option<std::ffi::OsString>,
     /// Competitor path starting from file root with the same filename
     #[clap(short, long, default_value = "refer")]
     refer: PathBuf,
@@ -163,7 +163,7 @@ pub(super) fn syn(syn: Syn) {
         files,
         each,
         cfg,
-        cb,
+        atlas,
         refer,
         no_ref,
         alg,
@@ -174,8 +174,8 @@ pub(super) fn syn(syn: Syn) {
         println!("seed={seed}");
     }
     println!("gen={} pop={} res={}", cfg.gen, cfg.pop, cfg.res);
-    // If codebook is provided, rerun is always enabled
-    let rerun = rerun || cb.is_some();
+    // If atlas is provided, rerun is always enabled
+    let rerun = rerun || atlas.is_some();
     println!("rerun={rerun} clean={clean}");
     println!("-----");
     // Load target files & create project folders
@@ -197,18 +197,18 @@ pub(super) fn syn(syn: Syn) {
     if clean && !rerun {
         return;
     }
-    // Load codebook
-    let cb = cb
-        .map(|cb| std::env::split_paths(&cb).collect::<Vec<_>>())
+    // Load atlas
+    let atlas = atlas
+        .map(|atlas| std::env::split_paths(&atlas).collect::<Vec<_>>())
         .unwrap_or_default();
-    if !cb.is_empty() {
-        println!("Loading codebook database...");
+    if !atlas.is_empty() {
+        println!("Loading atlas database...");
     }
-    let cb = cb
+    let atlas = atlas
         .into_iter()
-        .map(|path| Ok(io::Cb::from_reader(std::fs::File::open(path)?)?))
-        .collect::<Result<io::CbPool, Box<dyn std::error::Error>>>()
-        .expect("Load codebook failed!");
+        .map(|path| Ok(io::Atlas::from_reader(std::fs::File::open(path)?)?))
+        .collect::<Result<io::AtlasPool, Box<dyn std::error::Error>>>()
+        .expect("Load atlas failed!");
     // Progress bar
     const STYLE: &str = "{eta} {wide_bar} {percent}%";
     let pb = ProgressBar::new(tasks.len() as u64 * cfg.gen);
@@ -216,7 +216,7 @@ pub(super) fn syn(syn: Syn) {
     // Tasks
     let alg = alg.unwrap_or_default();
     let refer = (!no_ref).then_some(refer.as_path());
-    let run = |info| run(&pb, alg.clone(), info, &cfg, &cb, refer, rerun);
+    let run = |info| run(&pb, alg.clone(), info, &cfg, &atlas, refer, rerun);
     let t0 = std::time::Instant::now();
     if each {
         tasks.into_iter().for_each(run);
@@ -241,7 +241,7 @@ fn from_runtime(
     alg: syn_cmd::SynAlg,
     info: &Info,
     cfg: &syn_cmd::SynCfg,
-    cb: &io::CbPool,
+    atlas: &io::AtlasPool,
     refer: Option<&Path>,
 ) -> Result<(), SynErr> {
     use four_bar::fb::{CurveGen as _, Normalized as _};
@@ -252,8 +252,8 @@ fn from_runtime(
     let t0 = std::time::Instant::now();
     let s = {
         let target = match &target {
-            io::Curve::P(t) => syn_cmd::Target::P(Cow::Borrowed(t), Cow::Borrowed(cb.as_fb())),
-            io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(cb.as_sfb())),
+            io::Curve::P(t) => syn_cmd::Target::P(Cow::Borrowed(t), Cow::Borrowed(atlas.as_fb())),
+            io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(atlas.as_sfb())),
         };
         let cfg = syn_cmd::SynCfg { mode, ..cfg.clone() };
         let stop = || false;
@@ -427,7 +427,7 @@ fn run(
     alg: syn_cmd::SynAlg,
     info: Info,
     cfg: &syn_cmd::SynCfg,
-    cb: &io::CbPool,
+    atlas: &io::AtlasPool,
     refer: Option<&Path>,
     rerun: bool,
 ) {
@@ -437,7 +437,7 @@ fn run(
             pb.inc(cfg.gen);
             from_exist(&info)
         } else {
-            from_runtime(pb, alg, &info, cfg, cb, refer)
+            from_runtime(pb, alg, &info, cfg, atlas, refer)
         }
     };
     let title = &info.title;

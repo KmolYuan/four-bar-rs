@@ -1,4 +1,4 @@
-//! Create a codebook database for four-bar linkages.
+//! Create a atlas database for four-bar linkages.
 pub use self::distr::{Code, Distr};
 use super::{NormFourBar, SNormFourBar};
 use mh::{
@@ -10,10 +10,10 @@ use std::{marker::PhantomData, sync::Mutex};
 
 mod distr;
 
-/// Planar four-bar codebook type.
-pub type FbCodebook = Codebook<NormFourBar, efd::D2>;
-/// Spherical four-bar codebook type.
-pub type SFbCodebook = Codebook<SNormFourBar, efd::D3>;
+/// Planar four-bar atlas type.
+pub type FbAtlas = Atlas<NormFourBar, efd::D2>;
+/// Spherical four-bar atlas type.
+pub type SFbAtlas = Atlas<SNormFourBar, efd::D3>;
 
 fn to_arr<A, S, D>(stack: Mutex<Vec<ArrayBase<S, D>>>, n: usize) -> Array<A, D::Larger>
 where
@@ -38,7 +38,7 @@ fn arr_to_efd<D: efd::EfdDim>(arr: ArrayView2<f64>) -> efd::Efd<D> {
     efd::Efd::from_coeffs_unchecked(efd::Coeff::<D>::from_data(data))
 }
 
-/// Codebook generation config.
+/// Atlas generation config.
 #[derive(Clone)]
 pub struct Cfg {
     /// Open curve
@@ -85,8 +85,8 @@ impl Cfg {
     }
 }
 
-/// Codebook type.
-pub struct Codebook<C, D>
+/// Atlas type.
+pub struct Atlas<C, D>
 where
     C: Code<D>,
     D: efd::EfdDim,
@@ -97,7 +97,7 @@ where
     _marker: PhantomData<(C, D)>,
 }
 
-impl<C, D> Clone for Codebook<C, D>
+impl<C, D> Clone for Atlas<C, D>
 where
     C: Code<D>,
     D: efd::EfdDim,
@@ -112,7 +112,7 @@ where
     }
 }
 
-impl<C, D> Default for Codebook<C, D>
+impl<C, D> Default for Atlas<C, D>
 where
     C: Code<D>,
     D: efd::EfdDim,
@@ -127,12 +127,12 @@ where
     }
 }
 
-impl<C, D> Codebook<C, D>
+impl<C, D> Atlas<C, D>
 where
     C: Code<D>,
     D: efd::EfdDim,
 {
-    /// Takes time to generate codebook data.
+    /// Takes time to generate atlas data.
     pub fn make(cfg: Cfg) -> Self
     where
         C: Send,
@@ -141,7 +141,7 @@ where
         Self::make_with(cfg, |_| ())
     }
 
-    /// Takes time to generate codebook data with a callback function.
+    /// Takes time to generate atlas data with a callback function.
     pub fn make_with<CB>(cfg: Cfg, callback: CB) -> Self
     where
         C: Send,
@@ -182,7 +182,7 @@ where
         Self { fb, stat, efd, _marker: PhantomData }
     }
 
-    /// Read codebook from NPZ file.
+    /// Read atlas from NPZ file.
     pub fn read<R>(r: R) -> Result<Self, ReadNpzError>
     where
         R: std::io::Read + std::io::Seek,
@@ -206,13 +206,16 @@ where
                 }
             };
         }
-        let cb = impl_read!(r, fb, stat, efd);
-        impl_check!(cb.fb.len_of(Axis(1)), C::dim());
-        impl_check!(cb.efd.len_of(Axis(2)), <D::Trans as efd::Trans>::dim() * 2);
-        Ok(cb)
+        let atlas = impl_read!(r, fb, stat, efd);
+        impl_check!(atlas.fb.len_of(Axis(1)), C::dim());
+        impl_check!(
+            atlas.efd.len_of(Axis(2)),
+            <D::Trans as efd::Trans>::dim() * 2
+        );
+        Ok(atlas)
     }
 
-    /// Write codebook to NPZ file.
+    /// Write atlas to NPZ file.
     pub fn write<W>(&self, w: W) -> Result<(), WriteNpzError>
     where
         W: std::io::Write + std::io::Seek,
@@ -234,12 +237,12 @@ where
         self.fb.nrows()
     }
 
-    /// Clear the codebook.
+    /// Clear the atlas.
     pub fn clear(&mut self) {
         *self = Self::default();
     }
 
-    /// Return whether the codebook has any data.
+    /// Return whether the atlas has any data.
     pub fn is_empty(&self) -> bool {
         self.fb.is_empty()
     }
@@ -381,14 +384,14 @@ where
         fb.trans_denorm(&efd.as_trans().to(trans))
     }
 
-    /// Merge two data to one codebook.
+    /// Merge two data to one atlas.
     pub fn merge(&self, rhs: &Self) -> Result<Self, ndarray::ShapeError> {
-        let mut cb = self.clone();
-        cb.merge_inplace(rhs)?;
-        Ok(cb)
+        let mut atlas = self.clone();
+        atlas.merge_inplace(rhs)?;
+        Ok(atlas)
     }
 
-    /// Merge two data to one codebook inplace.
+    /// Merge two data to one atlas inplace.
     pub fn merge_inplace(&mut self, rhs: &Self) -> Result<(), ndarray::ShapeError> {
         if self.is_empty() {
             self.clone_from(rhs);
@@ -404,7 +407,7 @@ where
     }
 }
 
-impl<C, D> FromIterator<Self> for Codebook<C, D>
+impl<C, D> FromIterator<Self> for Atlas<C, D>
 where
     C: Code<D> + Send,
     D: efd::EfdDim,
