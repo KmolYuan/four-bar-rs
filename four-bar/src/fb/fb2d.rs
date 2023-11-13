@@ -106,9 +106,8 @@ impl Normalized<efd::D2> for NormFourBar {
     }
 
     fn normalize_inplace(de: &mut Self::De) {
-        let l2 = de.unnorm.l2;
+        let l2 = std::mem::replace(&mut de.unnorm.l2, 1.);
         de.norm.l1 /= l2;
-        de.unnorm.l2 = 1.;
         de.norm.l3 /= l2;
         de.norm.l4 /= l2;
         de.norm.l5 /= l2;
