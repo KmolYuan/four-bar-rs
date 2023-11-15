@@ -248,8 +248,10 @@ pub trait PlanarLoop {
 pub enum AngleBound {
     /// Closed curve
     Closed,
-    /// Open curve (start, end)
-    Open(f64, f64),
+    /// Open curve (`[start, end]`)
+    Open([f64; 2]),
+    /// Open curve with branch (`[[start, end]; 2]`)
+    OpenBranch([[f64; 2]; 2]),
     /// Invalid
     #[default]
     Invalid,
@@ -271,12 +273,12 @@ impl AngleBound {
             (true, false) => {
                 let l33 = l3 - l4;
                 let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-                Self::Open(d.acos(), TAU - d.acos())
+                Self::Open([d.acos(), TAU - d.acos()])
             }
             (false, true) => {
                 let l33 = l3 + l4;
                 let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-                Self::Open(-d.acos(), d.acos())
+                Self::Open([-d.acos(), d.acos()])
             }
             (false, false) => {
                 let numerator = l1 * l1 + l2 * l2;
@@ -285,20 +287,20 @@ impl AngleBound {
                 let d1 = (numerator - l33 * l33) / denominator;
                 let l33 = l3 + l4;
                 let d2 = (numerator - l33 * l33) / denominator;
-                Self::Open(d1.acos(), d2.acos())
+                Self::OpenBranch([[d1.acos(), d2.acos()], [TAU - d2.acos(), TAU - d1.acos()]])
             }
         }
     }
 
     /// Create a open and its reverse angle bound.
     pub fn open_and_rev_at(a: f64, b: f64) -> [Self; 2] {
-        [Self::Open(a, b), Self::Open(b, a)]
+        [Self::Open([a, b]), Self::Open([b, a])]
     }
 
     /// Check the state is the same to the provided mode.
     pub fn check_mode(self, is_open: bool) -> Self {
         match (&self, is_open) {
-            (Self::Closed, false) | (Self::Open(_, _), true) => self,
+            (Self::Closed, false) | (Self::Open(_), true) | (Self::OpenBranch(_), true) => self,
             _ => Self::Invalid,
         }
     }
@@ -306,7 +308,7 @@ impl AngleBound {
     /// Angle range must greater than [`AngleBound::MIN_ANGLE`].
     pub fn check_min(self) -> Self {
         match self {
-            Self::Open(a, b) => {
+            Self::Open([a, b]) => {
                 let b = if b > a { b } else { b + TAU };
                 if b - a > Self::MIN_ANGLE {
                     self
@@ -322,7 +324,8 @@ impl AngleBound {
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
             Self::Closed => Some([0., TAU]),
-            Self::Open(a, b) => Some([a, b]),
+            Self::Open(a) => Some(a),
+            Self::OpenBranch(a) => Some(a[0]), // FIXME
             Self::Invalid => None,
         }
     }

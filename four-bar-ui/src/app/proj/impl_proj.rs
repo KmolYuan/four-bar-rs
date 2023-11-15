@@ -240,9 +240,10 @@ where
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
         match self.cache.angle_bound {
-            fb::AngleBound::Closed => ui.label("This linkage has a closed curve."),
-            fb::AngleBound::Open(_, _) => ui.label("This linkage has an open curve."),
-            fb::AngleBound::Invalid => ui.label("This linkage is invalid."),
+            fb::AngleBound::Closed => ui.label("Closed curve"),
+            fb::AngleBound::Open(_) => ui.label("Open curve"),
+            fb::AngleBound::OpenBranch(_) => ui.label("Open curve with branches"),
+            fb::AngleBound::Invalid => ui.label("Invalid"),
         };
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
