@@ -6,8 +6,6 @@ mod cli;
 mod io;
 mod syn_cmd;
 
-const APP_NAME: &str = env!("CARGO_PKG_NAME");
-
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     cli::Entry::main();
@@ -20,7 +18,7 @@ fn main() {
     wasm_bindgen_futures::spawn_local(async {
         let opt = eframe::WebOptions::default();
         eframe::WebRunner::new()
-            .start(APP_NAME, opt, app::App::create(Vec::new()))
+            .start("app", opt, app::App::create(Vec::new()))
             .await
             .expect("startup failed");
     });
