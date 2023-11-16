@@ -20,7 +20,7 @@ macro_rules! impl_delta {
         #[derive(PartialEq)]
         pub(crate) enum $ty_name {
             $($f(f64),)+
-            $($b_f,)+
+            $($b_f(i8),)+
         }
 
         impl IntoDelta for $state {
@@ -33,7 +33,7 @@ macro_rules! impl_delta {
             fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
                 Some(match (a, b) {
                     $(_ if a.$($unnorm.)?$m != b.$($unnorm.)?$m => Self::$f(b.$($unnorm.)?$m - a.$($unnorm.)?$m),)+
-                    $(_ if a.$b_m != b.$b_m => Self::$b_f,)+
+                    $(_ if a.$b_m != b.$b_m => Self::$b_f(b.$b_m as i8 - a.$b_m as i8),)+
                     _ => None?,
                 })
             }
@@ -41,14 +41,14 @@ macro_rules! impl_delta {
             fn undo(&self, state: &mut Self::State) {
                 match self {
                     $(Self::$f(v) => state.$($unnorm.)?$m -= *v,)+
-                    $(Self::$b_f => state.$b_m = !state.$b_m,)+
+                    $(Self::$b_f(v) => state.$b_m = ((state.$b_m as i8 - *v) as u8).try_into().unwrap(),)+
                 }
             }
 
             fn redo(&self, state: &mut Self::State) {
                 match self {
                     $(Self::$f(v) => state.$($unnorm.)?$m += *v,)+
-                    $(Self::$b_f => state.$b_m = !state.$b_m,)+
+                    $(Self::$b_f(v) => state.$b_m = ((state.$b_m as i8 + *v) as u8).try_into().unwrap(),)+
                 }
             }
 

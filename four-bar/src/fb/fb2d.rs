@@ -57,22 +57,22 @@ pub struct NormFourBar {
     /// Angle of the extended link on the coupler
     pub g: f64,
     /// Inverse coupler and follower to another circuit
-    pub stat: bool,
+    pub stat: Stat,
 }
 
 impl FromVectorized for NormFourBar {
     type Dim = crate::efd::na::U5;
 
-    fn from_vectorized(v: &[f64], stat: u8) -> Result<Self, std::array::TryFromSliceError> {
+    fn from_vectorized(v: &[f64], stat: Stat) -> Result<Self, std::array::TryFromSliceError> {
         let [l1, l3, l4, l5, g] = <[f64; 5]>::try_from(v)?;
-        Ok(Self { l1, l3, l4, l5, g, stat: stat != 0 })
+        Ok(Self { l1, l3, l4, l5, g, stat: stat as Stat })
     }
 }
 
 impl IntoVectorized for NormFourBar {
-    fn into_vectorized(self) -> (Vec<f64>, u8) {
+    fn into_vectorized(self) -> (Vec<f64>, Stat) {
         let code = vec![self.l1, self.l3, self.l4, self.l5, self.g];
-        (code, self.stat as u8)
+        (code, self.stat)
     }
 }
 
@@ -123,24 +123,19 @@ impl FourBar {
             l4: 70.,
             l5: 45.,
             g: FRAC_PI_6,
-            stat: false,
+            stat: Stat::C1B1,
         };
         Self::new(UnNorm::from_driver(35.), norm)
     }
 }
 
 impl Statable for NormFourBar {
-    fn stat(&self) -> u8 {
-        self.stat as u8
+    fn stat_mut(&mut self) -> &mut Stat {
+        &mut self.stat
     }
 
-    fn set_stat(&mut self, stat: u8) {
-        self.stat = stat != 0;
-    }
-
-    fn get_states(self) -> Vec<Self> {
-        let s1 = self.clone().with_stat(1);
-        vec![self, s1]
+    fn stat(&self) -> Stat {
+        self.stat
     }
 }
 
@@ -205,7 +200,8 @@ fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) 
 
 fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
     let UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
-    let NormFourBar { l1, l3, l4, l5, g, stat: inv } = fb.norm;
+    let NormFourBar { l1, l3, l4, l5, g, .. } = fb.norm;
+    let inv = fb.inv();
     let p1 = [p1x, p1y];
     let p2 = angle(p1, l1, a);
     let p3 = angle(p1, l2, a + b);

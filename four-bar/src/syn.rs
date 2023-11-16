@@ -164,7 +164,7 @@ where
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
         let infeasible = || mh::Product::new(INFEASIBLE, M::De::default());
-        let fb = M::from_vectorized(&xs[..M::BOUND.len() - 2], 0).unwrap();
+        let fb = M::from_vectorized_s1(&xs[..M::BOUND.len() - 2]).unwrap();
         let bound = fb.angle_bound().check_mode(self.mode.is_result_open());
         let is_open = self.mode.is_target_open();
         let states = fb.get_states();

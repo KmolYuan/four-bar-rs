@@ -1,5 +1,5 @@
 use super::*;
-use four_bar::{efd, efd::na};
+use four_bar::{efd, efd::na, fb::Stat};
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
@@ -181,16 +181,28 @@ fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
     super::angle(ui, label, val, "")
 }
 
+fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat) {
+    ui.horizontal(|ui| {
+        ui.label("State");
+        for label in Stat::list4() {
+            *res |= ui
+                .selectable_value(stat, label, format!("{label:?}"))
+                .on_hover_text(format!("{label}"));
+        }
+    });
+}
+
 macro_rules! impl_ui {
     ($name:ty, $(($m_mut: ident, $ui:ident, $des:literal),)+
         .., $(($(@$unnorm: ident,)? $p_m_mut: ident, $p_ui:ident, $p_des:literal),)+
-        .., $(($b_m_mut: ident, $b_des:literal)),+ $(,)?) => {
+        .., $($stat: ident),+ $(,)?) => {
         impl ProjUi for $name {
             fn proj_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
                 let mut res = $($ui(ui, $des, &mut self.unnorm.$m_mut, cfg.int))|+;
                 ui.heading("Parameters");
                 res |= $($p_ui(ui, $p_des, &mut self.$($unnorm.)?$p_m_mut, cfg.int))|+;
-                res | $(ui.checkbox(&mut self.$b_m_mut, $b_des))|+
+                $(stat_combo(&mut res, ui, &mut self.$stat);)+
+                res
             }
         }
     };
@@ -209,7 +221,7 @@ impl_ui!(
     (l5, nonzero_f, "Extended: "),
     (g, angle, "Extended angle: "),
     ..,
-    (stat, "Invert follower and coupler"),
+    stat,
 );
 impl_ui!(
     SFourBar,
@@ -228,5 +240,5 @@ impl_ui!(
     (l5, angle, "Extended: "),
     (g, angle, "Extended angle: "),
     ..,
-    (stat, "Invert follower and coupler"),
+    stat,
 );

@@ -1,7 +1,4 @@
-use crate::{
-    fb::{CurveGen, FromVectorized, IntoVectorized, Normalized, Statable},
-    syn,
-};
+use crate::{fb::*, syn};
 use mh::rand::{Distribution, Rng};
 
 /// Uniform distribution for mechinism types.
@@ -19,7 +16,7 @@ impl<M> Distr<M> {
 
 impl<M> Distribution<Vec<M>> for Distr<M>
 where
-    M: syn::SynBound + Statable + FromVectorized + Sync + Clone,
+    M: syn::SynBound + Statable + PlanarLoop + FromVectorized + Sync + Clone,
 {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<M> {
         let bound = <M as syn::SynBound>::BOUND;
@@ -27,7 +24,7 @@ where
             .iter()
             .map(|&[u, l]| rng.gen_range(u..l))
             .collect::<Vec<_>>();
-        M::from_vectorized(&v, 0).unwrap().get_states()
+        M::from_vectorized_s1(&v).unwrap().get_states()
     }
 }
 
@@ -49,12 +46,13 @@ pub trait Code<D: efd::EfdDim>:
 
     /// Create entities from code.
     fn from_code(code: &[f64], stat: u8) -> Self {
-        Self::from_vectorized(code, stat).unwrap()
+        Self::from_vectorized(code, Stat::try_from(stat).unwrap()).unwrap()
     }
 
     /// Convert entities to code.
     fn to_code(self) -> (Vec<f64>, u8) {
-        self.into_vectorized()
+        let (code, stat) = self.into_vectorized();
+        (code, stat as u8)
     }
 
     /// Generate curve and check the curve type.

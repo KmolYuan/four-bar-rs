@@ -8,11 +8,16 @@ pub trait FromVectorized: Sized {
     type Dim: na::DimName;
 
     /// Create a new instance from a vector.
-    fn from_vectorized(v: &[f64], stat: u8) -> Result<Self, std::array::TryFromSliceError>;
+    fn from_vectorized(v: &[f64], stat: fb::Stat) -> Result<Self, std::array::TryFromSliceError>;
+
+    /// Create a new instance from a vector with `C1B1` stat.
+    fn from_vectorized_s1(v: &[f64]) -> Result<Self, std::array::TryFromSliceError> {
+        Self::from_vectorized(v, fb::Stat::C1B1)
+    }
 }
 
 /// Support a type transforming to a vectored number.
 pub trait IntoVectorized {
     /// Convert the type to a vector.
-    fn into_vectorized(self) -> (Vec<f64>, u8);
+    fn into_vectorized(self) -> (Vec<f64>, fb::Stat);
 }

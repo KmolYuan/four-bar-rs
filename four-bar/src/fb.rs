@@ -7,7 +7,7 @@ pub use self::{
 use crate::efd::EfdDim;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::f64::consts::TAU;
+use std::{f64::consts::TAU, fmt::Display};
 
 pub mod fb2d;
 pub mod fb3d;
@@ -35,6 +35,8 @@ pub enum FourBarTy {
     RRR3,
     /// Non-Grashof triple rocker (follower link is the longest)
     RRR4,
+    /// Invalid
+    Invalid,
 }
 
 impl FourBarTy {
@@ -43,6 +45,9 @@ impl FourBarTy {
         let [l1, l2, l3, l4] = fb_loop;
         fb_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         let [s, p, q, l] = fb_loop;
+        if l > s + p + q {
+            return Self::Invalid;
+        }
         macro_rules! arms {
             ($d:expr, $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
                 match $d {
@@ -72,7 +77,13 @@ impl FourBarTy {
             Self::RRR2 => "Non-Grashof triple rocker (RRR2)",
             Self::RRR3 => "Non-Grashof triple rocker (RRR3)",
             Self::RRR4 => "Non-Grashof triple rocker (RRR4)",
+            Self::Invalid => "Invalid",
         }
+    }
+
+    /// Check if the type is valid.
+    pub const fn is_valid(&self) -> bool {
+        !matches!(self, Self::Invalid)
     }
 
     /// Return true if the type is Grashof linkage.
@@ -87,7 +98,10 @@ impl FourBarTy {
 
     /// Return true if the type has non-continuous motion.
     pub const fn is_open_curve(&self) -> bool {
-        !self.is_closed_curve()
+        matches!(
+            self,
+            Self::GRCR | Self::GRRC | Self::RRR1 | Self::RRR2 | Self::RRR3 | Self::RRR4
+        )
     }
 }
 
@@ -107,7 +121,7 @@ impl<UN, NM> FourBarBase<UN, NM> {
     }
 
     /// Build with inverter.
-    pub fn with_stat(self, stat: u8) -> Self
+    pub fn with_stat(self, stat: Stat) -> Self
     where
         NM: Statable,
     {
@@ -115,7 +129,7 @@ impl<UN, NM> FourBarBase<UN, NM> {
     }
 
     /// Get the state.
-    pub fn stat(&self) -> u8
+    pub fn stat(&self) -> Stat
     where
         NM: Statable,
     {
@@ -148,13 +162,13 @@ impl<UN, NM> FourBarBase<UN, NM> {
     where
         Self: PlanarLoop,
     {
-        self.angle_bound().is_valid()
+        self.ty().is_valid()
     }
 
     /// Input angle bounds of the linkage.
     pub fn angle_bound(&self) -> AngleBound
     where
-        Self: PlanarLoop,
+        Self: PlanarLoop + Statable,
     {
         PlanarLoop::angle_bound(self)
     }
@@ -171,6 +185,99 @@ impl<UN, NM> std::ops::Deref for FourBarBase<UN, NM> {
 impl<UN, NM> std::ops::DerefMut for FourBarBase<UN, NM> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.norm
+    }
+}
+
+/// State of the linkage.
+#[repr(u8)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Default, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(untagged, rename_all = "lowercase"))]
+pub enum Stat {
+    /// Circuit 1, branch 1
+    #[default]
+    C1B1 = 1,
+    /// Circuit 1, branch 2
+    C1B2 = 2,
+    /// Circuit 2, branch 1
+    C2B1 = 3,
+    /// Circuit 2, branch 2
+    C2B2 = 4,
+}
+
+impl Display for Stat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::C1B1 => write!(f, "Circuit 1, branch 1"),
+            Self::C1B2 => write!(f, "Circuit 1, branch 2"),
+            Self::C2B1 => write!(f, "Circuit 2, branch 1"),
+            Self::C2B2 => write!(f, "Circuit 2, branch 2"),
+        }
+    }
+}
+
+/// Error for state conversion.
+#[derive(Debug)]
+pub struct StatError;
+
+impl std::fmt::Display for StatError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "invalid state")
+    }
+}
+
+impl std::error::Error for StatError {}
+
+impl TryFrom<u8> for Stat {
+    type Error = StatError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::C1B1),
+            2 => Ok(Self::C1B2),
+            3 => Ok(Self::C2B1),
+            4 => Ok(Self::C2B2),
+            _ => Err(StatError),
+        }
+    }
+}
+
+impl Stat {
+    /// List for two circuits.
+    pub fn list2() -> Vec<Self> {
+        vec![Self::C1B1, Self::C2B1]
+    }
+
+    /// List for two circuits, two branches.
+    pub fn list4() -> Vec<Self> {
+        vec![Self::C1B1, Self::C1B2, Self::C2B1, Self::C2B2]
+    }
+
+    /// Check if the state is on circuit 1.
+    pub fn is_c1(&self) -> bool {
+        matches!(self, Self::C1B1 | Self::C1B2)
+    }
+
+    /// Check if the state is on branch 1.
+    pub fn is_b1(&self) -> bool {
+        matches!(self, Self::C1B1 | Self::C2B1)
+    }
+
+    /// List for other states for two circuits.
+    pub fn list2_others(&self) -> Vec<Self> {
+        self.list_others(Self::list2(), 1)
+    }
+
+    /// List for other states for two circuits, two branches.
+    pub fn list4_others(&self) -> Vec<Self> {
+        self.list_others(Self::list4(), 3)
+    }
+
+    fn list_others(&self, list: Vec<Self>, cap: usize) -> Vec<Self> {
+        let mut set = std::collections::HashSet::with_capacity(cap);
+        set.extend(list);
+        set.remove(self);
+        Vec::from_iter(set)
     }
 }
 
@@ -212,17 +319,66 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
 
 /// State of the linkage.
 pub trait Statable: Clone {
+    /// Get the state mutable reference.
+    fn stat_mut(&mut self) -> &mut Stat;
     /// Get the state.
-    fn stat(&self) -> u8;
+    fn stat(&self) -> Stat;
+
     /// Set the state.
-    fn set_stat(&mut self, stat: u8);
-    /// Get all states from a linkage.
-    fn get_states(self) -> Vec<Self>;
+    fn set_stat(&mut self, stat: Stat) {
+        *self.stat_mut() = stat;
+    }
 
     /// Build with state.
-    fn with_stat(mut self, stat: u8) -> Self {
+    fn with_stat(mut self, stat: Stat) -> Self {
         self.set_stat(stat);
         self
+    }
+
+    /// Get the inversion state.
+    fn inv(&self) -> bool
+    where
+        Self: PlanarLoop,
+    {
+        let stat = self.stat();
+        if self.angle_bound().has_branch() {
+            !stat.is_b1()
+        } else {
+            !stat.is_c1()
+        }
+    }
+
+    /// Get all states from a linkage.
+    fn get_states(self) -> Vec<Self>
+    where
+        Self: PlanarLoop,
+    {
+        let stat = self.stat();
+        let list = if self.angle_bound().has_branch() {
+            stat.list4_others()
+        } else {
+            stat.list2_others()
+        };
+        let mut list = list
+            .into_iter()
+            .map(|stat| self.clone().with_stat(stat))
+            .collect::<Vec<_>>();
+        list.push(self);
+        list
+    }
+}
+
+impl<S> Statable for S
+where
+    S: std::ops::DerefMut + Clone,
+    S::Target: Statable,
+{
+    fn stat_mut(&mut self) -> &mut Stat {
+        self.deref_mut().stat_mut()
+    }
+
+    fn stat(&self) -> Stat {
+        self.deref().stat()
     }
 }
 
@@ -237,8 +393,12 @@ pub trait PlanarLoop {
     }
 
     /// Input angle bounds of the linkage.
-    fn angle_bound(&self) -> AngleBound {
-        AngleBound::from_planar_loop(self.planar_loop())
+    fn angle_bound(&self) -> AngleBound
+    where
+        Self: Statable,
+    {
+        let stat = self.stat();
+        AngleBound::from_planar_loop(self.planar_loop(), stat)
     }
 }
 
@@ -251,7 +411,7 @@ pub enum AngleBound {
     /// Open curve (`[start, end]`)
     Open([f64; 2]),
     /// Open curve with branch (`[[start, end]; 2]`)
-    OpenBranch([[f64; 2]; 2]),
+    OpenBranch([f64; 2]),
     /// Invalid
     #[default]
     Invalid,
@@ -262,7 +422,7 @@ impl AngleBound {
     pub const MIN_ANGLE: f64 = std::f64::consts::FRAC_PI_2;
 
     /// Check angle bound from a planar loop.
-    pub fn from_planar_loop(mut planar_loop: [f64; 4]) -> Self {
+    pub fn from_planar_loop(mut planar_loop: [f64; 4], stat: Stat) -> Self {
         let [l1, l2, l3, l4] = planar_loop;
         planar_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         if planar_loop[3] > planar_loop[..3].iter().sum() {
@@ -287,9 +447,18 @@ impl AngleBound {
                 let d1 = (numerator - l33 * l33) / denominator;
                 let l33 = l3 + l4;
                 let d2 = (numerator - l33 * l33) / denominator;
-                Self::OpenBranch([[d1.acos(), d2.acos()], [TAU - d2.acos(), TAU - d1.acos()]])
+                if stat.is_c1() {
+                    Self::OpenBranch([d1.acos(), d2.acos()])
+                } else {
+                    Self::OpenBranch([TAU - d2.acos(), TAU - d1.acos()])
+                }
             }
         }
+    }
+
+    /// Check there has two branches.
+    pub fn has_branch(&self) -> bool {
+        matches!(self, Self::OpenBranch(_))
     }
 
     /// Create a open and its reverse angle bound.
@@ -300,7 +469,7 @@ impl AngleBound {
     /// Check the state is the same to the provided mode.
     pub fn check_mode(self, is_open: bool) -> Self {
         match (&self, is_open) {
-            (Self::Closed, false) | (Self::Open(_), true) | (Self::OpenBranch(_), true) => self,
+            (Self::Closed, false) | (Self::Open(_), true) => self,
             _ => Self::Invalid,
         }
     }
@@ -308,7 +477,7 @@ impl AngleBound {
     /// Angle range must greater than [`AngleBound::MIN_ANGLE`].
     pub fn check_min(self) -> Self {
         match self {
-            Self::Open([a, b]) => {
+            Self::Open([a, b]) | Self::OpenBranch([a, b]) => {
                 let b = if b > a { b } else { b + TAU };
                 if b - a > Self::MIN_ANGLE {
                     self
@@ -324,8 +493,7 @@ impl AngleBound {
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
             Self::Closed => Some([0., TAU]),
-            Self::Open(a) => Some(a),
-            Self::OpenBranch(a) => Some(a[0]), // FIXME
+            Self::Open(a) | Self::OpenBranch(a) => Some(a),
             Self::Invalid => None,
         }
     }
@@ -337,7 +505,7 @@ impl AngleBound {
 }
 
 /// Curve-generating behavior.
-pub trait CurveGen<D: efd::EfdDim>: PlanarLoop {
+pub trait CurveGen<D: efd::EfdDim>: PlanarLoop + Statable {
     /// Get the position with input angle.
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
 
@@ -377,7 +545,7 @@ pub trait CurveGen<D: efd::EfdDim>: PlanarLoop {
 impl<D, N> CurveGen<D> for N
 where
     D: efd::EfdDim,
-    N: Normalized<D> + PlanarLoop + Clone,
+    N: Normalized<D> + PlanarLoop + Statable + Clone,
     N::De: CurveGen<D>,
 {
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]> {

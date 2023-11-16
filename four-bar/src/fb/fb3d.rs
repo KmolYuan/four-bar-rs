@@ -65,22 +65,22 @@ pub struct SNormFourBar {
     /// Angle of the extended link on the coupler
     pub g: f64,
     /// Inverse coupler and follower to another circuit
-    pub stat: bool,
+    pub stat: Stat,
 }
 
 impl FromVectorized for SNormFourBar {
     type Dim = na::U6;
 
-    fn from_vectorized(v: &[f64], stat: u8) -> Result<Self, std::array::TryFromSliceError> {
+    fn from_vectorized(v: &[f64], stat: Stat) -> Result<Self, std::array::TryFromSliceError> {
         let [l1, l2, l3, l4, l5, g] = <[f64; 6]>::try_from(v)?;
-        Ok(Self { l1, l2, l3, l4, l5, g, stat: stat != 0 })
+        Ok(Self { l1, l2, l3, l4, l5, g, stat })
     }
 }
 
 impl IntoVectorized for SNormFourBar {
-    fn into_vectorized(self) -> (Vec<f64>, u8) {
+    fn into_vectorized(self) -> (Vec<f64>, Stat) {
         let Self { l1, l2, l3, l4, l5, g, stat } = self;
-        (vec![l1, l2, l3, l4, l5, g], stat as u8)
+        (vec![l1, l2, l3, l4, l5, g], stat)
     }
 }
 
@@ -181,7 +181,7 @@ impl SFourBar {
             l4: 1.2217304763960306,
             l5: FRAC_PI_4,
             g: 0.5235987755982988,
-            stat: false,
+            stat: Stat::C1B1,
         };
         Self::new(UnNorm::new(), norm)
     }
@@ -209,17 +209,12 @@ impl SFourBar {
 }
 
 impl Statable for SNormFourBar {
-    fn stat(&self) -> u8 {
-        self.stat as u8
+    fn stat_mut(&mut self) -> &mut Stat {
+        &mut self.stat
     }
 
-    fn set_stat(&mut self, stat: u8) {
-        self.stat = stat != 0;
-    }
-
-    fn get_states(self) -> Vec<Self> {
-        let s1 = self.clone().with_stat(1);
-        vec![self, s1]
+    fn stat(&self) -> Stat {
+        self.stat
     }
 }
 
@@ -299,7 +294,8 @@ impl CurveGen<efd::D3> for SFourBar {
 fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
     // a=alpha, b=beta, g=gamma, d=delta
     let UnNorm { ox, oy, oz, r, p1i, p1j, a } = fb.unnorm;
-    let SNormFourBar { l1, l2, l3, l4, l5, g, stat: inv } = fb.norm;
+    let SNormFourBar { l1, l2, l3, l4, l5, g, .. } = fb.norm;
+    let inv = fb.inv();
     let op1 = r * na::Vector3::z();
     let e1 = {
         let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), g);
@@ -396,7 +392,7 @@ fn spherical_loop_reduce() {
                 l4: $l4,
                 l5: 0.,
                 g: 0.,
-                stat: false,
+                stat: Stat::C1B1,
             }
             .to_radians();
             let [l1, l2, l3, l4] = fb.planar_loop();
