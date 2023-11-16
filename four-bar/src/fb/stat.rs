@@ -77,12 +77,12 @@ impl Stat {
 
     /// List for other states for two circuits.
     pub fn list2_others(&self) -> Vec<Self> {
-        self.list_others(Self::list2(), 1)
+        self.list_others(Self::list2(), 2)
     }
 
     /// List for other states for two circuits, two branches.
     pub fn list4_others(&self) -> Vec<Self> {
-        self.list_others(Self::list4(), 3)
+        self.list_others(Self::list4(), 4)
     }
 
     fn list_others(&self, list: Vec<Self>, cap: usize) -> Vec<Self> {
