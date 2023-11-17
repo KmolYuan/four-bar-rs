@@ -1,5 +1,9 @@
 use super::*;
-use four_bar::{efd, efd::na, fb::Stat};
+use four_bar::{
+    efd,
+    efd::na,
+    fb::{PlanarLoop as _, Stat},
+};
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
@@ -181,10 +185,20 @@ fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
     super::angle(ui, label, val, "")
 }
 
-fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat) {
+fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, has_branch: bool) {
+    let states = if has_branch {
+        Stat::list4()
+    } else {
+        match stat {
+            Stat::C1B2 => *stat = Stat::C1B1,
+            Stat::C2B2 => *stat = Stat::C2B1,
+            _ => (),
+        }
+        Stat::list2()
+    };
     ui.horizontal(|ui| {
         ui.label("State");
-        for label in Stat::list4() {
+        for label in states {
             *res |= ui
                 .selectable_value(stat, label, format!("{label:?}"))
                 .on_hover_text(format!("{label}"));
@@ -201,7 +215,8 @@ macro_rules! impl_ui {
                 let mut res = $($ui(ui, $des, &mut self.unnorm.$m_mut, cfg.int))|+;
                 ui.heading("Parameters");
                 res |= $($p_ui(ui, $p_des, &mut self.$($unnorm.)?$p_m_mut, cfg.int))|+;
-                $(stat_combo(&mut res, ui, &mut self.$stat);)+
+                let has_branch = self.has_branch();
+                $(stat_combo(&mut res, ui, &mut self.$stat, has_branch);)+
                 res
             }
         }

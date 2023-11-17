@@ -244,6 +244,15 @@ pub trait PlanarLoop {
         let stat = self.stat();
         AngleBound::from_planar_loop(self.planar_loop(), stat)
     }
+
+    /// Check if the range of motion has two branches.
+    fn has_branch(&self) -> bool {
+        let mut planar_loop @ [l1, l2, l3, l4] = self.planar_loop();
+        planar_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        planar_loop[3] < planar_loop[..3].iter().sum()
+            && l1 + l2 > l3 + l4
+            && (l1 - l2).abs() < (l3 - l4).abs()
+    }
 }
 
 /// Angle boundary types. The input angle range.

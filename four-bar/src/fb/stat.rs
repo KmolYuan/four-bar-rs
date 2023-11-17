@@ -117,7 +117,7 @@ pub trait Statable: Clone {
         Self: PlanarLoop,
     {
         let stat = self.stat();
-        if self.angle_bound().has_branch() {
+        if self.has_branch() {
             !stat.is_b1()
         } else {
             !stat.is_c1()
@@ -130,7 +130,7 @@ pub trait Statable: Clone {
         Self: PlanarLoop,
     {
         let stat = self.stat();
-        let list = if self.angle_bound().has_branch() {
+        let list = if self.has_branch() {
             stat.list4_others()
         } else {
             stat.list2_others()
