@@ -3,8 +3,6 @@
 pub use super::*;
 use efd::na;
 use full_palette::GREY_600;
-#[doc(no_inline)]
-pub use plotters::{prelude::*, *};
 
 const LIGHTGRAY: RGBAColor = RGBAColor(150, 150, 150, 0.4);
 
