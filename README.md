@@ -64,7 +64,7 @@ cargo run --release -- --help
 
 ### WebAssembly
 
-Powered by `trunk` (<https://github.com/thedodd/trunk>), a Rust CLI tool for creating bin-type WASM projects.
+Powered by [`trunk`](<https://github.com/thedodd/trunk>), a Rust CLI tool for creating bin-type WASM projects.
 
 Run those scripts from the repository:
 
@@ -79,3 +79,26 @@ trunk build --release
 ```
 
 The application package will be deployed in the `dist` directory.
+
+## File Format
+
+Four🍀bar uses a custom file format to store the linkage data. The file is a plain text file of [RON](https://github.com/ron-rs/ron) syntax.
+
+### Synthesis Target Format
+
+The target coupler curve can be input from:
+
++ CSV `.csv` file
++ RON `.ron` file as a linkage to generate a coupler curve
+
+The file name should be `name.mode.ext` pattern, where
+
++ `name` is the name of the case, can be any string
++ `mode` is the mode of the target curve, can be `closed`, `open`, and `partial`
++ `ext` is the file extension, can be `csv` or `ron`
+
+For example, `example.closed.csv` is a target closed curve in CSV format.
+
+### Figure Configuration
+
+The figure configuration is a RON file with the extension `.fig.ron`. Four🍀bar GUI can import figure configurations to generate linkage plots, and the `syn` command will redraw the linkage result without cleaning if the figure configuration exists.
