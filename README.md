@@ -11,6 +11,7 @@ Four🍀bar is a simulator and a synthesis tool for four-bar linkage mechanism.
 
 + CLI/GUI program is `four-bar-ui` crate, but the executable is called `four-bar`.
 + Kernel library `four-bar` is on <https://crates.io/crates/four-bar>.
++ Cite this work [here](#citation).
 
 GUI powered by <https://github.com/emilk/egui>.
 
@@ -102,3 +103,24 @@ For example, `example.closed.csv` is a target closed curve in CSV format.
 ### Figure Configuration
 
 The figure configuration is a RON file with the extension `.fig.ron`. Four🍀bar GUI can import figure configurations to generate linkage plots, and the `syn` command will redraw the linkage result without cleaning if the figure configuration exists.
+
+## Citation
+
++ Chang, Y., Chang, JL., Lee, JJ. (2024). Atlas-Based Path Synthesis of Planar Four-Bar Linkages Using Elliptical Fourier Descriptors. In: Okada, M. (eds) Advances in Mechanism and Machine Science. IFToMM WC 2023. Mechanisms and Machine Science, vol 149. Springer, Cham. https://doi.org/10.1007/978-3-031-45709-8_20
+
+```bibtex
+@InProceedings {10.1007/978-3-031-45709-8_20,
+    author="Chang, Yuan
+    and Chang, Jia-Ling
+    and Lee, Jyh-Jone",
+    editor="Okada, Masafumi",
+    title="Atlas-Based Path Synthesis of Planar Four-Bar Linkages Using Elliptical Fourier Descriptors",
+    booktitle="Advances in Mechanism and Machine Science",
+    year="2024",
+    publisher="Springer Nature Switzerland",
+    address="Cham",
+    pages="198--207",
+    isbn="978-3-031-45709-8",
+    doi="https://doi.org/10.1007/978-3-031-45709-8_20"
+}
+```
