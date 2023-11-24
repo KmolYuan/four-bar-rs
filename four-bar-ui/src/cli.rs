@@ -4,7 +4,7 @@ use std::path::PathBuf;
 mod atlas;
 mod syn;
 
-const APP_NAME: &str = env!("CARGO_PKG_NAME");
+const APP_NAME: &str = env!("CARGO_BIN_NAME");
 
 #[derive(clap::Parser)]
 #[clap(name = APP_NAME, version, author, about)]
