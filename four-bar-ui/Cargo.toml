@@ -23,7 +23,7 @@ native-win-release = ["winapi"]
 [dependencies]
 smartcore = { version = "0.3", features = ["ndarray-bindings"] }
 serde = { version = "1", features = ["derive"] }
-egui_plot = "0.23"
+egui_plot = "0.24"
 rfd = "0.12"
 ron = "0.8"
 
@@ -33,7 +33,7 @@ path = "../four-bar"
 features = ["csv", "atlas", "plot"]
 
 [dependencies.eframe]
-version = "0.23"
+version = "0.24"
 default-features = false
 features = ["accesskit", "persistence", "glow"]
 

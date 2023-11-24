@@ -41,22 +41,15 @@ impl Entry {
 }
 
 fn native(files: Vec<PathBuf>) {
-    let opt = {
-        use image::ImageFormat::Png;
-        const ICON: &[u8] = include_bytes!("../assets/favicon.png");
-        let icon = image::load_from_memory_with_format(ICON, Png).unwrap();
-        eframe::NativeOptions {
-            icon_data: Some(eframe::IconData {
-                width: icon.width(),
-                height: icon.height(),
-                rgba: icon.into_bytes(),
-            }),
-            ..Default::default()
-        }
-    };
     #[cfg(all(windows, feature = "native-win-release"))]
     unsafe {
         winapi::um::wincon::FreeConsole();
     }
+    const ICON: &[u8] = include_bytes!("../assets/favicon.png");
+    let opt = eframe::NativeOptions {
+        viewport: eframe::egui::ViewportBuilder::default()
+            .with_icon(eframe::icon_data::from_png_bytes(ICON).unwrap()),
+        ..Default::default()
+    };
     eframe::run_native(APP_NAME, opt, App::create(files)).unwrap();
 }

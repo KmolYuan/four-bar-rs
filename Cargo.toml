@@ -3,7 +3,7 @@ members = ["four-bar", "four-bar-ui"]
 resolver = "2"
 
 [workspace.package]
-version = "6.0.0"
+version = "6.1.0"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
 edition = "2021"
 license = "AGPL-3.0-or-later"
