@@ -113,11 +113,8 @@ pub trait SynBound: Clone + Sync + Send {
 
 impl SynBound for NormFourBar {
     const BOUND: &'static [[f64; 2]] = {
-        const LNK: &[[f64; 2]] = {
-            let bound = 6.;
-            let bound_f = 1. / bound;
-            &[[bound_f, bound]; 4]
-        };
+        const K: f64 = 6.;
+        const LNK: &[[f64; 2]] = &[[1. / K, K]; 4];
         const ANG: &[[f64; 2]] = &[[0., TAU]; 3];
         &concat_slices!(LNK, ANG)
     };
