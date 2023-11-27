@@ -10,3 +10,9 @@ license = "AGPL-3.0-or-later"
 repository = "https://github.com/KmolYuan/four-bar-rs"
 keywords = ["mechanism", "simulation", "optimization"]
 categories = ["algorithms"]
+
+[workspace.lints.rust]
+unsafe-code = "forbid"
+
+[workspace.lints.clippy]
+semicolon-if-nothing-returned = "warn"

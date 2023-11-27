@@ -1,5 +1,3 @@
-#![warn(clippy::semicolon_if_nothing_returned)]
-
 mod app;
 #[cfg(not(target_arch = "wasm32"))]
 mod cli;

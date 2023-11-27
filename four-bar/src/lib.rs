@@ -11,7 +11,6 @@
 //! ```
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
-#![warn(clippy::semicolon_if_nothing_returned)]
 
 pub use crate::fb::{FourBar, NormFourBar, SFourBar, SNormFourBar};
 #[doc(no_inline)]
