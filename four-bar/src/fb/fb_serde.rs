@@ -13,7 +13,7 @@ impl Serialize for FourBar {
     where
         S: Serializer,
     {
-        let mut s = serializer.serialize_struct("FourBar", 9)?;
+        let mut s = serializer.serialize_struct("FourBar", 10)?;
         ser_fields!(s, self.unnorm, p1x, p1y, a);
         ser_fields!(s, self, l1);
         ser_fields!(s, self.unnorm, l2);
@@ -28,7 +28,7 @@ impl Serialize for SFourBar {
     where
         S: Serializer,
     {
-        let mut s = serializer.serialize_struct("SFourBar", 13)?;
+        let mut s = serializer.serialize_struct("SFourBar", 14)?;
         ser_fields!(s, self.unnorm, ox, oy, oz, r, p1i, p1j, a);
         ser_fields!(s, self, l1, l2, l3, l4, l5, g);
         s.serialize_field("stat", self.stat.name_lowercase())?;
