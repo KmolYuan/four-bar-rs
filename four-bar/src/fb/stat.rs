@@ -4,16 +4,19 @@ use super::PlanarLoop;
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Default, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(untagged, rename_all = "lowercase"))]
 pub enum Stat {
     /// Circuit 1, branch 1
     #[default]
+    #[cfg_attr(feature = "serde", serde(alias = "c1b1"))]
     C1B1 = 1,
     /// Circuit 1, branch 2
+    #[cfg_attr(feature = "serde", serde(alias = "c1b2"))]
     C1B2 = 2,
     /// Circuit 2, branch 1
+    #[cfg_attr(feature = "serde", serde(alias = "c2b1"))]
     C2B1 = 3,
     /// Circuit 2, branch 2
+    #[cfg_attr(feature = "serde", serde(alias = "c2b2"))]
     C2B2 = 4,
 }
 
@@ -55,6 +58,16 @@ impl TryFrom<u8> for Stat {
 }
 
 impl Stat {
+    /// Get the lowercase name.
+    pub fn name_lowercase(&self) -> &'static str {
+        match self {
+            Self::C1B1 => "c1b1",
+            Self::C1B2 => "c1b2",
+            Self::C2B1 => "c2b1",
+            Self::C2B2 => "c2b2",
+        }
+    }
+
     /// List for two circuits.
     pub fn list2() -> Vec<Self> {
         vec![Self::C1B1, Self::C2B1]
