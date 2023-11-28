@@ -3,7 +3,7 @@ use four_bar::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{
     borrow::Cow,
-    io::Write as _,
+    io::{Seek as _, Write as _},
     path::{Path, PathBuf},
 };
 
@@ -279,7 +279,7 @@ fn from_runtime(
         .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
         .filter(|p| p.is_file());
     let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
-    writeln!(log, "title=\"{title}\"")?;
+    writeln!(log, "[{title}]\n")?;
     match (target, &lnk_fb) {
         (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
             let efd_target =
@@ -304,7 +304,7 @@ fn from_runtime(
                 let trans = efd.as_trans().to(efd_target.as_trans());
                 let fb = fb.clone().trans_denorm(&trans);
                 let c = fb.curve(cfg.res.min(30));
-                writeln!(log, "\n[atlas]")?;
+                writeln!(log, "[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "cost={cost:.04}")?;
                 writeln!(log, "\n[atlas.fb]")?;
@@ -312,7 +312,7 @@ fn from_runtime(
                 write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
-            writeln!(log, "\n[optimized]")?;
+            writeln!(log, "[optimized]")?;
             writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
@@ -360,7 +360,7 @@ fn from_runtime(
                 let trans = efd.as_trans().to(efd_target.as_trans());
                 let fb = fb.clone().trans_denorm(&trans);
                 let c = fb.curve(cfg.res.min(30));
-                writeln!(log, "\n[atlas]")?;
+                writeln!(log, "[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
                 writeln!(log, "cost={cost:.04}")?;
                 writeln!(log, "\n[atlas.fb]")?;
@@ -368,7 +368,7 @@ fn from_runtime(
                 write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
-            writeln!(log, "\n[optimized]")?;
+            writeln!(log, "[optimized]")?;
             writeln!(log, "time={t1:.02?}")?;
             writeln!(log, "cost={cost:.04}")?;
             writeln!(log, "harmonic={harmonic}")?;
@@ -395,6 +395,9 @@ fn from_runtime(
         }
         _ => unreachable!(),
     }
+    // Remove last character from the log file
+    let end = log.stream_position()? - 1;
+    log.set_len(end)?;
     log.flush()?;
     Ok(())
 }
@@ -458,14 +461,14 @@ fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
     write_fields!(w, fb, l1);
     write_fields!(w, fb.unnorm, l2);
     write_fields!(w, fb, l3, l4, l5, g);
-    writeln!(w, "stat={:?}", fb.stat)?;
+    writeln!(w, "stat={:?}\n", fb.stat)?;
     Ok(())
 }
 
 fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
     write_fields!(w, fb.unnorm, ox, oy, oz, r, p1i, p1j, a);
     write_fields!(w, fb, l1, l2, l3, l4, l5, g);
-    writeln!(w, "stat={:?}", fb.stat)?;
+    writeln!(w, "stat={:?}\n", fb.stat)?;
     Ok(())
 }
 
