@@ -28,7 +28,7 @@ rfd = "0.12"
 ron = "0.8"
 
 [dependencies.four-bar]
-version = "6"
+version = "7"
 path = "../four-bar"
 features = ["csv", "atlas", "plot"]
 
