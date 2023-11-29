@@ -395,7 +395,7 @@ fn from_runtime(
         }
         _ => unreachable!(),
     }
-    // Remove last character from the log file
+    // Remove the last character from the log file
     let end = log.stream_position()? - 1;
     log.set_len(end)?;
     log.flush()?;
