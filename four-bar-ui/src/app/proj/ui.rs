@@ -2,7 +2,7 @@ use super::*;
 use four_bar::{
     efd,
     efd::na,
-    fb::{Stat, Statable as _},
+    fb::{AngleBound, Stat},
 };
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
@@ -180,17 +180,11 @@ fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
     super::angle(ui, label, val, "")
 }
 
-fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, has_branch: bool) {
-    let states = if has_branch {
-        Stat::list4()
-    } else {
-        match stat {
-            Stat::C1B2 => *stat = Stat::C1B1,
-            Stat::C2B2 => *stat = Stat::C2B1,
-            _ => (),
-        }
-        Stat::list2()
-    };
+fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, bound: AngleBound) {
+    let states = bound.get_states();
+    if !states.contains(stat) {
+        *stat = Stat::default();
+    }
     ui.horizontal(|ui| {
         ui.label("State");
         for label in states {
@@ -210,8 +204,8 @@ macro_rules! impl_ui {
                 let mut res = $($ui(ui, $des, &mut self.unnorm.$m_mut, cfg.int))|+;
                 ui.heading("Parameters");
                 res |= $($p_ui(ui, $p_des, &mut self.$($unnorm.)?$p_m_mut, cfg.int))|+;
-                let has_branch = self.has_branch();
-                $(stat_combo(&mut res, ui, &mut self.$stat, has_branch);)+
+                let bound = self.angle_bound();
+                $(stat_combo(&mut res, ui, &mut self.$stat, bound);)+
                 res
             }
         }

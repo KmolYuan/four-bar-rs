@@ -82,16 +82,6 @@ impl Stat {
         }
     }
 
-    /// List for two circuits.
-    pub fn list2() -> Vec<Self> {
-        vec![Self::C1B1, Self::C2B1]
-    }
-
-    /// List for two circuits, two branches.
-    pub fn list4() -> Vec<Self> {
-        vec![Self::C1B1, Self::C1B2, Self::C2B1, Self::C2B2]
-    }
-
     /// Check if the state is on circuit 1.
     pub fn is_c1(&self) -> bool {
         matches!(self, Self::C1B1 | Self::C1B2)
@@ -100,23 +90,6 @@ impl Stat {
     /// Check if the state is on branch 1.
     pub fn is_b1(&self) -> bool {
         matches!(self, Self::C1B1 | Self::C2B1)
-    }
-
-    /// List for other states for two circuits.
-    pub fn list2_others(&self) -> Vec<Self> {
-        self.list_others(Self::list2(), 2)
-    }
-
-    /// List for other states for two circuits, two branches.
-    pub fn list4_others(&self) -> Vec<Self> {
-        self.list_others(Self::list4(), 4)
-    }
-
-    fn list_others(&self, list: Vec<Self>, cap: usize) -> Vec<Self> {
-        let mut set = std::collections::HashSet::with_capacity(cap);
-        set.extend(list);
-        set.remove(self);
-        Vec::from_iter(set)
     }
 }
 
@@ -174,21 +147,18 @@ impl AngleBound {
         }
     }
 
-    /// Check there has two branches.
-    pub fn has_branch(&self) -> bool {
-        matches!(self, Self::OpenC2B2(_))
-    }
-
     /// Create a open and its reverse angle bound.
     pub fn open_and_rev_at(a: f64, b: f64) -> [Self; 2] {
+        // No matter the type of the angle bound `OpenC1B2` or `OpenC2B2`
         [Self::OpenC1B2([a, b]), Self::OpenC1B2([b, a])]
     }
 
     /// Check the state is the same to the provided mode.
     pub fn check_mode(self, is_open: bool) -> Self {
-        match (&self, is_open) {
-            (Self::Closed, false) | (Self::OpenC1B2(_), true) | (Self::OpenC2B2(_), true) => self,
-            _ => Self::Invalid,
+        if self.is_valid() && self.is_open() == is_open {
+            self
+        } else {
+            Self::Invalid
         }
     }
 
@@ -216,9 +186,33 @@ impl AngleBound {
         }
     }
 
+    /// Return true if the bounds is open.
+    pub fn is_open(&self) -> bool {
+        !matches!(self, Self::Closed | Self::Invalid)
+    }
+
     /// Check if the data is valid.
     pub fn is_valid(&self) -> bool {
         !matches!(self, Self::Invalid)
+    }
+
+    /// List all states.
+    pub fn get_states(&self) -> Vec<Stat> {
+        match self {
+            Self::Closed => vec![Stat::C1B1, Stat::C2B1],
+            Self::OpenC1B2(_) => vec![Stat::C1B1, Stat::C1B2],
+            Self::OpenC2B2(_) => vec![Stat::C1B1, Stat::C1B2, Stat::C2B1, Stat::C2B2],
+            Self::Invalid => Vec::new(),
+        }
+    }
+
+    /// Return boolean value to specify the inversion.
+    pub fn inv(&self, stat: Stat) -> bool {
+        match self {
+            Self::Closed => !stat.is_c1(),
+            Self::OpenC1B2(_) | Self::OpenC2B2(_) => !stat.is_b1(),
+            Self::Invalid => false,
+        }
     }
 }
 
@@ -330,32 +324,6 @@ pub trait Statable: PlanarLoop + Clone {
         self
     }
 
-    /// Get the inversion state.
-    fn inv(&self) -> bool {
-        let stat = self.stat();
-        if self.has_branch() {
-            !stat.is_b1()
-        } else {
-            !stat.is_c1()
-        }
-    }
-
-    /// Get all states from a linkage.
-    fn get_states(self) -> Vec<Self> {
-        let stat = self.stat();
-        let list = if self.has_branch() {
-            stat.list4_others()
-        } else {
-            stat.list2_others()
-        };
-        let mut list = list
-            .into_iter()
-            .map(|stat| self.clone().with_stat(stat))
-            .collect::<Vec<_>>();
-        list.push(self);
-        list
-    }
-
     /// Return the type of this linkage.
     fn ty(&self) -> FourBarTy {
         FourBarTy::from_loop(self.planar_loop())
@@ -367,13 +335,29 @@ pub trait Statable: PlanarLoop + Clone {
         AngleBound::from_planar_loop(self.planar_loop(), stat)
     }
 
-    /// Check if the range of motion has two branches.
-    fn has_branch(&self) -> bool {
-        let mut planar_loop @ [l1, l2, l3, l4] = self.planar_loop();
-        planar_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        planar_loop[3] < planar_loop[..3].iter().sum()
-            && l1 + l2 > l3 + l4
-            && (l1 - l2).abs() < (l3 - l4).abs()
+    /// Get the inversion state.
+    fn inv(&self) -> bool {
+        self.angle_bound().inv(self.stat())
+    }
+
+    /// List all states from a linkage.
+    fn get_states(&self) -> Vec<Self> {
+        self.angle_bound()
+            .get_states()
+            .into_iter()
+            .map(|s| self.clone().with_stat(s))
+            .collect()
+    }
+
+    /// Get the input angle bounds and all states from a linkage.
+    fn get_bound_states_filter(&self, is_open: bool) -> (AngleBound, Vec<Self>) {
+        let bound = self.angle_bound().check_mode(is_open);
+        let states = bound
+            .get_states()
+            .into_iter()
+            .map(|s| self.clone().with_stat(s))
+            .collect();
+        (bound, states)
     }
 }
 
