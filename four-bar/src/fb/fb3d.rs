@@ -183,7 +183,7 @@ impl SFourBar {
             g: 0.5235987755982988,
             stat: Stat::C1B1,
         };
-        Self::new(UnNorm::new(), norm)
+        Self::new(UnNorm::from_radius(90.), norm)
     }
 
     /// Take the sphere part without the linkage length.

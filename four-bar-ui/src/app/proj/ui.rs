@@ -7,6 +7,7 @@ use four_bar::{
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
+const CURVE_NAME: &[&str] = &["Driver Curve", "Follower Curve", "Coupler Curve"];
 
 fn pick_color(i: usize) -> Color32 {
     use four_bar::plot::{Color as _, Palette as _, Palette99};
@@ -121,10 +122,7 @@ impl ProjPlot<efd::D2> for FourBar {
                 }
             }
         }
-        for (i, name) in ["Driver joint", "Follower joint", "Coupler joint"]
-            .into_iter()
-            .enumerate()
-        {
+        for (i, name) in CURVE_NAME.iter().enumerate() {
             let iter = curves.iter().map(|c| c[i]).collect::<Vec<_>>();
             let line = egui_plot::Line::new(iter)
                 .name(name)
@@ -165,10 +163,7 @@ impl ProjPlot<efd::D3> for SFourBar {
                 }
             }
         }
-        for (i, name) in ["Driver joint", "Follower joint", "Coupler joint"]
-            .into_iter()
-            .enumerate()
-        {
+        for (i, name) in CURVE_NAME.iter().enumerate() {
             let color = pick_color(i);
             let iter = curves.iter().map(|c| c[i]);
             draw_sline(ui, oz, iter, |s| s.name(name).width(3.).color(color));
