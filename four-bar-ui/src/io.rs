@@ -307,12 +307,12 @@ where
     save_ask("atlas.npz", CB_FMT, CB_EXT, |w| atlas.write(w), |_| ());
 }
 
-fn write_ron<W, S>(w: W, s: &S) -> Result<(), ron::Error>
+fn write_ron<W, S>(mut w: W, s: &S) -> Result<(), ron::Error>
 where
     W: std::io::Write,
     S: serde::Serialize,
 {
-    ron::ser::to_writer_pretty(w, s, Default::default())
+    write!(w, "{}", ron::ser::to_string_pretty(s, Default::default())?).map_err(|e| e.into())
 }
 
 pub(crate) fn save_ron_ask<S, C>(s: &S, name: &str, done: C)

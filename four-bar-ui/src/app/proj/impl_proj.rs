@@ -218,11 +218,10 @@ where
         use four_bar::fb::PlanarLoop as _;
         ui.horizontal(|ui| {
             if small_btn(ui, "🔗", "Share with Link") {
-                let mut url = b"https://kmolyuan.github.io/four-bar-rs/?code=".to_vec();
+                let mut url = "https://kmolyuan.github.io/four-bar-rs/?code=".to_string();
                 self.fb
                     .serialize(&mut ron::Serializer::new(&mut url, None).unwrap())
                     .unwrap();
-                let url = String::from_utf8_lossy(&url);
                 ui.ctx().open_url(OpenUrl::new_tab(url));
             }
             #[cfg(not(target_arch = "wasm32"))]

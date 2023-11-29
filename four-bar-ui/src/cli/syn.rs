@@ -476,6 +476,6 @@ fn write_ron<S>(path: impl AsRef<Path>, s: &S) -> Result<(), SynErr>
 where
     S: serde::Serialize,
 {
-    ron::ser::to_writer_pretty(std::fs::File::create(path)?, s, Default::default())?;
+    std::fs::write(path, ron::ser::to_string_pretty(s, Default::default())?)?;
     Ok(())
 }
