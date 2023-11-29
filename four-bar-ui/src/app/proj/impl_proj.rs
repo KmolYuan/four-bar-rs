@@ -200,7 +200,7 @@ where
     D: efd::EfdDim,
     M: fb::Normalized<D>,
     M::De: fb::CurveGen<D>
-        + fb::PlanarLoop
+        + fb::Statable
         + undo::IntoDelta
         + ui::ProjUi
         + ui::ProjPlot<D>
@@ -215,7 +215,7 @@ where
     }
 
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
-        use four_bar::fb::PlanarLoop as _;
+        use four_bar::fb::Statable as _;
         ui.horizontal(|ui| {
             if small_btn(ui, "🔗", "Share with Link") {
                 let mut url = "https://kmolyuan.github.io/four-bar-rs/?code=".to_string();
@@ -329,7 +329,7 @@ where
     }
 
     fn cache(&mut self, res: usize) {
-        use four_bar::fb::{CurveGen as _, PlanarLoop as _};
+        use four_bar::fb::{CurveGen as _, Statable as _};
         if self.cache.changed {
             // Recalculation
             self.cache.changed = false;

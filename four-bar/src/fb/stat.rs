@@ -313,7 +313,7 @@ impl FourBarTy {
 }
 
 /// State of the linkage.
-pub trait Statable: Clone {
+pub trait Statable: PlanarLoop + Clone {
     /// Get the state mutable reference.
     fn stat_mut(&mut self) -> &mut Stat;
     /// Get the state.
@@ -331,10 +331,7 @@ pub trait Statable: Clone {
     }
 
     /// Get the inversion state.
-    fn inv(&self) -> bool
-    where
-        Self: PlanarLoop,
-    {
+    fn inv(&self) -> bool {
         let stat = self.stat();
         if self.has_branch() {
             !stat.is_b1()
@@ -344,10 +341,7 @@ pub trait Statable: Clone {
     }
 
     /// Get all states from a linkage.
-    fn get_states(self) -> Vec<Self>
-    where
-        Self: PlanarLoop,
-    {
+    fn get_states(self) -> Vec<Self> {
         let stat = self.stat();
         let list = if self.has_branch() {
             stat.list4_others()
@@ -361,27 +355,6 @@ pub trait Statable: Clone {
         list.push(self);
         list
     }
-}
-
-impl<S> Statable for S
-where
-    S: std::ops::DerefMut + Clone,
-    S::Target: Statable,
-{
-    fn stat_mut(&mut self) -> &mut Stat {
-        self.deref_mut().stat_mut()
-    }
-
-    fn stat(&self) -> Stat {
-        self.deref().stat()
-    }
-}
-
-// TODO: Merge with `Statable` trait.
-/// Planar loop of the linkage.
-pub trait PlanarLoop {
-    /// Get the planar loop.
-    fn planar_loop(&self) -> [f64; 4];
 
     /// Return the type of this linkage.
     fn ty(&self) -> FourBarTy {
@@ -389,10 +362,7 @@ pub trait PlanarLoop {
     }
 
     /// Input angle bounds of the linkage.
-    fn angle_bound(&self) -> AngleBound
-    where
-        Self: Statable,
-    {
+    fn angle_bound(&self) -> AngleBound {
         let stat = self.stat();
         AngleBound::from_planar_loop(self.planar_loop(), stat)
     }
@@ -405,4 +375,24 @@ pub trait PlanarLoop {
             && l1 + l2 > l3 + l4
             && (l1 - l2).abs() < (l3 - l4).abs()
     }
+}
+
+impl<S> Statable for S
+where
+    S: std::ops::DerefMut + PlanarLoop + Clone,
+    S::Target: Statable,
+{
+    fn stat_mut(&mut self) -> &mut Stat {
+        self.deref_mut().stat_mut()
+    }
+
+    fn stat(&self) -> Stat {
+        self.deref().stat()
+    }
+}
+
+/// Planar loop of the linkage.
+pub trait PlanarLoop {
+    /// Get the planar loop.
+    fn planar_loop(&self) -> [f64; 4];
 }

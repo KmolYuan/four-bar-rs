@@ -16,7 +16,7 @@ impl<M> Distr<M> {
 
 impl<M> Distribution<Vec<M>> for Distr<M>
 where
-    M: syn::SynBound + Statable + PlanarLoop + FromVectorized + Sync + Clone,
+    M: syn::SynBound + Statable + FromVectorized + Sync + Clone,
 {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<M> {
         let bound = <M as syn::SynBound>::BOUND;

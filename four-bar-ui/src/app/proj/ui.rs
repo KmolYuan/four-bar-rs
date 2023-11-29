@@ -2,7 +2,7 @@ use super::*;
 use four_bar::{
     efd,
     efd::na,
-    fb::{PlanarLoop as _, Stat},
+    fb::{Stat, Statable as _},
 };
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);

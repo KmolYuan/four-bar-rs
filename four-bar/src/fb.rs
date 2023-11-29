@@ -48,9 +48,9 @@ impl<UN, NM> FourBarBase<UN, NM> {
     /// Return the type of this linkage.
     pub fn ty(&self) -> FourBarTy
     where
-        Self: PlanarLoop,
+        Self: Statable,
     {
-        PlanarLoop::ty(self)
+        Statable::ty(self)
     }
 
     /// Normalization.
@@ -69,7 +69,7 @@ impl<UN, NM> FourBarBase<UN, NM> {
     /// Check if the data is valid.
     pub fn is_valid(&self) -> bool
     where
-        Self: PlanarLoop,
+        Self: Statable,
     {
         self.ty().is_valid()
     }
@@ -77,9 +77,9 @@ impl<UN, NM> FourBarBase<UN, NM> {
     /// Input angle bounds of the linkage.
     pub fn angle_bound(&self) -> AngleBound
     where
-        Self: PlanarLoop + Statable,
+        Self: Statable,
     {
-        PlanarLoop::angle_bound(self)
+        Statable::angle_bound(self)
     }
 }
 
@@ -134,7 +134,7 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
 }
 
 /// Curve-generating behavior.
-pub trait CurveGen<D: efd::EfdDim>: PlanarLoop + Statable {
+pub trait CurveGen<D: efd::EfdDim>: Statable {
     /// Get the position with input angle.
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
 
@@ -174,7 +174,7 @@ pub trait CurveGen<D: efd::EfdDim>: PlanarLoop + Statable {
 impl<D, N> CurveGen<D> for N
 where
     D: efd::EfdDim,
-    N: Normalized<D> + PlanarLoop + Statable + Clone,
+    N: Normalized<D> + Statable + Clone,
     N::De: CurveGen<D>,
 {
     fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]> {
