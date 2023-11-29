@@ -35,6 +35,16 @@ impl UnNorm {
     pub const fn from_radius(r: f64) -> Self {
         Self { ox: 0., oy: 0., oz: 0., r, p1i: 0., p1j: 0., a: 0. }
     }
+
+    /// Set the origin of the sphere center.
+    pub fn set_origin(&mut self, ox: f64, oy: f64, oz: f64) {
+        [self.ox, self.oy, self.oz] = [ox, oy, oz];
+    }
+
+    /// Set the angle of the ground link.
+    pub fn set_rotation(&mut self, p1i: f64, p1j: f64, a: f64) {
+        [self.p1i, self.p1j, self.a] = [p1i, p1j, a];
+    }
 }
 
 /// Spherical normalized four-bar linkage.

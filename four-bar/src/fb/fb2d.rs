@@ -28,6 +28,16 @@ impl UnNorm {
     pub const fn from_driver(l2: f64) -> Self {
         Self { p1x: 0., p1y: 0., a: 0., l2 }
     }
+
+    /// Set the origin of the driver link pivot.
+    pub fn set_origin(&mut self, p1x: f64, p1y: f64) {
+        [self.p1x, self.p1y] = [p1x, p1y];
+    }
+
+    /// Set the angle of the ground link.
+    pub fn set_rotation(&mut self, a: f64) {
+        self.a = a;
+    }
 }
 
 /// Normalized part of four-bar linkage.
