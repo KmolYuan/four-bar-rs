@@ -240,8 +240,8 @@ where
         ui.label(self.fb.ty().name());
         match self.cache.angle_bound {
             fb::AngleBound::Closed => ui.label("Closed curve"),
-            fb::AngleBound::Open(_) => ui.label("Open curve"),
-            fb::AngleBound::OpenBranch(_) => ui.label("Open curve with branches"),
+            fb::AngleBound::OpenC1B2(_) => ui.label("Open curve C1B2"),
+            fb::AngleBound::OpenC2B2(_) => ui.label("Open curve C2B2"),
             fb::AngleBound::Invalid => ui.label("Invalid"),
         };
         ui.horizontal(|ui| {

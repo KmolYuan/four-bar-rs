@@ -126,10 +126,10 @@ impl Stat {
 pub enum AngleBound {
     /// Closed curve
     Closed,
-    /// Open curve (`[start, end]`)
-    Open([f64; 2]),
-    /// Open curve with branch (`[[start, end]; 2]`)
-    OpenBranch([f64; 2]),
+    /// Open curve with 1 circuits 2 branches (`[start, end]`)
+    OpenC1B2([f64; 2]),
+    /// Open curve with 2 circuits 2 branches (`[start, end]`)
+    OpenC2B2([f64; 2]),
     /// Invalid
     #[default]
     Invalid,
@@ -151,12 +151,12 @@ impl AngleBound {
             (true, false) => {
                 let l33 = l3 - l4;
                 let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-                Self::Open([d.acos(), TAU - d.acos()])
+                Self::OpenC1B2([d.acos(), TAU - d.acos()])
             }
             (false, true) => {
                 let l33 = l3 + l4;
                 let d = (l1 * l1 + l2 * l2 - l33 * l33) / (2. * l1 * l2);
-                Self::Open([-d.acos(), d.acos()])
+                Self::OpenC1B2([-d.acos(), d.acos()])
             }
             (false, false) => {
                 let numerator = l1 * l1 + l2 * l2;
@@ -166,9 +166,9 @@ impl AngleBound {
                 let l33 = l3 + l4;
                 let d2 = (numerator - l33 * l33) / denominator;
                 if stat.is_c1() {
-                    Self::OpenBranch([d1.acos(), d2.acos()])
+                    Self::OpenC2B2([d1.acos(), d2.acos()])
                 } else {
-                    Self::OpenBranch([TAU - d2.acos(), TAU - d1.acos()])
+                    Self::OpenC2B2([TAU - d2.acos(), TAU - d1.acos()])
                 }
             }
         }
@@ -176,18 +176,18 @@ impl AngleBound {
 
     /// Check there has two branches.
     pub fn has_branch(&self) -> bool {
-        matches!(self, Self::OpenBranch(_))
+        matches!(self, Self::OpenC2B2(_))
     }
 
     /// Create a open and its reverse angle bound.
     pub fn open_and_rev_at(a: f64, b: f64) -> [Self; 2] {
-        [Self::Open([a, b]), Self::Open([b, a])]
+        [Self::OpenC1B2([a, b]), Self::OpenC1B2([b, a])]
     }
 
     /// Check the state is the same to the provided mode.
     pub fn check_mode(self, is_open: bool) -> Self {
         match (&self, is_open) {
-            (Self::Closed, false) | (Self::Open(_), true) => self,
+            (Self::Closed, false) | (Self::OpenC1B2(_), true) | (Self::OpenC2B2(_), true) => self,
             _ => Self::Invalid,
         }
     }
@@ -195,7 +195,7 @@ impl AngleBound {
     /// Angle range must greater than [`AngleBound::MIN_ANGLE`].
     pub fn check_min(self) -> Self {
         match self {
-            Self::Open([a, b]) | Self::OpenBranch([a, b]) => {
+            Self::OpenC1B2([a, b]) | Self::OpenC2B2([a, b]) => {
                 let b = if b > a { b } else { b + TAU };
                 if b - a > Self::MIN_ANGLE {
                     self
@@ -211,7 +211,7 @@ impl AngleBound {
     pub fn to_value(self) -> Option<[f64; 2]> {
         match self {
             Self::Closed => Some([0., TAU]),
-            Self::Open(a) | Self::OpenBranch(a) => Some(a),
+            Self::OpenC1B2(a) | Self::OpenC2B2(a) => Some(a),
             Self::Invalid => None,
         }
     }
