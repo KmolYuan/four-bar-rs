@@ -1,14 +1,13 @@
 //! Functions for reading/writing CSV format.
 pub use csv::Error;
 use csv::{ReaderBuilder, Writer};
-use serde::{de::DeserializeOwned, Serialize};
 use std::io::ErrorKind::InvalidData;
 
 /// Parse CSV from string.
 pub fn from_reader<R, D>(r: R) -> Result<Vec<D>, Error>
 where
     R: std::io::Read,
-    D: DeserializeOwned,
+    D: serde::de::DeserializeOwned,
 {
     ReaderBuilder::new()
         .has_headers(false)
@@ -27,7 +26,7 @@ pub fn to_writer<W, C, S>(w: W, c: C) -> Result<(), csv::Error>
 where
     W: std::io::Write,
     C: AsRef<[S]>,
-    S: Serialize,
+    S: serde::Serialize,
 {
     let mut w = Writer::from_writer(w);
     c.as_ref().iter().try_for_each(|c| w.serialize(c))?;
@@ -39,7 +38,7 @@ where
 pub fn to_string<C, S>(c: C) -> Result<String, csv::Error>
 where
     C: AsRef<[S]>,
-    S: Serialize,
+    S: serde::Serialize,
 {
     let mut w = Vec::new();
     to_writer(&mut w, c)?;

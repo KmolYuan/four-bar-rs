@@ -5,7 +5,7 @@ use std::f64::consts::FRAC_PI_6;
 /// Unnormalized part of four-bar linkage.
 ///
 /// Please see [`FourBar`] for more information.
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct UnNorm {
     /// X offset of the driver link pivot
@@ -53,7 +53,7 @@ impl UnNorm {
 /// + Extanded link `l5`
 /// + Coupler link angle `g`
 /// + Inverse coupler and follower to another circuit
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct NormFourBar {
     /// Length of the ground link
