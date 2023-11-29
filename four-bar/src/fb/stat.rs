@@ -59,12 +59,22 @@ impl TryFrom<u8> for Stat {
 
 impl Stat {
     /// Get the lowercase name.
-    pub fn name_lowercase(&self) -> &'static str {
+    pub const fn name_lowercase(&self) -> &'static str {
         match self {
             Self::C1B1 => "c1b1",
             Self::C1B2 => "c1b2",
             Self::C2B1 => "c2b1",
             Self::C2B2 => "c2b2",
+        }
+    }
+
+    /// Get the uppercase name.
+    pub const fn name_uppercase(&self) -> &'static str {
+        match self {
+            Self::C1B1 => "C1B1",
+            Self::C1B2 => "C1B2",
+            Self::C2B1 => "C2B1",
+            Self::C2B2 => "C2B2",
         }
     }
 

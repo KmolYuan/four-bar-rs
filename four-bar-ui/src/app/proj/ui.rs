@@ -195,7 +195,7 @@ fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, has_branch: bool
         ui.label("State");
         for label in states {
             *res |= ui
-                .selectable_value(stat, label, format!("{label:?}"))
+                .selectable_value(stat, label, label.name_uppercase())
                 .on_hover_text(format!("{label}"));
         }
     });
