@@ -3,20 +3,24 @@ use std::f64::consts::TAU;
 /// State of the linkage.
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize, serde::Serialize),
+    serde(rename_all = "lowercase")
+)]
 pub enum Stat {
     /// Circuit 1, branch 1
     #[default]
-    #[cfg_attr(feature = "serde", serde(alias = "c1b1"))]
+    #[cfg_attr(feature = "serde", serde(alias = "C1B1"))]
     C1B1 = 1,
     /// Circuit 1, branch 2
-    #[cfg_attr(feature = "serde", serde(alias = "c1b2"))]
+    #[cfg_attr(feature = "serde", serde(alias = "C1B2"))]
     C1B2 = 2,
     /// Circuit 2, branch 1
-    #[cfg_attr(feature = "serde", serde(alias = "c2b1"))]
+    #[cfg_attr(feature = "serde", serde(alias = "C2B1"))]
     C2B1 = 3,
     /// Circuit 2, branch 2
-    #[cfg_attr(feature = "serde", serde(alias = "c2b2"))]
+    #[cfg_attr(feature = "serde", serde(alias = "C2B2"))]
     C2B2 = 4,
 }
 
