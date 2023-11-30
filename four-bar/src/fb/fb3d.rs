@@ -296,16 +296,15 @@ impl Transformable<efd::D3> for SFourBar {
 }
 
 impl CurveGen<efd::D3> for SFourBar {
-    fn pos(&self, t: f64) -> Option<[efd::Coord<efd::D3>; 5]> {
-        curve_interval(self, t)
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<efd::D3>; 5]> {
+        curve_interval(self, t, inv)
     }
 }
 
-fn curve_interval(fb: &SFourBar, b: f64) -> Option<[[f64; 3]; 5]> {
+fn curve_interval(fb: &SFourBar, b: f64, inv: bool) -> Option<[[f64; 3]; 5]> {
     // a=alpha, b=beta, g=gamma, d=delta
     let UnNorm { ox, oy, oz, r, p1i, p1j, a } = fb.unnorm;
     let SNormFourBar { l1, l2, l3, l4, l5, g, .. } = fb.norm;
-    let inv = fb.inv();
     let op1 = r * na::Vector3::z();
     let e1 = {
         let rx1v = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), g);

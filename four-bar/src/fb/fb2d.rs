@@ -178,8 +178,8 @@ impl Transformable<efd::D2> for FourBar {
 }
 
 impl CurveGen<efd::D2> for FourBar {
-    fn pos(&self, t: f64) -> Option<[efd::Coord<efd::D2>; 5]> {
-        curve_interval(self, t)
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<efd::D2>; 5]> {
+        curve_interval(self, t, inv)
     }
 }
 
@@ -208,10 +208,9 @@ fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) 
     [xm - h * s, ym + h * c]
 }
 
-fn curve_interval(fb: &FourBar, b: f64) -> Option<[[f64; 2]; 5]> {
+fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
     let UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
     let NormFourBar { l1, l3, l4, l5, g, .. } = fb.norm;
-    let inv = fb.inv();
     let p1 = [p1x, p1y];
     let p2 = angle(p1, l1, a);
     let p3 = angle(p1, l2, a + b);

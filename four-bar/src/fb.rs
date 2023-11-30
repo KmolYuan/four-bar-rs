@@ -135,23 +135,30 @@ pub trait Transformable<D: efd::EfdDim>: Sized {
 
 /// Curve-generating behavior.
 pub trait CurveGen<D: efd::EfdDim>: Statable {
+    /// Get the position with inversion flag.
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]>;
+
     /// Get the position with input angle.
-    fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]>;
+    fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]> {
+        self.pos_s(t, self.inv())
+    }
 
     /// Generator for all curves in specified angle.
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
+        let inv = self.inv();
         curve_in(
             start,
             end,
             res,
-            |t| self.pos(t),
+            |t| self.pos_s(t, inv),
             |[.., p3, p4, p5]| [p3, p4, p5],
         )
     }
 
     /// Generator for coupler curve in specified angle.
     fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<efd::Coord<D>> {
-        curve_in(start, end, res, |t| self.pos(t), |[.., p5]| p5)
+        let inv = self.inv();
+        curve_in(start, end, res, |t| self.pos_s(t, inv), |[.., p5]| p5)
     }
 
     /// Generator for curves.
@@ -177,8 +184,8 @@ where
     N: Normalized<D> + Statable + Clone,
     N::De: CurveGen<D>,
 {
-    fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]> {
-        self.clone().denormalize().pos(t)
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]> {
+        self.clone().denormalize().pos_s(t, inv)
     }
 
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
