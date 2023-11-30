@@ -24,7 +24,7 @@ where
             .iter()
             .map(|&[u, l]| rng.gen_range(u..l))
             .collect::<Vec<_>>();
-        M::from_vectorized_s1(&v).unwrap().get_states()
+        M::from_vectorized_s1(&v).unwrap().to_states()
     }
 }
 

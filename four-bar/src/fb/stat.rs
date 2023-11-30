@@ -205,15 +205,6 @@ impl AngleBound {
             Self::Invalid => Vec::new(),
         }
     }
-
-    /// Return boolean value to specify the inversion.
-    pub fn inv(&self, stat: Stat) -> bool {
-        match self {
-            Self::Closed => !stat.is_c1(),
-            Self::OpenC1B2(_) | Self::OpenC2B2(_) => !stat.is_b1(),
-            Self::Invalid => false,
-        }
-    }
 }
 
 /// Type of the four-bar linkage.
@@ -337,26 +328,42 @@ pub trait Statable: PlanarLoop + Clone {
 
     /// Get the inversion state.
     fn inv(&self) -> bool {
-        self.angle_bound().inv(self.stat())
+        let [l1, l2, l3, l4] = self.planar_loop();
+        let stat = self.stat();
+        if l1 + l2 <= l3 + l4 && (l1 - l2).abs() >= (l3 - l4).abs() {
+            // Closed
+            !stat.is_c1()
+        } else {
+            // Open
+            !stat.is_b1()
+        }
     }
 
     /// List all states from a linkage.
-    fn get_states(&self) -> Vec<Self> {
-        self.angle_bound()
-            .get_states()
-            .into_iter()
-            .map(|s| self.clone().with_stat(s))
-            .collect()
+    fn to_states(self) -> Vec<Self> {
+        self.to_bound_states().1
     }
 
-    /// Get the input angle bounds and all states from a linkage.
-    fn get_bound_states_filter(&self, is_open: bool) -> (AngleBound, Vec<Self>) {
-        let bound = self.angle_bound().check_mode(is_open);
-        let states = bound
+    /// Get the input angle bounds and list all states from a linkage.
+    fn to_bound_states(self) -> (AngleBound, Vec<Self>) {
+        self.to_bound_states_filter(|a| a)
+    }
+
+    /// Get the input angle bounds and list all states from a linkage with a
+    /// filter.
+    fn to_bound_states_filter<F>(self, f: F) -> (AngleBound, Vec<Self>)
+    where
+        F: FnOnce(AngleBound) -> AngleBound,
+    {
+        let stat = self.stat();
+        let bound = f(self.angle_bound());
+        let mut states = bound
             .get_states()
             .into_iter()
+            .filter(|s| *s != stat)
             .map(|s| self.clone().with_stat(s))
-            .collect();
+            .collect::<Vec<_>>();
+        states.push(self);
         (bound, states)
     }
 }
