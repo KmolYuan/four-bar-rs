@@ -374,10 +374,8 @@ where
     }
 
     fn preload(&mut self) {
-        if cfg!(target_arch = "wasm32") {
-            return;
-        }
         // FIXME: Try block, ignore errors
+        #[cfg(not(target_arch = "wasm32"))]
         (|| {
             let r = std::fs::File::open(self.path.as_ref()?).ok()?;
             if self.fb != ron::de::from_reader(r).ok()? {
