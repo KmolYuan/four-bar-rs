@@ -141,11 +141,12 @@ where
     }
 }
 
-struct Cache<D: efd::EfdDim> {
+pub(crate) struct Cache<D: efd::EfdDim> {
     changed: bool,
     angle_bound: fb::AngleBound,
-    joints: Option<[efd::Coord<D>; 5]>,
-    curves: Vec<[efd::Coord<D>; 3]>,
+    pub(crate) joints: Option<[efd::Coord<D>; 5]>,
+    pub(crate) curves: Vec<[efd::Coord<D>; 3]>,
+    pub(crate) stat_curves: Vec<Vec<efd::Coord<D>>>,
 }
 
 impl<D: efd::EfdDim> Default for Cache<D> {
@@ -155,6 +156,7 @@ impl<D: efd::EfdDim> Default for Cache<D> {
             angle_bound: fb::AngleBound::Invalid,
             joints: None,
             curves: Vec::new(),
+            stat_curves: Vec::new(),
         }
     }
 }
@@ -336,14 +338,21 @@ where
             self.cache.joints = self.fb.pos(self.angle);
             self.cache.angle_bound = self.fb.angle_bound();
             self.cache.curves = self.fb.curves(res);
+            self.cache.stat_curves = self
+                .cache
+                .angle_bound
+                .get_states()
+                .into_iter()
+                .filter(|s| *s != self.fb.stat())
+                .map(|s| self.fb.clone().with_stat(s).curve(res))
+                .collect();
         }
     }
 
     fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize) {
         use ui::ProjPlot as _;
         if !self.hide {
-            let joints = self.cache.joints.as_ref();
-            self.fb.proj_plot(ui, joints, &self.cache.curves, ind == id);
+            self.fb.proj_plot(ui, &self.cache, ind == id);
         }
     }
 

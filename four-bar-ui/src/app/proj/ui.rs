@@ -1,4 +1,4 @@
-use super::*;
+use super::{impl_proj::Cache, *};
 use four_bar::{
     efd,
     efd::na,
@@ -95,24 +95,12 @@ fn draw_link3d(ui: &mut egui_plot::PlotUi, sc: [f64; 3], points: &[[f64; 3]], is
 }
 
 pub(crate) trait ProjPlot<D: efd::EfdDim> {
-    fn proj_plot(
-        &self,
-        ui: &mut egui_plot::PlotUi,
-        joints: Option<&[efd::Coord<D>; 5]>,
-        curves: &[[efd::Coord<D>; 3]],
-        is_main: bool,
-    );
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<D>, is_main: bool);
 }
 
 impl ProjPlot<efd::D2> for FourBar {
-    fn proj_plot(
-        &self,
-        ui: &mut egui_plot::PlotUi,
-        joints: Option<&[[f64; 2]; 5]>,
-        curves: &[[[f64; 2]; 3]],
-        is_main: bool,
-    ) {
-        if let Some(joints) = joints {
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<efd::D2>, is_main: bool) {
+        if let Some(joints) = cache.joints {
             draw_link2d(ui, &[joints[0], joints[2]], is_main);
             draw_link2d(ui, &[joints[1], joints[3]], is_main);
             draw_link2d(ui, &joints[2..], is_main);
@@ -122,8 +110,16 @@ impl ProjPlot<efd::D2> for FourBar {
                 }
             }
         }
+        for line in &cache.stat_curves {
+            let line = egui_plot::Line::new(line.clone())
+                .name(CURVE_NAME[2])
+                .width(3.)
+                .color(pick_color(2))
+                .style(egui_plot::LineStyle::dashed_dense());
+            ui.line(line);
+        }
         for (i, name) in CURVE_NAME.iter().enumerate() {
-            let iter = curves.iter().map(|c| c[i]).collect::<Vec<_>>();
+            let iter = cache.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
             let line = egui_plot::Line::new(iter)
                 .name(name)
                 .width(3.)
@@ -134,13 +130,7 @@ impl ProjPlot<efd::D2> for FourBar {
 }
 
 impl ProjPlot<efd::D3> for SFourBar {
-    fn proj_plot(
-        &self,
-        ui: &mut egui_plot::PlotUi,
-        joints: Option<&[efd::Coord<efd::D3>; 5]>,
-        curves: &[[efd::Coord<efd::D3>; 3]],
-        is_main: bool,
-    ) {
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<efd::D3>, is_main: bool) {
         const N: usize = 150;
         const STEP: f64 = std::f64::consts::TAU / N as f64;
         let r = self.unnorm.r;
@@ -153,7 +143,7 @@ impl ProjPlot<efd::D3> for SFourBar {
             .map(|t| [r * t.cos() + ox, r * t.sin() + oy])
             .collect::<Vec<_>>();
         ui.line(egui_plot::Line::new(circle).style(egui_plot::LineStyle::dashed_dense()));
-        if let Some(joints) = joints {
+        if let Some(joints) = cache.joints {
             draw_link3d(ui, sc, &[joints[0], joints[2]], is_main);
             draw_link3d(ui, sc, &[joints[1], joints[3]], is_main);
             draw_link3d(ui, sc, &joints[2..], is_main);
@@ -163,9 +153,17 @@ impl ProjPlot<efd::D3> for SFourBar {
                 }
             }
         }
+        for line in &cache.stat_curves {
+            draw_sline(ui, oz, line.iter().copied(), |s| {
+                s.name(CURVE_NAME[2])
+                    .width(3.)
+                    .color(pick_color(2))
+                    .style(egui_plot::LineStyle::dashed_dense())
+            });
+        }
         for (i, name) in CURVE_NAME.iter().enumerate() {
             let color = pick_color(i);
-            let iter = curves.iter().map(|c| c[i]);
+            let iter = cache.curves.iter().map(|c| c[i]);
             draw_sline(ui, oz, iter, |s| s.name(name).width(3.).color(color));
         }
     }
