@@ -194,6 +194,10 @@ pub(super) fn syn(syn: Syn) {
             }
         })
         .collect::<Vec<_>>();
+    if tasks.is_empty() {
+        println!("No valid target files!");
+        std::process::exit(1);
+    }
     if clean && !rerun {
         return;
     }
