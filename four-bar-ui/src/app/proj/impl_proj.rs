@@ -240,12 +240,7 @@ where
         });
         ui.label("Linkage type:");
         ui.label(self.fb.ty().name());
-        match self.cache.angle_bound {
-            fb::AngleBound::Closed => ui.label("Closed curve"),
-            fb::AngleBound::OpenC1B2(_) => ui.label("Open curve C1B2"),
-            fb::AngleBound::OpenC2B2(_) => ui.label("Open curve C2B2"),
-            fb::AngleBound::Invalid => ui.label("Invalid"),
-        };
+        ui.label(self.cache.angle_bound.description());
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.hide, "Hide 👁");
             if ui

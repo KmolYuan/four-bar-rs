@@ -112,6 +112,16 @@ impl AngleBound {
     /// The minimum input angle bound. (π/2)
     pub const MIN_ANGLE: f64 = std::f64::consts::FRAC_PI_2;
 
+    /// Name of the angle bound.
+    pub const fn description(&self) -> &'static str {
+        match self {
+            Self::Closed => "Closed curve",
+            Self::OpenC1B2(_) => "Open curve with 1 circuits 2 branches",
+            Self::OpenC2B2(_) => "Open curve with 2 circuits 2 branches",
+            Self::Invalid => "Invalid",
+        }
+    }
+
     /// Check angle bound from a planar loop.
     pub fn from_planar_loop(mut planar_loop: [f64; 4], stat: Stat) -> Self {
         let [l1, l2, l3, l4] = planar_loop;
