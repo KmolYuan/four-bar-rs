@@ -6,8 +6,8 @@ use four_bar::{FourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
 
+mod fb_ui;
 mod impl_proj;
-mod ui;
 mod undo;
 
 #[derive(Default, Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]

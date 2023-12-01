@@ -204,8 +204,8 @@ where
     M::De: fb::CurveGen<D>
         + fb::Statable
         + undo::IntoDelta
-        + ui::ProjUi
-        + ui::ProjPlot<D>
+        + fb_ui::ProjUi
+        + fb_ui::ProjPlot<D>
         + PartialEq
         + Default
         + Serialize
@@ -314,7 +314,7 @@ where
                 self.unsaved = true;
             }
         });
-        let mut res = ui::ProjUi::proj_ui(&mut self.fb, ui, cfg);
+        let mut res = fb_ui::ProjUi::proj_ui(&mut self.fb, ui, cfg);
         self.unsaved |= res.changed();
         ui.separator();
         ui.heading("Angle");
@@ -323,30 +323,29 @@ where
         }
         res |= angle(ui, "Theta: ", &mut self.angle, "");
         self.cache.changed |= res.changed();
-        self.cache(cfg.res);
+        if self.cache.changed {
+            self.cache(cfg.res);
+        }
     }
 
     fn cache(&mut self, res: usize) {
         use four_bar::fb::{CurveGen as _, Statable as _};
-        if self.cache.changed {
-            // Recalculation
-            self.cache.changed = false;
-            self.cache.joints = self.fb.pos(self.angle);
-            self.cache.angle_bound = self.fb.angle_bound();
-            self.cache.curves = self.fb.curves(res);
-            self.cache.stat_curves = self
-                .cache
-                .angle_bound
-                .get_states()
-                .into_iter()
-                .filter(|s| *s != self.fb.stat())
-                .map(|s| self.fb.clone().with_stat(s).curve(res))
-                .collect();
-        }
+        self.cache.changed = false;
+        self.cache.joints = self.fb.pos(self.angle);
+        self.cache.angle_bound = self.fb.angle_bound();
+        self.cache.curves = self.fb.curves(res);
+        self.cache.stat_curves = self
+            .cache
+            .angle_bound
+            .get_states()
+            .into_iter()
+            .filter(|s| *s != self.fb.stat())
+            .map(|s| self.fb.clone().with_stat(s).curve(res))
+            .collect();
     }
 
     fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize) {
-        use ui::ProjPlot as _;
+        use fb_ui::ProjPlot as _;
         if !self.hide {
             self.fb.proj_plot(ui, &self.cache, ind == id);
         }
