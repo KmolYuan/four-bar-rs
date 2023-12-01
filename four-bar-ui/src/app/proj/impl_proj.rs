@@ -316,6 +316,7 @@ where
             {
                 M::normalize_inplace(&mut self.fb);
                 self.cache.changed = true;
+                self.unsaved = true;
             }
         });
         let mut res = ui::ProjUi::proj_ui(&mut self.fb, ui, cfg);
