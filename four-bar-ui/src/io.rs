@@ -10,8 +10,8 @@ const FMT: &str = "Rusty Object Notation (RON)";
 const EXT: &[&str] = &["ron"];
 const CSV_FMT: &str = "Delimiter-Separated Values (CSV)";
 const CSV_EXT: &[&str] = &["csv", "txt"];
-const CB_FMT: &str = "Numpy Array Zip (NPZ)";
-const CB_EXT: &[&str] = &["npz"];
+const ATLAS_FMT: &str = "Numpy Array Zip (NPZ)";
+const ATLAS_EXT: &[&str] = &["npz"];
 const SVG_FMT: &str = "Scalable Vector Graphics (SVG)";
 const SVG_EXT: &[&str] = &["svg"];
 const IMG_FMT: &str = "Supported Image Format (PNG & JPEG)";
@@ -275,7 +275,7 @@ where
     C: Fn(Atlas) + 'static,
 {
     let done = move |b| Atlas::from_reader(b).alert_then("Parse File", &done);
-    open_bin(CB_FMT, CB_EXT, done);
+    open_bin(ATLAS_FMT, ATLAS_EXT, done);
 }
 
 pub(crate) fn open_img<C>(done: C)
@@ -299,12 +299,18 @@ where
     );
 }
 
-pub(crate) fn save_cb_ask<C, D>(atlas: &atlas::Atlas<C, D>)
+pub(crate) fn save_atlas_ask<C, D>(atlas: &atlas::Atlas<C, D>)
 where
     C: atlas::Code<D> + Send,
     D: efd::EfdDim,
 {
-    save_ask("atlas.npz", CB_FMT, CB_EXT, |w| atlas.write(w), |_| ());
+    save_ask(
+        "atlas.npz",
+        ATLAS_FMT,
+        ATLAS_EXT,
+        |w| atlas.write(w),
+        |_| (),
+    );
 }
 
 fn write_ron<W, S>(mut w: W, s: &S) -> Result<(), ron::Error>

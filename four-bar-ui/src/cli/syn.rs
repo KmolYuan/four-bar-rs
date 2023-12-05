@@ -285,7 +285,7 @@ fn from_runtime(
     let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
     writeln!(log, "[{title}]\n")?;
     match (target, &lnk_fb) {
-        (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, cb_fb)) if fb.is_valid() => {
+        (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, atlas_fb)) if fb.is_valid() => {
             let efd_target =
                 efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
@@ -302,7 +302,7 @@ fn from_runtime(
                 writeln!(log, "[target.fb]")?;
                 log_fb(&mut log, fb)?;
             }
-            if let Some((cost, fb)) = cb_fb {
+            if let Some((cost, fb)) = atlas_fb {
                 let c = fb.curve(cfg.res);
                 let efd = efd::Efd2::from_curve_harmonic(c, mode.is_result_open(), harmonic);
                 let trans = efd.as_trans().to(efd_target.as_trans());
@@ -341,7 +341,7 @@ fn from_runtime(
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        (io::Curve::S(target), syn_cmd::SolvedFb::SFb(fb, cb_fb)) if fb.is_valid() => {
+        (io::Curve::S(target), syn_cmd::SolvedFb::SFb(fb, atlas_fb)) if fb.is_valid() => {
             let efd_target =
                 efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
@@ -358,7 +358,7 @@ fn from_runtime(
                 writeln!(log, "[target.fb]")?;
                 log_sfb(&mut log, fb)?;
             }
-            if let Some((cost, fb)) = cb_fb {
+            if let Some((cost, fb)) = atlas_fb {
                 let c = fb.curve(cfg.res);
                 let efd = efd::Efd3::from_curve_harmonic(c, mode.is_result_open(), harmonic);
                 let trans = efd.as_trans().to(efd_target.as_trans());

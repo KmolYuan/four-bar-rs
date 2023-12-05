@@ -48,15 +48,15 @@ impl Default for AtlasCfg {
 pub(crate) struct Synthesis {
     alg: syn_cmd::SynAlg,
     cfg: syn_cmd::SynCfg,
-    cb_cfg: AtlasCfg,
+    atlas_cfg: AtlasCfg,
     target: io::Curve,
     tasks: Vec<Task>,
     #[serde(skip)]
     atlas: io::AtlasPool,
     #[serde(skip)]
-    cb_vis: Vec<AtlasVis>,
+    atlas_vis: Vec<AtlasVis>,
     #[serde(skip)]
-    cb_pg: Option<Arc<std::sync::atomic::AtomicU32>>,
+    atlas_pg: Option<Arc<std::sync::atomic::AtomicU32>>,
     #[serde(skip)]
     queue: Arc<mutex::RwLock<Cache>>,
     #[serde(skip)]
@@ -64,7 +64,7 @@ pub(crate) struct Synthesis {
     #[serde(skip)]
     conv_open: bool,
     #[serde(skip)]
-    cb_vis_open: bool,
+    atlas_vis_open: bool,
     #[serde(skip)]
     from_plot_open: bool,
 }
@@ -82,7 +82,7 @@ impl Synthesis {
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
         });
-        ui.collapsing("Atlas Database", |ui| self.cb_setting(ui));
+        ui.collapsing("Atlas Database", |ui| self.atlas_setting(ui));
         ui.separator();
         ui.heading("Target Curve");
         ui.horizontal(|ui| {
@@ -210,7 +210,7 @@ impl Synthesis {
             }
             ui.add(ProgressBar::new(0.).show_percentage());
         });
-        self.cb_vis(ui);
+        self.atlas_vis(ui);
         self.convergence_plot(ui);
     }
 
@@ -251,7 +251,7 @@ impl Synthesis {
         }
     }
 
-    fn cb_setting(&mut self, ui: &mut Ui) {
+    fn atlas_setting(&mut self, ui: &mut Ui) {
         ui.label("Use pre-searched dataset to increase the synthesis performance.");
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
@@ -260,39 +260,39 @@ impl Synthesis {
             }
             ui.group(|ui| {
                 if ui.button("☁ Point Cloud Visualize").clicked() {
-                    if !self.cb_vis_open {
-                        self.cb_vis_cache();
+                    if !self.atlas_vis_open {
+                        self.atlas_vis_cache();
                     } else {
-                        self.cb_vis.clear();
-                        self.cb_vis.shrink_to_fit();
+                        self.atlas_vis.clear();
+                        self.atlas_vis.shrink_to_fit();
                     }
-                    self.cb_vis_open = !self.cb_vis_open;
+                    self.atlas_vis_open = !self.atlas_vis_open;
                 }
             });
         });
         ui.separator();
         ui.horizontal(|ui| {
-            nonzero_i(ui, "Size: ", &mut self.cb_cfg.size, 1);
-            nonzero_i(ui, "Harmonic: ", &mut self.cb_cfg.harmonic, 1);
-            ui.checkbox(&mut self.cb_cfg.is_open, "Is open curve");
+            nonzero_i(ui, "Size: ", &mut self.atlas_cfg.size, 1);
+            nonzero_i(ui, "Harmonic: ", &mut self.atlas_cfg.harmonic, 1);
+            ui.checkbox(&mut self.atlas_cfg.is_open, "Is open curve");
         });
         macro_rules! impl_make_cb {
-            ($atlas:ident, $cb_ty:ident) => {
-                let size = self.cb_cfg.size;
+            ($atlas:ident, $atlas_ty:ident) => {
+                let size = self.atlas_cfg.size;
                 let cfg = atlas::Cfg::new()
                     .res(self.cfg.res)
                     .size(size)
-                    .harmonic(self.cb_cfg.harmonic)
-                    .is_open(self.cb_cfg.is_open);
+                    .harmonic(self.atlas_cfg.harmonic)
+                    .is_open(self.atlas_cfg.is_open);
                 let queue = self.queue.clone();
                 let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
-                self.cb_pg.replace(pg.clone());
+                self.atlas_pg.replace(pg.clone());
                 let f = move || {
                     let atlas = atlas::$atlas::make_with(cfg, |p| {
                         let p = p as f32 / size as f32;
                         pg.store(p.to_bits(), std::sync::atomic::Ordering::Relaxed);
                     });
-                    *queue.write() = Cache::Atlas(io::Atlas::$cb_ty(atlas));
+                    *queue.write() = Cache::Atlas(io::Atlas::$atlas_ty(atlas));
                 };
                 #[cfg(not(target_arch = "wasm32"))]
                 mh::rayon::spawn(f);
@@ -300,7 +300,7 @@ impl Synthesis {
                 f(); // Block
             };
         }
-        Grid::new("cb_cfg").show(ui, |ui| {
+        Grid::new("atlas_cfg").show(ui, |ui| {
             ui.label("");
             ui.label("Planar Data");
             ui.label("Spherical Data");
@@ -311,14 +311,14 @@ impl Synthesis {
             ui.end_row();
             ui.label("Save");
             if ui.button("💾").clicked() {
-                io::save_cb_ask(self.atlas.as_fb());
+                io::save_atlas_ask(self.atlas.as_fb());
             }
             if ui.button("💾").clicked() {
-                io::save_cb_ask(self.atlas.as_sfb());
+                io::save_atlas_ask(self.atlas.as_sfb());
             }
             ui.end_row();
             ui.label("Generate");
-            let enabled = self.cb_pg.is_none();
+            let enabled = self.atlas_pg.is_none();
             if ui.add_enabled(enabled, Button::new("✚")).clicked() {
                 impl_make_cb!(FbAtlas, P);
             }
@@ -334,11 +334,11 @@ impl Synthesis {
                 self.atlas.as_sfb_mut().clear();
             }
         });
-        if let Some(pg) = &self.cb_pg {
+        if let Some(pg) = &self.atlas_pg {
             let pg = f32::from_bits(pg.load(std::sync::atomic::Ordering::Relaxed));
             ui.add(ProgressBar::new(pg).show_percentage().animate(true));
             if pg == 1. {
-                self.cb_pg = None;
+                self.atlas_pg = None;
             }
         }
     }
@@ -411,7 +411,7 @@ impl Synthesis {
     }
 
     // Cache the visualization of atlas
-    fn cb_vis_cache(&mut self) {
+    fn atlas_vis_cache(&mut self) {
         fn pca<C, D>(atlas: &atlas::Atlas<C, D>, is_sphere: bool) -> Vec<AtlasVis>
         where
             C: atlas::Code<D>,
@@ -429,26 +429,26 @@ impl Synthesis {
                 .collect()
         }
 
-        self.cb_vis
+        self.atlas_vis
             .reserve(self.atlas.as_fb().len() + self.atlas.as_sfb().len());
         if !self.atlas.as_fb().is_empty() {
-            self.cb_vis.extend(pca(self.atlas.as_fb(), false));
+            self.atlas_vis.extend(pca(self.atlas.as_fb(), false));
         }
         if !self.atlas.as_sfb().is_empty() {
-            self.cb_vis.extend(pca(self.atlas.as_sfb(), true));
+            self.atlas_vis.extend(pca(self.atlas.as_sfb(), true));
         }
     }
 
-    fn cb_vis(&mut self, ui: &mut Ui) {
-        if !self.cb_vis_open {
+    fn atlas_vis(&mut self, ui: &mut Ui) {
+        if !self.atlas_vis_open {
             return;
         }
         let mut f = |name, title, draw_sphere| {
             Window::new(title)
-                .open(&mut self.cb_vis_open)
+                .open(&mut self.atlas_vis_open)
                 .show(ui.ctx(), |ui| {
                     static_plot(name).view_aspect(1.).show(ui, |ui| {
-                        for &AtlasVis { pt, is_open, is_sphere } in &self.cb_vis {
+                        for &AtlasVis { pt, is_open, is_sphere } in &self.atlas_vis {
                             if is_sphere != draw_sphere {
                                 continue;
                             }
@@ -462,8 +462,12 @@ impl Synthesis {
                     });
                 });
         };
-        f("cb_vis_planar", "☁ Planar Data Visualization", false);
-        f("cb_vis_spherical", "☁ Spherical Data Visualization", true);
+        f("atlas_vis_planar", "☁ Planar Data Visualization", false);
+        f(
+            "atlas_vis_spherical",
+            "☁ Spherical Data Visualization",
+            true,
+        );
     }
 
     fn start_syn(&mut self, lnk: &Linkages) {

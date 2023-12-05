@@ -131,14 +131,14 @@ impl<'a> Solver<'a> {
                     .seed(seed)
                     .task(move |ctx| !stop() && ctx.gen >= gen)
                     .callback(move |ctx| callback(ctx.best_f.fitness(), ctx.gen));
-                let mut cb_fb = None;
+                let mut atlas_fb = None;
                 if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
                     .then(|| $atlas.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
                 {
                     use four_bar::fb::{IntoVectorized as _, Normalized as _};
                     use mh::ndarray::Array2;
-                    cb_fb.replace(candi[0].clone());
+                    atlas_fb.replace(candi[0].clone());
                     let pop = candi.len();
                     s = s.pop_num(pop);
                     let fitness = candi
@@ -154,7 +154,7 @@ impl<'a> Solver<'a> {
                 } else {
                     s = s.pop_num(pop);
                 }
-                Self::$syn(s, cb_fb)
+                Self::$syn(s, atlas_fb)
             }};
         }
         match target {
@@ -173,16 +173,16 @@ impl<'a> Solver<'a> {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn solve_verbose(self) -> Result<(f64, usize, SolvedFb), mh::ndarray::ShapeError> {
         macro_rules! impl_solve {
-            ($syn:ident, $s:ident, $cb_fb:ident) => {{
+            ($syn:ident, $s:ident, $atlas_fb:ident) => {{
                 let s = $s.solve()?;
                 let h = s.func().harmonic();
                 let (err, fb) = s.into_err_result();
-                Ok((err, h, SolvedFb::$syn(fb, $cb_fb)))
+                Ok((err, h, SolvedFb::$syn(fb, $atlas_fb)))
             }};
         }
         match self {
-            Self::FbSyn(s, cb_fb) => impl_solve!(Fb, s, cb_fb),
-            Self::SFbSyn(s, cb_fb) => impl_solve!(SFb, s, cb_fb),
+            Self::FbSyn(s, atlas_fb) => impl_solve!(Fb, s, atlas_fb),
+            Self::SFbSyn(s, atlas_fb) => impl_solve!(SFb, s, atlas_fb),
         }
     }
 }
