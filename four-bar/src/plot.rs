@@ -589,7 +589,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     }
 
     pub(crate) fn get_font3d(&self) -> TextStyle {
-        (self.get_family(), self.font * 1.3)
+        (self.get_family(), self.font * 1.15)
             .into_font()
             .color(&BLACK)
     }

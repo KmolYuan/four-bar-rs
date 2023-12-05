@@ -3,6 +3,8 @@
 pub use super::*;
 use efd::na;
 use full_palette::GREY_600;
+use plotters::style::SizeDesc as _;
+use plotters_backend::text_anchor::{HPos, Pos, VPos};
 
 const LIGHTGRAY: RGBAColor = RGBAColor(150, 150, 150, 0.4);
 
@@ -39,6 +41,17 @@ impl Figure<'_, '_> {
         self.check_empty::<B>()?;
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
+        {
+            // Draw axis description
+            let (tw, th) = root.dim_in_pixel();
+            let tick = (5).percent().in_pixels(&root);
+            let style = self.get_font3d().pos(Pos::new(HPos::Center, VPos::Center));
+            let x_shift = tw as i32 / 4;
+            let buttom_shift = th as i32 - tick;
+            root.draw_text("X", &style, (tick + x_shift, buttom_shift))?;
+            root.draw_text("Y", &style, (tick, th as i32 / 2))?;
+            root.draw_text("Z", &style, (tick + x_shift * 3, buttom_shift))?;
+        }
         let (stroke, dot_size) = self.get_dot_size();
         let sphere = self
             .get_sphere_center_radius()
@@ -55,7 +68,7 @@ impl Figure<'_, '_> {
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
             .margin((2).percent())
-            .margin_left((11).percent())
+            .margin_left((15).percent())
             .build_cartesian_3d(x_spec, y_spec, z_spec)?;
         let yaw = std::f64::consts::FRAC_PI_4;
         chart.with_projection(|mut pb| {
