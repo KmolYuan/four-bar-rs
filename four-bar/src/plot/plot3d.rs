@@ -162,7 +162,10 @@ impl Figure<'_, '_> {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
                 let color = if is_front { BLACK } else { GREY_600 }.to_rgba();
                 let style = ShapeStyle { color, filled: n == 4, stroke_width: stroke };
-                let joint = Circle::new((x, y, z), dot_size, style);
+                let t_style = self.get_font3d().color(&BLUE);
+                let joint = EmptyElement::at((x, y, z))
+                    + Circle::new((0, 0), dot_size, style)
+                    + Text::new(format!("P{}", Subscript(n + 1)), (5, 5), t_style);
                 if is_front {
                     joints_front.push(joint);
                 } else {

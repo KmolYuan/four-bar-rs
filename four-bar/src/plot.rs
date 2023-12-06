@@ -28,6 +28,7 @@
 //! ```
 use self::{ball::*, dashed_line::*};
 use crate::*;
+use fmtastic::Subscript;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
 use std::{

@@ -111,9 +111,12 @@ impl Figure<'_, '_> {
                     + TriangleMarker::new((0, 10), dot_size + 3, BLACK.filled())
             });
             chart.draw_series(grounded)?;
-            let joints = joints
-                .iter()
-                .map(|&[x, y]| Circle::new((x, y), dot_size, BLACK.filled()));
+            let joints = joints.iter().enumerate().map(|(n, &[x, y])| {
+                let t_style = self.get_font3d().color(&BLUE);
+                EmptyElement::at((x, y))
+                    + Circle::new((0, 0), dot_size, BLACK.filled())
+                    + Text::new(format!("P{}", Subscript(n + 1)), (5, 5), t_style)
+            });
             chart.draw_series(joints)?;
         }
         // Draw legend
