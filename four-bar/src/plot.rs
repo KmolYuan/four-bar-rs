@@ -487,19 +487,23 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     }
 
     /// Add a line.
-    pub fn add_line<S, L>(self, label: S, line: L, style: Style, color: RGBColor) -> Self
+    pub fn add_line<S, L>(mut self, label: S, line: L, style: Style, color: RGBColor) -> Self
     where
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [C]>>,
     {
-        let color = ShapeStyle::from(color);
-        self.add_line_data(LineData {
-            label: label.into(),
-            line: line.into(),
-            style,
-            color: [color.color.0, color.color.1, color.color.2],
-            filled: color.filled,
-        })
+        self.push_line(label, line, style, color);
+        self
+    }
+
+    /// Add a line with default settings.
+    pub fn add_line_default<S, L>(mut self, label: S, line: L) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+        L: Into<Cow<'a, [C]>>,
+    {
+        self.push_line_default(label, line);
+        self
     }
 
     /// Add a line from a [`LineData`] instance.
