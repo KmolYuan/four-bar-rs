@@ -19,7 +19,6 @@ fn fig_ui<D, M, const N: usize>(
     ui.collapsing("Linkage", |ui| {
         if fig.borrow().fb.is_some() {
             let mut fig = fig.borrow_mut();
-            check_on(ui, "Input angle", &mut fig.angle, angle_f);
             if ui.button("✖ Remove Linkage").clicked() {
                 fig.fb.take();
             }
@@ -30,12 +29,11 @@ fn fig_ui<D, M, const N: usize>(
             let state = lnk
                 .projs
                 .current_fb_state()
-                .and_then(move |(a, fb)| get_fb(fb).map(|fb| (a, fb)));
-            if let Some((angle, fb)) = state {
+                .and_then(move |(_, fb)| get_fb(fb));
+            if let Some(fb) = state {
                 if ui.button("🖴 Load from").clicked() {
                     let mut fig = fig.borrow_mut();
                     fig.fb.replace(Cow::Owned(fb));
-                    fig.angle.replace(angle);
                 }
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
@@ -175,7 +173,6 @@ impl PlotType {
                             .clicked()
                         {
                             *fb = Cow::Owned(fb.take_sphere());
-                            fig.angle.take();
                         }
                     }
                 }

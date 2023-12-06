@@ -78,10 +78,6 @@ where
     ui.add(dv)
 }
 
-pub(crate) fn angle_f(ui: &mut Ui, val: &mut f64) -> Response {
-    angle(ui, "", val, "")
-}
-
 pub(crate) fn angle(ui: &mut Ui, label: &str, val: &mut f64, suffix: &str) -> Response {
     ui.horizontal(|ui| {
         if suffix.is_empty() {

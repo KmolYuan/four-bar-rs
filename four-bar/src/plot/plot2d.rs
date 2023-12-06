@@ -47,6 +47,8 @@ where
 }
 
 impl Figure<'_, '_> {
+    impl_get_joints!(self, Point2, 2);
+
     /// Plot 2D curves and linkages.
     ///
     /// ```

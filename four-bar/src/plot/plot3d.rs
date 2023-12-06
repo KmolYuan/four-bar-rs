@@ -1,7 +1,6 @@
 //! The functions used to plot the 3D curve and synthesis result.
 #[doc(no_inline)]
 pub use super::*;
-use efd::na;
 use plotters::style::SizeDesc as _;
 use plotters_backend::text_anchor::{HPos, Pos, VPos};
 
@@ -14,6 +13,8 @@ const BACKLINK: RGBColor = plotters::style::full_palette::GREY_600;
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, SFourBar, [f64; 3]>;
 
 impl Figure<'_, '_> {
+    impl_get_joints!(self, Point3, 3);
+
     fn get_sphere_center_radius(&self) -> Option<(na::Point3<f64>, f64)> {
         let fb = &self.fb.as_deref()?.unnorm;
         Some((na::Point3::new(fb.ox, fb.oy, fb.oz), fb.r))
@@ -165,7 +166,7 @@ impl Figure<'_, '_> {
                 let t_style = self.get_font3d().color(&BLUE);
                 let joint = EmptyElement::at((x, y, z))
                     + Circle::new((0, 0), dot_size, style)
-                    + Text::new(format!("P{}", Subscript(n + 1)), (5, 5), t_style);
+                    + Text::new(format!("P{}", Subscript(n + 1)), (15, 15), t_style);
                 if is_front {
                     joints_front.push(joint);
                 } else {

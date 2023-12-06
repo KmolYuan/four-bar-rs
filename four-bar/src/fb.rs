@@ -205,11 +205,10 @@ where
 {
     use std::f64::consts::TAU;
     let end = if end > start { end } else { end + TAU };
-    let interval = (end - start) / res as f64;
-    let mut iter = (0..res).map(move |n| start + n as f64 * interval).map(f);
-    let mut last = Vec::new();
-    while iter.len() > 0 {
-        last = iter.by_ref().map_while(|c| c).map(map).collect();
-    }
-    last
+    let step = (end - start) / res as f64;
+    (0..res)
+        .map(|n| start + n as f64 * step)
+        .flat_map(f)
+        .map(map)
+        .collect()
 }

@@ -28,6 +28,7 @@
 //! ```
 use self::{ball::*, dashed_line::*};
 use crate::*;
+use efd::na;
 use fmtastic::Subscript;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
@@ -54,6 +55,41 @@ macro_rules! inner_opt {
         }
     )+};
 }
+
+macro_rules! impl_get_joints {
+    ($self:ident, $point_ty:ident, $dim:literal) => {
+        fn get_joints(&$self) -> Option<[[f64; $dim]; 5]> {
+            use crate::fb::CurveGen as _;
+            use std::f64::consts::TAU;
+            const RES: usize = 30;
+
+            fn angle(a: na::$point_ty<f64>, b: na::$point_ty<f64>, c: na::$point_ty<f64>) -> f64 {
+                let ab = a - b;
+                let cb = c - b;
+                (ab.dot(&cb) / (ab.norm() * cb.norm())).acos()
+            }
+
+            let fb = $self.fb.as_deref()?;
+            let [start, end] = fb.angle_bound().to_value()?;
+            let end = if end > start { end } else { end + TAU };
+            let step = (end - start) / RES as f64;
+            let (t, _) = (0..=RES)
+                .map(|t| start + t as f64 * step)
+                .filter_map(|t| Some((t, fb.pos(t)?)))
+                .map(|(t, p)| {
+                    let [p1, p2, p3, p4, p5] = p.map(na::$point_ty::from);
+                    let min_angle = angle(p1, p3, p4)
+                        .min(angle(p2, p4, p3))
+                        .min(angle(p1, p3, p5))
+                        .min(angle(p2, p4, p5));
+                    (t, min_angle)
+                })
+                .max_by(|(_, a1), (_, a2)| a1.partial_cmp(a2).unwrap())?;
+            fb.pos(t)
+        }
+    };
+}
+pub(crate) use impl_get_joints;
 
 // Rounding float numbers without trailing zeros
 pub(crate) fn formatter(v: &f64) -> String {
@@ -408,8 +444,6 @@ impl<'a, C: Clone> LineData<'a, C> {
 pub struct FigureBase<'a, 'b, M: Clone, C: Clone> {
     /// Linkage
     pub fb: Option<Cow<'b, M>>,
-    /// Input angle
-    pub angle: Option<f64>,
     /// Line data
     pub lines: Vec<Rc<RefCell<LineData<'a, C>>>>,
     /// Drawing options
@@ -420,7 +454,6 @@ impl<M: Clone, C: Clone> Default for FigureBase<'_, '_, M, C> {
     fn default() -> Self {
         Self {
             fb: None,
-            angle: None,
             opt: Default::default(),
             lines: Default::default(),
         }
@@ -451,15 +484,6 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     /// Remove linkage.
     pub fn remove_fb(self) -> Self {
         Self { fb: None, ..self }
-    }
-
-    /// Set the input angle of the linkage.
-    ///
-    /// If the angle value is not in the range of
-    /// [`fb::FourBarBase::angle_bound()`], the actual angle will be the
-    /// midpoint.
-    pub fn angle(self, angle: f64) -> Self {
-        Self { angle: Some(angle), ..self }
     }
 
     /// Set the font family.
@@ -561,21 +585,6 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         (!self.lines.is_empty() || self.fb.is_some())
             .then_some(())
             .ok_or(DrawingAreaErrorKind::LayoutError)
-    }
-
-    pub(crate) fn get_joints<D: efd::EfdDim>(&self) -> Option<[efd::Coord<D>; 5]>
-    where
-        M: fb::CurveGen<D>,
-    {
-        use std::f64::consts::TAU;
-        let fb = self.fb.as_deref()?;
-        let [start, end] = fb.angle_bound().to_value()?;
-        let end = if end > start { end } else { end + TAU };
-        let angle = match self.angle {
-            Some(angle) if (start..end).contains(&angle) => angle,
-            _ => start + (end - start) * 0.8,
-        };
-        fb.pos(angle)
     }
 
     // (stroke, dot_size)
