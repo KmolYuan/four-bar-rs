@@ -2,11 +2,11 @@
 #[doc(no_inline)]
 pub use super::*;
 use efd::na;
-use full_palette::GREY_600;
 use plotters::style::SizeDesc as _;
 use plotters_backend::text_anchor::{HPos, Pos, VPos};
 
 const LIGHTGRAY: RGBAColor = RGBAColor(150, 150, 150, 0.4);
+const BACKLINK: RGBColor = plotters::style::full_palette::GREY_600;
 
 /// Drawing option of spherical four-bar linkage and its input angle.
 ///
@@ -138,7 +138,7 @@ impl Figure<'_, '_> {
                     }
                     last_pt = line.last().copied();
                     let is_front = is_front.into_inner().unwrap();
-                    let color = if is_front { BLACK } else { GREY_600 };
+                    let color = if is_front { BLACK } else { BACKLINK };
                     let line = LineSeries::new(line, color.stroke_width(stroke));
                     if is_front {
                         link_front.push(line);
@@ -149,7 +149,7 @@ impl Figure<'_, '_> {
             }
             for &[x, y, z] in &joints[..2] {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
-                let style = if is_front { BLACK } else { GREY_600 }.filled();
+                let style = if is_front { BLACK } else { BACKLINK }.filled();
                 let grounded = EmptyElement::at((x, y, z))
                     + TriangleMarker::new((0, dot_size as i32), dot_size * 2, style);
                 if is_front {
@@ -160,7 +160,7 @@ impl Figure<'_, '_> {
             }
             for (n, [x, y, z]) in joints.into_iter().enumerate() {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
-                let color = if is_front { BLACK } else { GREY_600 }.to_rgba();
+                let color = if is_front { BLACK } else { BACKLINK }.to_rgba();
                 let style = ShapeStyle { color, filled: n == 4, stroke_width: stroke };
                 let t_style = self.get_font3d().color(&BLUE);
                 let joint = EmptyElement::at((x, y, z))
