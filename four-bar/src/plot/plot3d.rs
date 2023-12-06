@@ -44,13 +44,17 @@ impl Figure<'_, '_> {
         {
             // Draw axis description
             let (tw, th) = root.dim_in_pixel();
-            let tick = (5).percent().in_pixels(&root);
-            let style = self.get_font3d().pos(Pos::new(HPos::Center, VPos::Center));
+            let tick_y = (5).percent().in_pixels(&root);
+            let tick_xz = (8).percent().in_pixels(&root);
+            let style = ("Arial", self.font * 1.15)
+                .into_font()
+                .color(&BLACK)
+                .pos(Pos::new(HPos::Center, VPos::Center));
             let x_shift = tw as i32 / 4;
-            let buttom_shift = th as i32 - tick;
-            root.draw_text("X", &style, (tick + x_shift, buttom_shift))?;
-            root.draw_text("Y", &style, (tick, th as i32 / 2))?;
-            root.draw_text("Z", &style, (tick + x_shift * 3, buttom_shift))?;
+            let buttom_shift = th as i32 - tick_xz;
+            root.draw_text("x", &style, (tick_y + x_shift, buttom_shift))?;
+            root.draw_text("y", &style, (tick_y, th as i32 / 2))?;
+            root.draw_text("z", &style, (tick_y + x_shift * 3, buttom_shift))?;
         }
         let (stroke, dot_size) = self.get_dot_size();
         let sphere = self
