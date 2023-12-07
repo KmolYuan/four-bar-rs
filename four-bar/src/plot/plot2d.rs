@@ -47,7 +47,9 @@ where
 }
 
 impl Figure<'_, '_> {
-    impl_get_joints!(self, Point2, 2);
+    fn get_joints(&self) -> Option<[[f64; 2]; 5]> {
+        impl_get_joints!(self, na::Point2::from)
+    }
 
     /// Plot 2D curves and linkages.
     ///

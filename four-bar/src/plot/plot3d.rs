@@ -13,7 +13,17 @@ const BACKLINK: RGBColor = plotters::style::full_palette::GREY_600;
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, SFourBar, [f64; 3]>;
 
 impl Figure<'_, '_> {
-    impl_get_joints!(self, Point3, 3);
+    fn get_joints<DB, CT>(&self, chart: &ChartContext<DB, CT>) -> Option<[[f64; 3]; 5]>
+    where
+        DB: DrawingBackend,
+        CT: CoordTranslate,
+        CT::From: From<[f64; 3]>,
+    {
+        impl_get_joints!(self, |c| {
+            let (x, y) = chart.as_coord_spec().translate(&c.into());
+            na::Point2::new(x as f64, y as f64)
+        })
+    }
 
     fn get_sphere_center_radius(&self) -> Option<(na::Point3<f64>, f64)> {
         let fb = &self.fb.as_deref()?.unnorm;
@@ -58,10 +68,8 @@ impl Figure<'_, '_> {
             root.draw_text("z", &style, (tick_y + x_shift * 3, buttom_shift))?;
         }
         let (stroke, dot_size) = self.get_dot_size();
-        let sphere = self
-            .get_sphere_center_radius()
-            .map(|(sc, r)| (sc, r, self.get_joints()));
-        let [x_spec, y_spec, z_spec] = if let Some((sc, r, _)) = &sphere {
+        let sphere = self.get_sphere_center_radius();
+        let [x_spec, y_spec, z_spec] = if let Some((sc, r)) = &sphere {
             debug_assert!(*r > 0.);
             [sc.x - r..sc.x + r, sc.y - r..sc.y + r, sc.z - r..sc.z + r]
         } else {
@@ -75,6 +83,7 @@ impl Figure<'_, '_> {
             .margin((2).percent())
             .margin_left((15).percent())
             .build_cartesian_3d(x_spec, y_spec, z_spec)?;
+        let joints = self.get_joints(&chart);
         let yaw = std::f64::consts::FRAC_PI_4;
         chart.with_projection(|mut pb| {
             pb.yaw = yaw;
@@ -97,7 +106,7 @@ impl Figure<'_, '_> {
                 .draw()?;
         }
         // Draw grid
-        if let Some((sc, r, _)) = &sphere {
+        if let Some((sc, r)) = &sphere {
             let p = (sc.x, sc.y + *r, sc.z);
             chart.draw_series(Ball::new((sc.x, sc.y, sc.z), p, LIGHTGRAY.filled()).series())?;
         }
@@ -105,7 +114,7 @@ impl Figure<'_, '_> {
         let mut link_front = Vec::new();
         let mut grounded_front = Vec::new();
         let mut joints_front = Vec::new();
-        if let Some((sc, _, Some(joints))) = sphere {
+        if let (Some((sc, _)), Some(joints)) = (sphere, joints) {
             let [p1, p2, p3, p4, p5] = joints;
             for line in [[p1, p3].as_slice(), &[p3, p5, p4, p3], &[p2, p4]] {
                 let mut line = line.windows(2).flat_map(|w| {

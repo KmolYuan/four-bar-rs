@@ -57,37 +57,35 @@ macro_rules! inner_opt {
 }
 
 macro_rules! impl_get_joints {
-    ($self:ident, $point_ty:ident, $dim:literal) => {
-        fn get_joints(&$self) -> Option<[[f64; $dim]; 5]> {
-            use crate::fb::CurveGen as _;
-            use std::f64::consts::TAU;
-            const RES: usize = 30;
+    ($self:ident, $coord_map:expr) => {{
+        use crate::fb::CurveGen as _;
+        use std::f64::consts::TAU;
+        const RES: usize = 90;
 
-            fn angle(a: na::$point_ty<f64>, b: na::$point_ty<f64>, c: na::$point_ty<f64>) -> f64 {
-                let ab = a - b;
-                let cb = c - b;
-                (ab.dot(&cb) / (ab.norm() * cb.norm())).acos()
-            }
-
-            let fb = $self.fb.as_deref()?;
-            let [start, end] = fb.angle_bound().to_value()?;
-            let end = if end > start { end } else { end + TAU };
-            let step = (end - start) / RES as f64;
-            let (t, _) = (0..=RES)
-                .map(|t| start + t as f64 * step)
-                .filter_map(|t| Some((t, fb.pos(t)?)))
-                .map(|(t, p)| {
-                    let [p1, p2, p3, p4, p5] = p.map(na::$point_ty::from);
-                    let min_angle = angle(p1, p3, p4)
-                        .min(angle(p2, p4, p3))
-                        .min(angle(p1, p3, p5))
-                        .min(angle(p2, p4, p5));
-                    (t, min_angle)
-                })
-                .max_by(|(_, a1), (_, a2)| a1.partial_cmp(a2).unwrap())?;
-            fb.pos(t)
+        fn angle(a: na::Point2<f64>, b: na::Point2<f64>, c: na::Point2<f64>) -> f64 {
+            let ab = a - b;
+            let cb = c - b;
+            (ab.dot(&cb) / (ab.norm() * cb.norm())).acos()
         }
-    };
+
+        let fb = $self.fb.as_deref()?;
+        let [start, end] = fb.angle_bound().to_value()?;
+        let end = if end > start { end } else { end + TAU };
+        let step = (end - start) / RES as f64;
+        let (t, _) = (0..=RES)
+            .map(|t| start + t as f64 * step)
+            .filter_map(|t| Some((t, fb.pos(t)?)))
+            .map(|(t, p)| {
+                let [p1, p2, p3, p4, p5] = p.map($coord_map);
+                let min_angle = angle(p1, p3, p4)
+                    .min(angle(p1, p3, p5))
+                    .min(angle(p2, p4, p3))
+                    .min(angle(p2, p4, p5));
+                (t, min_angle)
+            })
+            .max_by(|(_, a1), (_, a2)| a1.partial_cmp(a2).unwrap())?;
+        fb.pos(t)
+    }};
 }
 pub(crate) use impl_get_joints;
 
