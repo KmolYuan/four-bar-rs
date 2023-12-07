@@ -3,7 +3,7 @@ pub use csv::Error;
 use csv::{ReaderBuilder, Writer};
 use std::io::ErrorKind::InvalidData;
 
-/// Parse CSV from string.
+/// Parse CSV from a reader.
 pub fn from_reader<R, D>(r: R) -> Result<Vec<D>, Error>
 where
     R: std::io::Read,
@@ -19,6 +19,14 @@ where
             true => Err(std::io::Error::new(InvalidData, "Empty data"))?,
             false => Ok(data),
         })
+}
+
+/// Parse CSV from string.
+pub fn from_string<D>(s: &str) -> Result<Vec<D>, Error>
+where
+    D: serde::de::DeserializeOwned,
+{
+    from_reader(s.as_bytes())
 }
 
 /// Dump CSV to a writer.

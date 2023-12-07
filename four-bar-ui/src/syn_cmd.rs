@@ -77,9 +77,9 @@ pub(crate) struct SynCfg {
     /// Number of the points (resolution) in curve production
     #[cfg_attr(not(target_arch = "wasm32"), clap(long, default_value_t = 180))]
     pub(crate) res: usize,
-    /// Specify the scale of the result mechanism
+    /// Specify the mechanism on the origin and unit scale
     #[cfg_attr(not(target_arch = "wasm32"), clap(long))]
-    pub(crate) scale: Option<f64>,
+    pub(crate) on_unit: bool,
     #[cfg_attr(not(target_arch = "wasm32"), clap(skip = syn::Mode::Closed))]
     pub(crate) mode: syn::Mode,
 }
@@ -91,7 +91,7 @@ impl Default for SynCfg {
             gen: 50,
             pop: 200,
             res: 180,
-            scale: None,
+            on_unit: false,
             mode: syn::Mode::Closed,
         }
     }
@@ -123,11 +123,15 @@ impl<'a> Solver<'a> {
         S: Fn() -> bool + Send + 'a,
         C: FnMut(f64, u64) + Send + 'a,
     {
-        let SynCfg { seed, gen, pop, mode, res, scale } = cfg;
+        let SynCfg { seed, gen, pop, mode, res, on_unit } = cfg;
         macro_rules! impl_solve {
             ($target:ident, $atlas:ident, $syn:ident) => {{
+                let mut syn = syn::$syn::from_curve(&$target, mode).res(res);
+                if on_unit {
+                    syn = syn.on_unit();
+                }
                 let mut s = alg
-                    .build_solver(syn::$syn::from_curve(&$target, mode).res(res).scale(scale))
+                    .build_solver(syn)
                     .seed(seed)
                     .task(move |ctx| !stop() && ctx.gen >= gen)
                     .callback(move |ctx| callback(ctx.best_f.fitness(), ctx.gen));

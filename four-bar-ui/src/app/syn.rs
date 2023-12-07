@@ -112,9 +112,7 @@ impl Synthesis {
             Cache::Atlas(atlas) => self.atlas.merge_inplace(atlas).alert("Merge Atlas"),
             Cache::Empty => (),
         }
-        check_on(ui, "Constrain scale", &mut self.cfg.scale, |ui, v| {
-            nonzero_f(ui, "", v, lnk.cfg.int)
-        });
+        ui.checkbox(&mut self.cfg.on_unit, "Constrain on unit");
         toggle_btn(ui, &mut self.from_plot_open, "🖊 Append from canvas")
             .on_hover_text("Click canvas to add target point drictly!");
         ui.horizontal(|ui| {

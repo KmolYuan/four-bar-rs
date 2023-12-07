@@ -35,6 +35,8 @@ pub struct Syn<D: efd::EfdDim, M> {
     mode: Mode,
     // How many points need to be generated or compared
     res: usize,
+    // Constrain the origin of the mechanism
+    origin: Option<efd::Coord<D>>,
     // Constrain the scale of the mechanism
     scale: Option<f64>,
     // Marker of the mechanism
@@ -59,6 +61,7 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
             efd,
             mode,
             res: 180,
+            origin: None,
             scale: None,
             _marker: PhantomData,
         }
@@ -70,12 +73,20 @@ impl<D: efd::EfdDim, M> Syn<D, M> {
         Self { res, ..self }
     }
 
+    /// Specify the mechanism is on origin and unit scale.
+    pub fn on_unit(self) -> Self {
+        self.origin(Default::default()).scale(1.)
+    }
+
+    /// Specify the origin of the mechanism.
+    pub fn origin(self, origin: efd::Coord<D>) -> Self {
+        Self { origin: Some(origin), ..self }
+    }
+
     /// Specify the scale of the mechanism.
-    pub fn scale(self, scale: Option<f64>) -> Self {
-        if let Some(scale) = scale {
-            assert!(scale > 0.);
-        }
-        Self { scale, ..self }
+    pub fn scale(self, scale: f64) -> Self {
+        assert!(scale > 0.);
+        Self { scale: Some(scale), ..self }
     }
 
     /// The harmonic used of target EFD.
@@ -150,13 +161,14 @@ impl<D, M> mh::ObjFunc for Syn<D, M>
 where
     D: efd::EfdDim + Sync + Send,
     D::Trans: Sync + Send,
-    efd::Coord<D>: Sync + Send,
+    efd::Coord<D>: efd::Distance + Sync + Send,
     M: SynBound + fb::Statable + fb::FromVectorized + fb::Normalized<D> + fb::CurveGen<D>,
     M::De: Default + Clone + fb::CurveGen<D> + Sync + Send + 'static,
 {
     type Fitness = mh::Product<M::De, f64>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
+        use efd::Distance as _;
         #[cfg(feature = "rayon")]
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
@@ -176,8 +188,15 @@ where
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let trans = efd.as_trans().to(self.efd.as_trans());
                     let fb = fb.clone().trans_denorm(&trans);
-                    let s_err = self.scale.map(|s| (trans.scale() - s).abs()).unwrap_or(0.);
-                    let err = efd.distance(&self.efd).max(s_err);
+                    let o_err = match &self.origin {
+                        Some(o) => trans.trans().l2_norm(o),
+                        None => 0.,
+                    };
+                    let s_err = match self.scale {
+                        Some(s) => trans.scale() - s,
+                        None => 0.,
+                    };
+                    let err = efd.distance(&self.efd).max(o_err).max(s_err);
                     mh::Product::new(err, fb)
                 })
         };
