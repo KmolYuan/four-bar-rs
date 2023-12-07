@@ -18,22 +18,17 @@ fn fig_ui<D, M, const N: usize>(
 {
     ui.collapsing("Linkage", |ui| {
         if fig.borrow().fb.is_some() {
-            let mut fig = fig.borrow_mut();
             if ui.button("✖ Remove Linkage").clicked() {
-                fig.fb.take();
+                fig.borrow_mut().fb.take();
             }
         } else {
             ui.label("No linkage loaded");
         }
         ui.horizontal(|ui| {
-            let state = lnk
-                .projs
-                .current_fb_state()
-                .and_then(move |(_, fb)| get_fb(fb));
+            let state = lnk.projs.current_fb_state().and_then(|(_, fb)| get_fb(fb));
             if let Some(fb) = state {
                 if ui.button("🖴 Load from").clicked() {
-                    let mut fig = fig.borrow_mut();
-                    fig.fb.replace(Cow::Owned(fb));
+                    fig.borrow_mut().fb.replace(Cow::Owned(fb));
                 }
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
