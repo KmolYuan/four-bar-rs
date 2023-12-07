@@ -1,4 +1,4 @@
-theta = linspace(140, 215, 40);
+theta = linspace(30, 330, 40);
 
 x = sind(65) * sind(-0.4685 * theta + 173.1994);
 y = -cosd(theta) .* cosd(-0.4685 * theta + 173.1994) + cosd(65) * sind(theta) .* sind(-0.4685 * theta + 173.1994);
