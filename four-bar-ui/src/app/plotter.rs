@@ -198,7 +198,7 @@ pub(crate) struct Plotter {
 impl Default for Plotter {
     fn default() -> Self {
         Self {
-            size: 800,
+            size: 1600,
             shape: (1, 1),
             curr: 0,
             queue: vec![None],
