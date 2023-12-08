@@ -13,18 +13,6 @@ const BACKLINK: RGBColor = plotters::style::full_palette::GREY_600;
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, SFourBar, [f64; 3]>;
 
 impl Figure<'_, '_> {
-    fn get_joints<DB, CT>(&self, chart: &ChartContext<DB, CT>) -> Option<[[f64; 3]; 5]>
-    where
-        DB: DrawingBackend,
-        CT: CoordTranslate,
-        CT::From: From<[f64; 3]>,
-    {
-        impl_get_joints!(self, |c| {
-            let (x, y) = chart.as_coord_spec().translate(&c.into());
-            na::Point2::new(x as f64, y as f64)
-        })
-    }
-
     fn get_sphere_center_radius(&self) -> Option<(na::Point3<f64>, f64)> {
         let fb = &self.fb.as_deref()?.unnorm;
         Some((na::Point3::new(fb.ox, fb.oy, fb.oz), fb.r))
@@ -83,7 +71,10 @@ impl Figure<'_, '_> {
             .margin((2).percent())
             .margin_left((15).percent())
             .build_cartesian_3d(x_spec, y_spec, z_spec)?;
-        let joints = self.get_joints(&chart);
+        let joints = self.get_joints(|c| {
+            let (x, y) = chart.as_coord_spec().translate(&c.into());
+            na::Point2::new(x as f64, y as f64)
+        });
         let yaw = std::f64::consts::FRAC_PI_4;
         chart.with_projection(|mut pb| {
             pb.yaw = yaw;

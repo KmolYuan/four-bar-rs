@@ -47,10 +47,6 @@ where
 }
 
 impl Figure<'_, '_> {
-    fn get_joints(&self) -> Option<[[f64; 2]; 5]> {
-        impl_get_joints!(self, na::Point2::from)
-    }
-
     /// Plot 2D curves and linkages.
     ///
     /// ```
@@ -72,7 +68,7 @@ impl Figure<'_, '_> {
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();
-        let joints = self.get_joints();
+        let joints = self.get_joints(Into::into);
         let Opt { grid, axis, legend, .. } = self.opt;
         let [x_spec, y_spec] = {
             let lines = self.lines().collect::<Vec<_>>();

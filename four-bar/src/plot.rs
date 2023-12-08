@@ -56,39 +56,6 @@ macro_rules! inner_opt {
     )+};
 }
 
-macro_rules! impl_get_joints {
-    ($self:ident, $coord_map:expr) => {{
-        use crate::fb::CurveGen as _;
-        use std::f64::consts::TAU;
-        const RES: usize = 90;
-
-        fn angle(a: na::Point2<f64>, b: na::Point2<f64>, c: na::Point2<f64>) -> f64 {
-            let ab = a - b;
-            let cb = c - b;
-            (ab.dot(&cb) / (ab.norm() * cb.norm())).acos()
-        }
-
-        let fb = $self.fb.as_deref()?;
-        let [start, end] = fb.angle_bound().to_value()?;
-        let end = if end > start { end } else { end + TAU };
-        let step = (end - start) / RES as f64;
-        let (t, _) = (0..=RES)
-            .map(|t| start + t as f64 * step)
-            .filter_map(|t| Some((t, fb.pos(t)?)))
-            .map(|(t, p)| {
-                let [p1, p2, p3, p4, p5] = p.map($coord_map);
-                let min_angle = angle(p1, p3, p4)
-                    .min(angle(p1, p3, p5))
-                    .min(angle(p2, p4, p3))
-                    .min(angle(p2, p4, p5));
-                (t, min_angle)
-            })
-            .max_by(|(_, a1), (_, a2)| a1.partial_cmp(a2).unwrap())?;
-        fb.pos(t)
-    }};
-}
-pub(crate) use impl_get_joints;
-
 // Rounding float numbers without trailing zeros
 pub(crate) fn formatter(v: &f64) -> String {
     let mut s = format!("{v:.04}");
@@ -583,6 +550,40 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         (!self.lines.is_empty() || self.fb.is_some())
             .then_some(())
             .ok_or(DrawingAreaErrorKind::LayoutError)
+    }
+
+    pub(crate) fn get_joints<D, F>(&self, coord_map: F) -> Option<[efd::Coord<D>; 5]>
+    where
+        D: efd::EfdDim,
+        M: fb::CurveGen<D>,
+        F: Fn(efd::Coord<D>) -> na::Point2<f64>,
+    {
+        use std::f64::consts::TAU;
+        const RES: usize = 90;
+
+        fn angle(a: na::Point2<f64>, b: na::Point2<f64>, c: na::Point2<f64>) -> f64 {
+            let ab = a - b;
+            let cb = c - b;
+            (ab.dot(&cb) / (ab.norm() * cb.norm())).acos()
+        }
+
+        let fb = self.fb.as_deref()?;
+        let [start, end] = fb.angle_bound().to_value()?;
+        let end = if end > start { end } else { end + TAU };
+        let step = (end - start) / RES as f64;
+        let (t, _) = (0..=RES)
+            .map(|t| start + t as f64 * step)
+            .filter_map(|t| Some((t, fb.pos(t)?)))
+            .map(|(t, p)| {
+                let [p1, p2, p3, p4, p5] = p.map(&coord_map);
+                let min_angle = angle(p1, p3, p4)
+                    .min(angle(p1, p3, p5))
+                    .min(angle(p2, p4, p3))
+                    .min(angle(p2, p4, p5));
+                (t, min_angle)
+            })
+            .max_by(|(_, a1), (_, a2)| a1.partial_cmp(a2).unwrap())?;
+        fb.pos(t)
     }
 
     // (stroke, dot_size)
