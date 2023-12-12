@@ -192,22 +192,6 @@ fn angle_with([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d: f64, a: f64) -> [f64; 2
     [x1 + d * a.cos(), y1 + d * a.sin()]
 }
 
-fn circle2([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], r1: f64, r2: f64, inv: bool) -> [f64; 2] {
-    let dx = x2 - x1;
-    let dy = y2 - y1;
-    let r = dx.hypot(dy);
-    if r > r1 + r2 || r < (r1 - r2).abs() || (r < f64::EPSILON && (r1 - r2).abs() < f64::EPSILON) {
-        return [f64::NAN; 2];
-    }
-    let a = 0.5 * (r1 * r1 - r2 * r2 + r * r) / r;
-    let h = (r1 * r1 - a * a).sqrt() * if inv { -1. } else { 1. };
-    let c = dx / r;
-    let s = dy / r;
-    let xm = x1 + a * c;
-    let ym = y1 + a * s;
-    [xm - h * s, ym + h * c]
-}
-
 fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
     let UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
     let NormFourBar { l1, l3, l4, l5, g, .. } = fb.norm;
@@ -225,7 +209,23 @@ fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
         let a = dy.atan2(dx);
         [p2x + d * a.cos(), p2y + d * a.sin()]
     } else {
-        circle2(p3, p2, l3, l4, inv)
+        let [p2x, p2y] = p2;
+        let [p3x, p3y] = p3;
+        let dx = p2x - p3x;
+        let dy = p2y - p3y;
+        let r = dx.hypot(dy);
+        if r > l3 + l4 || r < (l3 - l4).abs() || r < f64::EPSILON {
+            [f64::NAN; 2]
+        } else {
+            let c = dx / r;
+            let s = dy / r;
+            let l3_2 = l3 * l3;
+            let a = (l3_2 - l4 * l4 + r * r) / (2. * r);
+            let h = (l3_2 - a * a).sqrt() * if inv { -1. } else { 1. };
+            let xm = p3x + a * c;
+            let ym = p3y + a * s;
+            [xm - h * s, ym + h * c]
+        }
     };
     let p5 = angle_with(p3, p4, l5, g);
     let js = [p1, p2, p3, p4, p5];
