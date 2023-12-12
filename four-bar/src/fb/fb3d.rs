@@ -17,9 +17,9 @@ pub struct UnNorm {
     pub oz: f64,
     /// Radius of the sphere
     pub r: f64,
-    /// Sphere polar angle offset of the driver link pivot
+    /// Sphere polar angle (z axis) offset of the driver link pivot
     pub p1i: f64,
-    /// Sphere azimuth angle offset of the driver link pivot
+    /// Sphere azimuth angle (xy plane) offset of the driver link pivot
     pub p1j: f64,
     /// Angle offset of the ground link
     pub a: f64,
@@ -231,7 +231,11 @@ impl Statable for SNormFourBar {
 impl PlanarLoop for SNormFourBar {
     fn planar_loop(&self) -> [f64; 4] {
         // Reduce angles and spread out to planar coordinate.
-        let mut ls = [self.l1, self.l2, self.l3, self.l4]
+        let ls = [self.l1, self.l2, self.l3, self.l4];
+        if ls.iter().filter(|lx| **lx > FRAC_PI_2).count() <= 1 {
+            return ls;
+        }
+        let mut ls = ls
             .map(|d| d.rem_euclid(TAU))
             .map(|d| if d > PI { TAU - d } else { d });
         let mut longer = Vec::with_capacity(4);
@@ -264,11 +268,19 @@ impl PlanarLoop for SNormFourBar {
         }
         ls
     }
+
+    fn set_to_planar_loop(&mut self) {
+        [self.l1, self.l2, self.l3, self.l4] = self.planar_loop();
+    }
 }
 
 impl PlanarLoop for SFourBar {
     fn planar_loop(&self) -> [f64; 4] {
         self.norm.planar_loop()
+    }
+
+    fn set_to_planar_loop(&mut self) {
+        self.norm.set_to_planar_loop();
     }
 }
 

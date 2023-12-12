@@ -173,7 +173,8 @@ where
         use mh::rayon::prelude::*;
         const INFEASIBLE: f64 = 1e10;
         let infeasible = || mh::Product::new(INFEASIBLE, M::De::default());
-        let fb = M::from_vectorized_s1(&xs[..M::BOUND.len() - 2]).unwrap();
+        let mut fb = M::from_vectorized_s1(&xs[..M::BOUND.len() - 2]).unwrap();
+        fb.set_to_planar_loop();
         let (bound, states) =
             fb.to_bound_states_filter(|a| a.check_mode(self.mode.is_result_open()));
         let is_open = self.mode.is_target_open();

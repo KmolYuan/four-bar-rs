@@ -396,4 +396,6 @@ where
 pub trait PlanarLoop {
     /// Get the planar loop.
     fn planar_loop(&self) -> [f64; 4];
+    /// Set the link lengths as the planar loop.
+    fn set_to_planar_loop(&mut self) {}
 }
