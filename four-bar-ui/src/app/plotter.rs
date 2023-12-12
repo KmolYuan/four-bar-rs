@@ -25,8 +25,7 @@ fn fig_ui<D, M, const N: usize>(
             ui.label("No linkage loaded");
         }
         ui.horizontal(|ui| {
-            let state = lnk.projs.current_fb_state().and_then(|(_, fb)| get_fb(fb));
-            if let Some(fb) = state {
+            if let Some(fb) = lnk.projs.current_fb_state().and_then(|(_, fb)| get_fb(fb)) {
                 if ui.button("🖴 Load from").clicked() {
                     fig.borrow_mut().fb.replace(Cow::Owned(fb));
                 }
@@ -67,10 +66,7 @@ fn fig_ui<D, M, const N: usize>(
         if ui.button("🖴 Add from CSV").clicked() {
             let fig = fig.clone();
             io::open_csv(move |_, c| {
-                let done = |c| {
-                    let mut fig = fig.borrow_mut();
-                    fig.push_line_default("New Curve", c);
-                };
+                let done = |c| fig.borrow_mut().push_line_default("New Curve", c);
                 get_curve(c).alert_then("Wrong curve type", done);
             });
         }

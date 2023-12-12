@@ -93,12 +93,14 @@ impl Figure<'_, '_> {
             .y_label_formatter(&formatter)
             .draw()?;
         // Draw curve
+        let mut has_curve = false;
         for data in self.lines() {
             let LineData { label, line, style, .. } = &*data;
             let line = line.iter().map(|&[x, y]| (x, y));
             let (color, filled) = data.color();
             let color = ShapeStyle { color, filled, stroke_width: stroke };
             style.draw(&mut chart, line, color, label, self.font as i32)?;
+            has_curve |= !label.is_empty();
         }
         // Draw Linkage
         if let Some(joints @ [p1, p2, p3, p4, p5]) = joints {
@@ -120,15 +122,17 @@ impl Figure<'_, '_> {
             chart.draw_series(joints)?;
         }
         // Draw legend
-        if let Some(legend) = legend.to_plotter_pos() {
-            chart
-                .configure_series_labels()
-                .legend_area_size(self.font)
-                .position(legend)
-                .background_style(WHITE)
-                .border_style(BLACK)
-                .label_font(self.get_font())
-                .draw()?;
+        if has_curve {
+            if let Some(legend) = legend.to_plotter_pos() {
+                chart
+                    .configure_series_labels()
+                    .legend_area_size(self.font)
+                    .position(legend)
+                    .background_style(WHITE)
+                    .border_style(BLACK)
+                    .label_font(self.get_font())
+                    .draw()?;
+            }
         }
         Ok(())
     }

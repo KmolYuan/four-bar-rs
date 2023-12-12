@@ -194,7 +194,7 @@ where
                         None => 0.,
                     };
                     let s_err = match self.scale {
-                        Some(s) => trans.scale() - s,
+                        Some(s) => (trans.scale() - s).abs(),
                         None => 0.,
                     };
                     let err = efd.distance(&self.efd).max(o_err).max(s_err);
