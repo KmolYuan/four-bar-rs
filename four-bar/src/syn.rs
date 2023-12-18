@@ -187,14 +187,14 @@ where
                 .filter(|(c, _)| c.len() > 2)
                 .map(|(c, fb)| {
                     let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
-                    let trans = efd.as_trans().to(self.efd.as_trans());
-                    let fb = fb.clone().trans_denorm(&trans);
+                    let geo = efd.as_geo().to(self.efd.as_geo());
+                    let fb = fb.clone().trans_denorm(&geo);
                     let o_err = match &self.origin {
-                        Some(o) => trans.trans().l2_norm(o),
+                        Some(o) => geo.trans().l2_norm(o),
                         None => 0.,
                     };
                     let s_err = match self.scale {
-                        Some(s) => (trans.scale() - s).abs(),
+                        Some(s) => (geo.scale() - s).abs(),
                         None => 0.,
                     };
                     let err = efd.distance(&self.efd).max(o_err).max(s_err);

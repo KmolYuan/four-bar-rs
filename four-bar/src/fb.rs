@@ -116,19 +116,19 @@ pub trait Normalized<D: efd::EfdDim>: Sized {
     fn normalize_inplace(de: &mut Self::De);
 
     /// Denormalized with transformation.
-    fn trans_denorm(self, trans: &efd::Transform<D::Trans>) -> Self::De {
-        self.denormalize().transform(trans)
+    fn trans_denorm(self, geo: &efd::GeoVar<D::Trans>) -> Self::De {
+        self.denormalize().transform(geo)
     }
 }
 
 /// Transformation ability.
 pub trait Transformable<D: efd::EfdDim>: Sized {
     /// Transform in placed.
-    fn transform_inplace(&mut self, trans: &efd::Transform<D::Trans>);
+    fn transform_inplace(&mut self, geo: &efd::GeoVar<D::Trans>);
 
     /// Build with transformation.
-    fn transform(mut self, trans: &efd::Transform<D::Trans>) -> Self {
-        self.transform_inplace(trans);
+    fn transform(mut self, geo: &efd::GeoVar<D::Trans>) -> Self {
+        self.transform_inplace(geo);
         self
     }
 }

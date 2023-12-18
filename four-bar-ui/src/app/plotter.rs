@@ -13,7 +13,7 @@ fn fig_ui<D, M, const N: usize>(
     get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; N]>> + Copy + 'static,
 ) where
     D: efd::EfdDim,
-    D::Trans: efd::Trans<Coord = [f64; N]>,
+    D::Trans: efd::Transform<Coord = [f64; N]>,
     M: Clone + fb::CurveGen<D>,
 {
     ui.collapsing("Linkage", |ui| {

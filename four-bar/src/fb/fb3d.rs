@@ -281,15 +281,15 @@ impl PlanarLoop for SFourBar {
 }
 
 impl Transformable<efd::D3> for SFourBar {
-    fn transform_inplace(&mut self, trans: &efd::Transform3) {
-        let [ox, oy, oz] = trans.trans();
+    fn transform_inplace(&mut self, geo: &efd::GeoVar3) {
+        let [ox, oy, oz] = geo.trans();
         let fb = &mut self.unnorm;
         fb.ox += ox;
         fb.oy += oy;
         fb.oz += oz;
         let p1_axis = na::Vector3::from(to_cc(fb.p1i, fb.p1j, 1.));
         let pb = na::Point3::new(fb.a.cos(), fb.a.sin(), 0.) + p1_axis;
-        let p1_axis = trans.rot() * p1_axis;
+        let p1_axis = geo.rot() * p1_axis;
         [fb.p1i, fb.p1j] = to_sc(p1_axis.x, p1_axis.y, p1_axis.z);
         let rot_inv = if let Some(axis) = p1_axis.cross(&na::Vector3::z()).try_normalize(0.) {
             let angle = p1_axis.dot(&na::Vector3::z()).acos();
@@ -297,9 +297,9 @@ impl Transformable<efd::D3> for SFourBar {
         } else {
             na::UnitQuaternion::identity()
         };
-        let pb = rot_inv * trans.rot() * pb;
+        let pb = rot_inv * geo.rot() * pb;
         fb.a = pb.y.atan2(pb.x);
-        fb.r *= trans.scale();
+        fb.r *= geo.scale();
     }
 }
 

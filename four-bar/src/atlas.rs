@@ -121,7 +121,7 @@ where
         Self {
             fb: Array2::default([0, C::dim()]),
             stat: Array1::default(0),
-            efd: Array3::default([0, 0, <D::Trans as efd::Trans>::dim() * 2]),
+            efd: Array3::default([0, 0, <D::Trans as efd::Transform>::dim() * 2]),
             _marker: PhantomData,
         }
     }
@@ -210,7 +210,7 @@ where
         impl_check!(atlas.fb.len_of(Axis(1)), C::dim());
         impl_check!(
             atlas.efd.len_of(Axis(2)),
-            <D::Trans as efd::Trans>::dim() * 2
+            <D::Trans as efd::Transform>::dim() * 2
         );
         Ok(atlas)
     }
@@ -274,9 +274,10 @@ where
 
     /// Iterate over the open state of the linkages.
     pub fn open_iter(&self) -> impl Iterator<Item = bool> + '_ {
-        self.efd
-            .axis_iter(ndarray::Axis(0))
-            .map(|efd| efd.slice(s![.., <D::Trans as efd::Trans>::dim()..]).sum() == 0.)
+        self.efd.axis_iter(ndarray::Axis(0)).map(|efd| {
+            let dim = <D::Trans as efd::Transform>::dim();
+            efd.slice(s![.., dim..]).sum() == 0.
+        })
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
@@ -335,7 +336,7 @@ where
         iter.map(|arr| target.distance(&arr_to_efd(arr)))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(i, err)| (err, self.pick(i, target.as_trans(), is_open, res)))
+            .map(|(i, err)| (err, self.pick(i, target.as_geo(), is_open, res)))
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
@@ -368,7 +369,7 @@ where
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
         ind.into_iter()
             .take(size)
-            .map(|i| (dis[i], self.pick(i, target.as_trans(), is_open, res)))
+            .map(|i| (dis[i], self.pick(i, target.as_geo(), is_open, res)))
             .collect()
     }
 
@@ -377,11 +378,11 @@ where
         C::from_code(code.as_slice().unwrap(), self.stat[i])
     }
 
-    fn pick(&self, i: usize, trans: &efd::Transform<D::Trans>, is_open: bool, res: usize) -> C::De {
+    fn pick(&self, i: usize, geo: &efd::GeoVar<D::Trans>, is_open: bool, res: usize) -> C::De {
         let fb = self.pick_norm(i);
         let curve = fb.get_curve(res, is_open).unwrap();
         let efd = efd::Efd::<D>::from_curve(curve, is_open);
-        fb.trans_denorm(&efd.as_trans().to(trans))
+        fb.trans_denorm(&efd.as_geo().to(geo))
     }
 
     /// Merge two data to one atlas.

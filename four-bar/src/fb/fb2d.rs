@@ -162,13 +162,13 @@ impl PlanarLoop for FourBar {
 }
 
 impl Transformable<efd::D2> for FourBar {
-    fn transform_inplace(&mut self, trans: &efd::Transform2) {
+    fn transform_inplace(&mut self, geo: &efd::GeoVar2) {
         let fb = &mut self.unnorm;
-        let [p1x, p1y] = trans.trans();
+        let [p1x, p1y] = geo.trans();
         fb.p1x += p1x;
         fb.p1y += p1y;
-        fb.a += trans.rot().angle();
-        let scale = trans.scale();
+        fb.a += geo.rot().angle();
+        let scale = geo.scale();
         fb.l2 *= scale;
         self.l1 *= scale;
         self.l3 *= scale;

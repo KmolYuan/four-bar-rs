@@ -305,8 +305,8 @@ fn from_runtime(
             if let Some((cost, fb)) = atlas_fb {
                 let c = fb.curve(cfg.res);
                 let efd = efd::Efd2::from_curve_harmonic(c, mode.is_result_open(), harmonic);
-                let trans = efd.as_trans().to(efd_target.as_trans());
-                let fb = fb.clone().trans_denorm(&trans);
+                let geo = efd.as_geo().to(efd_target.as_geo());
+                let fb = fb.clone().trans_denorm(&geo);
                 let c = fb.curve(cfg.res.min(30));
                 writeln!(log, "[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
@@ -361,8 +361,8 @@ fn from_runtime(
             if let Some((cost, fb)) = atlas_fb {
                 let c = fb.curve(cfg.res);
                 let efd = efd::Efd3::from_curve_harmonic(c, mode.is_result_open(), harmonic);
-                let trans = efd.as_trans().to(efd_target.as_trans());
-                let fb = fb.clone().trans_denorm(&trans);
+                let geo = efd.as_geo().to(efd_target.as_geo());
+                let fb = fb.clone().trans_denorm(&geo);
                 let c = fb.curve(cfg.res.min(30));
                 writeln!(log, "[atlas]")?;
                 writeln!(log, "harmonic={harmonic}")?;
