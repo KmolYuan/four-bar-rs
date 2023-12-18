@@ -231,11 +231,7 @@ impl Statable for SNormFourBar {
 impl PlanarLoop for SNormFourBar {
     fn planar_loop(&self) -> [f64; 4] {
         // Reduce angles and spread out to planar coordinate.
-        let ls = [self.l1, self.l2, self.l3, self.l4];
-        if ls.iter().filter(|lx| **lx > FRAC_PI_2).count() <= 1 {
-            return ls;
-        }
-        let mut ls = ls
+        let mut ls = [self.l1, self.l2, self.l3, self.l4]
             .map(|d| d.rem_euclid(TAU))
             .map(|d| if d > PI { TAU - d } else { d });
         let mut longer = Vec::with_capacity(4);
