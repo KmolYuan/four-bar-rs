@@ -98,7 +98,7 @@ impl Figure<'_, '_> {
             let line = line.iter().map(|&[x, y]| (x, y));
             let (color, filled) = data.color();
             let color = ShapeStyle { color, filled, stroke_width: stroke };
-            style.draw(&mut chart, line, color, label, self.font as i32)?;
+            style.draw(&mut chart, line, color, label, self.font)?;
         }
         // Draw Linkage
         if let Some(joints @ [p1, p2, p3, p4, p5]) = joints {

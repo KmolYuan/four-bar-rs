@@ -205,14 +205,16 @@ impl Style {
         line: I,
         color: ShapeStyle,
         label: &str,
-        font: i32,
+        font: f64,
     ) -> PResult<(), DB>
     where
         DB: DrawingBackend + 'a,
         CT: CoordTranslate,
         CT::From: Clone + 'static,
-        I: Iterator<Item = CT::From> + Clone,
+        I: IntoIterator<Item = CT::From>,
+        I::IntoIter: Clone,
     {
+        let font = font as i32;
         let dot_size = color.stroke_width * 2;
         let gap = color.stroke_width as i32;
         let has_label = !label.is_empty();
@@ -237,7 +239,7 @@ impl Style {
                 }
             }
             Self::DashedLine => {
-                let series = DashedPath::new(line, 10, 5, color).series();
+                let series = DashedPath::new(line, 30, 15, color).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
                     anno.label(label).legend(move |(x, y)| {

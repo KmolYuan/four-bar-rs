@@ -140,11 +140,17 @@ impl Figure<'_, '_> {
                     last_pt = line.last().copied();
                     let is_front = is_front.into_inner().unwrap();
                     let color = if is_front { BLACK } else { BACKLINK };
-                    let line = LineSeries::new(line, color.stroke_width(stroke));
                     if is_front {
+                        let line = LineSeries::new(line, color.stroke_width(stroke));
                         link_front.push(line);
                     } else {
-                        chart.draw_series(line)?;
+                        Style::DashedLine.draw(
+                            &mut chart,
+                            line,
+                            color.stroke_width(stroke),
+                            "",
+                            self.font,
+                        )?;
                     }
                 }
             }
@@ -180,7 +186,7 @@ impl Figure<'_, '_> {
             let line = line.iter().map(|&c| c.into());
             let (color, filled) = data.color();
             let color = ShapeStyle { color, filled, stroke_width: stroke };
-            style.draw(&mut chart, line, color, label, self.font as i32)?;
+            style.draw(&mut chart, line, color, label, self.font)?;
         }
         // Draw layer 3: Draw linkage in the front of the sphere
         for line in link_front {
