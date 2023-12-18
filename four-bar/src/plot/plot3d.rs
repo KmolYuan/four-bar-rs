@@ -175,14 +175,12 @@ impl Figure<'_, '_> {
             }
         }
         // Draw layer 2: Draw curves
-        let mut has_curve = false;
         for data in self.lines() {
             let LineData { label, line, style, .. } = &*data;
             let line = line.iter().map(|&c| c.into());
             let (color, filled) = data.color();
             let color = ShapeStyle { color, filled, stroke_width: stroke };
             style.draw(&mut chart, line, color, label, self.font as i32)?;
-            has_curve |= !label.is_empty();
         }
         // Draw layer 3: Draw linkage in the front of the sphere
         for line in link_front {
@@ -191,17 +189,15 @@ impl Figure<'_, '_> {
         chart.draw_series(grounded_front)?;
         chart.draw_series(joints_front)?;
         // Draw legend
-        if has_curve {
-            if let Some(legend) = legend.to_plotter_pos() {
-                chart
-                    .configure_series_labels()
-                    .legend_area_size(self.font)
-                    .position(legend)
-                    .background_style(WHITE)
-                    .border_style(BLACK)
-                    .label_font(self.get_font3d())
-                    .draw()?;
-            }
+        if let Some(legend) = legend.to_plotter_pos().filter(|_| self.has_legend()) {
+            chart
+                .configure_series_labels()
+                .legend_area_size(self.font)
+                .position(legend)
+                .background_style(WHITE)
+                .border_style(BLACK)
+                .label_font(self.get_font3d())
+                .draw()?;
         }
         Ok(())
     }

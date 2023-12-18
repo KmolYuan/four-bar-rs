@@ -545,6 +545,12 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         &mut self.lines
     }
 
+    pub(crate) fn has_legend(&self) -> bool {
+        self.lines
+            .iter()
+            .any(|data| !data.borrow().label.is_empty())
+    }
+
     #[inline]
     pub(crate) fn check_empty<B: DrawingBackend>(&self) -> PResult<(), B> {
         (!self.lines.is_empty() || self.fb.is_some())
