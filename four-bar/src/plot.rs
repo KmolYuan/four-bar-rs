@@ -32,11 +32,7 @@ use efd::na;
 use fmtastic::Subscript;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
-use std::{
-    borrow::Cow,
-    cell::{Ref, RefCell},
-    rc::Rc,
-};
+use std::borrow::Cow;
 
 mod ball;
 mod dashed_line;
@@ -369,6 +365,7 @@ impl LegendPos {
     derive(serde::Deserialize, serde::Serialize),
     serde(default)
 )]
+#[derive(Clone)]
 pub struct LineData<'a, C: Clone> {
     /// Label of the line
     pub label: Cow<'a, str>,
@@ -412,7 +409,7 @@ pub struct FigureBase<'a, 'b, M: Clone, C: Clone> {
     /// Linkage
     pub fb: Option<Cow<'b, M>>,
     /// Line data
-    pub lines: Vec<Rc<RefCell<LineData<'a, C>>>>,
+    pub lines: Vec<LineData<'a, C>>,
     /// Drawing options
     pub opt: Opt<'a>,
 }
@@ -521,7 +518,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
 
     /// Add a line from a [`LineData`] instance in-placed.
     pub fn push_line_data(&mut self, data: LineData<'a, C>) {
-        self.lines.push(Rc::new(RefCell::new(data)));
+        self.lines.push(data);
     }
 
     /// Add a line with default settings in-placed.
@@ -538,19 +535,31 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     }
 
     /// Iterate over lines.
-    pub fn lines(&self) -> impl Iterator<Item = Ref<LineData<'a, C>>> {
-        self.lines.iter().map(|packed| packed.borrow())
+    pub fn lines(&self) -> impl Iterator<Item = &LineData<'a, C>> {
+        self.lines.iter()
     }
 
     /// Get a mutable reference to the lines.
-    pub fn lines_mut(&mut self) -> &mut Vec<Rc<RefCell<LineData<'a, C>>>> {
-        &mut self.lines
+    pub fn lines_mut(&mut self) -> impl Iterator<Item = &mut LineData<'a, C>> {
+        self.lines.iter_mut()
+    }
+
+    /// Retain lines with a predicate.
+    pub fn retain_lines(&mut self, mut f: impl FnMut(usize, &mut LineData<'a, C>) -> bool) {
+        let mut i = 0;
+        self.lines.retain_mut(|line| {
+            i += 1;
+            f(i, line)
+        });
+    }
+
+    /// Swap two lines with their indices.
+    pub fn swap_lines(&mut self, i: usize, j: usize) {
+        self.lines.swap(i, j);
     }
 
     pub(crate) fn has_legend(&self) -> bool {
-        self.lines
-            .iter()
-            .any(|data| !data.borrow().label.is_empty())
+        self.lines.iter().any(|data| !data.label.is_empty())
     }
 
     #[inline]

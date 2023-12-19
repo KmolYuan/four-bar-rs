@@ -94,7 +94,7 @@ impl Figure<'_, '_> {
             .draw()?;
         // Draw curve
         for data in self.lines() {
-            let LineData { label, line, style, .. } = &*data;
+            let LineData { label, line, style, .. } = data;
             let line = line.iter().map(|&[x, y]| (x, y));
             let (color, filled) = data.color();
             let color = ShapeStyle { color, filled, stroke_width: stroke };

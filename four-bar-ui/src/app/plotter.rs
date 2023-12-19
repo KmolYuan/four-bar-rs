@@ -43,16 +43,8 @@ fn fig_ui<D, M, const N: usize>(
         }
     });
     ui.collapsing("Curves", |ui| {
-        {
-            let mut i = 0;
-            fig.borrow_mut().lines.retain_mut(|line| {
-                ui.group(|ui| {
-                    i += 1;
-                    fig_line_ui(ui, i, &mut line.borrow_mut())
-                })
-                .inner
-            });
-        }
+        fig.borrow_mut()
+            .retain_lines(|i, line| ui.group(|ui| fig_line_ui(ui, i, line)).inner);
         ui.horizontal(|ui| {
             if let Some(c) = lnk.projs.current_curve().and_then(get_curve) {
                 if ui.button("🖴 Add from").clicked() {
