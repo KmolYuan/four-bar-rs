@@ -291,12 +291,8 @@ impl Transformable<efd::D3> for SFourBar {
         let pb = na::Point3::new(fb.a.cos(), fb.a.sin(), 0.) + p1_axis;
         let p1_axis = geo.rot() * p1_axis;
         [fb.p1i, fb.p1j] = to_sc(p1_axis.x, p1_axis.y, p1_axis.z);
-        let rot_inv = if let Some(axis) = p1_axis.cross(&na::Vector3::z()).try_normalize(0.) {
-            let angle = p1_axis.dot(&na::Vector3::z()).acos();
-            na::UnitQuaternion::from_scaled_axis(axis * angle)
-        } else {
-            na::UnitQuaternion::identity()
-        };
+        let rot_inv =
+            na::UnitQuaternion::rotation_between(&p1_axis, &na::Vector3::z()).unwrap_or_default();
         let pb = rot_inv * geo.rot() * pb;
         fb.a = pb.y.atan2(pb.x);
         fb.r *= geo.scale();
@@ -345,12 +341,7 @@ fn curve_interval(fb: &SFourBar, b: f64, inv: bool) -> Option<[[f64; 3]; 5]> {
         let p1_axis = na::Vector3::from(to_cc(p1i, p1j, 1.));
         let rot1 = na::UnitQuaternion::from_scaled_axis(p1_axis * a);
         let z_axis = na::Vector3::z();
-        let rot2 = if let Some(axis) = z_axis.cross(&p1_axis).try_normalize(0.) {
-            let angle = z_axis.dot(&p1_axis).acos();
-            na::UnitQuaternion::from_scaled_axis(axis * angle)
-        } else {
-            na::UnitQuaternion::identity()
-        };
+        let rot2 = na::UnitQuaternion::rotation_between(&z_axis, &p1_axis).unwrap_or_default();
         rot1 * rot2
     };
     let o = na::Point3::new(ox, oy, oz);
