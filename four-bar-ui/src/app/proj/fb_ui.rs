@@ -182,10 +182,10 @@ fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, bound: AngleBoun
     let states = bound.get_states();
     if !states.contains(stat) {
         *stat = match stat {
-            Stat::C1B1 => unreachable!(), // always valid
-            Stat::C1B2 => Stat::C2B1,     // maybe [C1B1, C2B1]
-            Stat::C2B1 => Stat::C1B2,     // maybe [C1B1, C1B2]
-            Stat::C2B2 => Stat::C1B2,     // maybe [C1B1, C2B1] or [C1B1, C1B2]
+            Stat::C1B1 => Stat::C1B1, // always valid
+            Stat::C1B2 => Stat::C2B1, // maybe [C1B1, C2B1]
+            Stat::C2B1 => Stat::C1B2, // maybe [C1B1, C1B2]
+            Stat::C2B2 => Stat::C1B2, // maybe [C1B1, C2B1] or [C1B1, C1B2]
         };
     }
     ui.horizontal(|ui| {

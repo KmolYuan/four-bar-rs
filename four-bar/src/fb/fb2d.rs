@@ -1,5 +1,6 @@
 //! Planar four-bar linkages.
 use super::*;
+use crate::efd::na;
 use std::f64::consts::FRAC_PI_6;
 
 /// Unnormalized part of four-bar linkage.
@@ -183,51 +184,41 @@ impl CurveGen<efd::D2> for FourBar {
     }
 }
 
-fn angle([x, y]: [f64; 2], d: f64, a: f64) -> [f64; 2] {
-    [x + d * a.cos(), y + d * a.sin()]
-}
-
-fn angle_with([x1, y1]: [f64; 2], [x2, y2]: [f64; 2], d: f64, a: f64) -> [f64; 2] {
-    let a = (y2 - y1).atan2(x2 - x1) + a;
-    [x1 + d * a.cos(), y1 + d * a.sin()]
+fn angle(p: na::Point2<f64>, d: f64, a: f64) -> na::Point2<f64> {
+    let c = na::Complex::from_polar(d, a);
+    p + na::Vector2::new(c.re, c.im)
 }
 
 fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
     let UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
     let NormFourBar { l1, l3, l4, l5, g, .. } = fb.norm;
-    let p1 = [p1x, p1y];
+    let p1 = na::Point2::new(p1x, p1y);
     let p2 = angle(p1, l1, a);
     let p3 = angle(p1, l2, a + b);
     let p4 = if (l1 - l3).abs() < f64::EPSILON && (l2 - l4).abs() < f64::EPSILON {
         // Special case
-        let [p1x, p1y] = p1;
-        let [p2x, p2y] = p2;
-        let [p3x, p3y] = p3;
-        let dx = p3x - p1x;
-        let dy = p3y - p1y;
-        let d = dx.hypot(dy);
-        let a = dy.atan2(dx);
-        [p2x + d * a.cos(), p2y + d * a.sin()]
+        p2 + (p3 - p1)
     } else {
-        let [p2x, p2y] = p2;
-        let [p3x, p3y] = p3;
-        let dx = p2x - p3x;
-        let dy = p2y - p3y;
-        let r = dx.hypot(dy);
+        let p23 = p2 - p3;
+        let r_2 = p23.norm_squared();
+        let r = r_2.sqrt();
         if r > l3 + l4 || r < (l3 - l4).abs() || r < f64::EPSILON {
-            [f64::NAN; 2]
+            na::Point2::from([f64::NAN; 2])
         } else {
-            let c = dx / r;
-            let s = dy / r;
             let l3_2 = l3 * l3;
-            let a = (l3_2 - l4 * l4 + r * r) / (2. * r);
-            let h = (l3_2 - a * a).sqrt() * if inv { -1. } else { 1. };
-            let xm = p3x + a * c;
-            let ym = p3y + a * s;
-            [xm - h * s, ym + h * c]
+            let c = (l3_2 - l4 * l4 + r_2) / (2. * r);
+            let s = (l3_2 - c * c).sqrt();
+            let rot = na::UnitComplex::from_cos_sin_unchecked(c, s);
+            p3 + if inv { rot.conjugate() } else { rot } * (p23 / r)
         }
     };
-    let p5 = angle_with(p3, p4, l5, g);
-    let js = [p1, p2, p3, p4, p5];
+    let p5 = {
+        let p43 = p4 - p3;
+        angle(p3, l5, g + na::Complex::new(p43.x, p43.y).arg())
+    };
+    macro_rules! build_coords {
+        [$($p:ident),+] => { [$([$p.x, $p.y]),+] }
+    }
+    let js = build_coords![p1, p2, p3, p4, p5];
     js.iter().flatten().all(|x| x.is_finite()).then_some(js)
 }
