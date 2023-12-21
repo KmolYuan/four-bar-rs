@@ -185,8 +185,7 @@ impl CurveGen<efd::D2> for FourBar {
 }
 
 fn angle(p: na::Point2<f64>, d: f64, a: f64) -> na::Point2<f64> {
-    let c = na::Complex::from_polar(d, a);
-    p + na::Vector2::new(c.re, c.im)
+    p + d * na::Vector2::new(a.cos(), a.sin())
 }
 
 fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
@@ -214,7 +213,7 @@ fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
     };
     let p5 = {
         let p43 = p4 - p3;
-        angle(p3, l5, g + na::Complex::new(p43.x, p43.y).arg())
+        angle(p3, l5, g + p43.y.atan2(p43.x))
     };
     macro_rules! build_coords {
         [$($p:ident),+] => { [$([$p.x, $p.y]),+] }
