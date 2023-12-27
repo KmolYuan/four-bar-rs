@@ -142,7 +142,7 @@ impl<'a> Solver<'a> {
                 {
                     use four_bar::fb::{IntoVectorized as _, Normalized as _};
                     use mh::ndarray::Array2;
-                    atlas_fb.replace(candi[0].clone());
+                    atlas_fb = Some(candi[0].clone());
                     let pop = candi.len();
                     s = s.pop_num(pop);
                     let fitness = candi

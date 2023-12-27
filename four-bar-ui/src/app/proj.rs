@@ -169,7 +169,7 @@ impl Projects {
             Some(path) if !ask => io::save_ron(&fb, path),
             _ => {
                 let path = self.path.clone();
-                io::save_ron_ask(&fb, &proj.name(), move |p| _ = path.borrow_mut().replace(p));
+                io::save_ron_ask(&fb, &proj.name(), move |p| *path.borrow_mut() = Some(p));
             }
         }
         self.list[self.curr].mark_saved();

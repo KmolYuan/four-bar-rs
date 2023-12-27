@@ -116,7 +116,7 @@ fn get_info(
                 io::Fb::Fb(fb) => io::Curve::P(fb.curve(res)),
                 io::Fb::SFb(fb) => io::Curve::S(fb.curve(res)),
             };
-            target_fb.replace(fb);
+            target_fb = Some(fb);
             curve
         }
         _ => {

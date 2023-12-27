@@ -452,7 +452,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
 
     /// Set the font family.
     pub fn font_family(mut self, family: impl Into<Cow<'a, str>>) -> Self {
-        self.font_family.replace(family.into());
+        self.font_family = Some(family.into());
         self
     }
 

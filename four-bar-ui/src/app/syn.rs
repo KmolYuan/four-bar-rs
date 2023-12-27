@@ -284,7 +284,7 @@ impl Synthesis {
                     .is_open(self.atlas_cfg.is_open);
                 let queue = self.queue.clone();
                 let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
-                self.atlas_pg.replace(pg.clone());
+                self.atlas_pg = Some(pg.clone());
                 let f = move || {
                     let atlas = atlas::$atlas::make_with(cfg, |p| {
                         let p = p as f32 / size as f32;

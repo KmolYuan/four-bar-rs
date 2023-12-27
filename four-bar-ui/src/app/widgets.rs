@@ -121,9 +121,9 @@ where
         let mut enable = val.is_some();
         let mut ret = ui.checkbox(&mut enable, label);
         if !enable {
-            val.take();
+            *val = None;
         } else if val.is_none() {
-            val.replace(V::default());
+            *val = Some(V::default());
         }
         if let Some(val) = val {
             ret |= f(ui, val);

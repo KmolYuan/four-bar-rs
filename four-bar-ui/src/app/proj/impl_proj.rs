@@ -381,7 +381,7 @@ where
     }
 
     fn set_path(&mut self, path: PathBuf) {
-        self.path.replace(path);
+        self.path = Some(path);
     }
 
     fn path(&self) -> Option<&Path> {

@@ -68,7 +68,7 @@ impl App {
         ctx.egui_ctx
             .set_fonts(FontDefinitions { font_data, families });
         let mut style = (*ctx.egui_ctx.style()).clone();
-        style.override_text_style.replace(TextStyle::Body);
+        style.override_text_style = Some(TextStyle::Body);
         for (text_style, size) in [
             (TextStyle::Button, 14.),
             (TextStyle::Small, 14.),

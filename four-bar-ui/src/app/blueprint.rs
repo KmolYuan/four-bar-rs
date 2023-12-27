@@ -42,9 +42,9 @@ impl BluePrint {
         };
         if let Some(img) = pre_open(path) {
             let h = ctx.load_texture("bp", img, Default::default());
-            self.info.borrow_mut().h.replace(h);
+            self.info.borrow_mut().h = Some(h);
         } else {
-            self.path.borrow_mut().take();
+            *self.path.borrow_mut() = None;
             *self.info.borrow_mut() = Default::default();
         }
     }
@@ -58,15 +58,15 @@ impl BluePrint {
                 let inner = self.info.clone();
                 let ctx = ui.ctx().clone();
                 io::open_img(move |path_new, img| {
-                    path.borrow_mut().replace(path_new);
+                    *path.borrow_mut() = Some(path_new);
                     let h = ctx.load_texture("bp", img, Default::default());
                     let mut inner = inner.borrow_mut();
                     *inner = Default::default();
-                    inner.h.replace(h);
+                    inner.h = Some(h);
                 });
             }
             if self.info.borrow().h.is_some() && ui.button("✖ Remove").clicked() {
-                self.path.borrow_mut().take();
+                *self.path.borrow_mut() = None;
                 *self.info.borrow_mut() = Default::default();
             }
         });

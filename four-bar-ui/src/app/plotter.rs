@@ -19,7 +19,7 @@ fn fig_ui<D, M, const N: usize>(
     ui.collapsing("Linkage", |ui| {
         if fig.borrow().fb.is_some() {
             if ui.button("✖ Remove Linkage").clicked() {
-                fig.borrow_mut().fb.take();
+                fig.borrow_mut().fb = None;
             }
         } else {
             ui.label("No linkage loaded");
@@ -27,7 +27,7 @@ fn fig_ui<D, M, const N: usize>(
         ui.horizontal(|ui| {
             if let Some(fb) = lnk.projs.current_fb_state().and_then(|(_, fb)| get_fb(fb)) {
                 if ui.button("🖴 Load from").clicked() {
-                    fig.borrow_mut().fb.replace(Cow::Owned(fb));
+                    fig.borrow_mut().fb = Some(Cow::Owned(fb));
                 }
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
@@ -37,7 +37,7 @@ fn fig_ui<D, M, const N: usize>(
         if ui.button("🖴 Load from RON").clicked() {
             let fig = fig.clone();
             io::open_ron_single(move |_, fb| {
-                let done = |fb| _ = fig.borrow_mut().fb.replace(Cow::Owned(fb));
+                let done = |fb| fig.borrow_mut().fb = Some(Cow::Owned(fb));
                 get_fb(fb).alert_then("Wrong linkage type", done);
             });
         }
@@ -240,16 +240,16 @@ impl Plotter {
                 }
             }
             if ui.button("✖ Delete Plot").clicked() {
-                self.queue[self.curr].take();
+                self.queue[self.curr] = None;
             }
         } else {
             ui.heading("Empty Plot");
             ui.horizontal(|ui| {
                 if ui.button("✚ Planar").clicked() {
-                    self.queue[self.curr].replace(PlotType::new_p());
+                    self.queue[self.curr] = Some(PlotType::new_p());
                 }
                 if ui.button("✚ Spatial").clicked() {
-                    self.queue[self.curr].replace(PlotType::new_s());
+                    self.queue[self.curr] = Some(PlotType::new_s());
                 }
             });
             ui.horizontal(|ui| {
@@ -276,7 +276,7 @@ impl Plotter {
                 for (i, plot) in rng.zip(front.iter().chain(last.iter())) {
                     if let Some(plot) = plot {
                         if ui.button(format!("{{{i}}}")).clicked() {
-                            curr.replace(plot.clone());
+                            *curr = Some(plot.clone());
                         }
                         is_empty = false;
                     }

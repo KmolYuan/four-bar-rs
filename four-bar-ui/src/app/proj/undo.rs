@@ -120,7 +120,7 @@ impl<D: Delta> Undo<D> {
 
     pub(crate) fn fetch(&mut self, state: &D::State) {
         let Some(base) = &self.last else {
-            self.last.replace(state.clone());
+            self.last = Some(state.clone());
             return;
         };
         let Some(delta) = D::delta(base, state) else {
@@ -130,26 +130,26 @@ impl<D: Delta> Undo<D> {
             self.undo.push(delta);
         }
         self.redo.clear();
-        self.last.replace(state.clone());
+        self.last = Some(state.clone());
     }
 
     pub(crate) fn clear(&mut self) {
         self.undo.clear();
         self.redo.clear();
-        self.last.take();
+        self.last = None;
     }
 
     pub(crate) fn undo(&mut self, state: &mut D::State) {
         let Some(delta) = self.undo.pop() else { return };
         delta.undo(state);
         self.redo.push(delta);
-        self.last.replace(state.clone());
+        self.last = Some(state.clone());
     }
 
     pub(crate) fn redo(&mut self, state: &mut D::State) {
         let Some(delta) = self.redo.pop() else { return };
         delta.redo(state);
         self.undo.push(delta);
-        self.last.replace(state.clone());
+        self.last = Some(state.clone());
     }
 }

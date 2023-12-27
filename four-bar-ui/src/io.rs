@@ -208,22 +208,23 @@ static ERR_MSG: std::sync::Mutex<Option<(Cow<'static, str>, Cow<'static, str>)>>
 
 #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
 pub(crate) fn push_err_msg(parent: &eframe::Frame) {
-    if let Some((title, msg)) = ERR_MSG.lock().unwrap().take() {
-        macro_rules! msg {
-            ($ty:ident $(, $parent: ident)?) => {
-                rfd::$ty::new()
-                    .set_level(rfd::MessageLevel::Error)
-                    .set_title(&*title)
-                    .set_description(&*msg)
-                    $(.set_parent($parent))?
-                    .show()
-            };
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        msg!(MessageDialog, parent);
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(async move { _ = msg!(AsyncMessageDialog).await });
+    let Some((title, msg)) = ERR_MSG.lock().unwrap().take() else {
+        return;
+    };
+    macro_rules! msg {
+        ($ty:ident $(, $parent: ident)?) => {
+            rfd::$ty::new()
+                .set_level(rfd::MessageLevel::Error)
+                .set_title(&*title)
+                .set_description(&*msg)
+                $(.set_parent($parent))?
+                .show()
+        };
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    msg!(MessageDialog, parent);
+    #[cfg(target_arch = "wasm32")]
+    wasm_bindgen_futures::spawn_local(async move { _ = msg!(AsyncMessageDialog).await });
 }
 
 pub(crate) fn alert<S1, S2>(title: S1, msg: S2)
@@ -231,7 +232,7 @@ where
     S1: Into<Cow<'static, str>>,
     S2: Into<Cow<'static, str>>,
 {
-    ERR_MSG.lock().unwrap().replace((title.into(), msg.into()));
+    *ERR_MSG.lock().unwrap() = Some((title.into(), msg.into()));
 }
 
 pub(crate) fn open_ron_single<S, C>(done: C)
