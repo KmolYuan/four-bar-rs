@@ -157,11 +157,11 @@ pub enum Style {
     Line,
     /// Dashed Line
     DashedLine,
+    /// Dot Line
+    Dot,
     /// Circle Marker
     #[default]
     Circle,
-    /// Dot Marker
-    Dot,
     /// Triangle Marker
     Triangle,
     /// Cross Marker
@@ -210,17 +210,20 @@ impl Style {
         I: IntoIterator<Item = CT::From>,
         I::IntoIter: Clone,
     {
-        let font = font as i32;
+        let font = (font * 0.9) as i32;
         let dot_size = color.stroke_width * 2;
         let gap = color.stroke_width as i32;
         let has_label = !label.is_empty();
         macro_rules! impl_marker {
-            ($mk:ident) => {{
-                let line = line.into_iter().map(|c| $mk::new(c, dot_size, color));
+            ($mk:expr) => {{
+                let color = color.stroke_width(color.stroke_width / 2);
+                let mk_f = $mk; // Generic function 1
+                let line = line.into_iter().map(|c| mk_f(c, dot_size, color));
                 let anno = chart.draw_series(line)?;
                 if has_label {
+                    let mk_f = $mk; // Generic function 2
                     anno.label(label)
-                        .legend(move |(x, y)| $mk::new((x + font / 2, y), dot_size, color));
+                        .legend(move |(x, y)| mk_f((x + font / 2, y), dot_size, color));
                 }
             }};
         }
@@ -229,8 +232,8 @@ impl Style {
                 let line = LineSeries::new(line, color);
                 let anno = chart.draw_series(line)?;
                 if has_label {
-                    anno.label(label).legend(move |(x, y)| {
-                        PathElement::new([(x + gap, y), (x + font - gap, y)], color)
+                    anno.label(label).legend(move |c| {
+                        EmptyElement::at(c) + PathElement::new([(gap, 0), (font - gap, 0)], color)
                     });
                 }
             }
@@ -238,13 +241,14 @@ impl Style {
                 let series = DashedPath::new(line, 30, 15, color).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
-                    anno.label(label).legend(move |(x, y)| {
-                        DashedPath::new([(x + gap, y), (x + font - gap, y)], 10, 5, color)
+                    anno.label(label).legend(move |c| {
+                        EmptyElement::at(c)
+                            + DashedPath::new([(gap, 0), (font - gap, 0)], 10, 5, color)
                     });
                 }
             }
-            Self::Circle => impl_marker!(Circle),
             Self::Dot => {
+                let dot_size = color.stroke_width as f64 * 0.7;
                 let color = color.filled();
                 let line = line.into_iter().map(|c| Circle::new(c, dot_size, color));
                 let anno = chart.draw_series(line)?;
@@ -257,21 +261,13 @@ impl Style {
                     });
                 }
             }
-            Self::Triangle => impl_marker!(TriangleMarker),
-            Self::Cross => impl_marker!(Cross),
-            Self::Square => {
-                let r = color.stroke_width as i32;
-                let line = line
-                    .into_iter()
-                    .map(|c| EmptyElement::at(c) + Rectangle::new([(r, r), (-r, -r)], color));
-                let anno = chart.draw_series(line)?;
-                if has_label {
-                    anno.label(label).legend(move |(x, y)| {
-                        EmptyElement::at((x + font / 2, y))
-                            + Rectangle::new([(r, r), (-r, -r)], color)
-                    });
-                }
-            }
+            Self::Circle => impl_marker!(Circle::new),
+            Self::Triangle => impl_marker!(TriangleMarker::new),
+            Self::Cross => impl_marker!(Cross::new),
+            Self::Square => impl_marker!(|pos, dot_size, color| {
+                let r = dot_size as i32 / 2;
+                EmptyElement::at(pos) + Rectangle::new([(r, r), (-r, -r)], color)
+            }),
         }
         Ok(())
     }

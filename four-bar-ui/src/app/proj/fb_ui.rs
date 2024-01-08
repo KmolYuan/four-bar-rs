@@ -76,7 +76,7 @@ fn draw_link3d(ui: &mut egui_plot::PlotUi, sc: [f64; 3], points: &[[f64; 3]], is
         let a = na::Point3::from(w[0]) - sc;
         let b = na::Point3::from(w[1]) - sc;
         let axis = a.cross(&b).normalize();
-        let angle = a.normalize().dot(&b.normalize()).acos();
+        let angle = (a.dot(&b) / (a.norm() * b.norm())).acos();
         const N: usize = 150;
         let step = angle / N as f64;
         (0..=N).map(move |i| {
