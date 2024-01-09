@@ -162,8 +162,7 @@ impl App {
     fn canvas(&mut self, ui: &mut Ui) {
         egui_plot::Plot::new("canvas")
             .data_aspect(1.)
-            .auto_bounds_x()
-            .auto_bounds_y()
+            .auto_bounds([true; 2].into())
             .legend(Default::default())
             .coordinates_formatter(egui_plot::Corner::LeftBottom, Default::default())
             .show(ui, |ui| {
