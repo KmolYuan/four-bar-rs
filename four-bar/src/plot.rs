@@ -211,11 +211,11 @@ impl Style {
         I::IntoIter: Clone,
     {
         let font = (font * 0.9) as i32;
-        let dot_size = color.stroke_width * 2;
         let gap = color.stroke_width as i32;
         let has_label = !label.is_empty();
         macro_rules! impl_marker {
             ($mk:expr) => {{
+                let dot_size = color.stroke_width as f32 * 1.3;
                 let color = color.stroke_width(color.stroke_width / 2);
                 let mk_f = $mk; // Generic function 1
                 let line = line.into_iter().map(|c| mk_f(c, dot_size, color));
