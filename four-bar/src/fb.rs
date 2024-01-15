@@ -5,7 +5,6 @@ pub use self::{
     stat::*,
     vectorized::*,
 };
-use crate::efd::EfdDim;
 
 pub mod fb2d;
 pub mod fb3d;
@@ -59,7 +58,7 @@ impl<UN, NM> FourBarBase<UN, NM> {
     }
 
     /// Curve generation for coupler curve.
-    pub fn curve<D: EfdDim>(&self, res: usize) -> Vec<efd::Coord<D>>
+    pub fn curve<const D: usize>(&self, res: usize) -> Vec<efd::Coord<D>>
     where
         Self: CurveGen<D>,
     {
@@ -100,7 +99,10 @@ impl<UN, NM> std::ops::DerefMut for FourBarBase<UN, NM> {
 /// A normalized data type. This type can denormalized to another.
 ///
 /// Usually, this type is smaller than the denormalized type.
-pub trait Normalized<D: efd::EfdDim>: Sized {
+pub trait Normalized<const D: usize>: Sized
+where
+    efd::U<D>: efd::RotAlias<D>,
+{
     /// Denormalized target, which should be transformable.
     type De: Transformable<D>;
     /// Method to convert types.
@@ -116,25 +118,28 @@ pub trait Normalized<D: efd::EfdDim>: Sized {
     fn normalize_inplace(de: &mut Self::De);
 
     /// Denormalized with transformation.
-    fn trans_denorm(self, geo: &efd::GeoVar<D::Trans>) -> Self::De {
+    fn trans_denorm(self, geo: &efd::GeoVar<efd::Rot<D>, D>) -> Self::De {
         self.denormalize().transform(geo)
     }
 }
 
 /// Transformation ability.
-pub trait Transformable<D: efd::EfdDim>: Sized {
+pub trait Transformable<const D: usize>: Sized
+where
+    efd::U<D>: efd::RotAlias<D>,
+{
     /// Transform in placed.
-    fn transform_inplace(&mut self, geo: &efd::GeoVar<D::Trans>);
+    fn transform_inplace(&mut self, geo: &efd::GeoVar<efd::Rot<D>, D>);
 
     /// Build with transformation.
-    fn transform(mut self, geo: &efd::GeoVar<D::Trans>) -> Self {
+    fn transform(mut self, geo: &efd::GeoVar<efd::Rot<D>, D>) -> Self {
         self.transform_inplace(geo);
         self
     }
 }
 
 /// Curve-generating behavior.
-pub trait CurveGen<D: efd::EfdDim>: Statable {
+pub trait CurveGen<const D: usize>: Statable {
     /// Get the position with inversion flag.
     fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]>;
 
@@ -178,11 +183,11 @@ pub trait CurveGen<D: efd::EfdDim>: Statable {
     }
 }
 
-impl<D, N> CurveGen<D> for N
+impl<N, const D: usize> CurveGen<D> for N
 where
-    D: efd::EfdDim,
     N: Normalized<D> + Statable + Clone,
     N::De: CurveGen<D>,
+    efd::U<D>: efd::RotAlias<D>,
 {
     fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]> {
         self.clone().denormalize().pos_s(t, inv)

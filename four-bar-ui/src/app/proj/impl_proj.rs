@@ -1,5 +1,5 @@
 use super::*;
-use four_bar::{csv, efd, fb, NormFourBar, SNormFourBar};
+use four_bar::*;
 use std::path::Path;
 
 macro_rules! hotkey {
@@ -95,16 +95,15 @@ impl Project {
     }
 }
 
-type FbProj = ProjInner<efd::D2, NormFourBar>;
-type SFbProj = ProjInner<efd::D3, SNormFourBar>;
+type FbProj = ProjInner<NormFourBar, 2>;
+type SFbProj = ProjInner<SNormFourBar, 3>;
 
 #[derive(Deserialize, Serialize)]
-#[serde(default)]
-pub(crate) struct ProjInner<D, M>
+pub(crate) struct ProjInner<M, const D: usize>
 where
-    D: efd::EfdDim,
     M: fb::Normalized<D>,
     M::De: fb::CurveGen<D> + undo::IntoDelta,
+    efd::U<D>: efd::RotAlias<D>,
 {
     path: Option<PathBuf>,
     fb: M::De,
@@ -120,11 +119,11 @@ where
     undo: undo::Undo<<M::De as undo::IntoDelta>::Delta>,
 }
 
-impl<D, M> Default for ProjInner<D, M>
+impl<M, const D: usize> Default for ProjInner<M, D>
 where
-    D: efd::EfdDim,
     M: fb::Normalized<D>,
     M::De: fb::CurveGen<D> + undo::IntoDelta + Default,
+    efd::U<D>: efd::RotAlias<D>,
 {
     fn default() -> Self {
         Self {
@@ -141,7 +140,7 @@ where
     }
 }
 
-pub(crate) struct Cache<D: efd::EfdDim> {
+pub(crate) struct Cache<const D: usize> {
     changed: bool,
     angle_bound: fb::AngleBound,
     pub(crate) joints: Option<[efd::Coord<D>; 5]>,
@@ -149,7 +148,7 @@ pub(crate) struct Cache<D: efd::EfdDim> {
     pub(crate) stat_curves: Vec<Vec<efd::Coord<D>>>,
 }
 
-impl<D: efd::EfdDim> Default for Cache<D> {
+impl<const D: usize> Default for Cache<D> {
     fn default() -> Self {
         Self {
             changed: true,
@@ -197,9 +196,8 @@ fn angle_bound_ui(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Respon
     res.body_returned.unwrap_or(res.header_response)
 }
 
-impl<D, M> ProjInner<D, M>
+impl<M, const D: usize> ProjInner<M, D>
 where
-    D: efd::EfdDim,
     M: fb::Normalized<D>,
     M::De: fb::CurveGen<D>
         + fb::Statable
@@ -211,6 +209,7 @@ where
         + Serialize
         + serde::de::DeserializeOwned,
     efd::Coord<D>: Serialize,
+    efd::U<D>: efd::RotAlias<D>,
 {
     fn new(path: Option<PathBuf>, fb: M::De) -> Self {
         Self { path, fb, ..Self::default() }

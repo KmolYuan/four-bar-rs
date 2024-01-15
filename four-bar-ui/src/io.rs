@@ -300,11 +300,7 @@ where
     );
 }
 
-pub(crate) fn save_atlas_ask<C, D>(atlas: &atlas::Atlas<C, D>)
-where
-    C: atlas::Code<D> + Send,
-    D: efd::EfdDim,
-{
+pub(crate) fn save_atlas_ask<M, const D: usize>(atlas: &atlas::Atlas<M, D>) {
     save_ask(
         "atlas.npz",
         ATLAS_FMT,

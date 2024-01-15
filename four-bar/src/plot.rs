@@ -8,7 +8,7 @@
 //! ```
 //! use four_bar::{plot::*, plot2d};
 //!
-//! let fig = plot2d::Figure::new().add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
+//! let fig = plot2d::Figure::new(None).add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
 //! let mut buf = String::new();
 //! let svg = SVGBackend::with_string(&mut buf, (1600, 1600));
 //! fig.plot(svg).unwrap();
@@ -19,7 +19,7 @@
 //! ```
 //! use four_bar::{plot::*, plot2d};
 //!
-//! let fig = plot2d::Figure::new().add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
+//! let fig = plot2d::Figure::new(None).add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
 //! let mut buf = String::new();
 //! let svg = SVGBackend::with_string(&mut buf, (1600, 800));
 //! let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);
@@ -565,9 +565,8 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             .ok_or(DrawingAreaErrorKind::LayoutError)
     }
 
-    pub(crate) fn get_joints<D, F>(&self, coord_map: F) -> Option<[efd::Coord<D>; 5]>
+    pub(crate) fn get_joints<F, const D: usize>(&self, coord_map: F) -> Option<[efd::Coord<D>; 5]>
     where
-        D: efd::EfdDim,
         M: fb::CurveGen<D>,
         F: Fn(efd::Coord<D>) -> na::Point2<f64>,
     {

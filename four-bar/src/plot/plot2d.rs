@@ -7,9 +7,9 @@ pub use super::*;
 /// ```
 /// use four_bar::{plot2d::Figure, FourBar};
 /// // From linkage
-/// let figure = Figure::from(&FourBar::example());
+/// let figure = Figure::new(Some(FourBar::example()));
 /// // Without linkage
-/// let figure = Figure::new();
+/// let figure = Figure::new(None);
 /// ```
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, FourBar, [f64; 2]>;
 
@@ -53,7 +53,7 @@ impl Figure<'_, '_> {
     /// use four_bar::{plot::*, plot2d, FourBar};
     /// let fb = FourBar::example();
     /// let mut buf = String::new();
-    /// plot2d::Figure::from(&fb)
+    /// plot2d::Figure::new_ref(Some(&fb))
     ///     .axis(false)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
     ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))

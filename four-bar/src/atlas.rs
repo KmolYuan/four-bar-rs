@@ -1,6 +1,7 @@
 //! Create a atlas database for four-bar linkages.
 pub use self::distr::{Code, Distr};
 use super::{NormFourBar, SNormFourBar};
+use efd::na;
 use mh::{
     random::{Rng, SeedOption},
     utility::prelude::*,
@@ -11,9 +12,9 @@ use std::{marker::PhantomData, sync::Mutex};
 mod distr;
 
 /// Planar four-bar atlas type.
-pub type FbAtlas = Atlas<NormFourBar, efd::D2>;
+pub type FbAtlas = Atlas<NormFourBar, 2>;
 /// Spherical four-bar atlas type.
-pub type SFbAtlas = Atlas<SNormFourBar, efd::D3>;
+pub type SFbAtlas = Atlas<SNormFourBar, 3>;
 
 fn to_arr<A, S, D>(stack: Mutex<Vec<ArrayBase<S, D>>>, n: usize) -> Array<A, D::Larger>
 where
@@ -26,16 +27,22 @@ where
     ndarray::stack(Axis(0), &arrays).unwrap()
 }
 
-fn efd_to_arr<D: efd::EfdDim>(efd: efd::Efd<D>) -> Array2<f64> {
-    let mat = efd.into_inner();
+fn efd_to_arr<const D: usize>(efd: efd::Efd<D>) -> Array2<f64>
+where
+    efd::U<D>: efd::EfdDim<D>,
+    na::Const<D>: na::DimNameMul<na::U2>,
+{
+    let (mat, _) = efd.into_inner();
     unsafe { Array2::from_shape_vec_unchecked([mat.ncols(), mat.nrows()], mat.data.into()) }
 }
 
-fn arr_to_efd<D: efd::EfdDim>(arr: ArrayView2<f64>) -> efd::Efd<D> {
-    use efd::na::{self, DimName as _};
+fn arr_to_efd<const D: usize>(arr: ArrayView2<f64>) -> efd::Efd<D>
+where
+    efd::U<D>: efd::EfdDim<D>,
+    na::Const<D>: na::DimNameMul<na::U2>,
+{
     let vec = arr.to_owned().into_raw_vec();
-    let data = na::VecStorage::new(efd::CDim::<D>::name(), na::Dyn(arr.nrows()), vec);
-    efd::Efd::from_coeffs_unchecked(efd::Coeff::<D>::from_data(data))
+    efd::Efd::from_parts_unchecked(efd::Coeffs::from_vec(vec), efd::GeoVar::identity())
 }
 
 /// Atlas generation config.
@@ -86,22 +93,14 @@ impl Cfg {
 }
 
 /// Atlas type.
-pub struct Atlas<C, D>
-where
-    C: Code<D>,
-    D: efd::EfdDim,
-{
+pub struct Atlas<M, const D: usize> {
     fb: Array2<f64>,
     stat: Array1<u8>,
     efd: Array3<f64>,
-    _marker: PhantomData<(C, D)>,
+    _marker: PhantomData<M>,
 }
 
-impl<C, D> Clone for Atlas<C, D>
-where
-    C: Code<D>,
-    D: efd::EfdDim,
-{
+impl<M, const D: usize> Clone for Atlas<M, D> {
     fn clone(&self) -> Self {
         Self {
             fb: self.fb.clone(),
@@ -112,30 +111,31 @@ where
     }
 }
 
-impl<C, D> Default for Atlas<C, D>
+impl<M, const D: usize> Default for Atlas<M, D>
 where
-    C: Code<D>,
-    D: efd::EfdDim,
+    M: Code<D>,
+    efd::U<D>: efd::RotAlias<D>,
 {
     fn default() -> Self {
         Self {
-            fb: Array2::default([0, C::dim()]),
+            fb: Array2::default([0, M::dim()]),
             stat: Array1::default(0),
-            efd: Array3::default([0, 0, <D::Trans as efd::Transform>::dim() * 2]),
+            efd: Array3::default([0, 0, D * 2]),
             _marker: PhantomData,
         }
     }
 }
 
-impl<C, D> Atlas<C, D>
+impl<M, const D: usize> Atlas<M, D>
 where
-    C: Code<D>,
-    D: efd::EfdDim,
+    M: Code<D>,
+    efd::U<D>: efd::EfdDim<D>,
+    na::Const<D>: na::DimNameMul<na::U2>,
 {
     /// Takes time to generate atlas data.
     pub fn make(cfg: Cfg) -> Self
     where
-        C: Send,
+        M: Send,
         efd::Coord<D>: Sync + Send,
     {
         Self::make_with(cfg, |_| ())
@@ -144,7 +144,7 @@ where
     /// Takes time to generate atlas data with a callback function.
     pub fn make_with<CB>(cfg: Cfg, callback: CB) -> Self
     where
-        C: Send,
+        M: Send,
         CB: Fn(usize) + Sync + Send,
         efd::Coord<D>: Sync + Send,
     {
@@ -160,7 +160,7 @@ where
             let iter = rng.stream(n).into_par_iter();
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
-            iter.flat_map(|rng| rng.sample(Distr::<C>::new()))
+            iter.flat_map(|rng| rng.sample(Distr::<M>::new()))
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
@@ -207,83 +207,15 @@ where
             };
         }
         let atlas = impl_read!(r, fb, stat, efd);
-        impl_check!(atlas.fb.len_of(Axis(1)), C::dim());
-        impl_check!(
-            atlas.efd.len_of(Axis(2)),
-            <D::Trans as efd::Transform>::dim() * 2
-        );
+        impl_check!(atlas.fb.len_of(Axis(1)), M::dim());
+        impl_check!(atlas.efd.len_of(Axis(2)), D * 2);
         Ok(atlas)
-    }
-
-    /// Write atlas to NPZ file.
-    pub fn write<W>(&self, w: W) -> Result<(), WriteNpzError>
-    where
-        W: std::io::Write + std::io::Seek,
-    {
-        let mut w = ndarray_npy::NpzWriter::new_compressed(w);
-        macro_rules! impl_write {
-            ($w:ident, $($field:ident),+) => {
-                let Self { $($field),+, _marker: _ } = self;
-                $($w.add_array(stringify!($field), $field)?;)+
-            };
-        }
-        impl_write!(w, fb, stat, efd);
-        w.finish()?;
-        Ok(())
-    }
-
-    /// Length, total size.
-    pub fn len(&self) -> usize {
-        self.fb.nrows()
-    }
-
-    /// Clear the atlas.
-    pub fn clear(&mut self) {
-        *self = Self::default();
-    }
-
-    /// Return whether the atlas has any data.
-    pub fn is_empty(&self) -> bool {
-        self.fb.is_empty()
-    }
-
-    /// Number of the harmonics.
-    pub fn harmonic(&self) -> usize {
-        self.efd.len_of(Axis(1))
-    }
-
-    /// Get a reference to the data.
-    ///
-    /// Data is stored in a 2D array, each row is a linkage code.
-    pub fn data(&self) -> &Array2<f64> {
-        &self.fb
-    }
-
-    /// Iterate over the linkages.
-    pub fn fb_iter(&self) -> impl Iterator<Item = (Vec<f64>, u8)> + '_ {
-        self.stat
-            .iter()
-            .zip(self.fb.rows())
-            .map(|(stat, arr)| (arr.to_vec(), *stat))
-    }
-
-    /// Iterate over the EFD coefficients.
-    pub fn efd_iter(&self) -> impl Iterator<Item = ndarray::ArrayView2<f64>> + '_ {
-        self.efd.axis_iter(ndarray::Axis(0))
-    }
-
-    /// Iterate over the open state of the linkages.
-    pub fn open_iter(&self) -> impl Iterator<Item = bool> + '_ {
-        self.efd.axis_iter(ndarray::Axis(0)).map(|efd| {
-            let dim = <D::Trans as efd::Transform>::dim();
-            efd.slice(s![.., dim..]).sum() == 0.
-        })
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// This method will keep the dimensional variables without transform.
-    pub fn fetch_raw(&self, target: &[efd::Coord<D>], is_open: bool, size: usize) -> Vec<(f64, C)>
+    pub fn fetch_raw(&self, target: &[efd::Coord<D>], is_open: bool, size: usize) -> Vec<(f64, M)>
     where
         efd::Efd<D>: Sync,
     {
@@ -321,7 +253,7 @@ where
         target: &[efd::Coord<D>],
         is_open: bool,
         res: usize,
-    ) -> Option<(f64, C::De)>
+    ) -> Option<(f64, M::De)>
     where
         efd::Efd<D>: Sync,
     {
@@ -348,7 +280,7 @@ where
         is_open: bool,
         size: usize,
         res: usize,
-    ) -> Vec<(f64, C::De)>
+    ) -> Vec<(f64, M::De)>
     where
         efd::Efd<D>: Sync,
     {
@@ -373,16 +305,90 @@ where
             .collect()
     }
 
-    fn pick_norm(&self, i: usize) -> C {
+    fn pick_norm(&self, i: usize) -> M {
         let code = self.fb.slice(s![i, ..]);
-        C::from_code(code.as_slice().unwrap(), self.stat[i])
+        M::from_code(code.as_slice().unwrap(), self.stat[i])
     }
 
-    fn pick(&self, i: usize, geo: &efd::GeoVar<D::Trans>, is_open: bool, res: usize) -> C::De {
+    fn pick(
+        &self,
+        i: usize,
+        geo: &efd::GeoVar<efd::Rot<D>, D>,
+        is_open: bool,
+        res: usize,
+    ) -> M::De {
         let fb = self.pick_norm(i);
         let curve = fb.get_curve(res, is_open).unwrap();
         let efd = efd::Efd::<D>::from_curve(curve, is_open);
         fb.trans_denorm(&efd.as_geo().to(geo))
+    }
+}
+
+impl<M, const D: usize> Atlas<M, D> {
+    /// Write atlas to NPZ file.
+    pub fn write<W>(&self, w: W) -> Result<(), WriteNpzError>
+    where
+        W: std::io::Write + std::io::Seek,
+    {
+        let mut w = ndarray_npy::NpzWriter::new_compressed(w);
+        macro_rules! impl_write {
+            ($w:ident, $($field:ident),+) => {
+                let Self { $($field),+, _marker: _ } = self;
+                $($w.add_array(stringify!($field), $field)?;)+
+            };
+        }
+        impl_write!(w, fb, stat, efd);
+        w.finish()?;
+        Ok(())
+    }
+
+    /// Length, total size.
+    pub fn len(&self) -> usize {
+        self.fb.nrows()
+    }
+
+    /// Clear the atlas.
+    pub fn clear(&mut self) {
+        self.fb.fill(0.);
+        self.stat.fill(0);
+        self.efd.fill(0.);
+    }
+
+    /// Return whether the atlas has any data.
+    pub fn is_empty(&self) -> bool {
+        self.fb.is_empty()
+    }
+
+    /// Number of the harmonics.
+    pub fn harmonic(&self) -> usize {
+        self.efd.len_of(Axis(1))
+    }
+
+    /// Get a reference to the data.
+    ///
+    /// Data is stored in a 2D array, each row is a linkage code.
+    pub fn data(&self) -> &Array2<f64> {
+        &self.fb
+    }
+
+    /// Iterate over the linkages.
+    pub fn fb_iter(&self) -> impl Iterator<Item = (Vec<f64>, u8)> + '_ {
+        self.stat
+            .iter()
+            .zip(self.fb.rows())
+            .map(|(stat, arr)| (arr.to_vec(), *stat))
+    }
+
+    /// Iterate over the EFD coefficients.
+    pub fn efd_iter(&self) -> impl Iterator<Item = ndarray::ArrayView2<f64>> + '_ {
+        self.efd.axis_iter(ndarray::Axis(0))
+    }
+
+    /// Iterate over the open state of the linkages.
+    pub fn open_iter(&self) -> impl Iterator<Item = bool> + '_ {
+        self.efd
+            .axis_iter(ndarray::Axis(0))
+            .map(|efd| efd.slice(s![.., D..]).sum() == 0.)
     }
 
     /// Merge two data to one atlas.
@@ -408,10 +414,10 @@ where
     }
 }
 
-impl<C, D> FromIterator<Self> for Atlas<C, D>
+impl<M, const D: usize> FromIterator<Self> for Atlas<M, D>
 where
-    C: Code<D> + Send,
-    D: efd::EfdDim,
+    M: Code<D> + Send,
+    efd::U<D>: efd::RotAlias<D>,
 {
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {
         iter.into_iter()

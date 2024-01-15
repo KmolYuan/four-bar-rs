@@ -1,6 +1,6 @@
 //! Planar four-bar linkages.
 use super::*;
-use crate::efd::na;
+use efd::na;
 use std::f64::consts::FRAC_PI_6;
 
 /// Unnormalized part of four-bar linkage.
@@ -104,7 +104,7 @@ impl IntoVectorized for NormFourBar {
 /// + Coupler link angle `g`
 pub type FourBar = FourBarBase<UnNorm, NormFourBar>;
 
-impl Normalized<efd::D2> for NormFourBar {
+impl Normalized<2> for NormFourBar {
     type De = FourBar;
 
     fn denormalize(self) -> Self::De {
@@ -162,7 +162,7 @@ impl PlanarLoop for FourBar {
     }
 }
 
-impl Transformable<efd::D2> for FourBar {
+impl Transformable<2> for FourBar {
     fn transform_inplace(&mut self, geo: &efd::GeoVar2) {
         let fb = &mut self.unnorm;
         let [p1x, p1y] = geo.trans();
@@ -178,8 +178,8 @@ impl Transformable<efd::D2> for FourBar {
     }
 }
 
-impl CurveGen<efd::D2> for FourBar {
-    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<efd::D2>; 5]> {
+impl CurveGen<2> for FourBar {
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<2>; 5]> {
         curve_interval(self, t, inv)
     }
 }

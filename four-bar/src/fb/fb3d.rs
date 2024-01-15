@@ -1,6 +1,6 @@
 //! Spherical four-bar linkages.
 use super::*;
-use crate::efd::na;
+use efd::na;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
 /// Unnormalized part of spherical four-bar linkage.
@@ -119,7 +119,7 @@ impl IntoVectorized for SNormFourBar {
 /// ![](https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/3D_Spherical.svg/512px-3D_Spherical.svg.png)
 pub type SFourBar = FourBarBase<UnNorm, SNormFourBar>;
 
-impl Normalized<efd::D3> for SNormFourBar {
+impl Normalized<3> for SNormFourBar {
     type De = SFourBar;
 
     fn denormalize(self) -> Self::De {
@@ -280,7 +280,7 @@ impl PlanarLoop for SFourBar {
     }
 }
 
-impl Transformable<efd::D3> for SFourBar {
+impl Transformable<3> for SFourBar {
     fn transform_inplace(&mut self, geo: &efd::GeoVar3) {
         let [ox, oy, oz] = geo.trans();
         let fb = &mut self.unnorm;
@@ -299,8 +299,8 @@ impl Transformable<efd::D3> for SFourBar {
     }
 }
 
-impl CurveGen<efd::D3> for SFourBar {
-    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<efd::D3>; 5]> {
+impl CurveGen<3> for SFourBar {
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<3>; 5]> {
         curve_interval(self, t, inv)
     }
 }

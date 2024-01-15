@@ -1,4 +1,5 @@
 use super::*;
+use efd::na;
 use std::marker::PhantomData;
 
 /// Boundary of the planar objective variables.
@@ -7,12 +8,16 @@ pub const BOUND2D: &[[f64; 2]] = <NormFourBar as SynBound>::BOUND;
 pub const BOUND3D: &[[f64; 2]] = <SNormFourBar as SynBound>::BOUND;
 
 /// Path generation task of planar four-bar linkage.
-pub type FbSyn = PathSyn<efd::D2, NormFourBar>;
+pub type FbSyn = PathSyn<NormFourBar, 2>;
 /// Path generation task of spherical four-bar linkage.
-pub type SFbSyn = PathSyn<efd::D3, SNormFourBar>;
+pub type SFbSyn = PathSyn<SNormFourBar, 3>;
 
 /// Path generation of a mechanism `M`.
-pub struct PathSyn<D: efd::EfdDim, M> {
+pub struct PathSyn<M, const D: usize>
+where
+    efd::U<D>: efd::EfdDim<D>,
+    na::Const<D>: na::DimNameMul<na::U2>,
+{
     /// Target coefficients
     pub efd: efd::Efd<D>,
     // Mode
@@ -27,14 +32,18 @@ pub struct PathSyn<D: efd::EfdDim, M> {
     _marker: PhantomData<M>,
 }
 
-impl<D: efd::EfdDim, M> PathSyn<D, M> {
+impl<M, const D: usize> PathSyn<M, D>
+where
+    efd::U<D>: efd::EfdDim<D>,
+    na::Const<D>: na::DimNameMul<na::U2>,
+{
     /// Create a new task from target curve. The harmonic number is selected
     /// automatically.
     ///
     /// Return none if harmonic is zero or the curve is less than 1.
     pub fn from_curve<C>(curve: C, mode: Mode) -> Self
     where
-        C: efd::Curve<efd::Coord<D>>,
+        C: efd::Curve<D>,
     {
         Self::from_efd(efd::Efd::from_curve(curve, mode.is_target_open()), mode)
     }
@@ -59,7 +68,7 @@ impl<D: efd::EfdDim, M> PathSyn<D, M> {
 
     /// Specify the mechanism is on origin and unit scale.
     pub fn on_unit(self) -> Self {
-        self.origin(Default::default()).scale(1.)
+        self.origin([0.; D]).scale(1.)
     }
 
     /// Specify the origin of the mechanism.
@@ -79,12 +88,13 @@ impl<D: efd::EfdDim, M> PathSyn<D, M> {
     }
 }
 
-impl<D, M> mh::Bounded for PathSyn<D, M>
+impl<M, const D: usize> mh::Bounded for PathSyn<M, D>
 where
-    D: efd::EfdDim + Sync + Send,
-    D::Trans: Sync + Send,
+    efd::Rot<D>: Sync + Send,
     efd::Coord<D>: Sync + Send,
     M: SynBound,
+    efd::U<D>: efd::EfdDim<D>,
+    na::Const<D>: na::DimNameMul<na::U2>,
 {
     #[inline]
     fn bound(&self) -> &[[f64; 2]] {
@@ -96,13 +106,14 @@ where
     }
 }
 
-impl<D, M> mh::ObjFunc for PathSyn<D, M>
+impl<M, const D: usize> mh::ObjFunc for PathSyn<M, D>
 where
-    D: efd::EfdDim + Sync + Send,
-    D::Trans: Sync + Send,
+    efd::Rot<D>: Sync + Send,
     efd::Coord<D>: efd::Distance + Sync + Send,
     M: SynBound + fb::Statable + fb::FromVectorized + fb::Normalized<D> + fb::CurveGen<D>,
     M::De: Default + Clone + fb::CurveGen<D> + Sync + Send + 'static,
+    efd::U<D>: efd::EfdDim<D>,
+    na::Const<D>: na::DimNameMul<na::U2>,
 {
     type Fitness = mh::Product<M::De, f64>;
 

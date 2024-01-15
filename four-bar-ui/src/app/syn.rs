@@ -1,7 +1,7 @@
 use super::{link::Linkages, widgets::*};
 use crate::{io, io::Alert as _, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
-use four_bar::{atlas, csv, efd, mh, syn};
+use four_bar::{atlas, csv, mh, syn};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, sync::Arc};
 
@@ -410,11 +410,7 @@ impl Synthesis {
 
     // Cache the visualization of atlas
     fn atlas_vis_cache(&mut self) {
-        fn pca<C, D>(atlas: &atlas::Atlas<C, D>, is_sphere: bool) -> Vec<AtlasVis>
-        where
-            C: atlas::Code<D>,
-            D: efd::EfdDim,
-        {
+        fn pca<M, const D: usize>(atlas: &atlas::Atlas<M, D>, is_sphere: bool) -> Vec<AtlasVis> {
             use smartcore::decomposition::pca::PCA;
             let reduced = PCA::fit(atlas.data(), Default::default())
                 .unwrap()

@@ -1,6 +1,5 @@
 use super::{impl_proj::Cache, *};
 use four_bar::{
-    efd,
     efd::na,
     fb::{AngleBound, Stat},
 };
@@ -94,12 +93,12 @@ fn draw_link3d(ui: &mut egui_plot::PlotUi, sc: [f64; 3], points: &[[f64; 3]], is
     draw_sline(ui, sc.z, iter, |line| line.width(width).color(LINK_COLOR));
 }
 
-pub(crate) trait ProjPlot<D: efd::EfdDim> {
+pub(crate) trait ProjPlot<const D: usize> {
     fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<D>, is_main: bool);
 }
 
-impl ProjPlot<efd::D2> for FourBar {
-    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<efd::D2>, is_main: bool) {
+impl ProjPlot<2> for FourBar {
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
         if let Some(joints) = cache.joints {
             draw_link2d(ui, &[joints[0], joints[2]], is_main);
             draw_link2d(ui, &[joints[1], joints[3]], is_main);
@@ -129,8 +128,8 @@ impl ProjPlot<efd::D2> for FourBar {
     }
 }
 
-impl ProjPlot<efd::D3> for SFourBar {
-    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<efd::D3>, is_main: bool) {
+impl ProjPlot<3> for SFourBar {
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<3>, is_main: bool) {
         const N: usize = 150;
         const STEP: f64 = std::f64::consts::TAU / N as f64;
         let r = self.unnorm.r;

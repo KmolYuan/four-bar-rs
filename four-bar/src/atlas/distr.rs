@@ -29,7 +29,7 @@ where
 }
 
 /// Implement this trait to support atlas functions.
-pub trait Code<D: efd::EfdDim>:
+pub trait Code<const D: usize>:
     Normalized<D>
     + CurveGen<D>
     + syn::SynBound
@@ -38,6 +38,8 @@ pub trait Code<D: efd::EfdDim>:
     + IntoVectorized
     + Clone
     + 'static
+where
+    efd::U<D>: efd::RotAlias<D>,
 {
     /// The dimension of the code.
     fn dim() -> usize {
@@ -64,13 +66,15 @@ pub trait Code<D: efd::EfdDim>:
     }
 }
 
-impl<D: efd::EfdDim, M> Code<D> for M where
+impl<M, const D: usize> Code<D> for M
+where
     M: Normalized<D>
         + CurveGen<D>
         + syn::SynBound
         + Statable
         + FromVectorized
         + IntoVectorized
-        + 'static
+        + 'static,
+    efd::U<D>: efd::RotAlias<D>,
 {
 }

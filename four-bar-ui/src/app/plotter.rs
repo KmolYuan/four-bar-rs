@@ -1,19 +1,17 @@
 use super::widgets::*;
 use crate::io::{self, Alert as _};
 use eframe::egui::*;
-use four_bar::{efd, fb, plot as fb_plot};
+use four_bar::{fb, plot as fb_plot};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-fn fig_ui<D, M, const N: usize>(
+fn fig_ui<M, const D: usize>(
     ui: &mut Ui,
-    fig: &mut Rc<RefCell<fb_plot::FigureBase<'static, 'static, M, [f64; N]>>>,
+    fig: &mut Rc<RefCell<fb_plot::FigureBase<'static, 'static, M, [f64; D]>>>,
     lnk: &mut super::link::Linkages,
     get_fb: impl Fn(io::Fb) -> Option<M> + Copy + 'static,
-    get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; N]>> + Copy + 'static,
+    get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; D]>> + Copy + 'static,
 ) where
-    D: efd::EfdDim,
-    D::Trans: efd::Transform<Coord = [f64; N]>,
     M: Clone + fb::CurveGen<D>,
 {
     ui.collapsing("Linkage", |ui| {
