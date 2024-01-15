@@ -107,20 +107,3 @@ The figure configuration is a RON file with the extension `.fig.ron`. Four🍀ba
 ## Citations
 
 + Chang, Y., Chang, JL., Lee, JJ. (2024). Atlas-Based Path Synthesis of Planar Four-Bar Linkages Using Elliptical Fourier Descriptors. In: Okada, M. (eds) Advances in Mechanism and Machine Science. IFToMM WC 2023. Mechanisms and Machine Science, vol 149. Springer, Cham. <https://doi.org/10.1007/978-3-031-45709-8_20>
-
-```bibtex
-@InProceedings {10.1007/978-3-031-45709-8_20,
-    author="Chang, Yuan
-    and Chang, Jia-Ling
-    and Lee, Jyh-Jone",
-    editor="Okada, Masafumi",
-    title="Atlas-Based Path Synthesis of Planar Four-Bar Linkages Using Elliptical Fourier Descriptors",
-    booktitle="Advances in Mechanism and Machine Science",
-    year="2024",
-    publisher="Springer Nature Switzerland",
-    address="Cham",
-    pages="198--207",
-    isbn="978-3-031-45709-8",
-    doi="https://doi.org/10.1007/978-3-031-45709-8_20"
-}
-```
