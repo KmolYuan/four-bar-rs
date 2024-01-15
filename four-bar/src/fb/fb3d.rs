@@ -49,8 +49,6 @@ impl UnNorm {
 
 /// Spherical normalized four-bar linkage.
 ///
-/// + Buffer order: `[l1, l2, l3, l4, l5, g]`
-///
 /// # Parameters
 ///
 /// + Ground link `l1`

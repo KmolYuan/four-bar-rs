@@ -10,6 +10,7 @@ pub mod fb2d;
 pub mod fb3d;
 #[cfg(feature = "serde")]
 mod fb_serde;
+pub mod mfb;
 mod stat;
 mod vectorized;
 

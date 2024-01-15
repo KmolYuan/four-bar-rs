@@ -43,8 +43,6 @@ impl UnNorm {
 
 /// Normalized part of four-bar linkage.
 ///
-/// + Buffer order: `[l1, l3, l4, l5, g]`
-///
 /// # Parameters
 ///
 /// + Ground link `l1`
@@ -53,7 +51,6 @@ impl UnNorm {
 /// + Follower link `l4`
 /// + Extanded link `l5`
 /// + Coupler link angle `g`
-/// + Inverse coupler and follower to another circuit
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct NormFourBar {
@@ -179,7 +176,7 @@ impl Transformable<2> for FourBar {
 }
 
 impl CurveGen<2> for FourBar {
-    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<2>; 5]> {
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
         curve_interval(self, t, inv)
     }
 }
@@ -202,7 +199,7 @@ fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
         let r_2 = p23.norm_squared();
         let r = r_2.sqrt();
         if r > l3 + l4 || r < (l3 - l4).abs() || r < f64::EPSILON {
-            na::Point2::from([f64::NAN; 2])
+            [f64::NAN; 2].into()
         } else {
             let l3_2 = l3 * l3;
             let c = (l3_2 - l4 * l4 + r_2) / (2. * r);
