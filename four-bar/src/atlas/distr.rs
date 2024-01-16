@@ -39,7 +39,7 @@ pub trait Code<const D: usize>:
     + Clone
     + 'static
 where
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     /// The dimension of the code.
     fn dim() -> usize {
@@ -75,6 +75,6 @@ where
         + FromVectorized
         + IntoVectorized
         + 'static,
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
 }

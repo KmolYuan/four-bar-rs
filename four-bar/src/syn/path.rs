@@ -1,5 +1,4 @@
 use super::*;
-use efd::na;
 use std::marker::PhantomData;
 
 /// Boundary of the planar objective variables.
@@ -16,7 +15,6 @@ pub type SFbSyn = PathSyn<SNormFourBar, 3>;
 pub struct PathSyn<M, const D: usize>
 where
     efd::U<D>: efd::EfdDim<D>,
-    na::Const<D>: na::DimNameMul<na::U2>,
 {
     /// Target coefficients
     pub efd: efd::Efd<D>,
@@ -35,7 +33,6 @@ where
 impl<M, const D: usize> PathSyn<M, D>
 where
     efd::U<D>: efd::EfdDim<D>,
-    na::Const<D>: na::DimNameMul<na::U2>,
 {
     /// Create a new task from target curve. The harmonic number is selected
     /// automatically.
@@ -94,7 +91,6 @@ where
     efd::Coord<D>: Sync + Send,
     M: SynBound,
     efd::U<D>: efd::EfdDim<D>,
-    na::Const<D>: na::DimNameMul<na::U2>,
 {
     #[inline]
     fn bound(&self) -> &[[f64; 2]] {
@@ -113,7 +109,6 @@ where
     M: SynBound + fb::Statable + fb::FromVectorized + fb::Normalized<D> + fb::CurveGen<D>,
     M::De: Default + Clone + fb::CurveGen<D> + Sync + Send + 'static,
     efd::U<D>: efd::EfdDim<D>,
-    na::Const<D>: na::DimNameMul<na::U2>,
 {
     type Fitness = mh::Product<M::De, f64>;
 

@@ -102,7 +102,7 @@ impl<UN, NM> std::ops::DerefMut for FourBarBase<UN, NM> {
 /// Usually, this type is smaller than the denormalized type.
 pub trait Normalized<const D: usize>: Sized
 where
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     /// Denormalized target, which should be transformable.
     type De: Transformable<D>;
@@ -127,7 +127,7 @@ where
 /// Transformation ability.
 pub trait Transformable<const D: usize>: Sized
 where
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     /// Transform in placed.
     fn transform_inplace(&mut self, geo: &efd::GeoVar<efd::Rot<D>, D>);
@@ -188,7 +188,7 @@ impl<N, const D: usize> CurveGen<D> for N
 where
     N: Normalized<D> + Statable + Clone,
     N::De: CurveGen<D>,
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]> {
         self.clone().denormalize().pos_s(t, inv)

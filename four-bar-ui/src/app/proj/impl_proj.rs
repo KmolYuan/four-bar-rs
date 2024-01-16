@@ -103,7 +103,7 @@ pub(crate) struct ProjInner<M, const D: usize>
 where
     M: fb::Normalized<D>,
     M::De: fb::CurveGen<D> + undo::IntoDelta,
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     path: Option<PathBuf>,
     fb: M::De,
@@ -123,7 +123,7 @@ impl<M, const D: usize> Default for ProjInner<M, D>
 where
     M: fb::Normalized<D>,
     M::De: fb::CurveGen<D> + undo::IntoDelta + Default,
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     fn default() -> Self {
         Self {
@@ -209,7 +209,7 @@ where
         + Serialize
         + serde::de::DeserializeOwned,
     efd::Coord<D>: Serialize,
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     fn new(path: Option<PathBuf>, fb: M::De) -> Self {
         Self { path, fb, ..Self::default() }

@@ -1,7 +1,6 @@
 //! Create a atlas database for four-bar linkages.
 pub use self::distr::{Code, Distr};
 use super::{NormFourBar, SNormFourBar};
-use efd::na;
 use mh::{
     random::{Rng, SeedOption},
     utility::prelude::*,
@@ -30,19 +29,23 @@ where
 fn efd_to_arr<const D: usize>(efd: efd::Efd<D>) -> Array2<f64>
 where
     efd::U<D>: efd::EfdDim<D>,
-    na::Const<D>: na::DimNameMul<na::U2>,
 {
+    let harmonic = efd.harmonic();
     let (mat, _) = efd.into_inner();
-    unsafe { Array2::from_shape_vec_unchecked([mat.ncols(), mat.nrows()], mat.data.into()) }
+    let v = mat.into_iter().flat_map(|m| m.data.0).flatten().collect();
+    unsafe { Array2::from_shape_vec_unchecked([harmonic, D * 2], v) }
 }
 
 fn arr_to_efd<const D: usize>(arr: ArrayView2<f64>) -> efd::Efd<D>
 where
     efd::U<D>: efd::EfdDim<D>,
-    na::Const<D>: na::DimNameMul<na::U2>,
 {
-    let vec = arr.to_owned().into_raw_vec();
-    efd::Efd::from_parts_unchecked(efd::Coeffs::from_vec(vec), efd::GeoVar::identity())
+    let coeffs = arr
+        .rows()
+        .into_iter()
+        .map(|m| efd::Kernel::from_iterator(m.iter().copied()))
+        .collect();
+    efd::Efd::from_parts_unchecked(coeffs, efd::GeoVar::identity())
 }
 
 /// Atlas generation config.
@@ -114,7 +117,7 @@ impl<M, const D: usize> Clone for Atlas<M, D> {
 impl<M, const D: usize> Default for Atlas<M, D>
 where
     M: Code<D>,
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     fn default() -> Self {
         Self {
@@ -130,7 +133,6 @@ impl<M, const D: usize> Atlas<M, D>
 where
     M: Code<D>,
     efd::U<D>: efd::EfdDim<D>,
-    na::Const<D>: na::DimNameMul<na::U2>,
 {
     /// Takes time to generate atlas data.
     pub fn make(cfg: Cfg) -> Self
@@ -417,7 +419,7 @@ impl<M, const D: usize> Atlas<M, D> {
 impl<M, const D: usize> FromIterator<Self> for Atlas<M, D>
 where
     M: Code<D> + Send,
-    efd::U<D>: efd::RotAlias<D>,
+    efd::U<D>: efd::EfdDim<D>,
 {
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {
         iter.into_iter()
