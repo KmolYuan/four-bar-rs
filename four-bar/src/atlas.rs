@@ -31,8 +31,8 @@ where
     efd::U<D>: efd::EfdDim<D>,
 {
     let harmonic = efd.harmonic();
-    let (mat, _) = efd.into_inner();
-    let v = mat.into_iter().flat_map(|m| m.data.0).flatten().collect();
+    let (m, _) = efd.into_inner();
+    let v = m.into_iter().flat_map(|m| m.data.0).flatten().collect();
     unsafe { Array2::from_shape_vec_unchecked([harmonic, D * 2], v) }
 }
 
@@ -40,11 +40,10 @@ fn arr_to_efd<const D: usize>(arr: ArrayView2<f64>) -> efd::Efd<D>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
-    let coeffs = arr
-        .rows()
-        .into_iter()
-        .map(|m| efd::Kernel::from_iterator(m.iter().copied()))
-        .collect();
+    let mut coeffs = Vec::with_capacity(arr.nrows());
+    for m in arr.rows() {
+        coeffs.push(efd::Kernel::from_iterator(m.iter().copied()));
+    }
     efd::Efd::from_parts_unchecked(coeffs, efd::GeoVar::identity())
 }
 
