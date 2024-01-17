@@ -307,8 +307,7 @@ where
     }
 
     fn pick_norm(&self, i: usize) -> M {
-        let code = self.fb.slice(s![i, ..]);
-        M::from_code(code.as_slice().unwrap(), self.stat[i])
+        M::from_code(self.fb.row(i).as_slice().unwrap(), self.stat[i])
     }
 
     fn pick(

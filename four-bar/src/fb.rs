@@ -14,16 +14,16 @@ pub mod mfb;
 mod stat;
 mod vectorized;
 
-/// Four-bar base.
+/// Mechanism base type. Includes normalized and unnormalized data.
 #[derive(Clone, Default, Debug, PartialEq)]
-pub struct FourBarBase<UN, NM> {
-    /// Buffer
+pub struct Mech<UN, NM> {
+    /// Unnormalized part
     pub unnorm: UN,
-    /// Normalized base
+    /// Normalized part
     pub norm: NM,
 }
 
-impl<UN, NM> FourBarBase<UN, NM> {
+impl<UN, NM> Mech<UN, NM> {
     /// Create a new value from inner values.
     pub const fn new(unnorm: UN, norm: NM) -> Self {
         Self { unnorm, norm }
@@ -83,7 +83,7 @@ impl<UN, NM> FourBarBase<UN, NM> {
     }
 }
 
-impl<UN, NM> std::ops::Deref for FourBarBase<UN, NM> {
+impl<UN, NM> std::ops::Deref for Mech<UN, NM> {
     type Target = NM;
 
     fn deref(&self) -> &Self::Target {
@@ -91,7 +91,7 @@ impl<UN, NM> std::ops::Deref for FourBarBase<UN, NM> {
     }
 }
 
-impl<UN, NM> std::ops::DerefMut for FourBarBase<UN, NM> {
+impl<UN, NM> std::ops::DerefMut for Mech<UN, NM> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.norm
     }
@@ -139,7 +139,7 @@ where
     }
 }
 
-/// Curve-generating behavior.
+/// Curve generation behavior.
 pub trait CurveGen<const D: usize>: Statable {
     /// Get the position with inversion flag.
     fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]>;
@@ -152,13 +152,8 @@ pub trait CurveGen<const D: usize>: Statable {
     /// Generator for all curves in specified angle.
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
         let inv = self.inv();
-        curve_in(
-            start,
-            end,
-            res,
-            |t| self.pos_s(t, inv),
-            |[.., p3, p4, p5]| [p3, p4, p5],
-        )
+        let f = |t| self.pos_s(t, inv);
+        curve_in(start, end, res, f, |[.., p3, p4, p5]| [p3, p4, p5])
     }
 
     /// Generator for coupler curve in specified angle.
@@ -217,4 +212,43 @@ where
         .flat_map(f)
         .map(map)
         .collect()
+}
+
+/// Pose generation behavior.
+pub trait PoseGen<const D: usize>: CurveGen<D> {
+    /// Obtain the pose (an unit vector) from known position.
+    fn uvec(&self, pos: [efd::Coord<D>; 5]) -> efd::Coord<D>;
+
+    /// Obtain the continuous pose from known position.
+    fn pose_in(
+        &self,
+        start: f64,
+        end: f64,
+        res: usize,
+    ) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+        let inv = self.inv();
+        let f = |t| self.pos_s(t, inv);
+        let map = |c @ [.., p5]: [_; 5]| (p5, self.uvec(c));
+        curve_in(start, end, res, f, map).into_iter().unzip()
+    }
+}
+
+impl<N, const D: usize> PoseGen<D> for N
+where
+    N: Normalized<D> + Statable + Clone,
+    N::De: PoseGen<D>,
+    efd::U<D>: efd::EfdDim<D>,
+{
+    fn uvec(&self, pos: [efd::Coord<D>; 5]) -> efd::Coord<D> {
+        self.clone().denormalize().uvec(pos)
+    }
+
+    fn pose_in(
+        &self,
+        start: f64,
+        end: f64,
+        res: usize,
+    ) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+        self.clone().denormalize().pose_in(start, end, res)
+    }
 }

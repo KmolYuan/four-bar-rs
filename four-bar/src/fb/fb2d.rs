@@ -39,6 +39,15 @@ impl UnNorm {
     pub fn set_rotation(&mut self, a: f64) {
         self.a = a;
     }
+
+    pub(crate) fn transform_inplace(&mut self, geo: &efd::GeoVar2) {
+        let [p1x, p1y] = geo.trans();
+        self.p1x += p1x;
+        self.p1y += p1y;
+        self.a += geo.rot().angle();
+        let scale = geo.scale();
+        self.l2 *= scale;
+    }
 }
 
 /// Normalized part of four-bar linkage.
@@ -66,6 +75,15 @@ pub struct NormFourBar {
     pub g: f64,
     /// Inverse coupler and follower to another circuit
     pub stat: Stat,
+}
+
+impl NormFourBar {
+    pub(crate) fn scale_inplace(&mut self, scale: f64) {
+        self.l1 *= scale;
+        self.l3 *= scale;
+        self.l4 *= scale;
+        self.l5 *= scale;
+    }
 }
 
 impl FromVectorized for NormFourBar {
@@ -99,7 +117,7 @@ impl IntoVectorized for NormFourBar {
 /// + Follower link `l4`
 /// + Extanded link `l5`
 /// + Coupler link angle `g`
-pub type FourBar = FourBarBase<UnNorm, NormFourBar>;
+pub type FourBar = Mech<UnNorm, NormFourBar>;
 
 impl Normalized<2> for NormFourBar {
     type De = FourBar;
@@ -115,10 +133,7 @@ impl Normalized<2> for NormFourBar {
 
     fn normalize_inplace(de: &mut Self::De) {
         let l2 = std::mem::replace(&mut de.unnorm.l2, 1.);
-        de.norm.l1 /= l2;
-        de.norm.l3 /= l2;
-        de.norm.l4 /= l2;
-        de.norm.l5 /= l2;
+        de.norm.scale_inplace(l2.recip());
     }
 }
 
@@ -161,23 +176,14 @@ impl PlanarLoop for FourBar {
 
 impl Transformable<2> for FourBar {
     fn transform_inplace(&mut self, geo: &efd::GeoVar2) {
-        let fb = &mut self.unnorm;
-        let [p1x, p1y] = geo.trans();
-        fb.p1x += p1x;
-        fb.p1y += p1y;
-        fb.a += geo.rot().angle();
-        let scale = geo.scale();
-        fb.l2 *= scale;
-        self.l1 *= scale;
-        self.l3 *= scale;
-        self.l4 *= scale;
-        self.l5 *= scale;
+        self.unnorm.transform_inplace(geo);
+        self.norm.scale_inplace(geo.scale());
     }
 }
 
 impl CurveGen<2> for FourBar {
     fn pos_s(&self, t: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
-        curve_interval(self, t, inv)
+        curve_interval((&self.unnorm, &self.norm), t, inv)
     }
 }
 
@@ -185,9 +191,13 @@ fn angle(p: na::Point2<f64>, d: f64, a: f64) -> na::Point2<f64> {
     p + d * na::Vector2::new(a.cos(), a.sin())
 }
 
-fn curve_interval(fb: &FourBar, b: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
-    let UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
-    let NormFourBar { l1, l3, l4, l5, g, .. } = fb.norm;
+pub(crate) fn curve_interval(
+    fb: (&UnNorm, &NormFourBar),
+    b: f64,
+    inv: bool,
+) -> Option<[[f64; 2]; 5]> {
+    let UnNorm { p1x, p1y, a, l2 } = *fb.0;
+    let NormFourBar { l1, l3, l4, l5, g, .. } = *fb.1;
     let p1 = na::Point2::new(p1x, p1y);
     let p2 = angle(p1, l1, a);
     let p3 = angle(p1, l2, a + b);

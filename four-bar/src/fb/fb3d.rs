@@ -115,7 +115,7 @@ impl IntoVectorized for SNormFourBar {
 /// # Spherical Coordinate System
 ///
 /// ![](https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/3D_Spherical.svg/512px-3D_Spherical.svg.png)
-pub type SFourBar = FourBarBase<UnNorm, SNormFourBar>;
+pub type SFourBar = Mech<UnNorm, SNormFourBar>;
 
 impl Normalized<3> for SNormFourBar {
     type De = SFourBar;
