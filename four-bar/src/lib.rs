@@ -17,8 +17,6 @@ pub use crate::fb::{FourBar, NormFourBar, SFourBar, SNormFourBar};
 pub use efd;
 #[doc(no_inline)]
 pub extern crate metaheuristics_nature as mh;
-#[cfg(feature = "plot")]
-pub use crate::plot::{plot2d, plot3d};
 
 #[cfg(feature = "atlas")]
 pub mod atlas;

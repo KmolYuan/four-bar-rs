@@ -116,8 +116,8 @@ fn fig_line_ui<const N: usize>(
 
 #[derive(Deserialize, Serialize, Clone)]
 enum PlotType {
-    P(Rc<RefCell<fb_plot::plot2d::Figure<'static, 'static>>>),
-    S(Rc<RefCell<fb_plot::plot3d::Figure<'static, 'static>>>),
+    P(Rc<RefCell<fb_plot::fb::Figure<'static, 'static>>>),
+    S(Rc<RefCell<fb_plot::sfb::Figure<'static, 'static>>>),
 }
 
 impl PlotType {

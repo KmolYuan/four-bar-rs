@@ -271,7 +271,7 @@ fn from_runtime(
     {
         let path = root.join(HISTORY_SVG);
         let svg = plot::SVGBackend::new(&path, (800, 600));
-        plot2d::history(svg, history)?;
+        plot::fb::history(svg, history)?;
     }
     let lnk_path = root.join(LNK_RON);
     match &lnk_fb {
@@ -289,7 +289,7 @@ fn from_runtime(
             let efd_target =
                 efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
-            let mut fig = plot2d::Figure::new_ref(Some(fb))
+            let mut fig = plot::fb::Figure::new_ref(Some(fb))
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
             {
@@ -345,7 +345,7 @@ fn from_runtime(
             let efd_target =
                 efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
-            let mut fig = plot3d::Figure::new_ref(Some(fb))
+            let mut fig = plot::sfb::Figure::new_ref(Some(fb))
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
             {
@@ -424,8 +424,8 @@ fn from_exist(info: &Info) -> Result<(), SynErr> {
         }};
     }
     match info.target {
-        io::Curve::P(_) => impl_plot!(plot2d::Figure),
-        io::Curve::S(_) => impl_plot!(plot3d::Figure),
+        io::Curve::P(_) => impl_plot!(plot::fb::Figure),
+        io::Curve::S(_) => impl_plot!(plot::sfb::Figure),
     }
 }
 
