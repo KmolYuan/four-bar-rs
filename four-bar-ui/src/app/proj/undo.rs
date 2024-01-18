@@ -15,7 +15,7 @@ pub(crate) trait IntoDelta: Clone {
 }
 
 macro_rules! impl_delta {
-    ($ty_name:ident, $state:ident, $(($f:ident, $(@$unnorm: ident,)? $m:ident),)+
+    ($ty_name:ident, $state:ident, $(($f:ident, $m:ident $(.$unnorm:ident)?),)+
         .., $(($b_f:ident, $b_m:ident)),+ $(,)?) => {
         #[derive(PartialEq)]
         pub(crate) enum $ty_name {
@@ -65,11 +65,11 @@ macro_rules! impl_delta {
 impl_delta!(
     FbDelta,
     FourBar,
-    (P1x, @unnorm, p1x),
-    (P1y, @unnorm, p1y),
-    (A, @unnorm, a),
+    (P1x, p1x.unnorm),
+    (P1y, p1y.unnorm),
+    (A, a.unnorm),
     (L1, l1),
-    (L2, @unnorm, l2),
+    (L2, l2.unnorm),
     (L3, l3),
     (L4, l4),
     (L5, l5),
@@ -80,13 +80,13 @@ impl_delta!(
 impl_delta!(
     SFbDelta,
     SFourBar,
-    (Ox, @unnorm, ox),
-    (Oy, @unnorm, oy),
-    (Oz, @unnorm, oz),
-    (R, @unnorm, r),
-    (P1i, @unnorm, p1i),
-    (P1j, @unnorm, p1j),
-    (A, @unnorm, a),
+    (Ox, ox.unnorm),
+    (Oy, oy.unnorm),
+    (Oz, oz.unnorm),
+    (R, r.unnorm),
+    (P1i, p1i.unnorm),
+    (P1j, p1j.unnorm),
+    (A, a.unnorm),
     (L1, l1),
     (L2, l2),
     (L3, l3),

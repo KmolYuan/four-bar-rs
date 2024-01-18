@@ -1,39 +1,20 @@
 // Flatten is unsupported in RON, so we have to manually implement it.
-use super::{FourBar, SFourBar};
+use super::{FourBar, MFourBar, SFourBar};
 use serde::{de::*, ser::*};
 
-macro_rules! ser_fields {
-    ($s: ident, $obj: expr $(, $fields: ident)+ $(,)?) => {
-        $($s.serialize_field(stringify!($fields), &$obj.$fields)?;)+
-    };
-}
+macro_rules! impl_ser {
+    ($ty:ident, $($field:ident $(.$unnorm:ident)?),+ $(,)?) => {
+        impl Serialize for $ty {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                let mut s = serializer.serialize_struct(stringify!($ty), 10)?;
+                $(s.serialize_field(stringify!($field), &self.$($unnorm.)?$field)?;)+
+                s.end()
+            }
+        }
 
-impl Serialize for FourBar {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut s = serializer.serialize_struct("FourBar", 10)?;
-        ser_fields!(s, self.unnorm, p1x, p1y, a, l2);
-        ser_fields!(s, self, l1, l3, l4, l5, g, stat);
-        s.end()
-    }
-}
-
-impl Serialize for SFourBar {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut s = serializer.serialize_struct("SFourBar", 14)?;
-        ser_fields!(s, self.unnorm, ox, oy, oz, r, p1i, p1j, a);
-        ser_fields!(s, self, l1, l2, l3, l4, l5, g, stat);
-        s.end()
-    }
-}
-
-macro_rules! impl_de {
-    ($ty: ident, [$(($field: ident $(, $unnorm: ident)?)),+ $(,)?]) => {
         impl<'de> Deserialize<'de> for $ty {
             fn deserialize<D>(deserializer: D) -> Result<$ty, D::Error>
             where
@@ -99,37 +80,9 @@ macro_rules! impl_de {
     };
 }
 
-impl_de!(
-    FourBar,
-    [
-        (p1x, unnorm),
-        (p1y, unnorm),
-        (a, unnorm),
-        (l1),
-        (l2, unnorm),
-        (l3),
-        (l4),
-        (l5),
-        (g),
-        (stat),
-    ]
-);
-impl_de!(
-    SFourBar,
-    [
-        (ox, unnorm),
-        (oy, unnorm),
-        (oz, unnorm),
-        (r, unnorm),
-        (p1i, unnorm),
-        (p1j, unnorm),
-        (a, unnorm),
-        (l1),
-        (l2),
-        (l3),
-        (l4),
-        (l5),
-        (g),
-        (stat),
-    ]
+impl_ser!(FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, stat);
+impl_ser!(MFourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, e, stat);
+impl_ser!(
+    SFourBar, ox.unnorm, oy.unnorm, oz.unnorm, r.unnorm, p1i.unnorm, p1j.unnorm, a.unnorm, l1, l2,
+    l3, l4, l5, g, stat
 );

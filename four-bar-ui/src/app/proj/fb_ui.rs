@@ -198,9 +198,9 @@ fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, bound: AngleBoun
 }
 
 macro_rules! impl_ui {
-    ($name:ty, $(($m_mut: ident, $ui:ident, $des:literal),)+
-        .., $(($(@$unnorm: ident,)? $p_m_mut: ident, $p_ui:ident, $p_des:literal),)+
-        .., $($stat: ident),+ $(,)?) => {
+    ($name:ty, $(($m_mut:ident, $ui:ident, $des:literal),)+
+        .., $(($(@$unnorm:ident,)? $p_m_mut:ident, $p_ui:ident, $p_des:literal),)+
+        .., $($stat:ident),+ $(,)?) => {
         impl ProjUi for $name {
             fn proj_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
                 let mut res = $($ui(ui, $des, &mut self.unnorm.$m_mut, cfg.int))|+;

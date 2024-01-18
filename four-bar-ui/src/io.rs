@@ -212,7 +212,7 @@ pub(crate) fn push_err_msg(parent: &eframe::Frame) {
         return;
     };
     macro_rules! msg {
-        ($ty:ident $(, $parent: ident)?) => {
+        ($ty:ident $(, $parent:ident)?) => {
             rfd::$ty::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_title(&*title)

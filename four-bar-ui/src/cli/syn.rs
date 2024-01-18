@@ -8,7 +8,7 @@ use std::{
 };
 
 macro_rules! impl_err_from {
-    ($(impl $ty:ty => $kind:ident)+) => {$(
+    ($(($ty:ty, $kind:ident)),+ $(,)?) => {$(
         impl From<$ty> for SynErr {
             fn from(e: $ty) -> Self { Self::$kind(e) }
         }
@@ -44,13 +44,13 @@ impl std::fmt::Display for SynErr {
 
 impl std::error::Error for SynErr {}
 
-impl_err_from! {
-    impl std::io::Error => Io
-    impl plot::DrawingAreaErrorKind<std::io::Error> => Plot
-    impl csv::Error => CsvSer
-    impl ron::error::SpannedError => RonSerde
-    impl ron::error::Error => RonIo
-}
+impl_err_from!(
+    (std::io::Error, Io),
+    (plot::DrawingAreaErrorKind<std::io::Error>, Plot),
+    (csv::Error, CsvSer),
+    (ron::error::SpannedError, RonSerde),
+    (ron::error::Error, RonIo),
+);
 
 #[derive(clap::Args)]
 #[clap(subcommand_precedence_over_arg = true)]
@@ -455,7 +455,7 @@ fn run(
 }
 
 macro_rules! write_fields {
-    ($w: ident, $obj: expr $(, $fields: ident)+ $(,)?) => {
+    ($w:ident, $obj:expr $(, $fields:ident)+ $(,)?) => {
         $(writeln!($w, concat![stringify!($fields), "={:.04}"], $obj.$fields)?;)+
     };
 }

@@ -2,6 +2,7 @@
 pub use self::{
     fb2d::{FourBar, NormFourBar},
     fb3d::{SFourBar, SNormFourBar},
+    mfb::{MFourBar, MNormFourBar},
     stat::*,
     vectorized::*,
 };
