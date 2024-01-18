@@ -28,9 +28,13 @@ pub(crate) fn infeasible<P: Default>() -> mh::Product<P, f64> {
     mh::Product::new(1e2, P::default())
 }
 
-pub(crate) fn slice_to_array<const N: usize>(slice: &[f64]) -> [f64; N] {
+pub(crate) const fn slice_to_array<const N: usize>(slice: &[f64]) -> [f64; N] {
     let mut out = [0.; N];
-    out.copy_from_slice(&slice[..N]);
+    let mut i = 0;
+    while i < N {
+        out[i] = slice[i];
+        i += 1;
+    }
     out
 }
 
