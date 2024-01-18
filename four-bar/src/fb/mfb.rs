@@ -34,15 +34,8 @@ impl FromVectorized for MNormFourBar {
 
 impl IntoVectorized for MNormFourBar {
     fn into_vectorized(self) -> (Vec<f64>, Stat) {
-        let code = vec![
-            self.base.l1,
-            self.base.l3,
-            self.base.l4,
-            self.base.l5,
-            self.base.g,
-            self.e,
-        ];
-        (code, self.base.stat)
+        let code = vec![self.l1, self.l3, self.l4, self.l5, self.g, self.e];
+        (code, self.stat)
     }
 }
 
