@@ -11,9 +11,9 @@ use std::{marker::PhantomData, sync::Mutex};
 mod distr;
 
 /// Planar four-bar atlas type.
-pub type FbAtlas = Atlas<NormFourBar, 2>;
+pub type FbAtlas = Atlas<NormFourBar, 5, 2>;
 /// Spherical four-bar atlas type.
-pub type SFbAtlas = Atlas<SNormFourBar, 3>;
+pub type SFbAtlas = Atlas<SNormFourBar, 6, 3>;
 
 fn to_arr<A, S, D>(stack: Mutex<Vec<ArrayBase<S, D>>>, n: usize) -> Array<A, D::Larger>
 where
@@ -95,14 +95,14 @@ impl Cfg {
 }
 
 /// Atlas type.
-pub struct Atlas<M, const D: usize> {
+pub struct Atlas<M, const N: usize, const D: usize> {
     fb: Array2<f64>,
     stat: Array1<u8>,
     efd: Array3<f64>,
     _marker: PhantomData<M>,
 }
 
-impl<M, const D: usize> Clone for Atlas<M, D> {
+impl<M, const N: usize, const D: usize> Clone for Atlas<M, N, D> {
     fn clone(&self) -> Self {
         Self {
             fb: self.fb.clone(),
@@ -113,14 +113,14 @@ impl<M, const D: usize> Clone for Atlas<M, D> {
     }
 }
 
-impl<M, const D: usize> Default for Atlas<M, D>
+impl<M, const N: usize, const D: usize> Default for Atlas<M, N, D>
 where
-    M: Code<D>,
+    M: Code<N, D>,
     efd::U<D>: efd::EfdDim<D>,
 {
     fn default() -> Self {
         Self {
-            fb: Array2::default([0, M::dim()]),
+            fb: Array2::default([0, N]),
             stat: Array1::default(0),
             efd: Array3::default([0, 0, D * 2]),
             _marker: PhantomData,
@@ -128,9 +128,9 @@ where
     }
 }
 
-impl<M, const D: usize> Atlas<M, D>
+impl<M, const N: usize, const D: usize> Atlas<M, N, D>
 where
-    M: Code<D>,
+    M: Code<N, D>,
     efd::U<D>: efd::EfdDim<D>,
 {
     /// Takes time to generate atlas data.
@@ -161,7 +161,7 @@ where
             let iter = rng.stream(n).into_par_iter();
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
-            iter.flat_map(|rng| rng.sample(Distr::<M>::new()))
+            iter.flat_map(|rng| rng.sample(Distr::<M, N>::new()))
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
@@ -208,7 +208,7 @@ where
             };
         }
         let atlas = impl_read!(r, fb, stat, efd);
-        impl_check!(atlas.fb.len_of(Axis(1)), M::dim());
+        impl_check!(atlas.fb.len_of(Axis(1)), N);
         impl_check!(atlas.efd.len_of(Axis(2)), D * 2);
         Ok(atlas)
     }
@@ -324,7 +324,7 @@ where
     }
 }
 
-impl<M, const D: usize> Atlas<M, D> {
+impl<M, const N: usize, const D: usize> Atlas<M, N, D> {
     /// Write atlas to NPZ file.
     pub fn write<W>(&self, w: W) -> Result<(), WriteNpzError>
     where
@@ -414,9 +414,9 @@ impl<M, const D: usize> Atlas<M, D> {
     }
 }
 
-impl<M, const D: usize> FromIterator<Self> for Atlas<M, D>
+impl<M, const N: usize, const D: usize> FromIterator<Self> for Atlas<M, N, D>
 where
-    M: Code<D> + Send,
+    M: Code<N, D> + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {

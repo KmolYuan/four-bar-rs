@@ -2,11 +2,11 @@ use crate::{fb::*, syn};
 use mh::rand::{Distribution, Rng};
 
 /// Uniform distribution for mechinism types.
-pub struct Distr<M> {
+pub struct Distr<M, const N: usize> {
     _marker: std::marker::PhantomData<M>,
 }
 
-impl<M> Distr<M> {
+impl<M, const N: usize> Distr<M, N> {
     /// Create a new instance.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -14,41 +14,32 @@ impl<M> Distr<M> {
     }
 }
 
-impl<M> Distribution<Vec<M>> for Distr<M>
+impl<M, const N: usize> Distribution<Vec<M>> for Distr<M, N>
 where
-    M: syn::SynBound + Statable + FromVectorized + Sync + Clone,
+    M: syn::SynBound<N> + Statable + FromVectorized<N> + Sync + Clone,
 {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<M> {
-        let bound = <M as syn::SynBound>::BOUND;
-        let v = bound[..bound.len() - 2]
-            .iter()
-            .map(|&[u, l]| rng.gen_range(u..l))
-            .collect::<Vec<_>>();
-        M::from_vectorized_s1(&v).unwrap().to_states()
+        let v = M::BOUND.map(|[u, l]| rng.gen_range(u..l));
+        M::from_vectorized_s1(v).to_states()
     }
 }
 
 /// Implement this trait to support atlas functions.
-pub trait Code<const D: usize>:
+pub trait Code<const N: usize, const D: usize>:
     Normalized<D>
     + CurveGen<D>
-    + syn::SynBound
+    + syn::SynBound<N>
     + Statable
-    + FromVectorized
+    + FromVectorized<N>
     + IntoVectorized
     + Clone
     + 'static
 where
     efd::U<D>: efd::EfdDim<D>,
 {
-    /// The dimension of the code.
-    fn dim() -> usize {
-        <<Self as FromVectorized>::Dim as efd::na::DimName>::dim()
-    }
-
     /// Create entities from code.
     fn from_code(code: &[f64], stat: u8) -> Self {
-        Self::from_vectorized(code, Stat::try_from(stat).unwrap()).unwrap()
+        Self::from_vectorized(code.try_into().unwrap(), Stat::try_from(stat).unwrap())
     }
 
     /// Convert entities to code.
@@ -66,13 +57,13 @@ where
     }
 }
 
-impl<M, const D: usize> Code<D> for M
+impl<M, const N: usize, const D: usize> Code<N, D> for M
 where
     M: Normalized<D>
         + CurveGen<D>
-        + syn::SynBound
+        + syn::SynBound<N>
         + Statable
-        + FromVectorized
+        + FromVectorized<N>
         + IntoVectorized
         + 'static,
     efd::U<D>: efd::EfdDim<D>,

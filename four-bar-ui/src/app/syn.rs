@@ -410,7 +410,10 @@ impl Synthesis {
 
     // Cache the visualization of atlas
     fn atlas_vis_cache(&mut self) {
-        fn pca<M, const D: usize>(atlas: &atlas::Atlas<M, D>, is_sphere: bool) -> Vec<AtlasVis> {
+        fn pca<M, const N: usize, const D: usize>(
+            atlas: &atlas::Atlas<M, N, D>,
+            is_sphere: bool,
+        ) -> Vec<AtlasVis> {
             use smartcore::decomposition::pca::PCA;
             let reduced = PCA::fit(atlas.data(), Default::default())
                 .unwrap()

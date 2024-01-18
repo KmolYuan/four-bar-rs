@@ -23,12 +23,10 @@ pub struct MNormFourBar {
     pub e: f64,
 }
 
-impl FromVectorized for MNormFourBar {
-    type Dim = na::U6;
-
-    fn from_vectorized(v: &[f64], stat: Stat) -> Result<Self, std::array::TryFromSliceError> {
-        let [l1, l3, l4, l5, g, e] = <[f64; 6]>::try_from(v)?;
-        Ok(Self { base: NormFourBar { l1, l3, l4, l5, g, stat }, e })
+impl FromVectorized<6> for MNormFourBar {
+    fn from_vectorized(v: [f64; 6], stat: Stat) -> Self {
+        let [l1, l3, l4, l5, g, e] = v;
+        Self { base: NormFourBar { l1, l3, l4, l5, g, stat }, e }
     }
 }
 

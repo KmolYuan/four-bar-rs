@@ -300,7 +300,7 @@ where
     );
 }
 
-pub(crate) fn save_atlas_ask<M, const D: usize>(atlas: &atlas::Atlas<M, D>) {
+pub(crate) fn save_atlas_ask<M, const N: usize, const D: usize>(atlas: &atlas::Atlas<M, N, D>) {
     save_ask(
         "atlas.npz",
         ATLAS_FMT,

@@ -86,12 +86,10 @@ impl NormFourBar {
     }
 }
 
-impl FromVectorized for NormFourBar {
-    type Dim = crate::efd::na::U5;
-
-    fn from_vectorized(v: &[f64], stat: Stat) -> Result<Self, std::array::TryFromSliceError> {
-        let [l1, l3, l4, l5, g] = <[f64; 5]>::try_from(v)?;
-        Ok(Self { l1, l3, l4, l5, g, stat: stat as Stat })
+impl FromVectorized<5> for NormFourBar {
+    fn from_vectorized(v: [f64; 5], stat: Stat) -> Self {
+        let [l1, l3, l4, l5, g] = v;
+        Self { l1, l3, l4, l5, g, stat: stat as Stat }
     }
 }
 

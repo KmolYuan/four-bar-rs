@@ -28,57 +28,63 @@ pub(crate) fn infeasible<P: Default>() -> mh::Product<P, f64> {
     mh::Product::new(1e2, P::default())
 }
 
+pub(crate) fn slice_to_array<const N: usize>(slice: &[f64]) -> [f64; N] {
+    let mut out = [0.; N];
+    out.copy_from_slice(&slice[..N]);
+    out
+}
+
 // Concat const slices by their variable names, currently only support
 // non-generic slices.
-macro_rules! concat_slices {
-    ($a:ident $(, $b:ident)+) => {&{
-        let mut out = [$a[0]; { $a.len() $(+ $b.len())+ }];
-        let mut i = 0;
-        while i < $a.len() {
-            out[i] = $a[i];
-            i += 1;
-        }
-        $(let mut j = 0;
-        while j < $b.len() {
-            out[i] = $b[j];
-            i += 1;
-            j += 1;
-        })+
-        out
-    }};
+const fn concat_slices<T: Copy, const N1: usize, const N2: usize, const N3: usize>(
+    a: [T; N1],
+    b: [T; N2],
+) -> [T; N3]
+where
+    efd::na::Const<N1>: efd::na::DimNameAdd<efd::na::Const<N2>, Output = efd::na::Const<N3>>,
+{
+    let mut out = [a[0]; N3];
+    let mut i = 0;
+    while i < N1 {
+        out[i] = a[i];
+        i += 1;
+    }
+    let mut j = 0;
+    while j < N2 {
+        out[i] = b[j];
+        i += 1;
+        j += 1;
+    }
+    out
 }
 
 /// Synthesis bounds.
-pub trait SynBound: Clone + Sync + Send {
+pub trait SynBound<const N: usize>: Clone + Sync + Send {
     /// Lower & upper bounds
-    const BOUND: &'static [[f64; 2]];
+    const BOUND: [[f64; 2]; N];
+    /// Lower & upper bounds for partial synthesis
+    const BOUND_PARTIAL: &'static [[f64; 2]];
 }
 
-impl SynBound for NormFourBar {
-    const BOUND: &'static [[f64; 2]] = {
+impl SynBound<5> for NormFourBar {
+    const BOUND: [[f64; 2]; 5] = {
         const K: f64 = 6.;
-        const LNK: &[[f64; 2]] = &[[1. / K, K]; 4];
-        const ANG: &[[f64; 2]] = &[[0., TAU]; 3];
-        concat_slices!(LNK, ANG)
+        concat_slices([[1. / K, K]; 4], [[0., TAU]; 1])
     };
+    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
 }
 
-impl SynBound for MNormFourBar {
-    const BOUND: &'static [[f64; 2]] = {
+impl SynBound<6> for MNormFourBar {
+    const BOUND: [[f64; 2]; 6] = {
         const K: f64 = 6.;
-        const LNK: &[[f64; 2]] = &[[1. / K, K]; 4];
-        const ANG: &[[f64; 2]] = &[[0., TAU]; 4];
-        concat_slices!(LNK, ANG)
+        concat_slices([[1. / K, K]; 4], [[0., TAU]; 2])
     };
+    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
 }
 
-impl SynBound for SNormFourBar {
-    const BOUND: &'static [[f64; 2]] = {
-        const LNK: &[[f64; 2]] = &[[1e-4, PI]; 5];
-        const GMA: &[[f64; 2]] = &[[0., PI]; 1];
-        const ANG: &[[f64; 2]] = &[[0., TAU]; 2];
-        concat_slices!(LNK, GMA, ANG)
-    };
+impl SynBound<6> for SNormFourBar {
+    const BOUND: [[f64; 2]; 6] = concat_slices([[1e-4, PI]; 5], [[0., PI]; 1]);
+    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
 }
 
 /// Synthesis mode.
@@ -107,9 +113,9 @@ impl Mode {
 
 macro_rules! impl_bound {
     ($ty:ident) => {
-        impl<M, const D: usize> mh::Bounded for $ty<M, D>
+        impl<M, const N: usize, const D: usize> mh::Bounded for $ty<M, N, D>
         where
-            M: SynBound,
+            M: SynBound<N>,
             efd::Rot<D>: Sync + Send,
             efd::Coord<D>: Sync + Send,
             efd::U<D>: efd::EfdDim<D>,
@@ -117,9 +123,9 @@ macro_rules! impl_bound {
             #[inline]
             fn bound(&self) -> &[[f64; 2]] {
                 if matches!(self.mode, Mode::Partial) {
-                    M::BOUND
+                    M::BOUND_PARTIAL
                 } else {
-                    &M::BOUND[..M::BOUND.len() - 2]
+                    &M::BOUND
                 }
             }
         }

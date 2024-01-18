@@ -1,10 +1,10 @@
 use super::*;
 
 /// Path generation task of planar four-bar linkage.
-pub type MFbSyn = MotionSyn<MNormFourBar, 2>;
+pub type MFbSyn = MotionSyn<MNormFourBar, 6, 2>;
 
 /// Motion generation of a mechanism `M`.
-pub struct MotionSyn<M, const D: usize>
+pub struct MotionSyn<M, const N: usize, const D: usize>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -18,7 +18,7 @@ where
     _marker: PhantomData<M>,
 }
 
-impl<M, const D: usize> MotionSyn<M, D>
+impl<M, const N: usize, const D: usize> MotionSyn<M, N, D>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -61,11 +61,11 @@ where
     }
 }
 
-impl<M, const D: usize> mh::ObjFunc for MotionSyn<M, D>
+impl<M, const N: usize, const D: usize> mh::ObjFunc for MotionSyn<M, N, D>
 where
     efd::Rot<D>: Sync + Send,
     efd::Coord<D>: efd::Distance + Sync + Send,
-    M: SynBound + fb::Statable + fb::FromVectorized + fb::Normalized<D> + fb::PoseGen<D>,
+    M: SynBound<N> + fb::Statable + fb::FromVectorized<N> + fb::Normalized<D> + fb::PoseGen<D>,
     M::De: Default + Clone + Sync + Send + 'static,
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -74,7 +74,7 @@ where
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
         #[cfg(feature = "rayon")]
         use mh::rayon::prelude::*;
-        let mut fb = M::from_vectorized_s1(&xs[..M::BOUND.len() - 2]).unwrap();
+        let mut fb = M::from_vectorized_s1(slice_to_array(xs));
         fb.set_to_planar_loop();
         let (bound, states) =
             fb.to_bound_states_filter(|a| a.check_mode(self.mode.is_result_open()));
@@ -102,10 +102,7 @@ where
                 .unwrap_or_else(infeasible),
             Mode::Partial if !bound.is_valid() => infeasible(),
             Mode::Partial => {
-                let bound = {
-                    let end = M::BOUND.len() - 1;
-                    fb::AngleBound::open_and_rev_at(xs[end], xs[end - 1])
-                };
+                let bound = fb::AngleBound::open_and_rev_at(xs[N], xs[N + 1]);
                 #[cfg(feature = "rayon")]
                 let iter = bound.into_par_iter();
                 #[cfg(not(feature = "rayon"))]
