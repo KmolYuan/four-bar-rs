@@ -168,7 +168,7 @@ impl SFourBar {
     /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
     pub fn new_wrap(fb: &FourBar, center: [f64; 3], r: f64, w: f64) -> Self {
         assert!(r > 0.);
-        let fb2d::UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
+        let fb::UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
         let NormFourBar { l1, l3, l4, l5, g, stat } = fb.norm;
         let [p1i, p1j, l1, l2, l3, l4, l5] = [p1x, p1y, l1, l2, l3, l4, l5].map(|x| x / w * TAU);
         let [ox, oy, oz] = center;

@@ -101,8 +101,8 @@ type SFbProj = ProjInner<SNormFourBar, 3>;
 #[derive(Deserialize, Serialize)]
 pub(crate) struct ProjInner<M, const D: usize>
 where
-    M: fb::Normalized<D>,
-    M::De: fb::CurveGen<D> + undo::IntoDelta,
+    M: mech::Normalized<D>,
+    M::De: mech::CurveGen<D> + undo::IntoDelta,
     efd::U<D>: efd::EfdDim<D>,
 {
     path: Option<PathBuf>,
@@ -121,8 +121,8 @@ where
 
 impl<M, const D: usize> Default for ProjInner<M, D>
 where
-    M: fb::Normalized<D>,
-    M::De: fb::CurveGen<D> + undo::IntoDelta + Default,
+    M: mech::Normalized<D>,
+    M::De: mech::CurveGen<D> + undo::IntoDelta + Default,
     efd::U<D>: efd::EfdDim<D>,
 {
     fn default() -> Self {
@@ -142,7 +142,7 @@ where
 
 pub(crate) struct Cache<const D: usize> {
     changed: bool,
-    angle_bound: fb::AngleBound,
+    angle_bound: mech::AngleBound,
     pub(crate) joints: Option<[efd::Coord<D>; 5]>,
     pub(crate) curves: Vec<[efd::Coord<D>; 3]>,
     pub(crate) stat_curves: Vec<Vec<efd::Coord<D>>>,
@@ -152,7 +152,7 @@ impl<const D: usize> Default for Cache<D> {
     fn default() -> Self {
         Self {
             changed: true,
-            angle_bound: fb::AngleBound::Invalid,
+            angle_bound: mech::AngleBound::Invalid,
             joints: None,
             curves: Vec::new(),
             stat_curves: Vec::new(),
@@ -198,9 +198,9 @@ fn angle_bound_ui(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Respon
 
 impl<M, const D: usize> ProjInner<M, D>
 where
-    M: fb::Normalized<D>,
-    M::De: fb::CurveGen<D>
-        + fb::Statable
+    M: mech::Normalized<D>,
+    M::De: mech::CurveGen<D>
+        + mech::Statable
         + undo::IntoDelta
         + fb_ui::ProjUi
         + fb_ui::ProjPlot<D>
@@ -216,7 +216,7 @@ where
     }
 
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
-        use four_bar::fb::Statable as _;
+        use four_bar::mech::Statable as _;
         ui.horizontal(|ui| {
             if small_btn(ui, "🔗", "Share with Link") {
                 let mut url = "https://kmolyuan.github.io/four-bar-rs/?code=".to_string();
@@ -280,7 +280,7 @@ where
             const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];
             combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
             let get_curve = |pivot, fb: &M::De| -> Vec<_> {
-                use four_bar::fb::CurveGen as _;
+                use four_bar::mech::CurveGen as _;
                 let curve = if let Some([start, end]) = self.curve_range {
                     fb.curves_in(start, end, self.curve_res).into_iter()
                 } else {
@@ -328,7 +328,7 @@ where
     }
 
     fn cache(&mut self, res: usize) {
-        use four_bar::fb::{CurveGen as _, Statable as _};
+        use four_bar::mech::{CurveGen as _, Statable as _};
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angle);
         self.cache.angle_bound = self.fb.angle_bound();

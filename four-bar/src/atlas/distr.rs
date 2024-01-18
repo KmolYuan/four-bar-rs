@@ -1,4 +1,4 @@
-use crate::{fb::*, syn};
+use crate::{mech::*, syn};
 use mh::rand::{Distribution, Rng};
 
 /// Uniform distribution for mechinism types.

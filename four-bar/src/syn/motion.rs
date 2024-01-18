@@ -65,7 +65,11 @@ impl<M, const N: usize, const D: usize> mh::ObjFunc for MotionSyn<M, N, D>
 where
     efd::Rot<D>: Sync + Send,
     efd::Coord<D>: efd::Distance + Sync + Send,
-    M: SynBound<N> + fb::Statable + fb::FromVectorized<N> + fb::Normalized<D> + fb::PoseGen<D>,
+    M: SynBound<N>
+        + mech::Statable
+        + mech::FromVectorized<N>
+        + mech::Normalized<D>
+        + mech::PoseGen<D>,
     M::De: Default + Clone + Sync + Send + 'static,
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -102,7 +106,7 @@ where
                 .unwrap_or_else(infeasible),
             Mode::Partial if !bound.is_valid() => infeasible(),
             Mode::Partial => {
-                let bound = fb::AngleBound::open_and_rev_at(xs[N], xs[N + 1]);
+                let bound = mech::AngleBound::open_and_rev_at(xs[N], xs[N + 1]);
                 #[cfg(feature = "rayon")]
                 let iter = bound.into_par_iter();
                 #[cfg(not(feature = "rayon"))]

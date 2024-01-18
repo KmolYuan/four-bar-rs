@@ -1,7 +1,7 @@
 //! Plot utitlities.
 //!
-//! Please see [`crate::plot2d::Figure`] and [`crate::plot3d::Figure`] for more
-//! information.
+//! Please see [`crate::plot::fb::Figure`] and [`crate::plot::sfb::Figure`] for
+//! more information.
 //!
 //! # Single Plot Example
 //!
@@ -567,7 +567,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
 
     pub(crate) fn get_joints<F, const D: usize>(&self, coord_map: F) -> Option<[efd::Coord<D>; 5]>
     where
-        M: crate::fb::CurveGen<D>,
+        M: crate::mech::CurveGen<D>,
         F: Fn(efd::Coord<D>) -> na::Point2<f64>,
     {
         use std::f64::consts::TAU;

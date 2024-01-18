@@ -1,17 +1,18 @@
-//! Four-bar linkage types.
+//! Linkage mechanism types.
 pub use self::{
-    fb2d::{FourBar, NormFourBar},
-    fb3d::{SFourBar, SNormFourBar},
+    fb::{FourBar, NormFourBar},
     mfb::{MFourBar, MNormFourBar},
+    sfb::{SFourBar, SNormFourBar},
     stat::*,
     vectorized::*,
 };
 
-pub mod fb2d;
-pub mod fb3d;
-#[cfg(feature = "serde")]
-mod fb_serde;
+pub mod fb;
 pub mod mfb;
+pub mod sfb;
+
+#[cfg(feature = "serde")]
+mod impl_ser;
 mod stat;
 mod vectorized;
 

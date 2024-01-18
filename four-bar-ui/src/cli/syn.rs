@@ -248,7 +248,7 @@ fn from_runtime(
     atlas: &io::AtlasPool,
     refer: Option<&Path>,
 ) -> Result<(), SynErr> {
-    use four_bar::fb::{CurveGen as _, Normalized as _};
+    use four_bar::mech::{CurveGen as _, Normalized as _};
     use plot::full_palette::*;
     let Info { root, target, target_fb, title, mode } = info;
     let mode = *mode;

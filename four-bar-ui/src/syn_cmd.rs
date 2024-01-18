@@ -140,7 +140,7 @@ impl<'a> Solver<'a> {
                     .then(|| $atlas.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
                 {
-                    use four_bar::fb::{IntoVectorized as _, Normalized as _};
+                    use four_bar::mech::{IntoVectorized as _, Normalized as _};
                     use mh::ndarray::Array2;
                     atlas_fb = Some(candi[0].clone());
                     let pop = candi.len();

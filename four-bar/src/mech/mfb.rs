@@ -1,5 +1,5 @@
 //! Planar four-bar linkages used in motion synthesis.
-use super::{fb2d::*, *};
+use super::{fb::*, *};
 use efd::na;
 use std::f64::consts::FRAC_PI_6;
 

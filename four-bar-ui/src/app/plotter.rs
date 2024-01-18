@@ -1,7 +1,7 @@
 use super::widgets::*;
 use crate::io::{self, Alert as _};
 use eframe::egui::*;
-use four_bar::{fb, plot as fb_plot};
+use four_bar::{mech, plot as fb_plot};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
@@ -12,7 +12,7 @@ fn fig_ui<M, const D: usize>(
     get_fb: impl Fn(io::Fb) -> Option<M> + Copy + 'static,
     get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; D]>> + Copy + 'static,
 ) where
-    M: Clone + fb::CurveGen<D>,
+    M: Clone + mech::CurveGen<D>,
 {
     ui.collapsing("Linkage", |ui| {
         if fig.borrow().fb.is_some() {

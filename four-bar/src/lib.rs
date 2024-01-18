@@ -12,7 +12,7 @@
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
-pub use crate::fb::{FourBar, MFourBar, MNormFourBar, NormFourBar, SFourBar, SNormFourBar};
+pub use crate::mech::{FourBar, MFourBar, MNormFourBar, NormFourBar, SFourBar, SNormFourBar};
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]
@@ -22,7 +22,7 @@ pub extern crate metaheuristics_nature as mh;
 pub mod atlas;
 #[cfg(feature = "csv")]
 pub mod csv;
-pub mod fb;
+pub mod mech;
 #[cfg(feature = "plot")]
 pub mod plot;
 pub mod syn;

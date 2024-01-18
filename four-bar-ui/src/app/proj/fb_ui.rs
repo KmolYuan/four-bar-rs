@@ -1,7 +1,7 @@
 use super::{impl_proj::Cache, *};
 use four_bar::{
     efd::na,
-    fb::{AngleBound, Stat},
+    mech::{AngleBound, Stat},
 };
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
