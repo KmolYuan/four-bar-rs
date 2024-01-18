@@ -165,7 +165,7 @@ where
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
-                    let efd = efd::Efd::<D>::from_curve_harmonic(curve, is_open, harmonic);
+                    let efd = efd::Efd::from_curve_harmonic(curve, is_open, harmonic);
                     efd_stack.lock().unwrap().push(efd_to_arr(efd));
                     let (code, stat) = fb.to_code();
                     let mut stack = fb_stack.lock().unwrap();
@@ -223,7 +223,7 @@ where
         if self.is_empty() {
             return Vec::new();
         }
-        let target = efd::Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
+        let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
@@ -261,7 +261,7 @@ where
         if self.is_empty() {
             return None;
         }
-        let target = efd::Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
+        let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
@@ -290,7 +290,7 @@ where
         } else if size == 1 {
             return self.fetch_1st(target, is_open, res).into_iter().collect();
         }
-        let target = efd::Efd::<D>::from_curve_harmonic(target, is_open, self.harmonic());
+        let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(feature = "rayon")]
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
@@ -319,7 +319,7 @@ where
     ) -> M::De {
         let fb = self.pick_norm(i);
         let curve = fb.get_curve(res, is_open).unwrap();
-        let efd = efd::Efd::<D>::from_curve(curve, is_open);
+        let efd = efd::Efd::from_curve(curve, is_open);
         fb.trans_denorm(&efd.as_geo().to(geo))
     }
 }

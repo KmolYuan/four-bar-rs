@@ -12,7 +12,7 @@
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
-pub use crate::fb::{FourBar, NormFourBar, SFourBar, SNormFourBar};
+pub use crate::fb::{FourBar, MFourBar, MNormFourBar, NormFourBar, SFourBar, SNormFourBar};
 #[doc(no_inline)]
 pub use efd;
 #[doc(no_inline)]

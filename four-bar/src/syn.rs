@@ -16,7 +16,10 @@
 //! ```
 pub use self::{motion::*, path::*};
 use crate::*;
-use std::f64::consts::{PI, TAU};
+use std::{
+    f64::consts::{PI, TAU},
+    marker::PhantomData,
+};
 
 mod motion;
 mod path;
@@ -58,6 +61,15 @@ impl SynBound for NormFourBar {
     };
 }
 
+impl SynBound for MNormFourBar {
+    const BOUND: &'static [[f64; 2]] = {
+        const K: f64 = 6.;
+        const LNK: &[[f64; 2]] = &[[1. / K, K]; 4];
+        const ANG: &[[f64; 2]] = &[[0., TAU]; 4];
+        concat_slices!(LNK, ANG)
+    };
+}
+
 impl SynBound for SNormFourBar {
     const BOUND: &'static [[f64; 2]] = {
         const LNK: &[[f64; 2]] = &[[1e-4, PI]; 5];
@@ -90,3 +102,27 @@ impl Mode {
         matches!(self, Self::Open)
     }
 }
+
+macro_rules! impl_bound {
+    ($ty:ident) => {
+        impl<M, const D: usize> mh::Bounded for $ty<M, D>
+        where
+            M: SynBound,
+            efd::Rot<D>: Sync + Send,
+            efd::Coord<D>: Sync + Send,
+            efd::U<D>: efd::EfdDim<D>,
+        {
+            #[inline]
+            fn bound(&self) -> &[[f64; 2]] {
+                if matches!(self.mode, Mode::Partial) {
+                    M::BOUND
+                } else {
+                    &M::BOUND[..M::BOUND.len() - 2]
+                }
+            }
+        }
+    };
+}
+
+impl_bound!(PathSyn);
+impl_bound!(MotionSyn);

@@ -1,10 +1,9 @@
 use super::*;
-use std::marker::PhantomData;
 
 /// Boundary of the planar objective variables.
-pub const BOUND2D: &[[f64; 2]] = <NormFourBar as SynBound>::BOUND;
+pub const FB_BOUND: &[[f64; 2]] = <NormFourBar as SynBound>::BOUND;
 /// Boundary of the spherical objective variables.
-pub const BOUND3D: &[[f64; 2]] = <SNormFourBar as SynBound>::BOUND;
+pub const SFB_BOUND: &[[f64; 2]] = <SNormFourBar as SynBound>::BOUND;
 
 /// Path generation task of planar four-bar linkage.
 pub type FbSyn = PathSyn<NormFourBar, 2>;
@@ -19,7 +18,7 @@ where
     /// Target coefficients
     pub efd: efd::Efd<D>,
     // Mode
-    mode: Mode,
+    pub(crate) mode: Mode,
     // How many points need to be generated or compared
     res: usize,
     // Constrain the origin of the mechanism
@@ -36,8 +35,6 @@ where
 {
     /// Create a new task from target curve. The harmonic number is selected
     /// automatically.
-    ///
-    /// Return none if harmonic is zero or the curve is less than 1.
     pub fn from_curve<C>(curve: C, mode: Mode) -> Self
     where
         C: efd::Curve<D>,
@@ -85,29 +82,12 @@ where
     }
 }
 
-impl<M, const D: usize> mh::Bounded for PathSyn<M, D>
-where
-    efd::Rot<D>: Sync + Send,
-    efd::Coord<D>: Sync + Send,
-    M: SynBound,
-    efd::U<D>: efd::EfdDim<D>,
-{
-    #[inline]
-    fn bound(&self) -> &[[f64; 2]] {
-        if matches!(self.mode, Mode::Partial) {
-            M::BOUND
-        } else {
-            &M::BOUND[..M::BOUND.len() - 2]
-        }
-    }
-}
-
 impl<M, const D: usize> mh::ObjFunc for PathSyn<M, D>
 where
     efd::Rot<D>: Sync + Send,
     efd::Coord<D>: efd::Distance + Sync + Send,
     M: SynBound + fb::Statable + fb::FromVectorized + fb::Normalized<D> + fb::CurveGen<D>,
-    M::De: Default + Clone + fb::CurveGen<D> + Sync + Send + 'static,
+    M::De: Default + Clone + Sync + Send + 'static,
     efd::U<D>: efd::EfdDim<D>,
 {
     type Fitness = mh::Product<M::De, f64>;
@@ -131,7 +111,7 @@ where
             iter.map(move |fb| (fb.curve_in(t1, t2, self.res), fb))
                 .filter(|(c, _)| c.len() > 2)
                 .map(|(c, fb)| {
-                    let efd = efd::Efd::<D>::from_curve_harmonic(c, is_open, self.efd.harmonic());
+                    let efd = efd::Efd::from_curve_harmonic(c, is_open, self.efd.harmonic());
                     let geo = efd.as_geo().to(self.efd.as_geo());
                     let fb = fb.clone().trans_denorm(&geo);
                     let o_err = match &self.origin {
