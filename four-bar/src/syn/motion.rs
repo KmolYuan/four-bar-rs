@@ -74,8 +74,6 @@ where
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
         #[cfg(feature = "rayon")]
         use mh::rayon::prelude::*;
-        const INFEASIBLE: f64 = 1e10;
-        let infeasible = || mh::Product::new(INFEASIBLE, M::De::default());
         let mut fb = M::from_vectorized_s1(&xs[..M::BOUND.len() - 2]).unwrap();
         fb.set_to_planar_loop();
         let (bound, states) =
@@ -102,10 +100,8 @@ where
                 .to_value()
                 .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
                 .unwrap_or_else(infeasible),
+            Mode::Partial if !bound.is_valid() => infeasible(),
             Mode::Partial => {
-                if !bound.is_valid() {
-                    return infeasible();
-                }
                 let bound = {
                     let end = M::BOUND.len() - 1;
                     fb::AngleBound::open_and_rev_at(xs[end], xs[end - 1])

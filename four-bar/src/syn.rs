@@ -24,6 +24,10 @@ use std::{
 mod motion;
 mod path;
 
+pub(crate) fn infeasible<P: Default>() -> mh::Product<P, f64> {
+    mh::Product::new(1e2, P::default())
+}
+
 // Concat const slices by their variable names, currently only support
 // non-generic slices.
 macro_rules! concat_slices {
@@ -34,14 +38,12 @@ macro_rules! concat_slices {
             out[i] = $a[i];
             i += 1;
         }
-        $(
-            let mut j = 0;
-            while j < $b.len() {
-                out[i] = $b[j];
-                i += 1;
-                j += 1;
-            }
-        )+
+        $(let mut j = 0;
+        while j < $b.len() {
+            out[i] = $b[j];
+            i += 1;
+            j += 1;
+        })+
         out
     }};
 }
