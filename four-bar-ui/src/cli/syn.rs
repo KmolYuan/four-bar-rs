@@ -455,7 +455,7 @@ fn run(
 }
 
 macro_rules! write_fields {
-    ($w:ident, $obj:expr $(, $fields:ident)+ $(,)?) => {
+    ($w:ident, $obj:expr $(, $fields:ident)+) => {
         $(writeln!($w, concat![stringify!($fields), "={:.04}"], $obj.$fields)?;)+
     };
 }

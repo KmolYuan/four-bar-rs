@@ -3,7 +3,7 @@ use super::{FourBar, MFourBar, SFourBar};
 use serde::{de::*, ser::*};
 
 macro_rules! impl_ser {
-    ($ty:ident, $($field:ident $(.$unnorm:ident)?),+ $(,)?) => {
+    ($ty:ident, $($field:ident $(.$unnorm:ident)?),+) => {
         impl Serialize for $ty {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where

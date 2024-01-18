@@ -177,7 +177,7 @@ fn angle(ui: &mut Ui, label: &str, val: &mut f64, _int: f64) -> Response {
     super::angle(ui, label, val, "")
 }
 
-fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, bound: AngleBound) {
+fn stat_combo(ui: &mut Ui, stat: &mut Stat, bound: AngleBound) -> Response {
     let states = bound.get_states();
     if !states.contains(stat) {
         *stat = match stat {
@@ -189,26 +189,29 @@ fn stat_combo(res: &mut Response, ui: &mut Ui, stat: &mut Stat, bound: AngleBoun
     }
     ui.horizontal(|ui| {
         ui.label("State");
-        for label in states {
-            *res |= ui
-                .selectable_value(stat, label, label.name_uppercase())
-                .on_hover_text(format!("{label}"));
-        }
-    });
+        states
+            .into_iter()
+            .map(|label| {
+                ui.selectable_value(stat, label, label.name_uppercase())
+                    .on_hover_text(format!("{label}"))
+            })
+            .reduce(|a, b| a | b)
+            .unwrap()
+    })
+    .inner
 }
 
 macro_rules! impl_ui {
-    ($name:ty, $(($m_mut:ident, $ui:ident, $des:literal),)+
-        .., $(($(@$unnorm:ident,)? $p_m_mut:ident, $p_ui:ident, $p_des:literal),)+
-        .., $($stat:ident),+ $(,)?) => {
+    ($name:ty, $($header:literal, $(($field:ident $(.$unnorm:ident)?, $ui:ident, $des:literal)),+,)+) => {
         impl ProjUi for $name {
             fn proj_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
-                let mut res = $($ui(ui, $des, &mut self.unnorm.$m_mut, cfg.int))|+;
-                ui.heading("Parameters");
-                res |= $($p_ui(ui, $p_des, &mut self.$($unnorm.)?$p_m_mut, cfg.int))|+;
-                let bound = self.angle_bound();
-                $(stat_combo(&mut res, ui, &mut self.$stat, bound);)+
-                res
+                $(({
+                    ui.heading($header);
+                    $($ui(ui, $des, &mut self.$($unnorm.)?$field, cfg.int))|+
+                }))|+ | ({
+                    let bound = self.angle_bound();
+                    stat_combo(ui, &mut self.stat, bound)
+                })
             }
         }
     };
@@ -216,35 +219,33 @@ macro_rules! impl_ui {
 
 impl_ui!(
     FourBar,
-    (p1x, unit, "X Offset: "),
-    (p1y, unit, "Y Offset: "),
-    (a, angle, "Rotation: "),
-    ..,
+    "Geometric Variables",
+    (p1x.unnorm, unit, "X Offset: "),
+    (p1y.unnorm, unit, "Y Offset: "),
+    (a.unnorm, angle, "Rotation: "),
+    "Parameters",
     (l1, nonzero_f, "Ground: "),
-    (@unnorm, l2, nonzero_f, "Driver: "),
+    (l2.unnorm, nonzero_f, "Driver: "),
     (l3, nonzero_f, "Coupler: "),
     (l4, nonzero_f, "Follower: "),
     (l5, nonzero_f, "Extended: "),
     (g, angle, "Extended angle: "),
-    ..,
-    stat,
 );
 impl_ui!(
     SFourBar,
-    (ox, unit, "X Offset: "),
-    (oy, unit, "Y Offset: "),
-    (oz, unit, "Z Offset: "),
-    (r, nonzero_f, "Radius: "),
-    (p1i, angle, "Polar angle: "),
-    (p1j, angle, "Azimuth angle: "),
-    (a, angle, "Rotation: "),
-    ..,
+    "Geometric Variables",
+    (ox.unnorm, unit, "X Offset: "),
+    (oy.unnorm, unit, "Y Offset: "),
+    (oz.unnorm, unit, "Z Offset: "),
+    (r.unnorm, nonzero_f, "Radius: "),
+    (p1i.unnorm, angle, "Polar angle: "),
+    (p1j.unnorm, angle, "Azimuth angle: "),
+    (a.unnorm, angle, "Rotation: "),
+    "Parameters",
     (l1, angle, "Ground: "),
     (l2, angle, "Driver: "),
     (l3, angle, "Coupler: "),
     (l4, angle, "Follower: "),
     (l5, angle, "Extended: "),
     (g, angle, "Extended angle: "),
-    ..,
-    stat,
 );

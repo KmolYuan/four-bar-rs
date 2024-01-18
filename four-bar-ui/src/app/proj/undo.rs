@@ -15,12 +15,12 @@ pub(crate) trait IntoDelta: Clone {
 }
 
 macro_rules! impl_delta {
-    ($ty_name:ident, $state:ident, $(($f:ident, $m:ident $(.$unnorm:ident)?),)+
-        .., $(($b_f:ident, $b_m:ident)),+ $(,)?) => {
+    ($ty_name:ident, $state:ident, $($m:ident $(.$unnorm:ident)?),+) => {
         #[derive(PartialEq)]
+        #[allow(non_camel_case_types)]
         pub(crate) enum $ty_name {
-            $($f(f64),)+
-            $($b_f(i8),)+
+            $($m(f64),)+
+            stat(i8),
         }
 
         impl IntoDelta for $state {
@@ -32,29 +32,29 @@ macro_rules! impl_delta {
 
             fn delta(a: &Self::State, b: &Self::State) -> Option<Self> {
                 Some(match (a, b) {
-                    $(_ if a.$($unnorm.)?$m != b.$($unnorm.)?$m => Self::$f(b.$($unnorm.)?$m - a.$($unnorm.)?$m),)+
-                    $(_ if a.$b_m != b.$b_m => Self::$b_f(b.$b_m as i8 - a.$b_m as i8),)+
+                    $(_ if a.$($unnorm.)?$m != b.$($unnorm.)?$m => Self::$m(b.$($unnorm.)?$m - a.$($unnorm.)?$m),)+
+                    _ if a.stat != b.stat => Self::stat(b.stat as i8 - a.stat as i8),
                     _ => None?,
                 })
             }
 
             fn undo(&self, state: &mut Self::State) {
                 match self {
-                    $(Self::$f(v) => state.$($unnorm.)?$m -= *v,)+
-                    $(Self::$b_f(v) => state.$b_m = ((state.$b_m as i8 - *v) as u8).try_into().unwrap(),)+
+                    $(Self::$m(v) => state.$($unnorm.)?$m -= *v,)+
+                    Self::stat(v) => state.stat = ((state.stat as i8 - *v) as u8).try_into().unwrap(),
                 }
             }
 
             fn redo(&self, state: &mut Self::State) {
                 match self {
-                    $(Self::$f(v) => state.$($unnorm.)?$m += *v,)+
-                    $(Self::$b_f(v) => state.$b_m = ((state.$b_m as i8 + *v) as u8).try_into().unwrap(),)+
+                    $(Self::$m(v) => state.$($unnorm.)?$m += *v,)+
+                    Self::stat(v) => state.stat = ((state.stat as i8 + *v) as u8).try_into().unwrap(),
                 }
             }
 
             fn try_merge(&mut self, rhs: &Self) -> bool {
                 match (self, rhs) {
-                    $((Self::$f(lhs), Self::$f(rhs)) => {*lhs += *rhs; true},)+
+                    $((Self::$m(lhs), Self::$m(rhs)) => {*lhs += *rhs; true},)+
                     _ => false,
                 }
             }
@@ -62,39 +62,10 @@ macro_rules! impl_delta {
     };
 }
 
+impl_delta!(FbDelta, FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g);
 impl_delta!(
-    FbDelta,
-    FourBar,
-    (P1x, p1x.unnorm),
-    (P1y, p1y.unnorm),
-    (A, a.unnorm),
-    (L1, l1),
-    (L2, l2.unnorm),
-    (L3, l3),
-    (L4, l4),
-    (L5, l5),
-    (G, g),
-    ..,
-    (Stat, stat),
-);
-impl_delta!(
-    SFbDelta,
-    SFourBar,
-    (Ox, ox.unnorm),
-    (Oy, oy.unnorm),
-    (Oz, oz.unnorm),
-    (R, r.unnorm),
-    (P1i, p1i.unnorm),
-    (P1j, p1j.unnorm),
-    (A, a.unnorm),
-    (L1, l1),
-    (L2, l2),
-    (L3, l3),
-    (L4, l4),
-    (L5, l5),
-    (G, g),
-    ..,
-    (Stat, stat),
+    SFbDelta, SFourBar, ox.unnorm, oy.unnorm, oz.unnorm, r.unnorm, p1i.unnorm, p1j.unnorm,
+    a.unnorm, l1, l2, l3, l4, l5, g
 );
 
 pub(crate) struct Undo<D: Delta> {
