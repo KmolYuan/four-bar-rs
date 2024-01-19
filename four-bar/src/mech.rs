@@ -68,6 +68,14 @@ impl<UN, NM> Mech<UN, NM> {
         <Self as CurveGen<D>>::curve(self, res)
     }
 
+    /// Pose generation for coupler curve.
+    pub fn pose<const D: usize>(&self, res: usize) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>)
+    where
+        Self: PoseGen<D>,
+    {
+        <Self as PoseGen<D>>::pose(self, res)
+    }
+
     /// Check if the data is valid.
     pub fn is_valid(&self) -> bool
     where
@@ -232,6 +240,14 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
         let f = |t| self.pos_s(t, inv);
         let map = |c @ [.., p5]: [_; 5]| (p5, self.uvec(c));
         curve_in(start, end, res, f, map).into_iter().unzip()
+    }
+
+    /// Obtain the continuous pose in the range of motion.
+    fn pose(&self, res: usize) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+        self.angle_bound()
+            .to_value()
+            .map(|[start, end]| self.pose_in(start, end, res))
+            .unwrap_or_default()
     }
 }
 
