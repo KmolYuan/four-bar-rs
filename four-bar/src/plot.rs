@@ -243,7 +243,7 @@ impl Style {
                 if has_label {
                     anno.label(label).legend(move |c| {
                         EmptyElement::at(c)
-                            + DashedPath::new([(gap, 0), (font - gap, 0)], 10, 5, color)
+                            + DashedPath::new([(gap, 0), (font - gap, 0)], 30, 15, color)
                     });
                 }
             }
