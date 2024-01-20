@@ -212,7 +212,7 @@ impl AngleBound {
             Self::Closed => vec![Stat::C1B1, Stat::C2B1],
             Self::OpenC1B2(_) => vec![Stat::C1B1, Stat::C1B2],
             Self::OpenC2B2(_) => vec![Stat::C1B1, Stat::C1B2, Stat::C2B1, Stat::C2B2],
-            Self::Invalid => Vec::new(),
+            Self::Invalid => vec![Stat::C1B1],
         }
     }
 }

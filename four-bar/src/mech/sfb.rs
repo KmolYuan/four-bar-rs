@@ -1,5 +1,6 @@
 //! Spherical four-bar linkages.
-use super::*;
+#[doc(no_inline)]
+pub use super::*;
 use efd::na;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 

@@ -1,5 +1,6 @@
 //! Planar four-bar linkages.
-use super::*;
+#[doc(no_inline)]
+pub use super::*;
 use efd::na;
 use std::f64::consts::FRAC_PI_6;
 

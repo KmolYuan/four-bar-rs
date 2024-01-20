@@ -1,5 +1,9 @@
 //! Planar four-bar linkages used in motion synthesis.
-use super::{fb::*, *};
+#[doc(no_inline)]
+pub use super::{
+    fb::{NormFourBar, UnNorm},
+    *,
+};
 use efd::na;
 use std::f64::consts::FRAC_PI_6;
 
@@ -128,7 +132,7 @@ impl Transformable<2> for MFourBar {
 
 impl CurveGen<2> for MFourBar {
     fn pos_s(&self, t: f64, inv: bool) -> Option<[[f64; 2]; 5]> {
-        curve_interval((&self.unnorm, &self.norm), t, inv)
+        fb::curve_interval((&self.unnorm, &self.norm), t, inv)
     }
 }
 
