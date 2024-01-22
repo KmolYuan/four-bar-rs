@@ -26,7 +26,7 @@
 //! fig.plot(root_l).unwrap();
 //! fig.plot(root_r).unwrap();
 //! ```
-use self::{ball::*, dashed_line::*};
+use self::{ball::*, dashed_line::*, dotted_line::*};
 use crate::*;
 use efd::na;
 use fmtastic::Subscript;
@@ -36,6 +36,7 @@ use std::borrow::Cow;
 
 mod ball;
 mod dashed_line;
+mod dotted_line;
 pub mod fb;
 pub mod sfb;
 
@@ -157,8 +158,8 @@ pub enum Style {
     Line,
     /// Dashed Line
     DashedLine,
-    /// Dot Line
-    Dot,
+    /// Dotted Line
+    DottedLine,
     /// Circle Marker
     #[default]
     Circle,
@@ -175,8 +176,8 @@ impl Style {
     pub const LIST: [Self; 7] = [
         Self::Line,
         Self::DashedLine,
+        Self::DottedLine,
         Self::Circle,
-        Self::Dot,
         Self::Triangle,
         Self::Cross,
         Self::Square,
@@ -185,13 +186,13 @@ impl Style {
     /// Get the style names.
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::Line => "Line",
+            Self::Line => "Line Marker",
             Self::DashedLine => "Dashed Line",
-            Self::Circle => "Circle",
-            Self::Dot => "Dot",
-            Self::Triangle => "Triangle",
-            Self::Cross => "Cross",
-            Self::Square => "Square",
+            Self::DottedLine => "Dotted Line",
+            Self::Circle => "Circle Marker",
+            Self::Triangle => "Triangle Marker",
+            Self::Cross => "Cross Marker",
+            Self::Square => "Square Marker",
         }
     }
 
@@ -247,17 +248,15 @@ impl Style {
                     });
                 }
             }
-            Self::Dot => {
-                let dot_size = color.stroke_width as f64 * 0.7;
-                let color = color.filled();
-                let line = line.into_iter().map(|c| Circle::new(c, dot_size, color));
-                let anno = chart.draw_series(line)?;
+            Self::DottedLine => {
+                let dot_size = color.stroke_width;
+                let color = color.stroke_width(color.stroke_width / 2);
+                let mk_f = move |c| Circle::new(c, dot_size, color);
+                let series = DottedPath::new(line, 20, mk_f).series();
+                let anno = chart.draw_series(series)?;
                 if has_label {
                     anno.label(label).legend(move |c| {
-                        EmptyElement::at(c)
-                            + Circle::new((gap, 0), dot_size, color)
-                            + Circle::new((font / 2, 0), dot_size, color)
-                            + Circle::new((font - gap, 0), dot_size, color)
+                        EmptyElement::at(c) + DottedPath::new([(gap, 0), (font - gap, 0)], 20, mk_f)
                     });
                 }
             }
