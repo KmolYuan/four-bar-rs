@@ -281,7 +281,8 @@ impl Style {
                 let dot_size = color.stroke_width / 2;
                 let mk_f = move |c| Circle::new(c, dot_size, color.filled());
                 let series2 = DottedPath::new(line, 30 + 8, 30 + 16, mk_f).series();
-                let anno = chart.draw_series(series1)?;
+                chart.draw_series(series1)?;
+                let anno = chart.draw_series(series2)?;
                 if has_label {
                     anno.label(label).legend(move |c| {
                         let points = [(gap, 0), (font - gap, 0)];
@@ -290,7 +291,6 @@ impl Style {
                             + DottedPath::new(points, 30 + 8, 30 + 16, mk_f)
                     });
                 }
-                chart.draw_series(series2)?;
             }
             Self::Circle => impl_marker!(Circle::new),
             Self::Triangle => impl_marker!(TriangleMarker::new),

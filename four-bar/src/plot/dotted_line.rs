@@ -55,11 +55,18 @@ where
         backend: &mut DB,
         ps: (u32, u32),
     ) -> Result<(), DrawingErrorKind<DB::ErrorType>> {
+        let mut shift = self.shift.in_pixels(&ps).max(0) as f32;
         let mut start = match points.next() {
-            Some(c) => to_f(c),
+            Some(start_i) => {
+                // Draw the first marker if no shift
+                if shift == 0. {
+                    let mk = (self.func)(start_i).into_dyn();
+                    mk.draw(mk.point_iter().iter().copied(), backend, ps)?;
+                }
+                to_f(start_i)
+            }
             None => return Ok(()),
         };
-        let mut shift = self.shift.in_pixels(&ps).max(0) as f32;
         let spacing = self.spacing.in_pixels(&ps).max(0) as f32;
         let mut dist = 0.;
         for curr in points {
@@ -82,11 +89,10 @@ where
                 // Draw if needed
                 if spacing <= dist {
                     let start_i = to_i(start);
-                    (self.func)(start_i)
-                        .into_dyn()
-                        .draw(std::iter::once(start_i), backend, ps)?;
-                    dist = 0.;
+                    let mk = (self.func)(start_i).into_dyn();
+                    mk.draw(mk.point_iter().iter().copied(), backend, ps)?;
                     shift = 0.;
+                    dist = 0.;
                 }
             }
         }
