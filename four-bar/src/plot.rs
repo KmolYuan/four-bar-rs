@@ -53,6 +53,16 @@ macro_rules! inner_opt {
     )+};
 }
 
+#[inline]
+pub(crate) fn to_i((x, y): (f32, f32)) -> (i32, i32) {
+    (x.round() as i32, y.round() as i32)
+}
+
+#[inline]
+pub(crate) fn to_f((x, y): (i32, i32)) -> (f32, f32) {
+    (x as f32, y as f32)
+}
+
 // Rounding float numbers without trailing zeros
 pub(crate) fn formatter(v: &f64) -> String {
     let mut s = format!("{v:.04}");
@@ -160,6 +170,8 @@ pub enum Style {
     DashedLine,
     /// Dotted Line
     DottedLine,
+    /// Dash-dotted Line
+    DashDottedLine,
     /// Circle Marker
     #[default]
     Circle,
@@ -173,10 +185,11 @@ pub enum Style {
 
 impl Style {
     /// Style list.
-    pub const LIST: [Self; 7] = [
+    pub const LIST: [Self; 8] = [
         Self::Line,
         Self::DashedLine,
         Self::DottedLine,
+        Self::DashDottedLine,
         Self::Circle,
         Self::Triangle,
         Self::Cross,
@@ -189,6 +202,7 @@ impl Style {
             Self::Line => "Line Marker",
             Self::DashedLine => "Dashed Line",
             Self::DottedLine => "Dotted Line",
+            Self::DashDottedLine => "Dash-dotted Line",
             Self::Circle => "Circle Marker",
             Self::Triangle => "Triangle Marker",
             Self::Cross => "Cross Marker",
@@ -252,13 +266,31 @@ impl Style {
                 let dot_size = color.stroke_width;
                 let color = color.stroke_width(color.stroke_width / 2);
                 let mk_f = move |c| Circle::new(c, dot_size, color);
-                let series = DottedPath::new(line, 20, mk_f).series();
+                let series = DottedPath::new(line, 0, 20, mk_f).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
                     anno.label(label).legend(move |c| {
-                        EmptyElement::at(c) + DottedPath::new([(gap, 0), (font - gap, 0)], 20, mk_f)
+                        EmptyElement::at(c)
+                            + DottedPath::new([(gap, 0), (font - gap, 0)], 0, 20, mk_f)
                     });
                 }
+            }
+            Self::DashDottedLine => {
+                let line = line.into_iter();
+                let series1 = DashedPath::new(line.clone(), 30, 16, color).series();
+                let dot_size = color.stroke_width / 2;
+                let mk_f = move |c| Circle::new(c, dot_size, color.filled());
+                let series2 = DottedPath::new(line, 30 + 8, 30 + 16, mk_f).series();
+                let anno = chart.draw_series(series1)?;
+                if has_label {
+                    anno.label(label).legend(move |c| {
+                        let points = [(gap, 0), (font - gap, 0)];
+                        EmptyElement::at(c)
+                            + DashedPath::new(points, 30, 16, color)
+                            + DottedPath::new(points, 30 + 8, 30 + 16, mk_f)
+                    });
+                }
+                chart.draw_series(series2)?;
             }
             Self::Circle => impl_marker!(Circle::new),
             Self::Triangle => impl_marker!(TriangleMarker::new),

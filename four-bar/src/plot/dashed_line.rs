@@ -1,3 +1,4 @@
+use super::{to_f, to_i};
 use plotters::{
     element::{Drawable, PointCollection},
     style::{ShapeStyle, SizeDesc},
@@ -50,8 +51,6 @@ impl<I0: Iterator + Clone, Size: SizeDesc, DB: DrawingBackend> Drawable<DB>
         backend: &mut DB,
         ps: (u32, u32),
     ) -> Result<(), DrawingErrorKind<DB::ErrorType>> {
-        let to_i = |(x, y): (f32, f32)| (x.round() as i32, y.round() as i32);
-        let to_f = |(x, y): (i32, i32)| (x as f32, y as f32);
         let mut start = match points.next() {
             Some(c) => to_f(c),
             None => return Ok(()),

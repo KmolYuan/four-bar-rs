@@ -1,3 +1,4 @@
+use super::{to_f, to_i};
 use plotters::{
     element::{Drawable, IntoDynElement, PointCollection},
     style::SizeDesc,
@@ -6,18 +7,20 @@ use plotters_backend::{BackendCoord, DrawingBackend, DrawingErrorKind};
 
 pub(crate) struct DottedPath<I: Iterator + Clone, Size: SizeDesc, Marker> {
     points: I,
+    shift: Size,
     spacing: Size,
     func: Box<dyn Fn(BackendCoord) -> Marker>,
 }
 
 impl<I: Iterator + Clone, Size: SizeDesc, Marker> DottedPath<I, Size, Marker> {
-    pub(crate) fn new<I0, F>(points: I0, spacing: Size, func: F) -> Self
+    pub(crate) fn new<I0, F>(points: I0, shift: Size, spacing: Size, func: F) -> Self
     where
         I0: IntoIterator<IntoIter = I>,
         F: Fn(BackendCoord) -> Marker + 'static,
     {
         Self {
             points: points.into_iter(),
+            shift,
             spacing,
             func: Box::new(func),
         }
@@ -52,18 +55,12 @@ where
         backend: &mut DB,
         ps: (u32, u32),
     ) -> Result<(), DrawingErrorKind<DB::ErrorType>> {
-        let to_i = |(x, y): (f32, f32)| (x.round() as i32, y.round() as i32);
-        let to_f = |(x, y): (i32, i32)| (x as f32, y as f32);
         let mut start = match points.next() {
-            Some(start_i) => {
-                (self.func)(start_i)
-                    .into_dyn()
-                    .draw(std::iter::once(start_i), backend, ps)?;
-                to_f(start_i)
-            }
+            Some(c) => to_f(c),
             None => return Ok(()),
         };
-        let spacing = self.spacing.in_pixels(&ps).max(1) as f32;
+        let mut shift = self.shift.in_pixels(&ps).max(0) as f32;
+        let spacing = self.spacing.in_pixels(&ps).max(0) as f32;
         let mut dist = 0.;
         for curr in points {
             let end = to_f(curr);
@@ -71,6 +68,7 @@ where
             while start != end {
                 let (dx, dy) = (end.0 - start.0, end.1 - start.1);
                 let d = dx.hypot(dy);
+                let spacing = if shift == 0. { spacing } else { shift };
                 let left = spacing - dist;
                 // Set next point to `start`
                 if left < d {
@@ -88,6 +86,7 @@ where
                         .into_dyn()
                         .draw(std::iter::once(start_i), backend, ps)?;
                     dist = 0.;
+                    shift = 0.;
                 }
             }
         }
