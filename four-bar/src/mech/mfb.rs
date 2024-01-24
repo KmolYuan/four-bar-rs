@@ -88,7 +88,8 @@ impl Normalized<2> for MNormFourBar {
     }
 
     fn normalize_inplace(de: &mut Self::De) {
-        let l2 = std::mem::replace(&mut de.unnorm.l2, 1.);
+        let l2 = de.unnorm.l2;
+        de.unnorm = UnNorm::new();
         de.norm.scale_inplace(l2.recip());
     }
 }
