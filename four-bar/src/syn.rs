@@ -66,25 +66,51 @@ impl Mode {
     }
 }
 
-macro_rules! impl_bound {
-    ($ty:ident) => {
-        impl<M, const N: usize, const D: usize> mh::Bounded for $ty<M, N, D>
-        where
-            M: mech::FromVectorized<N> + Sync + Send,
-            efd::Efd<D>: Sync + Send,
-            efd::U<D>: efd::EfdDim<D>,
-        {
-            #[inline]
-            fn bound(&self) -> &[[f64; 2]] {
-                if matches!(self.mode, Mode::Partial) {
-                    M::BOUND_PARTIAL
-                } else {
-                    &M::BOUND
-                }
-            }
-        }
+pub(crate) fn impl_fitness<M, S, F1, F2, const N: usize, const D: usize>(
+    mode: Mode,
+    xs: &[f64],
+    get_series: F1,
+    get_err: F2,
+) -> mh::Product<M::De, f64>
+where
+    M: SynBound<N> + mech::Normalized<D>,
+    M::De: Default + Clone + Sync + Send + 'static,
+    S: Send,
+    F1: Fn(&M, f64, f64) -> Option<S> + Sync + Send,
+    F2: Fn((S, &M)) -> mh::Product<M::De, f64> + Sync + Send,
+    efd::U<D>: efd::EfdDim<D>,
+{
+    #[cfg(feature = "rayon")]
+    use mh::rayon::prelude::*;
+    let mut fb = M::from_vectorized_s1(slice_to_array(xs));
+    fb.set_to_planar_loop();
+    let (bound, states) = fb.to_bound_states_filter(|a| a.check_mode(mode.is_result_open()));
+    let gen_series = &get_series;
+    let f = |[t1, t2]: [f64; 2]| {
+        #[cfg(feature = "rayon")]
+        let iter = states.par_iter();
+        #[cfg(not(feature = "rayon"))]
+        let iter = states.iter();
+        iter.filter_map(move |fb| Some((gen_series(fb, t1, t2)?, fb)))
+            .map(&get_err)
     };
+    match mode {
+        Mode::Closed | Mode::Open => bound
+            .check_min()
+            .to_value()
+            .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
+            .unwrap_or_else(infeasible),
+        Mode::Partial if !bound.is_valid() => infeasible(),
+        Mode::Partial => {
+            let bound = mech::AngleBound::open_and_rev_at(xs[N], xs[N + 1]);
+            #[cfg(feature = "rayon")]
+            let iter = bound.into_par_iter();
+            #[cfg(not(feature = "rayon"))]
+            let iter = bound.into_iter();
+            iter.filter_map(|b| b.check_min().to_value())
+                .flat_map(f)
+                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap_or_else(infeasible)
+        }
+    }
 }
-
-impl_bound!(PathSyn);
-impl_bound!(MotionSyn);

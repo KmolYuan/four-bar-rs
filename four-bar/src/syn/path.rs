@@ -13,7 +13,7 @@ where
     /// Target coefficients
     pub efd: efd::Efd<D>,
     // Mode
-    pub(crate) mode: Mode,
+    mode: Mode,
     // How many points need to be generated or compared
     res: usize,
     // Constrain the origin of the mechanism
@@ -77,6 +77,22 @@ where
     }
 }
 
+impl<M, const N: usize, const D: usize> mh::Bounded for PathSyn<M, N, D>
+where
+    Self: mh::ObjFunc,
+    M: mech::FromVectorized<N>,
+    efd::U<D>: efd::EfdDim<D>,
+{
+    #[inline]
+    fn bound(&self) -> &[[f64; 2]] {
+        if self.mode == Mode::Partial {
+            M::BOUND_PARTIAL
+        } else {
+            &M::BOUND
+        }
+    }
+}
+
 impl<M, const N: usize, const D: usize> mh::ObjFunc for PathSyn<M, N, D>
 where
     M: SynBound<N> + mech::Normalized<D> + mech::CurveGen<D>,
@@ -87,55 +103,20 @@ where
     type Fitness = mh::Product<M::De, f64>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
-        use efd::Distance as _;
-        #[cfg(feature = "rayon")]
-        use mh::rayon::prelude::*;
-        let mut fb = M::from_vectorized_s1(slice_to_array(xs));
-        fb.set_to_planar_loop();
-        let (bound, states) =
-            fb.to_bound_states_filter(|a| a.check_mode(self.mode.is_result_open()));
         let is_open = self.mode.is_target_open();
-        let f = |[t1, t2]: [f64; 2]| {
-            #[cfg(feature = "rayon")]
-            let iter = states.par_iter();
-            #[cfg(not(feature = "rayon"))]
-            let iter = states.iter();
-            iter.map(move |fb| (fb.curve_in(t1, t2, self.res), fb))
-                .filter(|(c, _)| c.len() > 2)
-                .map(|(c, fb)| {
-                    let efd = efd::Efd::from_curve_harmonic(c, is_open, self.efd.harmonic());
-                    let geo = efd.as_geo().to(self.efd.as_geo());
-                    let fb = fb.clone().trans_denorm(&geo);
-                    let o_err = match &self.origin {
-                        Some(o) => geo.trans().l2_norm(o),
-                        None => 0.,
-                    };
-                    let s_err = match self.scale {
-                        Some(s) => (geo.scale() - s).abs(),
-                        None => 0.,
-                    };
-                    let err = efd.distance(&self.efd).max(o_err).max(s_err);
-                    mh::Product::new(err, fb)
-                })
+        let get_series = |fb: &M, start, end| {
+            let curve = fb.curve_in(start, end, self.res);
+            (curve.len() > 2).then_some(curve)
         };
-        match self.mode {
-            Mode::Closed | Mode::Open => bound
-                .check_min()
-                .to_value()
-                .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
-                .unwrap_or_else(infeasible),
-            Mode::Partial if !bound.is_valid() => infeasible(),
-            Mode::Partial => {
-                let bound = mech::AngleBound::open_and_rev_at(xs[N], xs[N + 1]);
-                #[cfg(feature = "rayon")]
-                let iter = bound.into_par_iter();
-                #[cfg(not(feature = "rayon"))]
-                let iter = bound.into_iter();
-                iter.filter_map(|b| b.check_min().to_value())
-                    .flat_map(f)
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap_or_else(infeasible)
-            }
-        }
+        impl_fitness(self.mode, xs, get_series, |(c, fb)| {
+            use efd::Distance as _;
+            let efd = efd::Efd::from_curve_harmonic(c, is_open, self.efd.harmonic());
+            let geo = efd.as_geo().to(self.efd.as_geo());
+            let fb = fb.clone().trans_denorm(&geo);
+            let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
+            let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
+            let err = efd.distance(&self.efd).max(o_err).max(s_err);
+            mh::Product::new(err, fb)
+        })
     }
 }

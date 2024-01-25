@@ -11,7 +11,7 @@ where
     /// Target coefficients
     pub efd: efd::PosedEfd<D>,
     // Mode
-    pub(crate) mode: Mode,
+    mode: Mode,
     // How many points need to be generated or compared
     res: usize,
     // Marker of the mechanism
@@ -61,6 +61,22 @@ where
     }
 }
 
+impl<M, const N: usize, const D: usize> mh::Bounded for MotionSyn<M, N, D>
+where
+    Self: mh::ObjFunc,
+    M: mech::FromVectorized<N>,
+    efd::U<D>: efd::EfdDim<D>,
+{
+    #[inline]
+    fn bound(&self) -> &[[f64; 2]] {
+        if self.mode == Mode::Partial {
+            M::BOUND_PARTIAL
+        } else {
+            &M::BOUND
+        }
+    }
+}
+
 impl<M, const N: usize, const D: usize> mh::ObjFunc for MotionSyn<M, N, D>
 where
     M: SynBound<N> + mech::Normalized<D> + mech::PoseGen<D>,
@@ -71,46 +87,17 @@ where
     type Fitness = mh::Product<M::De, f64>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
-        #[cfg(feature = "rayon")]
-        use mh::rayon::prelude::*;
-        let mut fb = M::from_vectorized_s1(slice_to_array(xs));
-        fb.set_to_planar_loop();
-        let (bound, states) =
-            fb.to_bound_states_filter(|a| a.check_mode(self.mode.is_result_open()));
         let is_open = self.mode.is_target_open();
-        let f = |[t1, t2]: [f64; 2]| {
-            #[cfg(feature = "rayon")]
-            let iter = states.par_iter();
-            #[cfg(not(feature = "rayon"))]
-            let iter = states.iter();
-            iter.map(move |fb| (fb.pose_in(t1, t2, self.res), fb))
-                .filter(|((c, _), _)| c.len() > 2)
-                .map(|((c, v), fb)| {
-                    let efd = efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.efd.harmonic());
-                    let geo = efd.curve_efd().as_geo().to(self.efd.curve_efd().as_geo());
-                    let fb = fb.clone().trans_denorm(&geo);
-                    let err = efd.distance(&self.efd);
-                    mh::Product::new(err, fb)
-                })
+        let get_series = |fb: &M, start, end| {
+            let (curve, pose) = fb.pose_in(start, end, self.res);
+            (curve.len() > 2).then_some((curve, pose))
         };
-        match self.mode {
-            Mode::Closed | Mode::Open => bound
-                .check_min()
-                .to_value()
-                .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
-                .unwrap_or_else(infeasible),
-            Mode::Partial if !bound.is_valid() => infeasible(),
-            Mode::Partial => {
-                let bound = mech::AngleBound::open_and_rev_at(xs[N], xs[N + 1]);
-                #[cfg(feature = "rayon")]
-                let iter = bound.into_par_iter();
-                #[cfg(not(feature = "rayon"))]
-                let iter = bound.into_iter();
-                iter.filter_map(|b| b.check_min().to_value())
-                    .flat_map(f)
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap_or_else(infeasible)
-            }
-        }
+        impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
+            let efd = efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.efd.harmonic());
+            let geo = efd.curve_efd().as_geo().to(self.efd.curve_efd().as_geo());
+            let fb = fb.clone().trans_denorm(&geo);
+            let err = efd.distance(&self.efd);
+            mh::Product::new(err, fb)
+        })
     }
 }
