@@ -1,6 +1,6 @@
 use super::*;
 
-/// Path generation task of planar four-bar linkage.
+/// Motion generation task of planar four-bar linkage.
 pub type MFbSyn = MotionSyn<MNormFourBar, 6, 2>;
 
 /// Motion generation of a mechanism `M`.
@@ -12,7 +12,7 @@ where
     pub efd: efd::PosedEfd<D>,
     // Mode
     mode: Mode,
-    // How many points need to be generated or compared
+    // How many points need to be generated and compared
     res: usize,
     // Marker of the mechanism
     _marker: PhantomData<M>,

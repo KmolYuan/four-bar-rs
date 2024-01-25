@@ -14,26 +14,14 @@
 //!     .solve()
 //!     .unwrap();
 //! ```
-pub use self::{motion::*, path::*};
+pub use self::{motion::*, path::*, pp_motion::*, pp_path::*};
 use crate::*;
 use std::marker::PhantomData;
 
 mod motion;
 mod path;
-
-pub(crate) fn infeasible<P: Default>() -> mh::Product<P, f64> {
-    mh::Product::new(1e2, P::default())
-}
-
-pub(crate) const fn slice_to_array<const N: usize>(slice: &[f64]) -> [f64; N] {
-    let mut out = [0.; N];
-    let mut i = 0;
-    while i < N {
-        out[i] = slice[i];
-        i += 1;
-    }
-    out
-}
+mod pp_motion;
+mod pp_path;
 
 /// Synthesis bounds.
 pub trait SynBound<const N: usize>: mech::Statable + mech::FromVectorized<N> + Sync + Send {}
@@ -64,6 +52,20 @@ impl Mode {
     pub const fn is_result_open(&self) -> bool {
         matches!(self, Self::Open)
     }
+}
+
+fn infeasible<P: Default>() -> mh::Product<P, f64> {
+    mh::Product::new(1e2, P::default())
+}
+
+const fn slice_to_array<const N: usize>(slice: &[f64]) -> [f64; N] {
+    let mut out = [0.; N];
+    let mut i = 0;
+    while i < N {
+        out[i] = slice[i];
+        i += 1;
+    }
+    out
 }
 
 pub(crate) fn impl_fitness<M, S, F1, F2, const N: usize, const D: usize>(

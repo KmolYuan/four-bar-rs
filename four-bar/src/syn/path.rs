@@ -14,7 +14,7 @@ where
     pub efd: efd::Efd<D>,
     // Mode
     mode: Mode,
-    // How many points need to be generated or compared
+    // How many points need to be generated and compared
     res: usize,
     // Constrain the origin of the mechanism
     origin: Option<efd::Coord<D>>,
