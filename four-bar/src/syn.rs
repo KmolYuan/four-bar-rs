@@ -63,14 +63,16 @@ where
 }
 
 /// Synthesis bounds.
-pub trait SynBound<const N: usize>: Clone + Sync + Send {
+pub trait SynBound<const N: usize, const D: usize>:
+    mech::Statable + mech::FromVectorized<N> + Sync + Send
+{
     /// Lower & upper bounds
     const BOUND: [[f64; 2]; N];
     /// Lower & upper bounds for partial synthesis
     const BOUND_PARTIAL: &'static [[f64; 2]];
 }
 
-impl SynBound<5> for NormFourBar {
+impl SynBound<5, 2> for NormFourBar {
     const BOUND: [[f64; 2]; 5] = {
         const K: f64 = 6.;
         concat_slices([[1. / K, K]; 4], [[0., TAU]; 1])
@@ -78,7 +80,7 @@ impl SynBound<5> for NormFourBar {
     const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
 }
 
-impl SynBound<6> for MNormFourBar {
+impl SynBound<6, 2> for MNormFourBar {
     const BOUND: [[f64; 2]; 6] = {
         const K: f64 = 6.;
         concat_slices([[1. / K, K]; 4], [[0., TAU]; 2])
@@ -86,7 +88,7 @@ impl SynBound<6> for MNormFourBar {
     const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
 }
 
-impl SynBound<6> for SNormFourBar {
+impl SynBound<6, 3> for SNormFourBar {
     const BOUND: [[f64; 2]; 6] = concat_slices([[1e-4, PI]; 5], [[0., PI]; 1]);
     const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
 }
@@ -119,9 +121,8 @@ macro_rules! impl_bound {
     ($ty:ident) => {
         impl<M, const N: usize, const D: usize> mh::Bounded for $ty<M, N, D>
         where
-            M: SynBound<N>,
-            efd::Rot<D>: Sync + Send,
-            efd::Coord<D>: Sync + Send,
+            M: SynBound<N, D>,
+            efd::Efd<D>: Sync + Send,
             efd::U<D>: efd::EfdDim<D>,
         {
             #[inline]

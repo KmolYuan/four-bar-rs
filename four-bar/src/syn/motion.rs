@@ -63,14 +63,9 @@ where
 
 impl<M, const N: usize, const D: usize> mh::ObjFunc for MotionSyn<M, N, D>
 where
-    efd::Rot<D>: Sync + Send,
-    efd::Coord<D>: efd::Distance + Sync + Send,
-    M: SynBound<N>
-        + mech::Statable
-        + mech::FromVectorized<N>
-        + mech::Normalized<D>
-        + mech::PoseGen<D>,
+    M: SynBound<N, D> + mech::Normalized<D> + mech::PoseGen<D>,
     M::De: Default + Clone + Sync + Send + 'static,
+    efd::Efd<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
     type Fitness = mh::Product<M::De, f64>;

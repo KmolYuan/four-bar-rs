@@ -2,11 +2,11 @@ use crate::{mech::*, syn};
 use mh::rand::{Distribution, Rng};
 
 /// Uniform distribution for mechinism types.
-pub struct Distr<M, const N: usize> {
+pub struct Distr<M, const N: usize, const D: usize> {
     _marker: std::marker::PhantomData<M>,
 }
 
-impl<M, const N: usize> Distr<M, N> {
+impl<M, const N: usize, const D: usize> Distr<M, N, D> {
     /// Create a new instance.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -14,9 +14,9 @@ impl<M, const N: usize> Distr<M, N> {
     }
 }
 
-impl<M, const N: usize> Distribution<Vec<M>> for Distr<M, N>
+impl<M, const N: usize, const D: usize> Distribution<Vec<M>> for Distr<M, N, D>
 where
-    M: syn::SynBound<N> + Statable + FromVectorized<N> + Sync + Clone,
+    M: syn::SynBound<N, D>,
 {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<M> {
         let v = M::BOUND.map(|[u, l]| rng.gen_range(u..l));
@@ -26,14 +26,7 @@ where
 
 /// Implement this trait to support atlas functions.
 pub trait Code<const N: usize, const D: usize>:
-    Normalized<D>
-    + CurveGen<D>
-    + syn::SynBound<N>
-    + Statable
-    + FromVectorized<N>
-    + IntoVectorized
-    + Clone
-    + 'static
+    Normalized<D> + CurveGen<D> + syn::SynBound<N, D> + IntoVectorized + 'static
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -59,13 +52,7 @@ where
 
 impl<M, const N: usize, const D: usize> Code<N, D> for M
 where
-    M: Normalized<D>
-        + CurveGen<D>
-        + syn::SynBound<N>
-        + Statable
-        + FromVectorized<N>
-        + IntoVectorized
-        + 'static,
+    M: Normalized<D> + CurveGen<D> + syn::SynBound<N, D> + IntoVectorized + 'static,
     efd::U<D>: efd::EfdDim<D>,
 {
 }
