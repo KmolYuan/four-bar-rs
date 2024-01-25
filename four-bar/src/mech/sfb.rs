@@ -77,20 +77,6 @@ pub struct SNormFourBar {
     pub stat: Stat,
 }
 
-impl FromVectorized<6> for SNormFourBar {
-    fn from_vectorized(v: [f64; 6], stat: Stat) -> Self {
-        let [l1, l2, l3, l4, l5, g] = v;
-        Self { l1, l2, l3, l4, l5, g, stat }
-    }
-}
-
-impl IntoVectorized for SNormFourBar {
-    fn into_vectorized(self) -> (Vec<f64>, Stat) {
-        let Self { l1, l2, l3, l4, l5, g, stat } = self;
-        (vec![l1, l2, l3, l4, l5, g], stat)
-    }
-}
-
 /// Spherical four-bar linkage.
 ///
 /// # Parameters

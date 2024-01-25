@@ -27,20 +27,6 @@ pub struct MNormFourBar {
     pub e: f64,
 }
 
-impl FromVectorized<6> for MNormFourBar {
-    fn from_vectorized(v: [f64; 6], stat: Stat) -> Self {
-        let [l1, l3, l4, l5, g, e] = v;
-        Self { base: NormFourBar { l1, l3, l4, l5, g, stat }, e }
-    }
-}
-
-impl IntoVectorized for MNormFourBar {
-    fn into_vectorized(self) -> (Vec<f64>, Stat) {
-        let code = vec![self.l1, self.l3, self.l4, self.l5, self.g, self.e];
-        (code, self.stat)
-    }
-}
-
 impl std::ops::Deref for MNormFourBar {
     type Target = NormFourBar;
 
@@ -83,7 +69,7 @@ impl Normalized<2> for MNormFourBar {
     }
 
     fn normalize(mut de: Self::De) -> Self {
-        Self::normalize_inplace(&mut de);
+        de.norm.scale_inplace(de.unnorm.l2.recip());
         de.norm
     }
 

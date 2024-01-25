@@ -161,7 +161,7 @@ where
             let iter = rng.stream(n).into_par_iter();
             #[cfg(not(feature = "rayon"))]
             let iter = rng.stream(n).into_iter();
-            iter.flat_map(|rng| rng.sample(Distr::<M, N, D>::new()))
+            iter.flat_map(|rng| rng.sample(Distr::<M, N>::new()))
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {

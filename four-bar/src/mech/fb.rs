@@ -87,20 +87,6 @@ impl NormFourBar {
     }
 }
 
-impl FromVectorized<5> for NormFourBar {
-    fn from_vectorized(v: [f64; 5], stat: Stat) -> Self {
-        let [l1, l3, l4, l5, g] = v;
-        Self { l1, l3, l4, l5, g, stat: stat as Stat }
-    }
-}
-
-impl IntoVectorized for NormFourBar {
-    fn into_vectorized(self) -> (Vec<f64>, Stat) {
-        let code = vec![self.l1, self.l3, self.l4, self.l5, self.g];
-        (code, self.stat)
-    }
-}
-
 /// Four-bar linkage with offset.
 ///
 /// # Parameters
@@ -126,7 +112,7 @@ impl Normalized<2> for NormFourBar {
     }
 
     fn normalize(mut de: Self::De) -> Self {
-        Self::normalize_inplace(&mut de);
+        de.norm.scale_inplace(de.unnorm.l2.recip());
         de.norm
     }
 
