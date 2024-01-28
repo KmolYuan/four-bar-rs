@@ -29,6 +29,10 @@ where
     mode: Mode,
     // How many points need to be generated and compared
     res: usize,
+    // Constrain the origin of the mechanism
+    origin: Option<efd::Coord<D>>,
+    // Constrain the scale of the mechanism
+    scale: Option<f64>,
     // Marker of the mechanism
     _marker: PhantomData<M>,
 }
@@ -48,6 +52,8 @@ where
             tar: PrecisePointTarget { curve, pos, geo },
             mode,
             res: 180,
+            origin: None,
+            scale: None,
             _marker: PhantomData,
         }
     }
@@ -56,6 +62,22 @@ where
     pub fn res(self, res: usize) -> Self {
         assert!(res > 0);
         Self { res, ..self }
+    }
+
+    /// Specify the mechanism is on origin and unit scale.
+    pub fn on_unit(self) -> Self {
+        self.origin([0.; D]).scale(1.)
+    }
+
+    /// Specify the origin of the mechanism.
+    pub fn origin(self, origin: efd::Coord<D>) -> Self {
+        Self { origin: Some(origin), ..self }
+    }
+
+    /// Specify the scale of the mechanism.
+    pub fn scale(self, scale: f64) -> Self {
+        assert!(scale > 0.);
+        Self { scale: Some(scale), ..self }
     }
 }
 
@@ -95,6 +117,8 @@ where
             let mut efd = efd::Efd::from_curve(c, is_open);
             let geo = efd.as_geo().to(&self.tar.geo);
             *efd.as_geo_mut() = geo.clone();
+            let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
+            let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
             let err = efd
                 .generate_by(&self.tar.pos)
                 .iter()
@@ -102,7 +126,7 @@ where
                 .map(|(a, b)| a.l2_norm(b))
                 .sum();
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(err, fb)
+            mh::Product::new(o_err.max(s_err).max(err), fb)
         })
     }
 }
