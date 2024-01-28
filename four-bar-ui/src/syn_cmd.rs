@@ -103,12 +103,19 @@ pub(crate) enum Target<'a> {
     S(Cow<'a, [[f64; 3]]>, Cow<'a, atlas::SFbAtlas>),
 }
 
-type FbBuilder<'a> = mh::utility::SolverBuilder<'a, syn::FbSyn>;
-type SFbBuilder<'a> = mh::utility::SolverBuilder<'a, syn::SFbSyn>;
+struct SynData<'a, M, const N: usize, const D: usize>
+where
+    syn::PathSyn<M, N, D>: mh::ObjFunc,
+    efd::U<D>: efd::EfdDim<D>,
+{
+    s: mh::utility::SolverBuilder<'a, syn::PathSyn<M, N, D>>,
+    atlas_fb: Option<(f64, M)>,
+}
 
+#[allow(private_interfaces)]
 pub(crate) enum Solver<'a> {
-    FbSyn(FbBuilder<'a>, Option<(f64, NormFourBar)>),
-    SFbSyn(SFbBuilder<'a>, Option<(f64, SNormFourBar)>),
+    FbSyn(SynData<'a, NormFourBar, 5, 2>),
+    SFbSyn(SynData<'a, SNormFourBar, 6, 3>),
 }
 
 impl<'a> Solver<'a> {
@@ -158,7 +165,7 @@ impl<'a> Solver<'a> {
                 } else {
                     s = s.pop_num(pop);
                 }
-                Self::$syn(s, atlas_fb)
+                Self::$syn(SynData { s, atlas_fb })
             }};
         }
         match target {
@@ -169,8 +176,8 @@ impl<'a> Solver<'a> {
 
     pub(crate) fn solve(self) -> Result<io::Fb, mh::ndarray::ShapeError> {
         match self {
-            Self::FbSyn(s, _) => Ok(io::Fb::Fb(s.solve()?.into_result())),
-            Self::SFbSyn(s, _) => Ok(io::Fb::SFb(s.solve()?.into_result())),
+            Self::FbSyn(SynData { s, .. }) => Ok(io::Fb::Fb(s.solve()?.into_result())),
+            Self::SFbSyn(SynData { s, .. }) => Ok(io::Fb::SFb(s.solve()?.into_result())),
         }
     }
 
@@ -185,8 +192,8 @@ impl<'a> Solver<'a> {
             }};
         }
         match self {
-            Self::FbSyn(s, atlas_fb) => impl_solve!(Fb, s, atlas_fb),
-            Self::SFbSyn(s, atlas_fb) => impl_solve!(SFb, s, atlas_fb),
+            Self::FbSyn(SynData { s, atlas_fb }) => impl_solve!(Fb, s, atlas_fb),
+            Self::SFbSyn(SynData { s, atlas_fb }) => impl_solve!(SFb, s, atlas_fb),
         }
     }
 }
