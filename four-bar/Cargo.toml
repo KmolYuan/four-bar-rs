@@ -27,7 +27,7 @@ fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
 metaheuristics-nature = "9.2.2"
-efd = "7.2.1"
+efd = "7.2.2"
 
 [dependencies.plotters]
 version = "0.3"
