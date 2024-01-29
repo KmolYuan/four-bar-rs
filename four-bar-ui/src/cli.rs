@@ -2,6 +2,7 @@ use crate::app::App;
 use std::path::PathBuf;
 
 mod atlas;
+mod logger;
 mod syn;
 
 const APP_NAME: &str = env!("CARGO_BIN_NAME");

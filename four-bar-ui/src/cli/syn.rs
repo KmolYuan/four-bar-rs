@@ -3,7 +3,6 @@ use four_bar::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{
     borrow::Cow,
-    io::{Seek as _, Write as _},
     path::{Path, PathBuf},
 };
 
@@ -283,7 +282,8 @@ fn from_runtime(
         .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
         .filter(|p| p.is_file());
     let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
-    writeln!(log, "[{title}]\n")?;
+    let mut log = super::logger::Logger::new(&mut log);
+    log.top_title(title)?;
     match (target, &lnk_fb) {
         (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, atlas_fb)) if fb.is_valid() => {
             let efd_target =
@@ -299,8 +299,8 @@ fn from_runtime(
                 fig.plot(svg)?;
             }
             if let Some(io::Fb::Fb(fb)) = target_fb {
-                writeln!(log, "[target.fb]")?;
-                log_fb(&mut log, fb)?;
+                log.title("target.fb")?;
+                log.log(fb)?;
             }
             if let Some((cost, fb)) = atlas_fb {
                 let c = fb.curve(cfg.res);
@@ -308,31 +308,28 @@ fn from_runtime(
                 let geo = efd.as_geo().to(efd_target.as_geo());
                 let fb = fb.clone().trans_denorm(&geo);
                 let c = fb.curve(cfg.res.min(30));
-                writeln!(log, "[atlas]")?;
-                writeln!(log, "harmonic={harmonic}")?;
-                writeln!(log, "cost={cost:.04}")?;
-                writeln!(log, "\n[atlas.fb]")?;
-                log_fb(&mut log, &fb)?;
+                log.title("atlas")?;
+                log.log(Performance::cost(*cost).harmonic(harmonic))?;
+                log.title("atlas.fb")?;
+                log.log(&fb)?;
                 write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
-            writeln!(log, "[optimized]")?;
-            writeln!(log, "time={t1:.02?}")?;
-            writeln!(log, "cost={cost:.04}")?;
-            writeln!(log, "harmonic={harmonic}")?;
-            writeln!(log, "\n[optimized.fb]")?;
-            log_fb(&mut log, fb)?;
+            log.title("optimized")?;
+            log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
+            log.title("optimized.fb")?;
+            log.log(fb)?;
             if let Some(refer) = refer {
                 let fb = ron::de::from_reader::<_, FourBar>(std::fs::File::open(refer)?)?;
                 let c = fb.curve(cfg.res);
-                writeln!(log, "\n[competitor]")?;
+                log.title("competitor")?;
                 if !matches!(mode, syn::Mode::Partial) {
                     let efd = efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
                     let cost = efd.distance(&efd_target);
-                    writeln!(log, "cost={cost:.04}")?;
+                    log.log(Performance::cost(cost))?;
                 }
-                writeln!(log, "\n[competitor.fb]")?;
-                log_fb(&mut log, &fb)?;
+                log.title("competitor.fb")?;
+                log.log(&fb)?;
                 fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
             }
             fig.fb = None;
@@ -355,8 +352,8 @@ fn from_runtime(
                 fig.plot(svg)?;
             }
             if let Some(io::Fb::SFb(fb)) = target_fb {
-                writeln!(log, "[target.fb]")?;
-                log_sfb(&mut log, fb)?;
+                log.title("target.fb")?;
+                log.log(fb)?;
             }
             if let Some((cost, fb)) = atlas_fb {
                 let c = fb.curve(cfg.res);
@@ -364,31 +361,28 @@ fn from_runtime(
                 let geo = efd.as_geo().to(efd_target.as_geo());
                 let fb = fb.clone().trans_denorm(&geo);
                 let c = fb.curve(cfg.res.min(30));
-                writeln!(log, "[atlas]")?;
-                writeln!(log, "harmonic={harmonic}")?;
-                writeln!(log, "cost={cost:.04}")?;
-                writeln!(log, "\n[atlas.fb]")?;
-                log_sfb(&mut log, &fb)?;
+                log.title("atlas")?;
+                log.log(Performance::cost(*cost).harmonic(harmonic))?;
+                log.title("atlas.fb")?;
+                log.log(&fb)?;
                 write_ron(root.join("atlas.ron"), &fb)?;
                 fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
             }
-            writeln!(log, "[optimized]")?;
-            writeln!(log, "time={t1:.02?}")?;
-            writeln!(log, "cost={cost:.04}")?;
-            writeln!(log, "harmonic={harmonic}")?;
-            writeln!(log, "\n[optimized.fb]")?;
-            log_sfb(&mut log, fb)?;
+            log.title("optimized")?;
+            log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
+            log.title("optimized.fb")?;
+            log.log(fb)?;
             if let Some(refer) = refer {
                 let fb = ron::de::from_reader::<_, SFourBar>(std::fs::File::open(refer)?)?;
                 let c = fb.curve(cfg.res);
-                writeln!(log, "\n[competitor]")?;
+                log.title("competitor")?;
                 if !matches!(mode, syn::Mode::Partial) {
                     let efd = efd::Efd3::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
                     let cost = efd.distance(&efd_target);
-                    writeln!(log, "cost={cost:.04}")?;
+                    log.log(Performance::cost(cost))?;
                 }
-                writeln!(log, "\n[competitor.fb]")?;
-                log_sfb(&mut log, &fb)?;
+                log.title("competitor.fb")?;
+                log.log(&fb)?;
                 fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
             }
             fig.fb = Some(Cow::Owned(fb.take_sphere()));
@@ -399,9 +393,6 @@ fn from_runtime(
         }
         _ => unreachable!(),
     }
-    // Remove the last character from the log file
-    let end = log.stream_position()? - 1;
-    log.set_len(end)?;
     log.flush()?;
     Ok(())
 }
@@ -454,26 +445,36 @@ fn run(
     }
 }
 
-macro_rules! write_fields {
-    ($w:ident, $obj:expr $(, $fields:ident)+) => {
-        $(writeln!($w, concat![stringify!($fields), "={:.04}"], $obj.$fields)?;)+
-    };
+#[derive(serde::Serialize)]
+struct Performance {
+    #[serde(serialize_with = "ser_time")]
+    time: Option<std::time::Duration>,
+    cost: f64,
+    harmonic: Option<usize>,
 }
 
-fn log_fb(mut w: impl std::io::Write, fb: &FourBar) -> std::io::Result<()> {
-    write_fields!(w, fb.unnorm, p1x, p1y, a);
-    write_fields!(w, fb, l1);
-    write_fields!(w, fb.unnorm, l2);
-    write_fields!(w, fb, l3, l4, l5, g);
-    writeln!(w, "stat={:?}\n", fb.stat)?;
-    Ok(())
+fn ser_time<S>(time: &Option<std::time::Duration>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match time {
+        Some(time) => s.serialize_str(&format!("{:.3?}", time)),
+        None => s.serialize_none(),
+    }
 }
 
-fn log_sfb(mut w: impl std::io::Write, fb: &SFourBar) -> std::io::Result<()> {
-    write_fields!(w, fb.unnorm, ox, oy, oz, r, p1i, p1j, a);
-    write_fields!(w, fb, l1, l2, l3, l4, l5, g);
-    writeln!(w, "stat={:?}\n", fb.stat)?;
-    Ok(())
+impl Performance {
+    fn cost(cost: f64) -> Self {
+        Self { time: None, cost, harmonic: None }
+    }
+
+    fn time(self, time: std::time::Duration) -> Self {
+        Self { time: Some(time), ..self }
+    }
+
+    fn harmonic(self, harmonic: usize) -> Self {
+        Self { harmonic: Some(harmonic), ..self }
+    }
 }
 
 fn write_ron<S>(path: impl AsRef<Path>, s: &S) -> Result<(), SynErr>
