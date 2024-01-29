@@ -102,13 +102,11 @@ impl<const N: usize> ExtBound<N> {
             max: [f64::NEG_INFINITY; N],
         };
         iter.into_iter().fold(init, |mut bound, p| {
-            p.iter()
-                .zip(&mut bound.min)
-                .zip(&mut bound.max)
-                .for_each(|((p, min), max)| {
-                    *min = min.min(*p);
-                    *max = max.max(*p);
-                });
+            use std::iter::zip;
+            for ((p, min), max) in zip(zip(p, &mut bound.min), &mut bound.max) {
+                *min = min.min(*p);
+                *max = max.max(*p);
+            }
             bound
         })
     }
@@ -136,25 +134,19 @@ impl<const N: usize> ExtBound<N> {
     /// assert_eq!(ext.max, [1.5, 2.]);
     /// ```
     pub fn to_square(mut self, margin: f64) -> Self {
+        use std::iter::zip;
         let center = self.center();
-        let width = self
-            .min
-            .iter()
-            .zip(&self.max)
+        let width = zip(&self.min, &self.max)
             .map(|(min, max)| (max - min).abs())
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap()
             * 0.5
             * (1. + margin);
         // Extand to same range
-        self.min
-            .iter_mut()
-            .zip(&mut self.max)
-            .zip(&center)
-            .for_each(|((min, max), center)| {
-                *min = center - width;
-                *max = center + width;
-            });
+        for ((min, max), center) in zip(zip(&mut self.min, &mut self.max), &center) {
+            *min = center - width;
+            *max = center + width;
+        }
         self
     }
 }

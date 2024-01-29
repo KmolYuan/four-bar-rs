@@ -373,10 +373,7 @@ impl<M, const N: usize, const D: usize> Atlas<M, N, D> {
 
     /// Iterate over the linkages.
     pub fn fb_iter(&self) -> impl Iterator<Item = (Vec<f64>, u8)> + '_ {
-        self.stat
-            .iter()
-            .zip(self.fb.rows())
-            .map(|(stat, arr)| (arr.to_vec(), *stat))
+        std::iter::zip(&self.stat, self.fb.rows()).map(|(stat, arr)| (arr.to_vec(), *stat))
     }
 
     /// Iterate over the EFD coefficients.

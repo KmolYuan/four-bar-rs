@@ -419,9 +419,7 @@ impl Synthesis {
                 .unwrap()
                 .transform(atlas.data())
                 .unwrap();
-            atlas
-                .open_iter()
-                .zip(reduced.rows())
+            std::iter::zip(atlas.open_iter(), reduced.rows())
                 .map(|(is_open, pt)| AtlasVis { pt: [pt[0], pt[1]], is_open, is_sphere })
                 .collect()
         }

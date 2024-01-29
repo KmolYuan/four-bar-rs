@@ -46,8 +46,9 @@ where
     where
         C: efd::Curve<D>,
     {
-        let curve = curve.to_curve();
+        let mut curve = curve.to_curve();
         let (pos, geo) = efd::get_target_pos(&curve, mode.is_target_open());
+        geo.inverse().transform_inplace(&mut curve);
         Self {
             tar: PrecisePointTarget { curve, pos, geo },
             mode,
@@ -114,17 +115,14 @@ where
         };
         impl_fitness(self.mode, xs, get_series, |(c, fb)| {
             use efd::Distance as _;
-            let mut efd = efd::Efd::from_curve(c, is_open);
+            let efd = efd::Efd::from_curve(c, is_open);
             let geo = efd.as_geo().to(&self.tar.geo);
-            *efd.as_geo_mut() = geo.clone();
             let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
             let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
-            let err = efd
-                .generate_by(&self.tar.pos)
-                .iter()
-                .zip(&self.tar.curve)
+            let err = std::iter::zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve)
                 .map(|(a, b)| a.l2_norm(b))
-                .sum();
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap();
             let fb = fb.clone().trans_denorm(&geo);
             mh::Product::new(o_err.max(s_err).max(err), fb)
         })

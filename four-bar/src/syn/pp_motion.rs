@@ -32,9 +32,7 @@ where
         C2: efd::Curve<D>,
     {
         let curve = curve1.as_curve();
-        let vectors = curve
-            .iter()
-            .zip(curve2.as_curve())
+        let vectors = std::iter::zip(curve, curve2.as_curve())
             .map(|(a, b)| std::array::from_fn(|i| b[i] - a[i]))
             .collect::<Vec<_>>();
         Self::from_uvec(curve, vectors, mode)
@@ -46,11 +44,15 @@ where
         C: efd::Curve<D>,
         V: efd::Curve<D>,
     {
-        let curve = curve.to_curve();
+        let mut curve = curve.to_curve();
+        let mut vectors = vectors.to_curve();
         let (pos, geo) = efd::get_target_pos(&curve, mode.is_target_open());
+        let geo_inv = geo.inverse();
+        geo_inv.transform_inplace(&mut curve);
+        efd::GeoVar::new([0.; D], geo_inv.rot().clone(), 1.).transform_inplace(&mut vectors);
         Self {
             tar: PrecisePointTarget { curve, pos, geo },
-            tar_pose: vectors.to_curve(),
+            tar_pose: vectors,
             mode,
             res: 180,
             _marker: PhantomData,
@@ -97,22 +99,16 @@ where
         };
         impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
             use efd::Distance as _;
-            let (mut efd, pose_efd) = efd::PosedEfd::from_uvec(c, v, is_open).into_inner();
+            let (efd, pose_efd) = efd::PosedEfd::from_uvec(c, v, is_open).into_inner();
             let geo = efd.as_geo().to(&self.tar.geo);
-            *efd.as_geo_mut() = geo.clone();
-            let err1 = efd
-                .generate_by(&self.tar.pos)
-                .iter()
-                .zip(&self.tar.curve)
+            let err1 = std::iter::zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve)
                 .map(|(a, b)| a.l2_norm(b))
-                .sum::<f64>();
-            // FIXME: Geometry maybe not right
-            let err2 = pose_efd
-                .generate_by(&self.tar.pos)
-                .iter()
-                .zip(&self.tar_pose)
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap();
+            let err2 = std::iter::zip(pose_efd.generate_norm_by(&self.tar.pos), &self.tar_pose)
                 .map(|(a, b)| a.l2_norm(b))
-                .sum::<f64>();
+                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .unwrap();
             let fb = fb.clone().trans_denorm(&geo);
             mh::Product::new(err1 + err2, fb)
         })

@@ -292,21 +292,20 @@ impl Plotter {
 
     fn save_plot(&mut self) {
         use four_bar::plot::IntoDrawingArea as _;
+        use std::iter::zip;
         let mut buf = String::new();
         let size = (
             self.size * self.shape.1 as u32,
             self.size * self.shape.0 as u32,
         );
         let b = fb_plot::SVGBackend::with_string(&mut buf, size);
-        b.into_drawing_area()
-            .split_evenly(self.shape)
-            .into_iter()
-            .zip(&self.queue)
-            .for_each(|(root, p_opt)| match &p_opt {
+        for (root, p_opt) in zip(b.into_drawing_area().split_evenly(self.shape), &self.queue) {
+            match &p_opt {
                 None => (),
                 Some(PlotType::P(fig)) => fig.borrow().plot(root).alert("Plot"),
                 Some(PlotType::S(fig)) => fig.borrow().plot(root).alert("Plot"),
-            });
+            }
+        }
         io::save_svg_ask(&buf, "figure.svg");
     }
 }
