@@ -163,13 +163,13 @@ pub trait CurveGen<const D: usize>: Statable {
     fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
         let inv = self.inv();
         let f = |t| self.pos_s(t, inv);
-        curve_in(start, end, res, f, |[.., p3, p4, p5]| [p3, p4, p5])
+        curve_in(start, end, res, f, |[.., p3, p4, p5]| [p3, p4, p5]).collect()
     }
 
     /// Generator for coupler curve in specified angle.
     fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<efd::Coord<D>> {
         let inv = self.inv();
-        curve_in(start, end, res, |t| self.pos_s(t, inv), |[.., p5]| p5)
+        curve_in(start, end, res, |t| self.pos_s(t, inv), |[.., p5]| p5).collect()
     }
 
     /// Generator for curves.
@@ -186,6 +186,12 @@ pub trait CurveGen<const D: usize>: Statable {
             .to_value()
             .map(|[start, end]| self.curve_in(start, end, res))
             .unwrap_or_default()
+    }
+
+    /// Generator for coupler curve by an input angle list.
+    fn curve_by(&self, t: &[f64]) -> Vec<efd::Coord<D>> {
+        let inv = self.inv();
+        curve_by(t, |t| self.pos_s(t, inv), |[.., p5]| p5).collect()
     }
 }
 
@@ -208,20 +214,28 @@ where
     }
 }
 
-fn curve_in<C, F, M, B>(start: f64, end: f64, res: usize, f: F, map: M) -> Vec<B>
+fn curve_in<C, F, M, B>(start: f64, end: f64, res: usize, f: F, map: M) -> impl Iterator<Item = B>
 where
     C: Clone,
     F: Fn(f64) -> Option<[C; 5]>,
-    M: Fn([C; 5]) -> B + Copy,
+    M: Fn([C; 5]) -> B,
 {
     use std::f64::consts::TAU;
     let end = if end > start { end } else { end + TAU };
     let step = (end - start) / res as f64;
     (0..res)
-        .map(|n| start + n as f64 * step)
-        .flat_map(f)
+        .map(move |n| start + n as f64 * step)
+        .filter_map(f)
         .map(map)
-        .collect()
+}
+
+fn curve_by<'a, C, F, M, B>(t: &'a [f64], f: F, map: M) -> impl Iterator<Item = B> + 'a
+where
+    C: Clone,
+    F: Fn(f64) -> Option<[C; 5]> + 'a,
+    M: Fn([C; 5]) -> B + 'a,
+{
+    t.iter().copied().filter_map(f).map(map)
 }
 
 /// Pose generation behavior.
@@ -239,7 +253,7 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
         let inv = self.inv();
         let f = |t| self.pos_s(t, inv);
         let map = |c @ [.., p5]: [_; 5]| (p5, self.uvec(c));
-        curve_in(start, end, res, f, map).into_iter().unzip()
+        curve_in(start, end, res, f, map).unzip()
     }
 
     /// Obtain the continuous pose in the range of motion.
@@ -248,6 +262,13 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
             .to_value()
             .map(|[start, end]| self.pose_in(start, end, res))
             .unwrap_or_default()
+    }
+
+    /// Obtain the continuous pose by an input angle list.
+    fn pose_by(&self, t: &[f64]) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+        let inv = self.inv();
+        let map = |c @ [.., p5]: [_; 5]| (p5, self.uvec(c));
+        curve_by(t, |t| self.pos_s(t, inv), map).unzip()
     }
 }
 
