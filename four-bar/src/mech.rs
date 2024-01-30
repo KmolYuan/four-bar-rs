@@ -212,6 +212,10 @@ where
     fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<efd::Coord<D>> {
         self.clone().denormalize().curve_in(start, end, res)
     }
+
+    fn curve_by(&self, t: &[f64]) -> Vec<efd::Coord<D>> {
+        self.clone().denormalize().curve_by(t)
+    }
 }
 
 fn curve_in<C, F, M, B>(start: f64, end: f64, res: usize, f: F, map: M) -> impl Iterator<Item = B>
@@ -289,5 +293,9 @@ where
         res: usize,
     ) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
         self.clone().denormalize().pose_in(start, end, res)
+    }
+
+    fn pose_by(&self, t: &[f64]) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+        self.clone().denormalize().pose_by(t)
     }
 }
