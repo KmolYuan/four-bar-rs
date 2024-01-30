@@ -138,8 +138,7 @@ impl<const N: usize> ExtBound<N> {
         let center = self.center();
         let width = zip(&self.min, &self.max)
             .map(|(min, max)| (max - min).abs())
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap()
+            .fold(0., f64::max)
             * 0.5
             * (1. + margin);
         // Extand to same range

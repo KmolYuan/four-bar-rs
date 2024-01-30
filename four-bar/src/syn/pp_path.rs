@@ -121,8 +121,7 @@ where
             let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
             let err = std::iter::zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve)
                 .map(|(a, b)| a.l2_norm(b))
-                .max_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
             mh::Product::new(o_err.max(s_err).max(err), fb)
         })

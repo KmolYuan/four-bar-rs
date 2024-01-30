@@ -103,12 +103,10 @@ where
             let geo = efd.as_geo().to(&self.tar.geo);
             let err1 = std::iter::zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve)
                 .map(|(a, b)| a.l2_norm(b))
-                .max_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .fold(0., f64::max);
             let err2 = std::iter::zip(pose_efd.generate_norm_by(&self.tar.pos), &self.tar_pose)
                 .map(|(a, b)| a.l2_norm(b))
-                .max_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap();
+                .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
             mh::Product::new(err1 + err2, fb)
         })
