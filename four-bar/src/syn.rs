@@ -14,14 +14,69 @@
 //!     .solve()
 //!     .unwrap();
 //! ```
-pub use self::{motion::*, path::*, pp_motion::*, pp_path::*};
+pub use self::{
+    motion::{MFbSyn, MotionSyn},
+    path::{FbSyn, PathSyn, SFbSyn},
+    pp_motion::{MFbPPSyn, PPMotionSyn},
+    pp_path::{FbPPSyn, PPPathSyn, SFbPPSyn},
+};
 use crate::*;
-use std::marker::PhantomData;
 
 mod motion;
 mod path;
 mod pp_motion;
 mod pp_path;
+
+/// Base type of a mechanism `M` synthesis.
+pub struct Syn<T, M, const N: usize, const D: usize> {
+    /// Target data
+    pub tar: T,
+    /// Mode
+    pub(crate) mode: Mode,
+    // How many points need to be generated and compared
+    pub(crate) res: usize,
+    // Constrain the origin of the mechanism
+    pub(crate) origin: Option<efd::Coord<D>>,
+    // Constrain the scale of the mechanism
+    pub(crate) scale: Option<f64>,
+    // Marker of the mechanism
+    _marker: std::marker::PhantomData<M>,
+}
+
+impl<T, M, const N: usize, const D: usize> Syn<T, M, N, D> {
+    pub(crate) fn new(tar: T, mode: Mode) -> Self {
+        Self {
+            tar,
+            mode,
+            res: 180,
+            origin: None,
+            scale: None,
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    /// Set the resolution during synthesis.
+    pub fn res(self, res: usize) -> Self {
+        assert!(res > 0);
+        Self { res, ..self }
+    }
+
+    /// Specify the mechanism is on origin and unit scale.
+    pub fn on_unit(self) -> Self {
+        self.origin([0.; D]).scale(1.)
+    }
+
+    /// Specify the origin of the mechanism.
+    pub fn origin(self, origin: efd::Coord<D>) -> Self {
+        Self { origin: Some(origin), ..self }
+    }
+
+    /// Specify the scale of the mechanism.
+    pub fn scale(self, scale: f64) -> Self {
+        assert!(scale > 0.);
+        Self { scale: Some(scale), ..self }
+    }
+}
 
 /// Synthesis bounds.
 pub trait SynBound<const N: usize>: mech::Statable + mech::FromVectorized<N> + Sync + Send {}

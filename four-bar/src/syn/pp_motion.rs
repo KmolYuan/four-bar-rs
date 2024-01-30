@@ -1,26 +1,27 @@
 use super::*;
+use std::iter::zip;
 
 /// Precise-point motion generation task of planar four-bar linkage.
-pub type MFbPPSyn = PrecisePointMotionSyn<MFourBar, 6, 2>;
-
+pub type MFbPPSyn = PPMotionSyn<MFourBar, 6, 2>;
 /// Precise-point motion generation of a mechanism `M`.
-pub struct PrecisePointMotionSyn<M, const N: usize, const D: usize>
+pub type PPMotionSyn<M, const N: usize, const D: usize> = Syn<Tar<D>, M, N, D>;
+
+/// Target data of precise-point path generation.
+pub struct Tar<const D: usize>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
-    /// Target data
-    pub tar: PrecisePointTarget<D>,
+    /// Target curve coordinates
+    pub curve: Vec<efd::Coord<D>>,
     /// Target pose
-    pub tar_pose: Vec<efd::Coord<D>>,
-    // Mode
-    mode: Mode,
-    // How many points need to be generated and compared
-    res: usize,
-    // Marker of the mechanism
-    _marker: PhantomData<M>,
+    pub pose: Vec<efd::Coord<D>>,
+    /// Target position
+    pub pos: Vec<f64>,
+    /// Target geometry
+    pub geo: efd::GeoVar<efd::Rot<D>, D>,
 }
 
-impl<M, const N: usize, const D: usize> PrecisePointMotionSyn<M, N, D>
+impl<M, const N: usize, const D: usize> PPMotionSyn<M, N, D>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -32,7 +33,7 @@ where
         C2: efd::Curve<D>,
     {
         let curve = curve1.as_curve();
-        let vectors = std::iter::zip(curve, curve2.as_curve())
+        let vectors = zip(curve, curve2.as_curve())
             .map(|(a, b)| std::array::from_fn(|i| b[i] - a[i]))
             .collect::<Vec<_>>();
         Self::from_uvec(curve, vectors, mode)
@@ -45,28 +46,16 @@ where
         V: efd::Curve<D>,
     {
         let mut curve = curve.to_curve();
-        let mut vectors = vectors.to_curve();
+        let mut pose = vectors.to_curve();
         let (pos, geo) = efd::get_target_pos(&curve, mode.is_target_open());
         let geo_inv = geo.inverse();
         geo_inv.transform_inplace(&mut curve);
-        efd::GeoVar::new([0.; D], geo_inv.rot().clone(), 1.).transform_inplace(&mut vectors);
-        Self {
-            tar: PrecisePointTarget { curve, pos, geo },
-            tar_pose: vectors,
-            mode,
-            res: 180,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Set the resolution during synthesis.
-    pub fn res(self, res: usize) -> Self {
-        assert!(res > 0);
-        Self { res, ..self }
+        efd::GeoVar::from_rot(geo_inv.rot().clone()).transform_inplace(&mut pose);
+        Self::new(Tar { curve, pose, pos, geo }, mode)
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::Bounded for PrecisePointMotionSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::Bounded for PPMotionSyn<M, N, D>
 where
     Self: mh::ObjFunc,
     M: mech::FromVectorized<N>,
@@ -82,7 +71,7 @@ where
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::ObjFunc for PrecisePointMotionSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::ObjFunc for PPMotionSyn<M, N, D>
 where
     M: SynBound<N> + mech::Normalized<D> + mech::PoseGen<D>,
     M::De: Default + Clone + Sync + Send + 'static,
@@ -101,14 +90,16 @@ where
             use efd::Distance as _;
             let (efd, pose_efd) = efd::PosedEfd::from_uvec(c, v, is_open).into_inner();
             let geo = efd.as_geo().to(&self.tar.geo);
-            let err1 = std::iter::zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve)
-                .map(|(a, b)| a.l2_norm(b))
-                .fold(0., f64::max);
-            let err2 = std::iter::zip(pose_efd.generate_norm_by(&self.tar.pos), &self.tar_pose)
+            let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
+            let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
+            let curve_err = zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve);
+            let pose_err = zip(pose_efd.generate_norm_by(&self.tar.pos), &self.tar.pose);
+            let err = curve_err
+                .chain(pose_err)
                 .map(|(a, b)| a.l2_norm(b))
                 .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(err1 + err2, fb)
+            mh::Product::new(err.max(o_err).max(s_err), fb)
         })
     }
 }

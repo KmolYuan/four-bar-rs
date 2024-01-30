@@ -2,21 +2,8 @@ use super::*;
 
 /// Motion generation task of planar four-bar linkage.
 pub type MFbSyn = MotionSyn<MNormFourBar, 6, 2>;
-
 /// Motion generation of a mechanism `M`.
-pub struct MotionSyn<M, const N: usize, const D: usize>
-where
-    efd::U<D>: efd::EfdDim<D>,
-{
-    /// Target coefficients
-    pub efd: efd::PosedEfd<D>,
-    // Mode
-    mode: Mode,
-    // How many points need to be generated and compared
-    res: usize,
-    // Marker of the mechanism
-    _marker: PhantomData<M>,
-}
+pub type MotionSyn<M, const N: usize, const D: usize> = Syn<efd::PosedEfd<D>, M, N, D>;
 
 impl<M, const N: usize, const D: usize> MotionSyn<M, N, D>
 where
@@ -46,18 +33,12 @@ where
 
     /// Create a new task from target EFD coefficients.
     pub fn from_efd(efd: efd::PosedEfd<D>, mode: Mode) -> Self {
-        Self { efd, mode, res: 180, _marker: PhantomData }
-    }
-
-    /// Set the resolution during synthesis.
-    pub fn res(self, res: usize) -> Self {
-        assert!(res > 0);
-        Self { res, ..self }
+        Self::new(efd, mode)
     }
 
     /// The harmonic used of target EFD.
     pub fn harmonic(&self) -> usize {
-        self.efd.harmonic()
+        self.tar.harmonic()
     }
 }
 
@@ -93,11 +74,14 @@ where
             (curve.len() > 2).then_some((curve, pose))
         };
         impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
-            let efd = efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.efd.harmonic());
-            let geo = efd.curve_efd().as_geo().to(self.efd.curve_efd().as_geo());
+            use efd::Distance as _;
+            let efd = efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.tar.harmonic());
+            let geo = efd.curve_efd().as_geo().to(self.tar.curve_efd().as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            let err = efd.distance(&self.efd);
-            mh::Product::new(err, fb)
+            let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
+            let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
+            let err = efd.distance(&self.tar);
+            mh::Product::new(err.max(o_err).max(s_err), fb)
         })
     }
 }

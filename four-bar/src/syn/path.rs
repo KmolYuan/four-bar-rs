@@ -4,25 +4,8 @@ use super::*;
 pub type FbSyn = PathSyn<NormFourBar, 5, 2>;
 /// Path generation task of spherical four-bar linkage.
 pub type SFbSyn = PathSyn<SNormFourBar, 6, 3>;
-
 /// Path generation of a mechanism `M`.
-pub struct PathSyn<M, const N: usize, const D: usize>
-where
-    efd::U<D>: efd::EfdDim<D>,
-{
-    /// Target coefficients
-    pub efd: efd::Efd<D>,
-    // Mode
-    mode: Mode,
-    // How many points need to be generated and compared
-    res: usize,
-    // Constrain the origin of the mechanism
-    origin: Option<efd::Coord<D>>,
-    // Constrain the scale of the mechanism
-    scale: Option<f64>,
-    // Marker of the mechanism
-    _marker: PhantomData<M>,
-}
+pub type PathSyn<M, const N: usize, const D: usize> = Syn<efd::Efd<D>, M, N, D>;
 
 impl<M, const N: usize, const D: usize> PathSyn<M, N, D>
 where
@@ -39,41 +22,12 @@ where
 
     /// Create a new task from target EFD coefficients.
     pub fn from_efd(efd: efd::Efd<D>, mode: Mode) -> Self {
-        Self {
-            efd,
-            mode,
-            res: 180,
-            origin: None,
-            scale: None,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Set the resolution during synthesis.
-    pub fn res(self, res: usize) -> Self {
-        assert!(res > 0);
-        Self { res, ..self }
-    }
-
-    /// Specify the mechanism is on origin and unit scale.
-    pub fn on_unit(self) -> Self {
-        self.origin([0.; D]).scale(1.)
-    }
-
-    /// Specify the origin of the mechanism.
-    pub fn origin(self, origin: efd::Coord<D>) -> Self {
-        Self { origin: Some(origin), ..self }
-    }
-
-    /// Specify the scale of the mechanism.
-    pub fn scale(self, scale: f64) -> Self {
-        assert!(scale > 0.);
-        Self { scale: Some(scale), ..self }
+        Self::new(efd, mode)
     }
 
     /// The harmonic used of target EFD.
     pub fn harmonic(&self) -> usize {
-        self.efd.harmonic()
+        self.tar.harmonic()
     }
 }
 
@@ -110,13 +64,13 @@ where
         };
         impl_fitness(self.mode, xs, get_series, |(c, fb)| {
             use efd::Distance as _;
-            let efd = efd::Efd::from_curve_harmonic(c, is_open, self.efd.harmonic());
-            let geo = efd.as_geo().to(self.efd.as_geo());
+            let efd = efd::Efd::from_curve_harmonic(c, is_open, self.tar.harmonic());
+            let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
             let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
             let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
-            let err = efd.distance(&self.efd).max(o_err).max(s_err);
-            mh::Product::new(err, fb)
+            let err = efd.distance(&self.tar);
+            mh::Product::new(err.max(o_err).max(s_err), fb)
         })
     }
 }

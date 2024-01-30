@@ -1,12 +1,14 @@
 use super::*;
 
 /// Precise-point path generation task of planar four-bar linkage.
-pub type FbPPSyn = PrecisePointPathSyn<NormFourBar, 5, 2>;
+pub type FbPPSyn = PPPathSyn<NormFourBar, 5, 2>;
 /// Precise-point path generation task of spherical four-bar linkage.
-pub type SFbPPSyn = PrecisePointPathSyn<SNormFourBar, 6, 3>;
+pub type SFbPPSyn = PPPathSyn<SNormFourBar, 6, 3>;
+/// Precise-point path generation of a mechanism `M`.
+pub type PPPathSyn<M, const N: usize, const D: usize> = Syn<Tar<D>, M, N, D>;
 
 /// Target data of precise-point path generation.
-pub struct PrecisePointTarget<const D: usize>
+pub struct Tar<const D: usize>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -18,26 +20,7 @@ where
     pub geo: efd::GeoVar<efd::Rot<D>, D>,
 }
 
-/// Precise-point path generation of a mechanism `M`.
-pub struct PrecisePointPathSyn<M, const N: usize, const D: usize>
-where
-    efd::U<D>: efd::EfdDim<D>,
-{
-    /// Target data
-    pub tar: PrecisePointTarget<D>,
-    // Mode
-    mode: Mode,
-    // How many points need to be generated and compared
-    res: usize,
-    // Constrain the origin of the mechanism
-    origin: Option<efd::Coord<D>>,
-    // Constrain the scale of the mechanism
-    scale: Option<f64>,
-    // Marker of the mechanism
-    _marker: PhantomData<M>,
-}
-
-impl<M, const N: usize, const D: usize> PrecisePointPathSyn<M, N, D>
+impl<M, const N: usize, const D: usize> PPPathSyn<M, N, D>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -49,40 +32,11 @@ where
         let mut curve = curve.to_curve();
         let (pos, geo) = efd::get_target_pos(&curve, mode.is_target_open());
         geo.inverse().transform_inplace(&mut curve);
-        Self {
-            tar: PrecisePointTarget { curve, pos, geo },
-            mode,
-            res: 180,
-            origin: None,
-            scale: None,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Set the resolution during synthesis.
-    pub fn res(self, res: usize) -> Self {
-        assert!(res > 0);
-        Self { res, ..self }
-    }
-
-    /// Specify the mechanism is on origin and unit scale.
-    pub fn on_unit(self) -> Self {
-        self.origin([0.; D]).scale(1.)
-    }
-
-    /// Specify the origin of the mechanism.
-    pub fn origin(self, origin: efd::Coord<D>) -> Self {
-        Self { origin: Some(origin), ..self }
-    }
-
-    /// Specify the scale of the mechanism.
-    pub fn scale(self, scale: f64) -> Self {
-        assert!(scale > 0.);
-        Self { scale: Some(scale), ..self }
+        Self::new(Tar { curve, pos, geo }, mode)
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::Bounded for PrecisePointPathSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::Bounded for PPPathSyn<M, N, D>
 where
     Self: mh::ObjFunc,
     M: mech::FromVectorized<N>,
@@ -98,7 +52,7 @@ where
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::ObjFunc for PrecisePointPathSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::ObjFunc for PPPathSyn<M, N, D>
 where
     M: SynBound<N> + mech::Normalized<D> + mech::CurveGen<D>,
     M::De: Default + Clone + Sync + Send + 'static,
@@ -123,7 +77,7 @@ where
                 .map(|(a, b)| a.l2_norm(b))
                 .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(o_err.max(s_err).max(err), fb)
+            mh::Product::new(err.max(o_err).max(s_err), fb)
         })
     }
 }
