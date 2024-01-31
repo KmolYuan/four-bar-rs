@@ -36,9 +36,9 @@ pub struct Syn<T, M, const N: usize, const D: usize> {
     // How many points need to be generated and compared
     pub(crate) res: usize,
     // Constrain the origin of the mechanism
-    pub(crate) origin: Option<efd::Coord<D>>,
+    origin: Option<efd::Coord<D>>,
     // Constrain the scale of the mechanism
-    pub(crate) scale: Option<f64>,
+    scale: Option<f64>,
     // Marker of the mechanism
     _marker: std::marker::PhantomData<M>,
 }
@@ -75,6 +75,16 @@ impl<T, M, const N: usize, const D: usize> Syn<T, M, N, D> {
     pub fn scale(self, scale: f64) -> Self {
         assert!(scale > 0.);
         Self { scale: Some(scale), ..self }
+    }
+
+    pub(crate) fn unit_err(&self, geo: &efd::GeoVar<efd::Rot<D>, D>) -> f64
+    where
+        efd::U<D>: efd::EfdDim<D>,
+    {
+        use efd::Distance as _;
+        let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
+        let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
+        o_err.max(s_err)
     }
 }
 

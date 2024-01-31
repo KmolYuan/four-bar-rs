@@ -90,8 +90,6 @@ where
             use efd::Distance as _;
             let (efd, pose_efd) = efd::PosedEfd::from_uvec(c, v, is_open).into_inner();
             let geo = efd.as_geo().to(&self.tar.geo);
-            let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
-            let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
             let curve_err = zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve);
             let pose_err = zip(pose_efd.generate_norm_by(&self.tar.pos), &self.tar.pose);
             let err = curve_err
@@ -99,7 +97,7 @@ where
                 .map(|(a, b)| a.l2_norm(b))
                 .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(err.max(o_err).max(s_err), fb)
+            mh::Product::new(err.max(self.unit_err(&geo)), fb)
         })
     }
 }

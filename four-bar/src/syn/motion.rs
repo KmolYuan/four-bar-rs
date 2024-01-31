@@ -74,14 +74,11 @@ where
             (curve.len() > 2).then_some((curve, pose))
         };
         impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
-            use efd::Distance as _;
             let efd = efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.tar.harmonic());
             let geo = efd.curve_efd().as_geo().to(self.tar.curve_efd().as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
-            let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
             let err = efd.distance(&self.tar);
-            mh::Product::new(err.max(o_err).max(s_err), fb)
+            mh::Product::new(err.max(self.unit_err(&geo)), fb)
         })
     }
 }

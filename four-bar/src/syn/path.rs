@@ -63,14 +63,11 @@ where
             (curve.len() > 2).then_some(curve)
         };
         impl_fitness(self.mode, xs, get_series, |(c, fb)| {
-            use efd::Distance as _;
             let efd = efd::Efd::from_curve_harmonic(c, is_open, self.tar.harmonic());
             let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
-            let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
             let err = efd.distance(&self.tar);
-            mh::Product::new(err.max(o_err).max(s_err), fb)
+            mh::Product::new(err.max(self.unit_err(&geo)), fb)
         })
     }
 }
