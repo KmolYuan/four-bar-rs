@@ -160,6 +160,9 @@ pub trait CurveGen<const D: usize>: Statable {
     }
 
     /// Generator for all positions in specified angle.
+    ///
+    /// For optimization reason, this method is required to specialize if
+    /// [`CurveGen::pos_s()`] is inherited from a base type.
     fn pos_iter<I>(&self, iter: I) -> impl Iterator<Item = [efd::Coord<D>; 5]>
     where
         I: IntoIterator<Item = f64>,
@@ -221,7 +224,8 @@ where
         I: IntoIterator<Item = f64>,
     {
         let de = self.clone().denormalize();
-        iter.into_iter().filter_map(move |t| de.pos(t))
+        let inv = de.inv();
+        iter.into_iter().filter_map(move |t| de.pos_s(t, inv))
     }
 }
 
@@ -235,8 +239,20 @@ fn linspace(start: f64, end: f64, res: usize) -> impl Iterator<Item = f64> {
 /// Pose generation behavior.
 pub trait PoseGen<const D: usize>: CurveGen<D> {
     /// Obtain the pose (an unit vector) from known position.
-    // FIXME: Design to support 3D space
     fn uvec(&self, pos: [efd::Coord<D>; 5]) -> efd::Coord<D>;
+
+    /// Generator for all poses in specified angle.
+    ///
+    /// For optimization reason, this method is required to specialize if
+    /// [`CurveGen::pos_s()`] and [`PoseGen::uvec()`] are inherited from a base
+    /// type.
+    fn uvec_iter<I>(&self, iter: I) -> impl Iterator<Item = (efd::Coord<D>, efd::Coord<D>)>
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        self.pos_iter(iter)
+            .map(|pos @ [.., p5]| (p5, self.uvec(pos)))
+    }
 
     /// Obtain the continuous pose from known position.
     fn pose_in(
@@ -245,9 +261,7 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
         end: f64,
         res: usize,
     ) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
-        self.pos_iter(linspace(start, end, res))
-            .map(|pos @ [.., p5]| (p5, self.uvec(pos)))
-            .unzip()
+        self.uvec_iter(linspace(start, end, res)).unzip()
     }
 
     /// Obtain the continuous pose in the range of motion.
@@ -260,9 +274,7 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
 
     /// Obtain the continuous pose by an input angle list.
     fn pose_by(&self, t: &[f64]) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
-        self.pos_iter(t.iter().copied())
-            .map(|pos @ [.., p5]| (p5, self.uvec(pos)))
-            .unzip()
+        self.uvec_iter(t.iter().copied()).unzip()
     }
 }
 
@@ -274,5 +286,17 @@ where
 {
     fn uvec(&self, pos: [efd::Coord<D>; 5]) -> efd::Coord<D> {
         self.clone().denormalize().uvec(pos)
+    }
+
+    fn uvec_iter<I>(&self, iter: I) -> impl Iterator<Item = (efd::Coord<D>, efd::Coord<D>)>
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        let de = self.clone().denormalize();
+        let inv = de.inv();
+        iter.into_iter().filter_map(move |t| {
+            let pos @ [.., p5] = de.pos_s(t, inv)?;
+            Some((p5, de.uvec(pos)))
+        })
     }
 }
