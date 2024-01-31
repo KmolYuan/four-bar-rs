@@ -182,6 +182,7 @@ where
     }
 }
 
+// Constantly assert that these types implement a certain trait
 macro_rules! assert_impl {
     ($fn_name:ident, $trait_name:path, $($ty:ty),+) => {
         #[allow(unused)]
