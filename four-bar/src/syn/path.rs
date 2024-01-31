@@ -63,7 +63,7 @@ where
             (curve.len() > 2).then_some(curve)
         };
         impl_fitness(self.mode, xs, get_series, |(c, fb)| {
-            let efd = efd::Efd::from_curve_harmonic(c, is_open, self.tar.harmonic());
+            let efd = efd::Efd::from_curve_harmonic(c, is_open, self.harmonic());
             let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
             let err = efd.distance(&self.tar);
