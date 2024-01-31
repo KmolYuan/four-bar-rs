@@ -171,3 +171,22 @@ where
         }
     }
 }
+
+macro_rules! assert_impl {
+    ($fn_name:ident, $trait_name:path, $($ty:ty),+) => {
+        #[allow(unused)]
+        const fn $fn_name<T: $trait_name>() {}
+        $(const _: () = $fn_name::<$ty>();)+
+    };
+}
+
+assert_impl!(
+    assert_mh_objfunc,
+    mh::ObjFunc,
+    FbSyn,
+    SFbSyn,
+    MFbSyn,
+    FbPPSyn,
+    SFbPPSyn,
+    MFbPPSyn
+);

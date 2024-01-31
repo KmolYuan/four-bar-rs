@@ -2,7 +2,7 @@ use super::*;
 use std::iter::zip;
 
 /// Precise-point motion generation task of planar four-bar linkage.
-pub type MFbPPSyn = PPMotionSyn<MFourBar, 6, 2>;
+pub type MFbPPSyn = PPMotionSyn<MNormFourBar, 6, 2>;
 /// Precise-point motion generation of a mechanism `M`.
 pub type PPMotionSyn<M, const N: usize, const D: usize> = Syn<Tar<D>, M, N, D>;
 
