@@ -78,7 +78,8 @@ where
                 efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.harmonic()).into_inner();
             let geo = efd.as_geo().to(self.tar.curve_efd().as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            let err = (2. * efd.distance(self.tar.curve_efd()))
+            let err = efd
+                .distance(self.tar.curve_efd())
                 .max(pose_efd.distance(self.tar.pose_efd()));
             mh::Product::new(err.max(self.unit_err(&geo)), fb)
         })
