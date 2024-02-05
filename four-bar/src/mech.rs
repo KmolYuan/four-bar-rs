@@ -56,8 +56,12 @@ impl<UN, NM> Mech<UN, NM> {
     }
 
     /// Normalization.
-    pub fn normalize(self) -> NM {
-        self.norm
+    pub fn normalize<const D: usize>(self) -> NM
+    where
+        NM: Normalized<D, De = Self>,
+        efd::U<D>: efd::EfdDim<D>,
+    {
+        <NM as Normalized<D>>::normalize(self)
     }
 
     /// Curve generation for coupler curve.

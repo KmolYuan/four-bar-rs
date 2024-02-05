@@ -34,7 +34,7 @@ where
     {
         let curve = curve1.as_curve();
         let vectors = zip(curve, curve2.as_curve())
-            .map(|(a, b)| std::array::from_fn(|i| b[i] - a[i]))
+            .map(|(a, b)| renorm(std::array::from_fn(|i| b[i] - a[i])))
             .collect::<Vec<_>>();
         Self::from_uvec(curve, vectors, mode)
     }
@@ -50,7 +50,7 @@ where
         let (pos, geo) = efd::get_target_pos(&curve, mode.is_target_open());
         let geo_inv = geo.inverse();
         geo_inv.transform_inplace(&mut curve);
-        efd::GeoVar::from_rot(geo_inv.rot().clone()).transform_inplace(&mut pose);
+        geo_inv.only_rot().transform_inplace(&mut pose);
         Self::new(Tar { curve, pose, pos, geo }, mode)
     }
 }
@@ -91,13 +91,23 @@ where
             let (efd, pose_efd) = efd::PosedEfd::from_uvec(c, v, is_open).into_inner();
             let geo = efd.as_geo().to(&self.tar.geo);
             let curve_err = zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve);
-            let pose_err = zip(pose_efd.generate_norm_by(&self.tar.pos), &self.tar.pose);
+            let pose = pose_efd
+                .generate_norm_by(&self.tar.pos)
+                .into_iter()
+                .map(renorm);
             let err = curve_err
-                .chain(pose_err)
+                .chain(zip(pose, &self.tar.pose))
                 .map(|(a, b)| a.l2_norm(b))
                 .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
             mh::Product::new(err.max(self.unit_err(&geo)), fb)
         })
     }
+}
+
+#[inline]
+fn renorm<const D: usize>(v: [f64; D]) -> [f64; D] {
+    use efd::Distance as _;
+    let norm = v.l2_norm(&[0.; D]);
+    v.map(|x| x / norm)
 }
