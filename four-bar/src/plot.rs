@@ -163,6 +163,8 @@ pub enum Style {
     DottedLine,
     /// Dash-dotted Line
     DashDottedLine,
+    /// Dashed Line with a Marker at the starting point
+    InitiatedLine,
     /// Circle Marker
     #[default]
     Circle,
@@ -176,11 +178,12 @@ pub enum Style {
 
 impl Style {
     /// Style list.
-    pub const LIST: [Self; 8] = [
+    pub const LIST: [Self; 9] = [
         Self::Line,
         Self::DashedLine,
         Self::DottedLine,
         Self::DashDottedLine,
+        Self::InitiatedLine,
         Self::Circle,
         Self::Triangle,
         Self::Cross,
@@ -190,10 +193,11 @@ impl Style {
     /// Get the style names.
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::Line => "Line Marker",
+            Self::Line => "Continuous Line",
             Self::DashedLine => "Dashed Line",
             Self::DottedLine => "Dotted Line",
             Self::DashDottedLine => "Dash-dotted Line",
+            Self::InitiatedLine => "Initiated Line",
             Self::Circle => "Circle Marker",
             Self::Triangle => "Triangle Marker",
             Self::Cross => "Cross Marker",
@@ -268,18 +272,34 @@ impl Style {
             }
             Self::DashDottedLine => {
                 let line = line.into_iter();
-                let series1 = DashedPath::new(line.clone(), 30, 16, color).series();
+                let series = DashedPath::new(line.clone(), 30, 16, color).series();
+                chart.draw_series(series)?;
                 let dot_size = color.stroke_width / 2;
                 let mk_f = move |c| Circle::new(c, dot_size, color.filled());
-                let series2 = DottedPath::new(line, 30 + 8, 30 + 16, mk_f).series();
-                chart.draw_series(series1)?;
-                let anno = chart.draw_series(series2)?;
+                let series = DottedPath::new(line, 30 + 8, 30 + 16, mk_f).series();
+                let anno = chart.draw_series(series)?;
                 if has_label {
                     anno.label(label).legend(move |c| {
                         let points = [(gap, 0), (font - gap, 0)];
                         EmptyElement::at(c)
                             + DashedPath::new(points, 30, 16, color)
                             + DottedPath::new(points, 30 + 8, 30 + 16, mk_f)
+                    });
+                }
+            }
+            Self::InitiatedLine => {
+                let mut line = line.into_iter();
+                let series = DashedPath::new(line.clone(), 30, 15, color).series();
+                chart.draw_series(series)?;
+                let dot_size = color.stroke_width * 2;
+                let color2 = color.stroke_width(color.stroke_width / 2);
+                let series = [Circle::new(line.next().unwrap(), dot_size, color2)];
+                let anno = chart.draw_series(series)?;
+                if has_label {
+                    anno.label(label).legend(move |c| {
+                        EmptyElement::at(c)
+                            + DashedPath::new([(gap, 0), (font - gap, 0)], 30, 15, color)
+                            + Circle::new((gap, 0), dot_size, color2)
                     });
                 }
             }
