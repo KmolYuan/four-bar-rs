@@ -82,7 +82,7 @@ impl<T, M, const N: usize, const D: usize> Syn<T, M, N, D> {
         efd::U<D>: efd::EfdDim<D>,
     {
         use efd::Distance as _;
-        let o_err = self.origin.map(|o| geo.trans().l2_norm(&o)).unwrap_or(0.);
+        let o_err = self.origin.map(|o| geo.trans().l2_err(&o)).unwrap_or(0.);
         let s_err = self.scale.map(|s| (geo.scale() - s).abs()).unwrap_or(0.);
         o_err.max(s_err)
     }

@@ -72,7 +72,7 @@ where
             let efd = efd::Efd::from_curve(c, is_open);
             let geo = efd.as_geo().to(&self.tar.geo);
             let err = std::iter::zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve)
-                .map(|(a, b)| a.l2_norm(b))
+                .map(|(a, b)| a.l2_err(b))
                 .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
             mh::Product::new(err.max(self.unit_err(&geo)), fb)

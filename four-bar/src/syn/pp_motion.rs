@@ -12,11 +12,9 @@ where
     efd::U<D>: efd::EfdDim<D>,
 {
     /// Target curve coordinates
-    pub curve: Vec<efd::Coord<D>>,
-    /// Target pose
-    pub pose: Vec<efd::Coord<D>>,
+    pub sig: Vec<efd::Coord<D>>,
     /// Target position
-    pub pos: Vec<f64>,
+    pub t: Vec<f64>,
     /// Target geometry
     pub geo: efd::GeoVar<efd::Rot<D>, D>,
 }
@@ -45,13 +43,8 @@ where
         C: efd::Curve<D>,
         V: efd::Curve<D>,
     {
-        let mut curve = curve.to_curve();
-        let mut pose = vectors.to_curve();
-        let (pos, geo) = efd::get_target_pos(&curve, mode.is_target_open());
-        let geo_inv = geo.inverse();
-        geo_inv.transform_inplace(&mut curve);
-        geo_inv.only_rot().transform_inplace(&mut pose);
-        Self::new(Tar { curve, pose, pos, geo }, mode)
+        let (sig, t, geo) = efd::posed::path_signature(curve, vectors, mode.is_target_open());
+        Self::new(Tar { sig, t, geo }, mode)
     }
 }
 
@@ -88,16 +81,10 @@ where
         };
         impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
             use efd::Distance as _;
-            let (efd, pose_efd) = efd::PosedEfd::from_uvec(c, v, is_open).into_inner();
+            let efd = efd::PosedEfd::from_uvec(c, v, is_open);
             let geo = efd.as_geo().to(&self.tar.geo);
-            let curve_err = zip(efd.generate_norm_by(&self.tar.pos), &self.tar.curve);
-            let pose = pose_efd
-                .generate_norm_by(&self.tar.pos)
-                .into_iter()
-                .map(renorm);
-            let err = curve_err
-                .chain(zip(pose, &self.tar.pose))
-                .map(|(a, b)| a.l2_norm(b))
+            let err = zip(efd.generate_norm_by(&self.tar.t), &self.tar.sig)
+                .map(|(a, b)| a.l2_err(b))
                 .fold(0., f64::max);
             let fb = fb.clone().trans_denorm(&geo);
             mh::Product::new(err.max(self.unit_err(&geo)), fb)
@@ -108,6 +95,6 @@ where
 #[inline]
 fn renorm<const D: usize>(v: [f64; D]) -> [f64; D] {
     use efd::Distance as _;
-    let norm = v.l2_norm(&[0.; D]);
+    let norm = v.l2_err(&[0.; D]);
     v.map(|x| x / norm)
 }
