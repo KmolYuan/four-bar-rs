@@ -607,10 +607,10 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             .ok_or(DrawingAreaErrorKind::LayoutError)
     }
 
-    pub(crate) fn get_joints<F, const D: usize>(&self, coord_map: F) -> Option<[efd::Coord<D>; 5]>
+    pub(crate) fn get_joints<F, const D: usize>(&self, coord_map: F) -> Option<[[f64; D]; 5]>
     where
         M: crate::mech::CurveGen<D>,
-        F: Fn(efd::Coord<D>) -> na::Point2<f64>,
+        F: Fn([f64; D]) -> na::Point2<f64>,
     {
         use std::f64::consts::TAU;
         const RES: usize = 90;

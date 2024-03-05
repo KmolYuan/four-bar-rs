@@ -137,7 +137,7 @@ where
     pub fn make(cfg: Cfg) -> Self
     where
         M: Send,
-        efd::Coord<D>: Sync + Send,
+        [f64; D]: Sync + Send,
     {
         Self::make_with(cfg, |_| ())
     }
@@ -147,7 +147,7 @@ where
     where
         M: Send,
         CB: Fn(usize) + Sync + Send,
-        efd::Coord<D>: Sync + Send,
+        [f64; D]: Sync + Send,
     {
         let Cfg { is_open, size, res, harmonic, seed } = cfg;
         let rng = Rng::new(seed);
@@ -216,7 +216,7 @@ where
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// This method will keep the dimensional variables without transform.
-    pub fn fetch_raw(&self, target: &[efd::Coord<D>], is_open: bool, size: usize) -> Vec<(f64, M)>
+    pub fn fetch_raw(&self, target: &[[f64; D]], is_open: bool, size: usize) -> Vec<(f64, M)>
     where
         efd::Efd<D>: Sync,
     {
@@ -229,7 +229,7 @@ where
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         let dis = iter
-            .map(|arr| target.distance(&arr_to_efd(arr)))
+            .map(|arr| target.err(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         if size == 1 {
             return dis
@@ -249,12 +249,7 @@ where
     }
 
     /// Get the nearest four-bar linkage from a target curve.
-    pub fn fetch_1st(
-        &self,
-        target: &[efd::Coord<D>],
-        is_open: bool,
-        res: usize,
-    ) -> Option<(f64, M::De)>
+    pub fn fetch_1st(&self, target: &[[f64; D]], is_open: bool, res: usize) -> Option<(f64, M::De)>
     where
         efd::Efd<D>: Sync,
     {
@@ -266,7 +261,7 @@ where
         let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
-        iter.map(|arr| target.distance(&arr_to_efd(arr)))
+        iter.map(|arr| target.err(&arr_to_efd(arr)))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .map(|(i, err)| (err, self.pick(i, target.as_geo(), is_open, res)))
@@ -277,7 +272,7 @@ where
     /// Slower than [`Self::fetch_1st()`].
     pub fn fetch(
         &self,
-        target: &[efd::Coord<D>],
+        target: &[[f64; D]],
         is_open: bool,
         size: usize,
         res: usize,
@@ -296,7 +291,7 @@ where
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         let dis = iter
-            .map(|arr| target.distance(&arr_to_efd(arr)))
+            .map(|arr| target.err(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         let mut ind = (0..self.len()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());

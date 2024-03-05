@@ -65,7 +65,7 @@ impl<UN, NM> Mech<UN, NM> {
     }
 
     /// Curve generation for coupler curve.
-    pub fn curve<const D: usize>(&self, res: usize) -> Vec<efd::Coord<D>>
+    pub fn curve<const D: usize>(&self, res: usize) -> Vec<[f64; D]>
     where
         Self: CurveGen<D>,
     {
@@ -73,7 +73,7 @@ impl<UN, NM> Mech<UN, NM> {
     }
 
     /// Pose generation for coupler curve.
-    pub fn pose<const D: usize>(&self, res: usize) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>)
+    pub fn pose<const D: usize>(&self, res: usize) -> (Vec<[f64; D]>, Vec<[f64; D]>)
     where
         Self: PoseGen<D>,
     {
@@ -156,10 +156,10 @@ where
 /// Curve generation behavior.
 pub trait CurveGen<const D: usize>: Statable {
     /// Get the position with inversion flag.
-    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]>;
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[[f64; D]; 5]>;
 
     /// Get the position with input angle.
-    fn pos(&self, t: f64) -> Option<[efd::Coord<D>; 5]> {
+    fn pos(&self, t: f64) -> Option<[[f64; D]; 5]> {
         self.pos_s(t, self.inv())
     }
 
@@ -167,7 +167,7 @@ pub trait CurveGen<const D: usize>: Statable {
     ///
     /// For optimization reason, this method is required to specialize if
     /// [`CurveGen::pos_s()`] is inherited from a base type.
-    fn pos_iter<I>(&self, iter: I) -> impl Iterator<Item = [efd::Coord<D>; 5]>
+    fn pos_iter<I>(&self, iter: I) -> impl Iterator<Item = [[f64; D]; 5]>
     where
         I: IntoIterator<Item = f64>,
     {
@@ -176,21 +176,21 @@ pub trait CurveGen<const D: usize>: Statable {
     }
 
     /// Generator for all curves in specified angle.
-    fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[efd::Coord<D>; 3]> {
+    fn curves_in(&self, start: f64, end: f64, res: usize) -> Vec<[[f64; D]; 3]> {
         self.pos_iter(linspace(start, end, res))
             .map(|[.., p3, p4, p5]| [p3, p4, p5])
             .collect()
     }
 
     /// Generator for coupler curve in specified angle.
-    fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<efd::Coord<D>> {
+    fn curve_in(&self, start: f64, end: f64, res: usize) -> Vec<[f64; D]> {
         self.pos_iter(linspace(start, end, res))
             .map(|[.., p5]| p5)
             .collect()
     }
 
     /// Generator for curves.
-    fn curves(&self, res: usize) -> Vec<[efd::Coord<D>; 3]> {
+    fn curves(&self, res: usize) -> Vec<[[f64; D]; 3]> {
         self.angle_bound()
             .to_value()
             .map(|[start, end]| self.curves_in(start, end, res))
@@ -198,7 +198,7 @@ pub trait CurveGen<const D: usize>: Statable {
     }
 
     /// Generator for coupler curve.
-    fn curve(&self, res: usize) -> Vec<efd::Coord<D>> {
+    fn curve(&self, res: usize) -> Vec<[f64; D]> {
         self.angle_bound()
             .to_value()
             .map(|[start, end]| self.curve_in(start, end, res))
@@ -206,7 +206,7 @@ pub trait CurveGen<const D: usize>: Statable {
     }
 
     /// Generator for coupler curve by an input angle list.
-    fn curve_by(&self, t: &[f64]) -> Vec<efd::Coord<D>> {
+    fn curve_by(&self, t: &[f64]) -> Vec<[f64; D]> {
         self.pos_iter(t.iter().copied())
             .map(|[.., p5]| p5)
             .collect()
@@ -219,11 +219,11 @@ where
     N::De: CurveGen<D>,
     efd::U<D>: efd::EfdDim<D>,
 {
-    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<D>; 5]> {
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[[f64; D]; 5]> {
         self.clone().denormalize().pos_s(t, inv)
     }
 
-    fn pos_iter<I>(&self, iter: I) -> impl Iterator<Item = [efd::Coord<D>; 5]>
+    fn pos_iter<I>(&self, iter: I) -> impl Iterator<Item = [[f64; D]; 5]>
     where
         I: IntoIterator<Item = f64>,
     {
@@ -243,14 +243,14 @@ fn linspace(start: f64, end: f64, res: usize) -> impl Iterator<Item = f64> {
 /// Pose generation behavior.
 pub trait PoseGen<const D: usize>: CurveGen<D> {
     /// Obtain the pose (an unit vector) from known position.
-    fn uvec(&self, pos: [efd::Coord<D>; 5]) -> efd::Coord<D>;
+    fn uvec(&self, pos: [[f64; D]; 5]) -> [f64; D];
 
     /// Generator for all poses in specified angle.
     ///
     /// For optimization reason, this method is required to specialize if
     /// [`CurveGen::pos_s()`] and [`PoseGen::uvec()`] are inherited from a base
     /// type.
-    fn uvec_iter<I>(&self, iter: I) -> impl Iterator<Item = (efd::Coord<D>, efd::Coord<D>)>
+    fn uvec_iter<I>(&self, iter: I) -> impl Iterator<Item = ([f64; D], [f64; D])>
     where
         I: IntoIterator<Item = f64>,
     {
@@ -259,17 +259,12 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
     }
 
     /// Obtain the continuous pose from known position.
-    fn pose_in(
-        &self,
-        start: f64,
-        end: f64,
-        res: usize,
-    ) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+    fn pose_in(&self, start: f64, end: f64, res: usize) -> (Vec<[f64; D]>, Vec<[f64; D]>) {
         self.uvec_iter(linspace(start, end, res)).unzip()
     }
 
     /// Obtain the continuous pose in the range of motion.
-    fn pose(&self, res: usize) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+    fn pose(&self, res: usize) -> (Vec<[f64; D]>, Vec<[f64; D]>) {
         self.angle_bound()
             .to_value()
             .map(|[start, end]| self.pose_in(start, end, res))
@@ -277,7 +272,7 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
     }
 
     /// Obtain the continuous pose by an input angle list.
-    fn pose_by(&self, t: &[f64]) -> (Vec<efd::Coord<D>>, Vec<efd::Coord<D>>) {
+    fn pose_by(&self, t: &[f64]) -> (Vec<[f64; D]>, Vec<[f64; D]>) {
         self.uvec_iter(t.iter().copied()).unzip()
     }
 }
@@ -288,11 +283,11 @@ where
     N::De: PoseGen<D>,
     efd::U<D>: efd::EfdDim<D>,
 {
-    fn uvec(&self, pos: [efd::Coord<D>; 5]) -> efd::Coord<D> {
+    fn uvec(&self, pos: [[f64; D]; 5]) -> [f64; D] {
         self.clone().denormalize().uvec(pos)
     }
 
-    fn uvec_iter<I>(&self, iter: I) -> impl Iterator<Item = (efd::Coord<D>, efd::Coord<D>)>
+    fn uvec_iter<I>(&self, iter: I) -> impl Iterator<Item = ([f64; D], [f64; D])>
     where
         I: IntoIterator<Item = f64>,
     {

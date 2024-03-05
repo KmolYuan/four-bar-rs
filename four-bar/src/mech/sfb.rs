@@ -283,7 +283,7 @@ impl Transformable<3> for SFourBar {
 }
 
 impl CurveGen<3> for SFourBar {
-    fn pos_s(&self, t: f64, inv: bool) -> Option<[efd::Coord<3>; 5]> {
+    fn pos_s(&self, t: f64, inv: bool) -> Option<[[f64; 3]; 5]> {
         curve_interval(self, t, inv)
     }
 }

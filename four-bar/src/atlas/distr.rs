@@ -42,7 +42,7 @@ where
     }
 
     /// Generate curve and check the curve type.
-    fn get_curve(&self, res: usize, is_open: bool) -> Option<Vec<efd::Coord<D>>> {
+    fn get_curve(&self, res: usize, is_open: bool) -> Option<Vec<[f64; D]>> {
         self.angle_bound()
             .check_mode(is_open)
             .to_value()

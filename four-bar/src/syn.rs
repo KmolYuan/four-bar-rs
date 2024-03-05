@@ -36,7 +36,7 @@ pub struct Syn<T, M, const N: usize, const D: usize> {
     // How many points need to be generated and compared
     pub(crate) res: usize,
     // Constrain the origin of the mechanism
-    origin: Option<efd::Coord<D>>,
+    origin: Option<[f64; D]>,
     // Constrain the scale of the mechanism
     scale: Option<f64>,
     // Marker of the mechanism
@@ -67,7 +67,7 @@ impl<T, M, const N: usize, const D: usize> Syn<T, M, N, D> {
     }
 
     /// Specify the origin of the mechanism.
-    pub fn origin(self, origin: efd::Coord<D>) -> Self {
+    pub fn origin(self, origin: [f64; D]) -> Self {
         Self { origin: Some(origin), ..self }
     }
 
@@ -97,7 +97,7 @@ impl<T, const N: usize> SynBound<N> for T where
 
 /// Synthesis mode.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum Mode {
     /// Closed path matching
     Closed,

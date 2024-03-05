@@ -16,7 +16,8 @@ where
         C1: efd::Curve<D>,
         C2: efd::Curve<D>,
     {
-        let efd = efd::PosedEfd::from_series(curve1, curve2, mode.is_target_open());
+        assert_ne!(mode, Mode::Closed, "Closed mode is not supported");
+        let efd = efd::PosedEfd::from_series(curve1, curve2);
         Self::from_efd(efd, mode)
     }
 
@@ -27,7 +28,8 @@ where
         C: efd::Curve<D>,
         V: efd::Curve<D>,
     {
-        let efd = efd::PosedEfd::from_uvec(curve, vectors, mode.is_target_open());
+        assert_ne!(mode, Mode::Closed, "Closed mode is not supported");
+        let efd = efd::PosedEfd::from_uvec(curve, vectors);
         Self::from_efd(efd, mode)
     }
 
@@ -68,16 +70,15 @@ where
     type Fitness = mh::Product<M::De, f64>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
-        let is_open = self.mode.is_target_open();
         let get_series = |fb: &M, start, end| {
             let (curve, pose) = fb.pose_in(start, end, self.res);
             (curve.len() > 2).then_some((curve, pose))
         };
         impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
-            let efd = efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.harmonic());
+            let efd = efd::PosedEfd::from_uvec_harmonic(c, v, self.harmonic());
             let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(efd.distance(&self.tar).max(self.unit_err(&geo)), fb)
+            mh::Product::new(efd.err(&self.tar).max(self.unit_err(&geo)), fb)
         })
     }
 }

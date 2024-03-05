@@ -325,8 +325,7 @@ fn from_runtime(
                 log.title("competitor")?;
                 if !matches!(mode, syn::Mode::Partial) {
                     let efd = efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                    let cost = efd.distance(&efd_target);
-                    log.log(Performance::cost(cost))?;
+                    log.log(Performance::cost(efd.err(&efd_target)))?;
                 }
                 log.title("competitor.fb")?;
                 log.log(&fb)?;
@@ -378,8 +377,7 @@ fn from_runtime(
                 log.title("competitor")?;
                 if !matches!(mode, syn::Mode::Partial) {
                     let efd = efd::Efd3::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                    let cost = efd.distance(&efd_target);
-                    log.log(Performance::cost(cost))?;
+                    log.log(Performance::cost(efd.err(&efd_target)))?;
                 }
                 log.title("competitor.fb")?;
                 log.log(&fb)?;

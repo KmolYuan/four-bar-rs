@@ -143,9 +143,9 @@ where
 pub(crate) struct Cache<const D: usize> {
     changed: bool,
     angle_bound: mech::AngleBound,
-    pub(crate) joints: Option<[efd::Coord<D>; 5]>,
-    pub(crate) curves: Vec<[efd::Coord<D>; 3]>,
-    pub(crate) stat_curves: Vec<Vec<efd::Coord<D>>>,
+    pub(crate) joints: Option<[[f64; D]; 5]>,
+    pub(crate) curves: Vec<[[f64; D]; 3]>,
+    pub(crate) stat_curves: Vec<Vec<[f64; D]>>,
 }
 
 impl<const D: usize> Default for Cache<D> {
@@ -208,7 +208,7 @@ where
         + Default
         + Serialize
         + serde::de::DeserializeOwned,
-    efd::Coord<D>: Serialize,
+    [f64; D]: Serialize,
     efd::U<D>: efd::EfdDim<D>,
 {
     fn new(path: Option<PathBuf>, fb: M::De) -> Self {

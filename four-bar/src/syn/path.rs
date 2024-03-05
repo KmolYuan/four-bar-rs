@@ -66,8 +66,7 @@ where
             let efd = efd::Efd::from_curve_harmonic(c, is_open, self.harmonic());
             let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            let err = efd.distance(&self.tar);
-            mh::Product::new(err.max(self.unit_err(&geo)), fb)
+            mh::Product::new(efd.err(&self.tar).max(self.unit_err(&geo)), fb)
         })
     }
 }
