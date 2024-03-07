@@ -201,7 +201,8 @@ pub(crate) fn curve_interval(
             let c = (l3_2 - l4 * l4 + r_2) / (2. * r);
             let s = (l3_2 - c * c).sqrt();
             let rot = na::UnitComplex::from_cos_sin_unchecked(c, s);
-            p3 + if inv { rot.conjugate() } else { rot } * (p23 / r)
+            let rot = if inv { rot.conjugate() } else { rot };
+            p3 + rot * (p23 / r)
         }
     };
     let p5 = {

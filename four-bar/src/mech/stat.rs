@@ -9,17 +9,17 @@ use std::f64::consts::TAU;
     serde(rename_all = "lowercase")
 )]
 pub enum Stat {
-    /// Circuit 1, branch 1
+    /// Circuit 1-1
     #[default]
     #[cfg_attr(feature = "serde", serde(alias = "C1B1"))]
     C1B1 = 1,
-    /// Circuit 1, branch 2
+    /// Circuit 1-2
     #[cfg_attr(feature = "serde", serde(alias = "C1B2"))]
     C1B2 = 2,
-    /// Circuit 2, branch 1
+    /// Circuit 2-1
     #[cfg_attr(feature = "serde", serde(alias = "C2B1"))]
     C2B1 = 3,
-    /// Circuit 2, branch 2
+    /// Circuit 2-2
     #[cfg_attr(feature = "serde", serde(alias = "C2B2"))]
     C2B2 = 4,
 }
@@ -27,10 +27,10 @@ pub enum Stat {
 impl std::fmt::Display for Stat {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::C1B1 => write!(f, "Circuit 1, branch 1"),
-            Self::C1B2 => write!(f, "Circuit 1, branch 2"),
-            Self::C2B1 => write!(f, "Circuit 2, branch 1"),
-            Self::C2B2 => write!(f, "Circuit 2, branch 2"),
+            Self::C1B1 => write!(f, "Circuit 1-1"),
+            Self::C1B2 => write!(f, "Circuit 1-2"),
+            Self::C2B1 => write!(f, "Circuit 2-1"),
+            Self::C2B2 => write!(f, "Circuit 2-2"),
         }
     }
 }
@@ -90,6 +90,26 @@ impl Stat {
     /// Check if the state is on branch 1.
     pub fn is_b1(&self) -> bool {
         matches!(self, Self::C1B1 | Self::C2B1)
+    }
+
+    /// Switch the circuit.
+    pub fn switch_circuit(&mut self) {
+        *self = match self {
+            Self::C1B1 => Self::C2B1,
+            Self::C1B2 => Self::C2B2,
+            Self::C2B1 => Self::C1B1,
+            Self::C2B2 => Self::C1B2,
+        };
+    }
+
+    /// Switch the branch.
+    pub fn switch_branch(&mut self) {
+        *self = match self {
+            Self::C1B1 => Self::C1B2,
+            Self::C1B2 => Self::C1B1,
+            Self::C2B1 => Self::C2B2,
+            Self::C2B2 => Self::C2B1,
+        };
     }
 }
 
@@ -336,17 +356,9 @@ pub trait Statable: PlanarLoop + Clone {
         AngleBound::from_planar_loop(self.planar_loop(), stat)
     }
 
-    /// Get the inversion state.
+    /// Return `true` will actives the inversion.
     fn inv(&self) -> bool {
-        let [l1, l2, l3, l4] = self.planar_loop();
-        let stat = self.stat();
-        if l1 + l2 <= l3 + l4 && (l1 - l2).abs() >= (l3 - l4).abs() {
-            // Closed
-            !stat.is_c1()
-        } else {
-            // Open
-            !stat.is_b1()
-        }
+        !self.stat().is_c1()
     }
 
     /// List all states from a linkage.
