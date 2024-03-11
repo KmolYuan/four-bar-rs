@@ -15,10 +15,11 @@ name = "four-bar"
 path = "src/main.rs"
 
 [features]
-# Turn of default in WASM
+# + Turn off the default "native" in WASM
+# + Turn on "native-win-release" to hide the console in Windows
 default = ["native"]
 native = ["four-bar/rayon", "four-bar/clap"]
-native-win-release = ["winapi"]
+native-win-release = ["winapi", "native"]
 
 [dependencies]
 smartcore = { version = "0.3", features = ["ndarray-bindings"] }
