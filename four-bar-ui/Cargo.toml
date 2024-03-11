@@ -38,7 +38,7 @@ default-features = false
 features = ["accesskit", "persistence", "glow"]
 
 [dependencies.image]
-version = "0.24"
+version = "0.25"
 default-features = false
 features = ["ico", "jpeg"]
 
@@ -52,16 +52,16 @@ wild = "2"
 # wasm here!
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 console_error_panic_hook = "0.1"
-tracing-wasm = "0.2"
-wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
+wasm-bindgen = "0.2"
+tracing-wasm = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 # windows here!
 winapi = { version = "0.3", features = ["wincon", "winuser"], optional = true }
 
 [target.'cfg(windows)'.build-dependencies]
-image = "0.24"
+image = "0.25"
 winres = "0.1"
 
 [lints]
