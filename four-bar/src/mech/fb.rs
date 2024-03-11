@@ -207,7 +207,7 @@ pub(crate) fn curve_interval(
     };
     let p5 = {
         let p43 = p4 - p3;
-        angle(p3, l5, g + p43.y.atan2(p43.x))
+        angle(p3, l5, g + (p43.y).atan2(p43.x))
     };
     macro_rules! build_coords {
         [$($p:ident),+] => { [$([$p.x, $p.y]),+] }

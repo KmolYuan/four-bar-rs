@@ -277,7 +277,7 @@ impl Transformable<3> for SFourBar {
         let rot_inv =
             na::UnitQuaternion::rotation_between(&p1_axis, &na::Vector3::z()).unwrap_or_default();
         let pb = rot_inv * geo.rot() * pb;
-        fb.a = pb.y.atan2(pb.x);
+        fb.a = (pb.y).atan2(pb.x);
         fb.r *= geo.scale();
     }
 }
