@@ -21,6 +21,7 @@ pub(crate) use hotkey;
 #[serde(tag = "type")]
 pub(crate) enum Project {
     Fb(FbProj),
+    MFb(MFbProj),
     SFb(SFbProj),
 }
 
@@ -29,6 +30,7 @@ macro_rules! impl_method {
         pub(crate) fn $method($self: $self_ty $(, $v: $ty)*) $(-> $ret)? {
             match $self {
                 Self::Fb(fb) => fb.$method($($v),*),
+                Self::MFb(fb) => fb.$method($($v),*),
                 Self::SFb(fb) => fb.$method($($v),*),
             }
         }
@@ -38,8 +40,9 @@ macro_rules! impl_method {
 impl Project {
     pub(crate) fn new(path: Option<PathBuf>, fb: io::Fb) -> Self {
         match fb {
-            io::Fb::Fb(fb) => Self::Fb(FbProj::new(path, fb)),
-            io::Fb::SFb(fb) => Self::SFb(SFbProj::new(path, fb)),
+            io::Fb::P(fb) => Self::Fb(FbProj::new(path, fb)),
+            io::Fb::M(fb) => Self::MFb(MFbProj::new(path, fb)),
+            io::Fb::S(fb) => Self::SFb(SFbProj::new(path, fb)),
         }
     }
 
@@ -53,14 +56,16 @@ impl Project {
 
     pub(crate) fn fb_state(&self) -> (f64, io::Fb) {
         match self {
-            Self::Fb(proj) => (proj.angle, io::Fb::Fb(proj.fb.clone())),
-            Self::SFb(proj) => (proj.angle, io::Fb::SFb(proj.fb.clone())),
+            Self::Fb(proj) => (proj.angle, io::Fb::P(proj.fb.clone())),
+            Self::MFb(proj) => (proj.angle, io::Fb::M(proj.fb.clone())),
+            Self::SFb(proj) => (proj.angle, io::Fb::S(proj.fb.clone())),
         }
     }
 
     pub(crate) fn curve(&self) -> io::Curve {
         match self {
             Self::Fb(proj) => io::Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
+            Self::MFb(proj) => io::Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
             Self::SFb(proj) => io::Curve::S(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
         }
     }
@@ -75,6 +80,7 @@ impl Project {
     pub(crate) fn proj_name(&self) -> String {
         let (prefix, mut name) = match self {
             Self::Fb(proj) => ("[P] ", proj.name()),
+            Self::MFb(proj) => ("[M] ", proj.name()),
             Self::SFb(proj) => ("[S] ", proj.name()),
         };
         name.insert_str(0, prefix);
@@ -96,6 +102,7 @@ impl Project {
 }
 
 type FbProj = ProjInner<NormFourBar, 2>;
+type MFbProj = ProjInner<MNormFourBar, 2>;
 type SFbProj = ProjInner<SNormFourBar, 3>;
 
 #[derive(Deserialize, Serialize)]
@@ -108,8 +115,8 @@ where
     path: Option<PathBuf>,
     fb: M::De,
     angle: f64,
-    curve_range: Option<[f64; 2]>,
-    curve_res: usize,
+    c_range: Option<[f64; 2]>,
+    res: usize,
     hide: bool,
     #[serde(skip)]
     unsaved: bool,
@@ -130,8 +137,8 @@ where
             path: Default::default(),
             fb: Default::default(),
             angle: 0.,
-            curve_range: None,
-            curve_res: 40,
+            c_range: None,
+            res: 40,
             hide: false,
             unsaved: false,
             cache: Default::default(),
@@ -271,20 +278,20 @@ where
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
         ui.heading("Curve");
-        check_on(ui, "In range", &mut self.curve_range, |ui, [start, end]| {
+        check_on(ui, "With range", &mut self.c_range, |ui, [start, end]| {
             ui.vertical(|ui| angle(ui, "start: ", start, "") | angle(ui, "end: ", end, ""))
                 .inner
         });
-        nonzero_i(ui, "Resolution: ", &mut self.curve_res, 1);
+        nonzero_i(ui, "Resolution: ", &mut self.res, 1);
         ui.horizontal(|ui| {
             const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];
             combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
             let get_curve = |pivot, fb: &M::De| -> Vec<_> {
                 use four_bar::mech::CurveGen as _;
-                let curve = if let Some([start, end]) = self.curve_range {
-                    fb.curves_in(start, end, self.curve_res).into_iter()
+                let curve = if let Some([start, end]) = self.c_range {
+                    fb.curves_in(start, end, self.res).into_iter()
                 } else {
-                    fb.curves(self.curve_res).into_iter()
+                    fb.curves(self.res).into_iter()
                 };
                 match pivot {
                     Pivot::Driver => curve.map(|[c, _, _]| c).collect(),

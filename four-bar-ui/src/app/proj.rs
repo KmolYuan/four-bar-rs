@@ -2,7 +2,7 @@ use self::impl_proj::*;
 use super::{link::Cfg, widgets::*};
 use crate::io;
 use eframe::egui::*;
-use four_bar::{FourBar, SFourBar};
+use four_bar::{FourBar, MFourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
 
@@ -66,11 +66,7 @@ impl Projects {
     }
 
     fn push_fb_example(&self) {
-        self.queue.push(None, io::Fb::Fb(FourBar::example()));
-    }
-
-    fn push_sfb_example(&self) {
-        self.queue.push(None, io::Fb::SFb(SFourBar::example()));
+        self.queue.push(None, io::Fb::P(FourBar::example()));
     }
 
     fn pre_open(&mut self, path: PathBuf) {
@@ -118,11 +114,17 @@ impl Projects {
                 let q = self.queue();
                 io::open_ron(move |path, fb| q.push(Some(path), fb));
             }
-            if ui.button("✚ Planar").clicked() {
+            const P_DES: &str = "Add a planar four-bar linkage";
+            const M_DES: &str = "Add a motion planar four-bar linkage";
+            const S_DES: &str = "Add a spherical four-bar linkage";
+            if ui.button("✚ [P]").on_hover_text(P_DES).clicked() {
                 self.push_fb_example();
             }
-            if ui.button("✚ Spherical").clicked() {
-                self.push_sfb_example();
+            if ui.button("✚ [M]").on_hover_text(M_DES).clicked() {
+                self.queue.push(None, io::Fb::M(MFourBar::example()));
+            }
+            if ui.button("✚ [S]").on_hover_text(S_DES).clicked() {
+                self.queue.push(None, io::Fb::S(SFourBar::example()));
             }
         });
         ui.separator();
@@ -176,16 +178,13 @@ impl Projects {
     }
 
     pub(crate) fn select(&mut self, ui: &mut Ui) {
+        let combo = ComboBox::from_id_source("proj");
         if self.list.is_empty() {
-            ComboBox::from_id_source("proj").show_ui(ui, |_| ());
+            combo.show_ui(ui, |_| ());
         } else {
-            ComboBox::from_id_source("proj").show_index(ui, &mut self.curr, self.list.len(), |i| {
+            combo.show_index(ui, &mut self.curr, self.list.len(), |i| {
                 let proj = &self.list[i];
-                if proj.is_unsaved() {
-                    proj.proj_name() + "*"
-                } else {
-                    proj.proj_name()
-                }
+                proj.proj_name() + if proj.is_unsaved() { "*" } else { "" }
             });
         }
     }

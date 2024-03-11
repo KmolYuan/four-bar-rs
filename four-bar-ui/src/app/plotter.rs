@@ -134,7 +134,7 @@ impl PlotType {
             PlotType::P(fig) => {
                 ui.heading("Planar Plot");
                 let get_fb = |fb| match fb {
-                    io::Fb::Fb(fb) => Some(fb),
+                    io::Fb::P(fb) => Some(fb),
                     _ => None,
                 };
                 let get_curve = |c| match c {
@@ -158,7 +158,7 @@ impl PlotType {
                     }
                 }
                 let get_fb = |fb| match fb {
-                    io::Fb::SFb(fb) => Some(fb),
+                    io::Fb::S(fb) => Some(fb),
                     _ => None,
                 };
                 let get_curve = |c| match c {

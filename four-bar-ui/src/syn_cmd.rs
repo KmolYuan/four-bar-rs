@@ -176,8 +176,8 @@ impl<'a> Solver<'a> {
 
     pub(crate) fn solve(self) -> Result<io::Fb, mh::ndarray::ShapeError> {
         match self {
-            Self::FbSyn(SynData { s, .. }) => Ok(io::Fb::Fb(s.solve()?.into_result())),
-            Self::SFbSyn(SynData { s, .. }) => Ok(io::Fb::SFb(s.solve()?.into_result())),
+            Self::FbSyn(SynData { s, .. }) => Ok(io::Fb::P(s.solve()?.into_result())),
+            Self::SFbSyn(SynData { s, .. }) => Ok(io::Fb::S(s.solve()?.into_result())),
         }
     }
 

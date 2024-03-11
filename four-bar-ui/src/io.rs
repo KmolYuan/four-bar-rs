@@ -354,8 +354,9 @@ pub(crate) fn save_history_ask(history: &[f64], name: &str) {
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 #[serde(untagged)]
 pub(crate) enum Fb {
-    Fb(FourBar),
-    SFb(SFourBar),
+    P(FourBar),
+    M(MFourBar),
+    S(SFourBar),
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone)]

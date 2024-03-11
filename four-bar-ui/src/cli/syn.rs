@@ -112,8 +112,9 @@ fn get_info(
         "ron" => {
             let fb = ron::de::from_reader(std::fs::File::open(file)?)?;
             let curve = match &fb {
-                io::Fb::Fb(fb) => io::Curve::P(fb.curve(res)),
-                io::Fb::SFb(fb) => io::Curve::S(fb.curve(res)),
+                io::Fb::P(fb) => io::Curve::P(fb.curve(res)),
+                io::Fb::M(fb) => io::Curve::P(fb.curve(res)),
+                io::Fb::S(fb) => io::Curve::S(fb.curve(res)),
             };
             target_fb = Some(fb);
             curve
@@ -298,7 +299,7 @@ fn from_runtime(
                 let svg = plot::SVGBackend::new(&path, (1600, 1600));
                 fig.plot(svg)?;
             }
-            if let Some(io::Fb::Fb(fb)) = target_fb {
+            if let Some(io::Fb::P(fb)) = target_fb {
                 log.title("target.fb")?;
                 log.log(fb)?;
             }
@@ -350,7 +351,7 @@ fn from_runtime(
                 let svg = plot::SVGBackend::new(&path, (1600, 1600));
                 fig.plot(svg)?;
             }
-            if let Some(io::Fb::SFb(fb)) = target_fb {
+            if let Some(io::Fb::S(fb)) = target_fb {
                 log.title("target.fb")?;
                 log.log(fb)?;
             }

@@ -128,6 +128,14 @@ impl ProjPlot<2> for FourBar {
     }
 }
 
+impl ProjPlot<2> for MFourBar {
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
+        // Unused dummy
+        const FB: FourBar = FourBar::example();
+        FB.proj_plot(ui, cache, is_main);
+    }
+}
+
 impl ProjPlot<3> for SFourBar {
     fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<3>, is_main: bool) {
         const N: usize = 150;
@@ -230,6 +238,21 @@ impl_ui!(
     (l4, nonzero_f, "Follower: "),
     (l5, nonzero_f, "Extended: "),
     (g, angle, "Extended angle: "),
+);
+impl_ui!(
+    MFourBar,
+    "Geometric Variables",
+    (p1x.unnorm, unit, "X Offset: "),
+    (p1y.unnorm, unit, "Y Offset: "),
+    (a.unnorm, angle, "Rotation: "),
+    "Parameters",
+    (l1, nonzero_f, "Ground: "),
+    (l2.unnorm, nonzero_f, "Driver: "),
+    (l3, nonzero_f, "Coupler: "),
+    (l4, nonzero_f, "Follower: "),
+    (l5, nonzero_f, "Extended: "),
+    (g, angle, "Extended angle: "),
+    (e, angle, "Motion angle: "),
 );
 impl_ui!(
     SFourBar,
