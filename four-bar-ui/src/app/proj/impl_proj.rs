@@ -17,6 +17,7 @@ macro_rules! hotkey {
 }
 pub(crate) use hotkey;
 
+#[allow(private_interfaces)]
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type")]
 pub(crate) enum Project {
@@ -106,7 +107,7 @@ type MFbProj = ProjInner<MNormFourBar, 2>;
 type SFbProj = ProjInner<SNormFourBar, 3>;
 
 #[derive(Deserialize, Serialize)]
-pub(crate) struct ProjInner<M, const D: usize>
+struct ProjInner<M, const D: usize>
 where
     M: mech::Normalized<D>,
     M::De: mech::CurveGen<D> + undo::IntoDelta,
@@ -152,7 +153,7 @@ pub(crate) struct Cache<const D: usize> {
     angle_bound: mech::AngleBound,
     pub(crate) joints: Option<[[f64; D]; 5]>,
     pub(crate) curves: Vec<[[f64; D]; 3]>,
-    pub(crate) stat_curves: Vec<Vec<[f64; D]>>,
+    pub(crate) state_curves: Vec<Vec<[f64; D]>>,
 }
 
 impl<const D: usize> Default for Cache<D> {
@@ -162,7 +163,7 @@ impl<const D: usize> Default for Cache<D> {
             angle_bound: mech::AngleBound::Invalid,
             joints: None,
             curves: Vec::new(),
-            stat_curves: Vec::new(),
+            state_curves: Vec::new(),
         }
     }
 }
@@ -211,6 +212,7 @@ where
         + undo::IntoDelta
         + fb_ui::ProjUi
         + fb_ui::ProjPlot<D>
+        + CacheAdaptor<D>
         + PartialEq
         + Default
         + Serialize
@@ -340,14 +342,7 @@ where
         self.cache.joints = self.fb.pos(self.angle);
         self.cache.angle_bound = self.fb.angle_bound();
         self.cache.curves = self.fb.curves(res);
-        self.cache.stat_curves = self
-            .cache
-            .angle_bound
-            .get_states()
-            .into_iter()
-            .filter(|s| *s != self.fb.stat())
-            .map(|s| self.fb.clone().with_stat(s).curve(res))
-            .collect();
+        self.fb.cache_curve(&mut self.cache, res);
     }
 
     fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize) {
@@ -404,5 +399,40 @@ where
 
     fn mark_saved(&mut self) {
         self.unsaved = false;
+    }
+}
+
+fn state_curves<M, const D: usize>(
+    fb: &M,
+    angle_bound: mech::AngleBound,
+    res: usize,
+) -> Vec<Vec<[f64; D]>>
+where
+    M: mech::CurveGen<D>,
+{
+    fb.other_states_from_bound(angle_bound)
+        .into_iter()
+        .map(|fb| fb.curve(res))
+        .collect()
+}
+
+trait CacheAdaptor<const D: usize> {
+    // How to cache the "state_curves" field.
+    fn cache_curve(&self, cache: &mut Cache<D>, res: usize);
+}
+impl CacheAdaptor<2> for FourBar {
+    fn cache_curve(&self, cache: &mut Cache<2>, res: usize) {
+        cache.state_curves = state_curves(self, cache.angle_bound, res);
+    }
+}
+impl CacheAdaptor<2> for MFourBar {
+    fn cache_curve(&self, cache: &mut Cache<2>, _res: usize) {
+        use mech::PoseGen as _;
+        cache.state_curves = vec![self.ext_curve_from_curves(self.unnorm.l2, &cache.curves)];
+    }
+}
+impl CacheAdaptor<3> for SFourBar {
+    fn cache_curve(&self, cache: &mut Cache<3>, res: usize) {
+        cache.state_curves = state_curves(self, cache.angle_bound, res);
     }
 }

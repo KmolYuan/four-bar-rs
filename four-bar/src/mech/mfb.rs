@@ -124,8 +124,8 @@ impl CurveGen<2> for MFourBar {
 }
 
 impl PoseGen<2> for MFourBar {
-    fn uvec(&self, [.., p3, p4, _]: [[f64; 2]; 5]) -> [f64; 2] {
-        let p43 = na::Point2::from(p4) - na::Point2::from(p3);
+    fn uvec(&self, [p3, p4, _]: &[[f64; 2]; 3]) -> [f64; 2] {
+        let p43 = na::Point2::from(std::array::from_fn(|i| p4[i] - p3[i]));
         let angle = self.e + (p43.y).atan2(p43.x);
         [angle.cos(), angle.sin()]
     }

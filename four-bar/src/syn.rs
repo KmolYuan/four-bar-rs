@@ -151,7 +151,8 @@ where
     use mh::rayon::prelude::*;
     let mut fb = M::from_vectorized_s1(slice_to_array(xs));
     fb.set_to_planar_loop();
-    let (bound, states) = fb.to_bound_states_filter(|a| a.check_mode(mode.is_result_open()));
+    let bound = fb.angle_bound().check_mode(mode.is_result_open());
+    let states = fb.states_from_bound(bound);
     let gen_series = &get_series;
     let f = |[t1, t2]: [f64; 2]| {
         #[cfg(feature = "rayon")]

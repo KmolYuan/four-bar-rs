@@ -93,13 +93,17 @@ fn draw_link3d(ui: &mut egui_plot::PlotUi, sc: [f64; 3], points: &[[f64; 3]], is
     draw_sline(ui, sc.z, iter, |line| line.width(width).color(LINK_COLOR));
 }
 
-pub(crate) trait ProjPlot<const D: usize> {
-    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<D>, is_main: bool);
+fn state_curves_style(s: egui_plot::Line) -> egui_plot::Line {
+    s.name(CURVE_NAME[2])
+        .width(3.)
+        .color(pick_color(2))
+        .style(egui_plot::LineStyle::dashed_dense())
 }
 
-impl ProjPlot<2> for FourBar {
-    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
-        if let Some(joints) = cache.joints {
+impl Cache<2> {
+    fn plot2d(&self, ui: &mut egui_plot::PlotUi, is_main: bool) {
+        // Plot mechanism
+        if let Some(joints) = self.joints {
             draw_link2d(ui, &[joints[0], joints[2]], is_main);
             draw_link2d(ui, &[joints[1], joints[3]], is_main);
             draw_link2d(ui, &joints[2..], is_main);
@@ -109,16 +113,13 @@ impl ProjPlot<2> for FourBar {
                 }
             }
         }
-        for line in &cache.stat_curves {
-            let line = egui_plot::Line::new(line.clone())
-                .name(CURVE_NAME[2])
-                .width(3.)
-                .color(pick_color(2))
-                .style(egui_plot::LineStyle::dashed_dense());
-            ui.line(line);
+        // Plot state curves
+        for line in &self.state_curves {
+            ui.line(state_curves_style(egui_plot::Line::new(line.clone())));
         }
+        // Plot curves
         for (i, name) in CURVE_NAME.iter().enumerate() {
-            let iter = cache.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
+            let iter = self.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
             let line = egui_plot::Line::new(iter)
                 .name(name)
                 .width(3.)
@@ -128,11 +129,26 @@ impl ProjPlot<2> for FourBar {
     }
 }
 
+pub(crate) trait ProjPlot<const D: usize> {
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<D>, is_main: bool);
+}
+
+impl ProjPlot<2> for FourBar {
+    fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
+        cache.plot2d(ui, is_main);
+    }
+}
+
 impl ProjPlot<2> for MFourBar {
     fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
-        // Unused dummy
-        const FB: FourBar = FourBar::example();
-        FB.proj_plot(ui, cache, is_main);
+        cache.plot2d(ui, is_main);
+        // Plot vectors
+        for (p, q) in std::iter::zip(
+            cache.curves.iter().map(|[.., p5]| p5),
+            &cache.state_curves[0],
+        ) {
+            ui.line(state_curves_style(egui_plot::Line::new(vec![*p, *q])));
+        }
     }
 }
 
@@ -142,14 +158,17 @@ impl ProjPlot<3> for SFourBar {
         const STEP: f64 = std::f64::consts::TAU / N as f64;
         let r = self.unnorm.r;
         let sc @ [ox, oy, oz] = self.sc();
+        // Plot sphere center
         draw_joint(ui, [ox, oy], true, |p| {
             p.shape(egui_plot::MarkerShape::Diamond)
         });
+        // Plot sphere
         let circle = (0..=N)
             .map(|i| i as f64 * STEP)
             .map(|t| [r * t.cos() + ox, r * t.sin() + oy])
             .collect::<Vec<_>>();
         ui.line(egui_plot::Line::new(circle).style(egui_plot::LineStyle::dashed_dense()));
+        // Plot mechanism
         if let Some(joints) = cache.joints {
             draw_link3d(ui, sc, &[joints[0], joints[2]], is_main);
             draw_link3d(ui, sc, &[joints[1], joints[3]], is_main);
@@ -160,14 +179,11 @@ impl ProjPlot<3> for SFourBar {
                 }
             }
         }
-        for line in &cache.stat_curves {
-            draw_sline(ui, oz, line.iter().copied(), |s| {
-                s.name(CURVE_NAME[2])
-                    .width(3.)
-                    .color(pick_color(2))
-                    .style(egui_plot::LineStyle::dashed_dense())
-            });
+        // Plot state curves
+        for line in &cache.state_curves {
+            draw_sline(ui, oz, line.iter().copied(), state_curves_style);
         }
+        // Plot curves
         for (i, name) in CURVE_NAME.iter().enumerate() {
             let color = pick_color(i);
             let iter = cache.curves.iter().map(|c| c[i]);

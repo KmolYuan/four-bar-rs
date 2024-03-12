@@ -363,30 +363,31 @@ pub trait Statable: PlanarLoop + Clone {
 
     /// List all states from a linkage.
     fn to_states(self) -> Vec<Self> {
-        self.to_bound_states().1
+        let bound = self.angle_bound();
+        self.states_from_bound(bound)
     }
 
-    /// Get the input angle bounds and list all states from a linkage.
-    fn to_bound_states(self) -> (AngleBound, Vec<Self>) {
-        self.to_bound_states_filter(|a| a)
+    /// List all states except the current state from a linkage.
+    fn other_states(&self) -> Vec<Self> {
+        self.other_states_from_bound(self.angle_bound())
     }
 
-    /// Get the input angle bounds and list all states from a linkage with a
-    /// filter.
-    fn to_bound_states_filter<F>(self, f: F) -> (AngleBound, Vec<Self>)
-    where
-        F: FnOnce(AngleBound) -> AngleBound,
-    {
+    /// List all states from a calculated bound.
+    fn states_from_bound(self, bound: AngleBound) -> Vec<Self> {
+        let mut states = self.other_states_from_bound(bound);
+        states.push(self);
+        states
+    }
+
+    /// List all states except the current state from a calculated bound.
+    fn other_states_from_bound(&self, bound: AngleBound) -> Vec<Self> {
         let stat = self.stat();
-        let bound = f(self.angle_bound());
-        let mut states = bound
+        bound
             .get_states()
             .into_iter()
             .filter(|s| *s != stat)
             .map(|s| self.clone().with_stat(s))
-            .collect::<Vec<_>>();
-        states.push(self);
-        (bound, states)
+            .collect()
     }
 }
 

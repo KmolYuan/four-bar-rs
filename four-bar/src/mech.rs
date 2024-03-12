@@ -34,17 +34,33 @@ impl<UN, NM> Mech<UN, NM> {
     /// Build with inverter.
     pub fn with_stat(self, stat: Stat) -> Self
     where
-        NM: Statable,
+        Self: Statable,
     {
-        Self { norm: self.norm.with_stat(stat), ..self }
+        Statable::with_stat(self, stat)
     }
 
     /// Get the state.
     pub fn stat(&self) -> Stat
     where
-        NM: Statable,
+        Self: Statable,
     {
-        self.norm.stat()
+        Statable::stat(self)
+    }
+
+    /// List all states.
+    pub fn to_states(self) -> Vec<Self>
+    where
+        Self: Statable,
+    {
+        Statable::to_states(self)
+    }
+
+    /// List all other states.
+    pub fn other_states(&self) -> Vec<Self>
+    where
+        Self: Statable,
+    {
+        Statable::other_states(self)
     }
 
     /// Return the type of this linkage.
@@ -69,7 +85,7 @@ impl<UN, NM> Mech<UN, NM> {
     where
         Self: CurveGen<D>,
     {
-        <Self as CurveGen<D>>::curve(self, res)
+        CurveGen::<D>::curve(self, res)
     }
 
     /// Pose generation for coupler curve.
@@ -77,7 +93,7 @@ impl<UN, NM> Mech<UN, NM> {
     where
         Self: PoseGen<D>,
     {
-        <Self as PoseGen<D>>::pose(self, res)
+        PoseGen::<D>::pose(self, res)
     }
 
     /// Check if the data is valid.
@@ -243,7 +259,7 @@ fn linspace(start: f64, end: f64, res: usize) -> impl Iterator<Item = f64> {
 /// Pose generation behavior.
 pub trait PoseGen<const D: usize>: CurveGen<D> {
     /// Obtain the pose (an unit vector) from known position.
-    fn uvec(&self, pos: [[f64; D]; 5]) -> [f64; D];
+    fn uvec(&self, pos: &[[f64; D]; 3]) -> [f64; D];
 
     /// Generator for all poses in specified angle.
     ///
@@ -255,7 +271,7 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
         I: IntoIterator<Item = f64>,
     {
         self.pos_iter(iter)
-            .map(|pos @ [.., p5]| (p5, self.uvec(pos)))
+            .map(|[.., p3, p4, p5]| (p5, self.uvec(&[p3, p4, p5])))
     }
 
     /// Obtain the continuous pose from known position.
@@ -275,6 +291,47 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
     fn pose_by(&self, t: &[f64]) -> (Vec<[f64; D]>, Vec<[f64; D]>) {
         self.uvec_iter(t.iter().copied()).unzip()
     }
+
+    /// Obtain the pose from known position.
+    fn pose_from_curves(&self, curves: &[[[f64; D]; 3]]) -> Vec<[f64; D]> {
+        curves.iter().map(|pos| self.uvec(pos)).collect()
+    }
+
+    /// Generator for the extended points in specified angle.
+    fn ext_iter<I>(&self, length: f64, iter: I) -> impl Iterator<Item = [f64; D]>
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        self.uvec_iter(iter)
+            .map(move |(p, v)| std::array::from_fn(|i| p[i] + length * v[i]))
+    }
+
+    /// Obtain the extended curve in the range of motion.
+    fn ext_curve_in(&self, length: f64, start: f64, end: f64, res: usize) -> Vec<[f64; D]> {
+        self.ext_iter(length, linspace(start, end, res)).collect()
+    }
+
+    /// Obtain the extended curve in the range of motion.
+    fn ext_curve(&self, length: f64, res: usize) -> Vec<[f64; D]> {
+        self.angle_bound()
+            .to_value()
+            .map(|[start, end]| self.ext_curve_in(length, start, end, res))
+            .unwrap_or_default()
+    }
+
+    /// Obtain the extended curve by an input angle list.
+    fn ext_curve_by(&self, length: f64, t: &[f64]) -> Vec<[f64; D]> {
+        self.ext_iter(length, t.iter().copied()).collect()
+    }
+
+    /// Obtain the extended curve from known position.
+    fn ext_curve_from_curves(&self, length: f64, curves: &[[[f64; D]; 3]]) -> Vec<[f64; D]> {
+        curves
+            .iter()
+            .map(|pos @ [.., p5]| (p5, self.uvec(pos)))
+            .map(move |(p, v)| std::array::from_fn(|i| p[i] + length * v[i]))
+            .collect()
+    }
 }
 
 impl<N, const D: usize> PoseGen<D> for N
@@ -283,7 +340,7 @@ where
     N::De: PoseGen<D>,
     efd::U<D>: efd::EfdDim<D>,
 {
-    fn uvec(&self, pos: [[f64; D]; 5]) -> [f64; D] {
+    fn uvec(&self, pos: &[[f64; D]; 3]) -> [f64; D] {
         self.clone().denormalize().uvec(pos)
     }
 
@@ -294,8 +351,8 @@ where
         let de = self.clone().denormalize();
         let inv = de.inv();
         iter.into_iter().filter_map(move |t| {
-            let pos @ [.., p5] = de.pos_s(t, inv)?;
-            Some((p5, de.uvec(pos)))
+            let [.., p3, p4, p5] = de.pos_s(t, inv)?;
+            Some((p5, de.uvec(&[p3, p4, p5])))
         })
     }
 }
