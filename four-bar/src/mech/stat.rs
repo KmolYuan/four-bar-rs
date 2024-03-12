@@ -162,16 +162,16 @@ impl AngleBound {
                 Self::OpenC1B2([-d.acos(), d.acos()])
             }
             (false, false) => {
-                let numerator = l1 * l1 + l2 * l2;
-                let denominator = 2. * l1 * l2;
+                let tmp1 = l1 * l1 + l2 * l2;
+                let tmp2 = 2. * l1 * l2;
                 let l33 = l3 - l4;
-                let d1 = (numerator - l33 * l33) / denominator;
+                let d1 = (tmp1 - l33 * l33) / tmp2;
                 let l33 = l3 + l4;
-                let d2 = (numerator - l33 * l33) / denominator;
-                if stat.is_c1() {
-                    Self::OpenC2B2([d1.acos(), d2.acos()])
-                } else {
+                let d2 = (tmp1 - l33 * l33) / tmp2;
+                if stat.is_b1() {
                     Self::OpenC2B2([TAU - d2.acos(), TAU - d1.acos()])
+                } else {
+                    Self::OpenC2B2([d1.acos(), d2.acos()])
                 }
             }
         }
