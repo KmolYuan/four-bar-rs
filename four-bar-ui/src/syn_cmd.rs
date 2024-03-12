@@ -69,31 +69,33 @@ pub(crate) struct SynCfg {
     #[cfg_attr(not(target_arch = "wasm32"), clap(short, long))]
     pub(crate) seed: Option<u64>,
     /// Number of generation
-    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = 50))]
+    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = CFG_DEF.gen))]
     pub(crate) gen: u64,
     /// Number of population (the fetch number in atlas)
-    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = 200))]
+    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = CFG_DEF.pop))]
     pub(crate) pop: usize,
     /// Number of the points (resolution) in curve production
-    #[cfg_attr(not(target_arch = "wasm32"), clap(long, default_value_t = 180))]
+    #[cfg_attr(not(target_arch = "wasm32"), clap(long, default_value_t = CFG_DEF.res))]
     pub(crate) res: usize,
     /// Specify the mechanism on the origin and unit scale
     #[cfg_attr(not(target_arch = "wasm32"), clap(long))]
     pub(crate) on_unit: bool,
-    #[cfg_attr(not(target_arch = "wasm32"), clap(skip = syn::Mode::Closed))]
+    #[cfg_attr(not(target_arch = "wasm32"), clap(skip = CFG_DEF.mode))]
     pub(crate) mode: syn::Mode,
 }
 
+const CFG_DEF: SynCfg = SynCfg {
+    seed: None,
+    gen: 50,
+    pop: 200,
+    res: 180,
+    on_unit: false,
+    mode: syn::Mode::Closed,
+};
+
 impl Default for SynCfg {
     fn default() -> Self {
-        Self {
-            seed: None,
-            gen: 50,
-            pop: 200,
-            res: 180,
-            on_unit: false,
-            mode: syn::Mode::Closed,
-        }
+        CFG_DEF
     }
 }
 
