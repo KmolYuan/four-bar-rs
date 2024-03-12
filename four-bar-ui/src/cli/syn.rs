@@ -275,8 +275,8 @@ fn from_runtime(
     }
     let lnk_path = root.join(LNK_RON);
     match &lnk_fb {
-        syn_cmd::SolvedFb::Fb(fb, _) => write_ron(lnk_path, fb)?,
-        syn_cmd::SolvedFb::SFb(fb, _) => write_ron(lnk_path, fb)?,
+        syn_cmd::SolvedFb::P(fb, _) => write_ron(lnk_path, fb)?,
+        syn_cmd::SolvedFb::S(fb, _) => write_ron(lnk_path, fb)?,
     }
     // Log results
     let refer = refer
@@ -286,7 +286,7 @@ fn from_runtime(
     let mut log = super::logger::Logger::new(&mut log);
     log.top_title(title)?;
     match (target, &lnk_fb) {
-        (io::Curve::P(target), syn_cmd::SolvedFb::Fb(fb, atlas_fb)) if fb.is_valid() => {
+        (io::Curve::P(target), syn_cmd::SolvedFb::P(fb, atlas_fb)) if fb.is_valid() => {
             let efd_target =
                 efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
@@ -338,7 +338,7 @@ fn from_runtime(
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        (io::Curve::S(target), syn_cmd::SolvedFb::SFb(fb, atlas_fb)) if fb.is_valid() => {
+        (io::Curve::S(target), syn_cmd::SolvedFb::S(fb, atlas_fb)) if fb.is_valid() => {
             let efd_target =
                 efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);

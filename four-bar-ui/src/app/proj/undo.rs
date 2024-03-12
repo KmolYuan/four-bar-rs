@@ -62,11 +62,11 @@ macro_rules! impl_delta {
     };
 }
 
-impl_delta!(FbDelta, FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g);
-impl_delta!(MFbDelta, MFourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, e);
+impl_delta!(PDelta, FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g);
+impl_delta!(MDelta, MFourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, e);
 impl_delta!(
-    SFbDelta, SFourBar, ox.unnorm, oy.unnorm, oz.unnorm, r.unnorm, p1i.unnorm, p1j.unnorm,
-    a.unnorm, l1, l2, l3, l4, l5, g
+    SDelta, SFourBar, ox.unnorm, oy.unnorm, oz.unnorm, r.unnorm, p1i.unnorm, p1j.unnorm, a.unnorm,
+    l1, l2, l3, l4, l5, g
 );
 
 pub(crate) struct Undo<D: Delta> {

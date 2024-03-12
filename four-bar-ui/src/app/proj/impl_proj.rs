@@ -20,18 +20,18 @@ pub(crate) use hotkey;
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type")]
 pub(crate) enum Project {
-    Fb(FbProj),
-    MFb(MFbProj),
-    SFb(SFbProj),
+    P(FbProj),
+    M(MFbProj),
+    S(SFbProj),
 }
 
 macro_rules! impl_method {
     ($(fn $method:ident($self:ident: $self_ty:ty $(, $v:ident: $ty:ty)*) $(-> $ret:ty)?;)+) => {$(
         pub(crate) fn $method($self: $self_ty $(, $v: $ty)*) $(-> $ret)? {
             match $self {
-                Self::Fb(fb) => fb.$method($($v),*),
-                Self::MFb(fb) => fb.$method($($v),*),
-                Self::SFb(fb) => fb.$method($($v),*),
+                Self::P(fb) => fb.$method($($v),*),
+                Self::M(fb) => fb.$method($($v),*),
+                Self::S(fb) => fb.$method($($v),*),
             }
         }
     )+};
@@ -40,9 +40,9 @@ macro_rules! impl_method {
 impl Project {
     pub(crate) fn new(path: Option<PathBuf>, fb: io::Fb) -> Self {
         match fb {
-            io::Fb::P(fb) => Self::Fb(FbProj::new(path, fb)),
-            io::Fb::M(fb) => Self::MFb(MFbProj::new(path, fb)),
-            io::Fb::S(fb) => Self::SFb(SFbProj::new(path, fb)),
+            io::Fb::P(fb) => Self::P(FbProj::new(path, fb)),
+            io::Fb::M(fb) => Self::M(MFbProj::new(path, fb)),
+            io::Fb::S(fb) => Self::S(SFbProj::new(path, fb)),
         }
     }
 
@@ -56,32 +56,32 @@ impl Project {
 
     pub(crate) fn fb_state(&self) -> (f64, io::Fb) {
         match self {
-            Self::Fb(proj) => (proj.angle, io::Fb::P(proj.fb.clone())),
-            Self::MFb(proj) => (proj.angle, io::Fb::M(proj.fb.clone())),
-            Self::SFb(proj) => (proj.angle, io::Fb::S(proj.fb.clone())),
+            Self::P(proj) => (proj.angle, io::Fb::P(proj.fb.clone())),
+            Self::M(proj) => (proj.angle, io::Fb::M(proj.fb.clone())),
+            Self::S(proj) => (proj.angle, io::Fb::S(proj.fb.clone())),
         }
     }
 
     pub(crate) fn curve(&self) -> io::Curve {
         match self {
-            Self::Fb(proj) => io::Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
-            Self::MFb(proj) => io::Curve::P(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
-            Self::SFb(proj) => io::Curve::S(proj.cache.curves.iter().map(|[.., c]| *c).collect()),
+            Self::P(proj) => io::Curve::P(proj.curve()),
+            Self::M(proj) => io::Curve::P(proj.curve()),
+            Self::S(proj) => io::Curve::S(proj.curve()),
         }
     }
 
     pub(crate) fn get_sphere(&self) -> Option<[f64; 4]> {
         match self {
-            Self::SFb(proj) => Some(proj.fb.scr()),
+            Self::S(proj) => Some(proj.fb.scr()),
             _ => None,
         }
     }
 
     pub(crate) fn proj_name(&self) -> String {
         let (prefix, mut name) = match self {
-            Self::Fb(proj) => ("[P] ", proj.name()),
-            Self::MFb(proj) => ("[M] ", proj.name()),
-            Self::SFb(proj) => ("[S] ", proj.name()),
+            Self::P(proj) => ("[P] ", proj.name()),
+            Self::M(proj) => ("[M] ", proj.name()),
+            Self::S(proj) => ("[S] ", proj.name()),
         };
         name.insert_str(0, prefix);
         name
@@ -392,6 +392,10 @@ where
 
     fn path(&self) -> Option<&Path> {
         self.path.as_deref()
+    }
+
+    fn curve(&self) -> Vec<[f64; D]> {
+        self.cache.curves.iter().map(|[.., c]| *c).collect()
     }
 
     fn is_unsaved(&self) -> bool {

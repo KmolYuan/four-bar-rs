@@ -1,5 +1,5 @@
 use crate::io;
-use four_bar::*;
+use four_bar::{mh::utility::SolverBuilder, *};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -47,7 +47,7 @@ impl SynAlg {
         fn tlbo, Tlbo, "TLBO", "Teaching Learning Based Optimization", "https://doi.org/10.1016/j.cad.2010.12.015"
     }
 
-    pub(crate) fn build_solver<F>(self, f: F) -> mh::utility::SolverBuilder<'static, F>
+    pub(crate) fn build_solver<F>(self, f: F) -> SolverBuilder<'static, F>
     where
         F: mh::ObjFunc,
     {
@@ -108,7 +108,7 @@ where
     syn::PathSyn<M, N, D>: mh::ObjFunc,
     efd::U<D>: efd::EfdDim<D>,
 {
-    s: mh::utility::SolverBuilder<'a, syn::PathSyn<M, N, D>>,
+    s: SolverBuilder<'a, syn::PathSyn<M, N, D>>,
     atlas_fb: Option<(f64, M)>,
 }
 
@@ -192,14 +192,14 @@ impl<'a> Solver<'a> {
             }};
         }
         match self {
-            Self::FbSyn(SynData { s, atlas_fb }) => impl_solve!(Fb, s, atlas_fb),
-            Self::SFbSyn(SynData { s, atlas_fb }) => impl_solve!(SFb, s, atlas_fb),
+            Self::FbSyn(SynData { s, atlas_fb }) => impl_solve!(P, s, atlas_fb),
+            Self::SFbSyn(SynData { s, atlas_fb }) => impl_solve!(S, s, atlas_fb),
         }
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) enum SolvedFb {
-    Fb(FourBar, Option<(f64, NormFourBar)>),
-    SFb(SFourBar, Option<(f64, SNormFourBar)>),
+    P(FourBar, Option<(f64, NormFourBar)>),
+    S(SFourBar, Option<(f64, SNormFourBar)>),
 }
