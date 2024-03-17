@@ -119,8 +119,24 @@ impl Mode {
     }
 }
 
-fn infeasible<P: Default>() -> mh::Product<f64, P> {
-    mh::Product::new(1e2, P::default())
+pub(crate) trait Infeasible {
+    fn infeasible() -> Self;
+}
+
+impl Infeasible for f64 {
+    fn infeasible() -> Self {
+        1e2
+    }
+}
+
+impl<F: Infeasible, P: Default> Infeasible for mh::Product<F, P> {
+    fn infeasible() -> Self {
+        Self::new(infeasible(), P::default())
+    }
+}
+
+pub(crate) fn infeasible<T: Infeasible>() -> T {
+    Infeasible::infeasible()
 }
 
 const fn slice_to_array<const N: usize>(slice: &[f64]) -> [f64; N] {
@@ -133,18 +149,19 @@ const fn slice_to_array<const N: usize>(slice: &[f64]) -> [f64; N] {
     out
 }
 
-pub(crate) fn impl_fitness<M, S, F1, F2, const N: usize, const D: usize>(
+pub(crate) fn impl_fitness<M, S, Fit, F1, F2, const N: usize, const D: usize>(
     mode: Mode,
     xs: &[f64],
     get_series: F1,
     get_err: F2,
-) -> mh::Product<f64, M::De>
+) -> mh::Product<Fit, M::De>
 where
     M: SynBound<N> + mech::Normalized<D>,
     M::De: Default + Clone + Sync + Send + 'static,
     S: Send,
+    Fit: Infeasible + mh::Fitness,
     F1: Fn(&M, f64, f64) -> Option<S> + Sync + Send,
-    F2: Fn((S, &M)) -> mh::Product<f64, M::De> + Sync + Send,
+    F2: Fn((S, &M)) -> mh::Product<Fit, M::De> + Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
     #[cfg(feature = "rayon")]

@@ -1,3 +1,5 @@
+use efd::Distance;
+
 use super::*;
 
 /// Motion generation task of planar four-bar linkage.
@@ -60,6 +62,40 @@ where
     }
 }
 
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct MOFit {
+    pub curve: f64,
+    pub pose: f64,
+    pub center: f64,
+    pub unit: f64,
+}
+
+impl mh::Fitness for MOFit {
+    type Best<T: mh::Fitness> = mh::pareto::Pareto<T>;
+    type Eval = f64;
+    fn is_dominated(&self, rhs: &Self) -> bool {
+        self.curve <= rhs.curve
+            && self.pose <= rhs.pose
+            && self.center <= rhs.center
+            && self.unit <= rhs.unit
+    }
+    fn eval(&self) -> Self::Eval {
+        self.curve + self.pose + self.center + self.unit
+    }
+}
+
+impl Infeasible for MOFit {
+    fn infeasible() -> Self {
+        Self {
+            curve: infeasible(),
+            pose: infeasible(),
+            center: infeasible(),
+            unit: infeasible(),
+        }
+    }
+}
+
 impl<M, const N: usize, const D: usize> mh::ObjFunc for MotionSyn<M, N, D>
 where
     M: SynBound<N> + mech::Normalized<D> + mech::PoseGen<D>,
@@ -67,7 +103,7 @@ where
     efd::Efd<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
-    type Fitness = mh::Product<f64, M::De>;
+    type Fitness = mh::Product<MOFit, M::De>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
         let get_series = |fb: &M, start, end| {
@@ -78,7 +114,17 @@ where
             let efd = efd::PosedEfd::from_uvec_harmonic(c, v, self.harmonic());
             let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(efd.err(&self.tar).max(self.unit_err(&geo)), fb)
+            let err = MOFit {
+                curve: efd.as_curve().err(self.tar.as_curve()),
+                pose: efd.as_pose().err(self.tar.as_pose()),
+                center: {
+                    let me = efd.as_pose().as_geo().trans();
+                    let tar = self.tar.as_pose().as_geo().trans();
+                    me.l2_err(&tar)
+                },
+                unit: self.unit_err(&geo),
+            };
+            mh::Product::new(err, fb)
         })
     }
 }

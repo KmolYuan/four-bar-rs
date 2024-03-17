@@ -60,7 +60,7 @@ where
     efd::Rot<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
-    type Fitness = mh::Product<f64, M::De>;
+    type Fitness = mh::Product<motion::MOFit, M::De>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
         let get_series = |fb: &M, start, end| {
@@ -71,7 +71,18 @@ where
             let efd = efd::PosedEfd::from_uvec(c, v);
             let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(efd.err_sig(&self.tar).max(self.unit_err(&geo)), fb)
+            use efd::Distance as _;
+            let curve = zip(
+                efd.as_curve().recon_norm_by(self.tar.as_t()),
+                &self.tar.curve,
+            )
+            .map(|(a, b)| a.l2_err(b))
+            .fold(0., f64::max);
+            let pose = zip(efd.as_pose().recon_by(self.tar.as_t()), &self.tar.vectors)
+                .map(|(a, b)| a.l2_err(b))
+                .fold(0., f64::max);
+            let err = motion::MOFit { curve, pose, center: 0., unit: self.unit_err(&geo) };
+            mh::Product::new(err, fb)
         })
     }
 }
