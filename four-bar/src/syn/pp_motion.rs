@@ -77,10 +77,10 @@ where
                 &self.tar.curve,
             )
             .map(|(a, b)| a.l2_err(b))
-            .fold(0., f64::max);
+            .fold(0., |a, b| a + b);
             let pose = zip(efd.as_pose().recon_by(self.tar.as_t()), &self.tar.vectors)
                 .map(|(a, b)| a.l2_err(b))
-                .fold(0., f64::max);
+                .fold(0., |a, b| a + b);
             let err = motion::MOFit { curve, pose, center: 0., unit: self.unit_err(&geo) };
             mh::Product::new(err, fb)
         })
