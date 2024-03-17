@@ -11,8 +11,7 @@
 //! let s = mh::Solver::build(mh::Rga::default(), func)
 //!     .task(|ctx| ctx.gen == gen)
 //!     .pop_num(pop)
-//!     .solve()
-//!     .unwrap();
+//!     .solve();
 //! ```
 pub use self::{
     motion::{MFbSyn, MotionSyn},

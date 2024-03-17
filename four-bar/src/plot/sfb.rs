@@ -23,10 +23,10 @@ impl Figure<'_, '_> {
     /// Please see [`Opt`] for more options.
     ///
     /// ```
-    /// use four_bar::{plot3d::*, SFourBar};
+    /// use four_bar::{plot::*, SFourBar};
     /// let fb = SFourBar::example();
     /// let mut buf = String::new();
-    /// Figure::new_ref(Some(&fb))
+    /// sfb::Figure::new_ref(Some(&fb))
     ///     .axis(false)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
     ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))
