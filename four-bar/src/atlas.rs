@@ -1,10 +1,8 @@
 //! Create a atlas database for four-bar linkages.
 pub use self::distr::{Code, Distr};
 use super::{NormFourBar, SNormFourBar};
-use mh::{
-    random::{Rng, SeedOption},
-    utility::prelude::*,
-};
+use mh::random::{Rng, SeedOption};
+use ndarray::*;
 pub use ndarray_npy::{ReadNpzError, WriteNpzError};
 use std::{marker::PhantomData, sync::Mutex};
 

@@ -119,7 +119,7 @@ impl Mode {
     }
 }
 
-fn infeasible<P: Default>() -> mh::Product<P, f64> {
+fn infeasible<P: Default>() -> mh::Product<f64, P> {
     mh::Product::new(1e2, P::default())
 }
 
@@ -138,13 +138,13 @@ pub(crate) fn impl_fitness<M, S, F1, F2, const N: usize, const D: usize>(
     xs: &[f64],
     get_series: F1,
     get_err: F2,
-) -> mh::Product<M::De, f64>
+) -> mh::Product<f64, M::De>
 where
     M: SynBound<N> + mech::Normalized<D>,
     M::De: Default + Clone + Sync + Send + 'static,
     S: Send,
     F1: Fn(&M, f64, f64) -> Option<S> + Sync + Send,
-    F2: Fn((S, &M)) -> mh::Product<M::De, f64> + Sync + Send,
+    F2: Fn((S, &M)) -> mh::Product<f64, M::De> + Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
     #[cfg(feature = "rayon")]
@@ -162,11 +162,12 @@ where
         iter.filter_map(move |fb| Some((gen_series(fb, t1, t2)?, fb)))
             .map(&get_err)
     };
+    use mh::Fitness as _;
     match mode {
         Mode::Closed | Mode::Open => bound
             .check_min()
             .to_value()
-            .and_then(|t| f(t).min_by(|a, b| a.partial_cmp(b).unwrap()))
+            .and_then(|t| f(t).reduce(|a, b| if a.is_dominated(&b) { a } else { b }))
             .unwrap_or_else(infeasible),
         Mode::Partial if !bound.is_valid() => infeasible(),
         Mode::Partial => {
@@ -177,7 +178,7 @@ where
             let iter = bound.into_iter();
             iter.filter_map(|b| b.check_min().to_value())
                 .flat_map(f)
-                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .reduce(|a, b| if a.is_dominated(&b) { a } else { b })
                 .unwrap_or_else(infeasible)
         }
     }

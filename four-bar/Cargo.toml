@@ -15,19 +15,19 @@ default = []
 plot = ["plotters", "plotters-backend", "fmtastic"]
 serde = ["dep:serde", "metaheuristics-nature/serde"]
 clap = ["dep:clap", "metaheuristics-nature/clap"]
-rayon = ["metaheuristics-nature/rayon"]
-atlas = ["ndarray-npy"]
+atlas = ["ndarray", "ndarray-npy"]
 csv = ["dep:csv", "serde"]
 
 [dependencies]
+ndarray = { version = "0.15", features = ["rayon"], optional = true }
+ndarray-npy = { version = "0.8", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 plotters-backend = { version = "0.3", optional = true }
-ndarray-npy = { version = "0.8", optional = true }
 fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
-metaheuristics-nature = "9.2.2"
-efd = "9"
+metaheuristics-nature = { git = "https://github.com/KmolYuan/metaheuristics-nature-rs.git" }
+efd = { git = "https://github.com/KmolYuan/efd-rs" }
 
 [dependencies.plotters]
 version = "0.3"

@@ -1,5 +1,5 @@
 use crate::io;
-use four_bar::{mh::utility::SolverBuilder, *};
+use four_bar::{mh::SolverBuilder, *};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -143,27 +143,25 @@ impl<'a> Solver<'a> {
                     .build_solver(syn)
                     .seed(seed)
                     .task(move |ctx| !stop() && ctx.gen >= gen)
-                    .callback(move |ctx| callback(ctx.best_f.fitness(), ctx.gen));
+                    .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
                 let mut atlas_fb = None;
                 if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
                     .then(|| $atlas.fetch_raw(&$target, mode.is_target_open(), pop))
                     .filter(|candi| !candi.is_empty())
                 {
                     use four_bar::mech::{IntoVectorized as _, Normalized as _};
-                    use mh::ndarray::Array2;
                     atlas_fb = Some(candi[0].clone());
                     let pop = candi.len();
                     s = s.pop_num(pop);
-                    let fitness = candi
+                    let pool_f = candi
                         .iter()
                         .map(|(f, fb)| mh::Product::new(*f, fb.clone().denormalize()))
                         .collect();
                     let pool = candi
                         .into_iter()
-                        .flat_map(|(_, fb)| fb.into_vectorized().0)
-                        .collect::<Vec<_>>();
-                    let pool = Array2::from_shape_vec((pop, pool.len() / pop), pool).unwrap();
-                    s = s.pool_and_fitness(pool, fitness);
+                        .map(|(_, fb)| fb.into_vectorized().0)
+                        .collect();
+                    s = s.init_pool(mh::Pool::Ready { pool, pool_f });
                 } else {
                     s = s.pop_num(pop);
                 }
@@ -176,18 +174,18 @@ impl<'a> Solver<'a> {
         }
     }
 
-    pub(crate) fn solve(self) -> Result<io::Fb, mh::ndarray::ShapeError> {
+    pub(crate) fn solve(self) -> io::Fb {
         match self {
-            Self::FbSyn(SynData { s, .. }) => Ok(io::Fb::P(s.solve()?.into_result())),
-            Self::SFbSyn(SynData { s, .. }) => Ok(io::Fb::S(s.solve()?.into_result())),
+            Self::FbSyn(SynData { s, .. }) => io::Fb::P(s.solve().into_result()),
+            Self::SFbSyn(SynData { s, .. }) => io::Fb::S(s.solve().into_result()),
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn solve_verbose(self) -> Result<(f64, usize, SolvedFb), mh::ndarray::ShapeError> {
+    pub(crate) fn solve_verbose(self) -> Result<(f64, usize, SolvedFb), ndarray::ShapeError> {
         macro_rules! impl_solve {
             ($syn:ident, $s:ident, $atlas_fb:ident) => {{
-                let s = $s.solve()?;
+                let s = $s.solve();
                 let h = s.func().harmonic();
                 let (err, fb) = s.into_err_result();
                 Ok((err, h, SolvedFb::$syn(fb, $atlas_fb)))

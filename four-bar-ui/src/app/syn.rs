@@ -496,8 +496,7 @@ impl Synthesis {
                 task.conv.push(best_f);
                 task.time = t0.elapsed();
             });
-            s.solve()
-                .alert_then("Initialization", |fb| queue.push(None, fb));
+            queue.push(None, s.solve());
         };
         #[cfg(not(target_arch = "wasm32"))]
         mh::rayon::spawn(f);

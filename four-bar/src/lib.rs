@@ -17,6 +17,8 @@ pub use crate::mech::{FourBar, MFourBar, MNormFourBar, NormFourBar, SFourBar, SN
 pub use efd;
 #[doc(no_inline)]
 pub extern crate metaheuristics_nature as mh;
+#[cfg(feature = "atlas")]
+pub use ndarray;
 
 #[cfg(feature = "atlas")]
 pub mod atlas;

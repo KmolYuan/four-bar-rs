@@ -60,7 +60,7 @@ where
     efd::Rot<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
-    type Fitness = mh::Product<M::De, f64>;
+    type Fitness = mh::Product<f64, M::De>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Fitness {
         let get_series = |fb: &M, start, end| {

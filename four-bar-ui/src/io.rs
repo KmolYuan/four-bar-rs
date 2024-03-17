@@ -440,7 +440,7 @@ pub(crate) struct AtlasPool {
 }
 
 impl AtlasPool {
-    pub(crate) fn merge_inplace(&mut self, atlas: Atlas) -> Result<(), mh::ndarray::ShapeError> {
+    pub(crate) fn merge_inplace(&mut self, atlas: Atlas) -> Result<(), ndarray::ShapeError> {
         match atlas {
             Atlas::P(atlas) => self.fb.merge_inplace(&atlas),
             Atlas::S(atlas) => self.sfb.merge_inplace(&atlas),
