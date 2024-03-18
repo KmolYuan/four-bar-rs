@@ -44,9 +44,9 @@ where
     efd::Rot<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
-    type Fitness = mh::Product<f64, M::De>;
+    type Ys = mh::Product<f64, M::De>;
 
-    fn fitness(&self, xs: &[f64]) -> Self::Fitness {
+    fn fitness(&self, xs: &[f64]) -> Self::Ys {
         let is_open = self.mode.is_target_open();
         let get_series = |fb: &M, start, end| {
             let curve = fb.curve_in(start, end, self.res);

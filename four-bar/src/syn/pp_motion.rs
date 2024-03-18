@@ -60,9 +60,9 @@ where
     efd::Rot<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
-    type Fitness = mh::Product<motion::MOFit, M::De>;
+    type Ys = mh::Product<motion::MOFit, M::De>;
 
-    fn fitness(&self, xs: &[f64]) -> Self::Fitness {
+    fn fitness(&self, xs: &[f64]) -> Self::Ys {
         let get_series = |fb: &M, start, end| {
             let (curve, pose) = fb.pose_in(start, end, self.res);
             (curve.len() > 2).then_some((curve, pose))

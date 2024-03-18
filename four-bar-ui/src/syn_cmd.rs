@@ -153,7 +153,7 @@ impl<'a> Solver<'a> {
                     atlas_fb = Some(candi[0].clone());
                     let pop = candi.len();
                     s = s.pop_num(pop);
-                    let pool_f = candi
+                    let pool_y = candi
                         .iter()
                         .map(|(f, fb)| mh::Product::new(*f, fb.clone().denormalize()))
                         .collect();
@@ -161,7 +161,7 @@ impl<'a> Solver<'a> {
                         .into_iter()
                         .map(|(_, fb)| fb.into_vectorized().0)
                         .collect();
-                    s = s.init_pool(mh::Pool::Ready { pool, pool_f });
+                    s = s.init_pool(mh::Pool::Ready { pool, pool_y });
                 } else {
                     s = s.pop_num(pop);
                 }
