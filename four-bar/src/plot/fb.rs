@@ -20,29 +20,114 @@ where
     Canvas<B>: From<R>,
     H: AsRef<[f64]>,
 {
+    history_pareto(root, history, [])
+}
+
+/// Plot the synthesis history and the size of the Pareto front.
+pub fn history_pareto<B, R, H, P>(root: R, history: H, pareto: P) -> PResult<(), B>
+where
+    B: DrawingBackend,
+    Canvas<B>: From<R>,
+    H: AsRef<[f64]>,
+    P: AsRef<[usize]>,
+{
     let font = ("Times New Roman", 24).into_font().color(&BLACK);
     let history = history.as_ref();
+    let pareto = pareto.as_ref();
     let root = Canvas::from(root);
     root.fill(&WHITE)?;
     let max_fitness = history
         .iter()
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
-    let mut chart = ChartBuilder::on(&root)
+    let mut chart = ChartBuilder::on(&root);
+    chart
         .set_label_area_size(LabelAreaPosition::Left, (10).percent())
-        .set_label_area_size(LabelAreaPosition::Bottom, (10).percent())
+        .set_label_area_size(LabelAreaPosition::Bottom, (10).percent());
+    if !pareto.is_empty() {
+        chart.right_y_label_area_size((8).percent());
+    }
+    let mut chart = chart
         .margin((4).percent())
         .build_cartesian_2d(0..history.len() - 1, 0.0..*max_fitness)?;
+    macro_rules! impl_history {
+        ($chart:ident) => {
+            $chart
+                .configure_mesh()
+                .disable_x_mesh()
+                .disable_y_mesh()
+                .x_desc("Generation")
+                .x_label_style(font.clone())
+                .y_desc("Fitness")
+                .y_label_style(font.clone())
+                .draw()?;
+            $chart.draw_series(LineSeries::new(history.iter().copied().enumerate(), BLUE))?;
+        };
+    }
+    if pareto.is_empty() {
+        impl_history!(chart);
+    } else {
+        let max_pareto = pareto.iter().max().unwrap();
+        let mut chart = chart.set_secondary_coord(0..history.len() - 1, 0..max_pareto + 1);
+        impl_history!(chart);
+        chart
+            .configure_secondary_axes()
+            .label_style(font.clone())
+            .y_desc("Pareto Size")
+            .axis_desc_style(font)
+            .draw()?;
+        chart.draw_secondary_series(LineSeries::new(pareto.iter().copied().enumerate(), RED))?;
+    }
+    Ok(())
+}
+
+/// Plot the Pareto front of the synthesis result.
+pub fn pareto<B, R, P>(root: R, pareto: P) -> PResult<(), B>
+where
+    B: DrawingBackend,
+    Canvas<B>: From<R>,
+    P: AsRef<[crate::syn::MOFit]>,
+{
+    let font = ("Times New Roman", 24).into_font().color(&BLACK);
+    let pareto = pareto.as_ref();
+    let root = Canvas::from(root);
+    root.fill(&WHITE)?;
+    let [x_max, y_max, z_max] = pareto.iter().fold([0.; 3], |edge, ys| {
+        [
+            ys.curve.max(edge[0]),
+            ys.pose.max(edge[1]),
+            ys.center.max(edge[2]),
+        ]
+    });
+    sfb::xyz_label(&root, 24., ["y₃", "y₂", "y₁"])?;
+    let mut chart = ChartBuilder::on(&root)
+        .set_label_area_size(LabelAreaPosition::Left, (8).percent())
+        .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
+        .margin((2).percent())
+        .margin_left((15).percent())
+        .build_cartesian_3d(0.0..x_max, 0.0..y_max, 0.0..z_max)?;
+    chart.with_projection(|mut pb| {
+        pb.yaw = -std::f64::consts::FRAC_PI_4 * 3.;
+        pb.scale = 0.9;
+        pb.into_matrix()
+    });
     chart
-        .configure_mesh()
-        .disable_x_mesh()
-        .disable_y_mesh()
-        .x_desc("Generation")
-        .x_label_style(font.clone())
-        .y_desc("Fitness")
-        .y_label_style(font.clone())
+        .configure_axes()
+        .max_light_lines(0)
+        .light_grid_style(sfb::LIGHTGRAY)
+        .label_style(font)
+        .axis_panel_style(TRANSPARENT)
+        .x_labels(4)
+        .z_labels(4)
+        .x_formatter(&formatter)
+        .y_formatter(&formatter)
+        .z_formatter(&formatter)
         .draw()?;
-    chart.draw_series(LineSeries::new(history.iter().copied().enumerate(), BLUE))?;
+    chart.draw_series(
+        pareto
+            .iter()
+            .map(|ys| Circle::new((ys.curve, ys.pose, ys.center), 3, RED)),
+    )?;
     Ok(())
 }
 

@@ -1,5 +1,3 @@
-use efd::Distance;
-
 use super::*;
 
 /// Motion generation task of planar four-bar linkage.
@@ -118,6 +116,7 @@ where
                 curve: efd.as_curve().err(self.tar.as_curve()),
                 pose: efd.as_pose().err(self.tar.as_pose()),
                 center: {
+                    use efd::Distance as _;
                     let me = efd.as_pose().as_geo().trans();
                     let tar = self.tar.as_pose().as_geo().trans();
                     me.l2_err(&tar)

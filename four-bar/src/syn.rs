@@ -14,7 +14,7 @@
 //!     .solve();
 //! ```
 pub use self::{
-    motion::{MFbSyn, MotionSyn},
+    motion::{MFbSyn, MOFit, MotionSyn},
     path::{FbSyn, PathSyn, SFbSyn},
     pp_motion::{MFbPPSyn, PPMotionSyn},
     pp_path::{FbPPSyn, PPPathSyn, SFbPPSyn},

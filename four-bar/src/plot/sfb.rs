@@ -4,8 +4,28 @@ pub use super::*;
 use plotters::style::SizeDesc as _;
 use plotters_backend::text_anchor::{HPos, Pos, VPos};
 
-const LIGHTGRAY: RGBAColor = RGBAColor(150, 150, 150, 0.4);
+pub(crate) const LIGHTGRAY: RGBAColor = RGBAColor(150, 150, 150, 0.4);
 const BACKLINK: RGBColor = plotters::style::full_palette::GREY_600;
+
+/// Draw 3D axis descriptions.
+pub fn xyz_label<B>(root: &Canvas<B>, font: f64, labels: [&'static str; 3]) -> PResult<(), B>
+where
+    B: DrawingBackend,
+{
+    let (tw, th) = root.dim_in_pixel();
+    let tick_y = (5).percent().in_pixels(root);
+    let tick_xz = (8).percent().in_pixels(root);
+    let style = ("Arial", font * 1.15)
+        .into_font()
+        .color(&BLACK)
+        .pos(Pos::new(HPos::Center, VPos::Center));
+    let x_shift = tw as i32 / 4;
+    let buttom_shift = th as i32 - tick_xz;
+    root.draw_text(labels[0], &style, (tick_y + x_shift, buttom_shift))?;
+    root.draw_text(labels[1], &style, (tick_y, th as i32 / 2))?;
+    root.draw_text(labels[2], &style, (tick_y + x_shift * 3, buttom_shift))?;
+    Ok(())
+}
 
 /// Drawing option of spherical four-bar linkage and its input angle.
 ///
@@ -40,21 +60,8 @@ impl Figure<'_, '_> {
         self.check_empty::<B>()?;
         let root = Canvas::from(root);
         root.fill(&WHITE)?;
-        {
-            // Draw axis description
-            let (tw, th) = root.dim_in_pixel();
-            let tick_y = (5).percent().in_pixels(&root);
-            let tick_xz = (8).percent().in_pixels(&root);
-            let style = ("Arial", self.font * 1.15)
-                .into_font()
-                .color(&BLACK)
-                .pos(Pos::new(HPos::Center, VPos::Center));
-            let x_shift = tw as i32 / 4;
-            let buttom_shift = th as i32 - tick_xz;
-            root.draw_text("x", &style, (tick_y + x_shift, buttom_shift))?;
-            root.draw_text("y", &style, (tick_y, th as i32 / 2))?;
-            root.draw_text("z", &style, (tick_y + x_shift * 3, buttom_shift))?;
-        }
+        // Draw axis description
+        xyz_label(&root, self.font, ["x", "y", "z"])?;
         let (stroke, dot_size) = self.get_dot_size();
         let sphere = self.get_sphere_center_radius();
         let [x_spec, y_spec, z_spec] = if let Some((sc, r)) = &sphere {

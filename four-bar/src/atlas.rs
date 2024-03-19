@@ -1,7 +1,10 @@
 //! Create a atlas database for four-bar linkages.
 pub use self::distr::{Code, Distr};
 use super::{NormFourBar, SNormFourBar};
-use mh::random::{Rng, SeedOption};
+use mh::{
+    random::{Rng, SeedOpt},
+    rayon::prelude::*,
+};
 use ndarray::*;
 pub use ndarray_npy::{ReadNpzError, WriteNpzError};
 use std::{marker::PhantomData, sync::Mutex};
@@ -57,7 +60,7 @@ pub struct Cfg {
     /// Harmonic
     pub harmonic: usize,
     /// Random seed
-    pub seed: SeedOption,
+    pub seed: SeedOpt,
 }
 
 impl Default for Cfg {
@@ -74,7 +77,7 @@ impl Cfg {
             size: 102400,
             res: 720,
             harmonic: 20,
-            seed: SeedOption::None,
+            seed: SeedOpt::None,
         }
     }
 
@@ -88,7 +91,7 @@ impl Cfg {
         /// Harmonic
         fn harmonic(usize)
         /// Random seed
-        fn seed(SeedOption)
+        fn seed(SeedOpt)
     }
 }
 
@@ -148,18 +151,15 @@ where
         [f64; D]: Sync + Send,
     {
         let Cfg { is_open, size, res, harmonic, seed } = cfg;
-        let rng = Rng::new(seed);
+        let mut rng = Rng::new(seed);
         let fb_stack = Mutex::new(Vec::with_capacity(size));
         let stat_stack = Mutex::new(Vec::with_capacity(size));
         let efd_stack = Mutex::new(Vec::with_capacity(size));
         loop {
             let len = efd_stack.lock().unwrap().len();
             let n = (size - len) / 2;
-            #[cfg(feature = "rayon")]
             let iter = rng.stream(n).into_par_iter();
-            #[cfg(not(feature = "rayon"))]
-            let iter = rng.stream(n).into_iter();
-            iter.flat_map(|rng| rng.sample(Distr::<M, N>::new()))
+            iter.flat_map(|mut rng| rng.sample(Distr::<M, N>::new()))
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
                 .filter(|(c, _)| c.len() > 1)
                 .for_each(|(curve, fb)| {
