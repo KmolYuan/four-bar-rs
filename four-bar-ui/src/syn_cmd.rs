@@ -1,5 +1,5 @@
 use crate::io;
-use four_bar::{mh::SolverBuilder, *};
+use four_bar::{mh::SolverBox, *};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -47,16 +47,13 @@ impl SynAlg {
         fn tlbo, Tlbo, "TLBO", "Teaching Learning Based Optimization", "https://doi.org/10.1016/j.cad.2010.12.015"
     }
 
-    pub(crate) fn build_solver<F>(self, f: F) -> SolverBuilder<'static, F>
-    where
-        F: mh::ObjFunc,
-    {
+    pub(crate) fn build_solver<F: mh::ObjFunc>(self, f: F) -> SolverBox<'static, F> {
         match self {
-            Self::De(s) => mh::Solver::build(s, f),
-            Self::Fa(s) => mh::Solver::build(s, f),
-            Self::Pso(s) => mh::Solver::build(s, f),
-            Self::Rga(s) => mh::Solver::build(s, f),
-            Self::Tlbo(s) => mh::Solver::build(s, f),
+            Self::De(s) => mh::Solver::build_boxed(s, f),
+            Self::Fa(s) => mh::Solver::build_boxed(s, f),
+            Self::Pso(s) => mh::Solver::build_boxed(s, f),
+            Self::Rga(s) => mh::Solver::build_boxed(s, f),
+            Self::Tlbo(s) => mh::Solver::build_boxed(s, f),
         }
     }
 }
@@ -110,7 +107,7 @@ where
     syn::PathSyn<M, N, D>: mh::ObjFunc,
     efd::U<D>: efd::EfdDim<D>,
 {
-    s: SolverBuilder<'a, syn::PathSyn<M, N, D>>,
+    s: SolverBox<'a, syn::PathSyn<M, N, D>>,
     atlas_fb: Option<(f64, M)>,
 }
 
@@ -155,7 +152,7 @@ impl<'a> Solver<'a> {
                     s = s.pop_num(pop);
                     let pool_y = candi
                         .iter()
-                        .map(|(f, fb)| mh::Product::new(*f, fb.clone().denormalize()))
+                        .map(|(f, fb)| mh::WithProduct::new(*f, fb.clone().denormalize()))
                         .collect();
                     let pool = candi
                         .into_iter()

@@ -13,8 +13,9 @@ categories.workspace = true
 [features]
 default = []
 plot = ["plotters", "plotters-backend", "fmtastic"]
-serde = ["dep:serde", "metaheuristics-nature/serde"]
-clap = ["dep:clap", "metaheuristics-nature/clap"]
+serde = ["dep:serde", "mh/serde"]
+clap = ["dep:clap", "mh/clap"]
+rayon = ["mh/rayon"]
 atlas = ["ndarray", "ndarray-npy"]
 csv = ["dep:csv", "serde"]
 
@@ -26,7 +27,7 @@ plotters-backend = { version = "0.3", optional = true }
 fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
-metaheuristics-nature = { git = "https://github.com/KmolYuan/metaheuristics-nature-rs.git" }
+mh = { package = "metaheuristics-nature", git = "https://github.com/KmolYuan/metaheuristics-nature-rs.git" }
 efd = { git = "https://github.com/KmolYuan/efd-rs" }
 
 [dependencies.plotters]

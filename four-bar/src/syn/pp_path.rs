@@ -44,7 +44,7 @@ where
     efd::Rot<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
-    type Ys = mh::Product<f64, M::De>;
+    type Ys = mh::WithProduct<f64, M::De>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Ys {
         let is_open = self.mode.is_target_open();
@@ -56,7 +56,7 @@ where
             let efd = efd::Efd::from_curve(c, is_open);
             let geo = efd.as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
-            mh::Product::new(efd.err_sig(&self.tar).max(self.unit_err(&geo)), fb)
+            mh::WithProduct::new(efd.err_sig(&self.tar).max(self.unit_err(&geo)), fb)
         })
     }
 }

@@ -101,7 +101,7 @@ where
     efd::Efd<D>: Sync + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
-    type Ys = mh::Product<MOFit, M::De>;
+    type Ys = mh::WithProduct<MOFit, M::De>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Ys {
         let get_series = |fb: &M, start, end| {
@@ -123,7 +123,7 @@ where
                 },
                 unit: self.unit_err(&geo),
             };
-            mh::Product::new(err, fb)
+            mh::WithProduct::new(err, fb)
         })
     }
 }

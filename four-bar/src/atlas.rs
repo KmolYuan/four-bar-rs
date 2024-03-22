@@ -1,10 +1,9 @@
 //! Create a atlas database for four-bar linkages.
 pub use self::distr::{Code, Distr};
 use super::{NormFourBar, SNormFourBar};
-use mh::{
-    random::{Rng, SeedOpt},
-    rayon::prelude::*,
-};
+use mh::random::{Rng, SeedOpt};
+#[cfg(feature = "rayon")]
+use mh::rayon::prelude::*;
 use ndarray::*;
 pub use ndarray_npy::{ReadNpzError, WriteNpzError};
 use std::{marker::PhantomData, sync::Mutex};
@@ -77,7 +76,7 @@ impl Cfg {
             size: 102400,
             res: 720,
             harmonic: 20,
-            seed: SeedOpt::None,
+            seed: SeedOpt::Entropy,
         }
     }
 
@@ -158,6 +157,9 @@ where
         loop {
             let len = efd_stack.lock().unwrap().len();
             let n = (size - len) / 2;
+            #[cfg(not(feature = "rayon"))]
+            let iter = rng.stream(n).into_iter();
+            #[cfg(feature = "rayon")]
             let iter = rng.stream(n).into_par_iter();
             iter.flat_map(|mut rng| rng.sample(Distr::<M, N>::new()))
                 .filter_map(|fb| fb.get_curve(res, is_open).map(|c| (c, fb)))
@@ -222,10 +224,10 @@ where
             return Vec::new();
         }
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
-        #[cfg(feature = "rayon")]
-        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
+        #[cfg(feature = "rayon")]
+        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         let dis = iter
             .map(|arr| target.err(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
@@ -255,10 +257,10 @@ where
             return None;
         }
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
-        #[cfg(feature = "rayon")]
-        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
+        #[cfg(feature = "rayon")]
+        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         iter.map(|arr| target.err(&arr_to_efd(arr)))
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
@@ -284,10 +286,10 @@ where
             return self.fetch_1st(target, is_open, res).into_iter().collect();
         }
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
-        #[cfg(feature = "rayon")]
-        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
+        #[cfg(feature = "rayon")]
+        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
         let dis = iter
             .map(|arr| target.err(&arr_to_efd(arr)))
             .collect::<Vec<_>>();

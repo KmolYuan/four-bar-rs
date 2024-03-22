@@ -234,10 +234,9 @@ impl Synthesis {
         use syn_cmd::SynAlg::*;
         match m {
             De(s) => {
-                use mh::de::Strategy::*;
-                const ST: [mh::de::Strategy; 10] = [S1, S2, S3, S4, S5, S6, S7, S8, S9, S10];
-                combo_enum(ui, "de strategy", &mut s.strategy, ST, |e| {
-                    let i = ST.iter().position(|s| s == e).unwrap() + 1;
+                const LIST: [mh::de::Strategy; 10] = mh::de::Strategy::LIST;
+                combo_enum(ui, "de strategy", &mut s.strategy, LIST, |e| {
+                    let i = LIST.iter().position(|s| s == e).unwrap() + 1;
                     format!("S{i}")
                 });
                 param!(s, f, cross);

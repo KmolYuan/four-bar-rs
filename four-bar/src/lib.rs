@@ -13,10 +13,8 @@
 #![warn(missing_docs)]
 
 pub use crate::mech::{FourBar, MFourBar, MNormFourBar, NormFourBar, SFourBar, SNormFourBar};
-#[doc(no_inline)]
 pub use efd;
-#[doc(no_inline)]
-pub extern crate metaheuristics_nature as mh;
+pub use mh;
 #[cfg(feature = "atlas")]
 pub use ndarray;
 

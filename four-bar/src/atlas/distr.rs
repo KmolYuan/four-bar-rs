@@ -1,5 +1,5 @@
 use crate::{mech::*, syn};
-use mh::rand::{Distribution, Rng};
+use mh::rand::{distributions::Distribution, Rng};
 
 /// Uniform distribution for mechinism types.
 pub struct Distr<M, const N: usize> {
