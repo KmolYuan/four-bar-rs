@@ -20,7 +20,10 @@ const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
     use super::Alert;
-    use std::path::{Path, PathBuf};
+    use std::{
+        io::Cursor,
+        path::{Path, PathBuf},
+    };
     use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsValue};
 
     #[wasm_bindgen]
@@ -38,41 +41,41 @@ mod impl_io {
 
     pub(super) fn open<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(PathBuf, std::io::Cursor<String>) + 'static,
+        C: Fn(PathBuf, Cursor<String>) + 'static,
     {
-        let done = move |path, s| done(PathBuf::from(path), std::io::Cursor::new(s));
+        let done = move |path, s| done(PathBuf::from(path), Cursor::new(s));
         let done = Closure::<dyn Fn(String, String)>::wrap(Box::new(done)).into_js_value();
         open_file(&js_ext(ext), done, true, false);
     }
 
     pub(super) fn open_bin<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(std::io::Cursor<Vec<u8>>) + 'static,
+        C: Fn(Cursor<Vec<u8>>) + 'static,
     {
-        let done = move |buf| done(std::io::Cursor::new(buf));
+        let done = move |buf| done(Cursor::new(buf));
         let done = Closure::<dyn Fn(Vec<u8>)>::wrap(Box::new(done)).into_js_value();
         open_file(&js_ext(ext), done, true, true);
     }
 
     pub(super) fn open_single<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, std::io::Cursor<String>) + 'static,
+        C: FnOnce(PathBuf, Cursor<String>) + 'static,
     {
-        let done = |path: String, s| done(PathBuf::from(path), std::io::Cursor::new(s));
+        let done = |path: String, s| done(PathBuf::from(path), Cursor::new(s));
         open_file(&js_ext(ext), Closure::once_into_js(done), false, false);
     }
 
     pub(super) fn open_bin_single<C>(_fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, std::io::Cursor<Vec<u8>>) + 'static,
+        C: FnOnce(PathBuf, Cursor<Vec<u8>>) + 'static,
     {
-        let done = move |path: String, buf| done(PathBuf::from(path), std::io::Cursor::new(buf));
+        let done = move |path: String, buf| done(PathBuf::from(path), Cursor::new(buf));
         open_file(&js_ext(ext), Closure::once_into_js(done), false, true);
     }
 
     pub(super) fn save_ask<W, E, C>(name: &str, _fmt: &str, _ext: &[&str], write: W, done: C)
     where
-        W: FnOnce(std::io::Cursor<&mut [u8]>) -> E,
+        W: FnOnce(Cursor<&mut Vec<u8>>) -> E,
         E: Alert,
         C: FnOnce(PathBuf),
     {
@@ -83,11 +86,11 @@ mod impl_io {
 
     pub(super) fn save<W, E>(name: &Path, write: W)
     where
-        W: FnOnce(std::io::Cursor<&mut [u8]>) -> E,
+        W: FnOnce(Cursor<&mut Vec<u8>>) -> E,
         E: Alert,
     {
         let mut buf = Vec::new();
-        write(std::io::Cursor::new(&mut buf)).alert("Write File");
+        write(Cursor::new(&mut buf)).alert("Write File");
         save_file(&buf, name.as_os_str().to_str().unwrap());
     }
 }

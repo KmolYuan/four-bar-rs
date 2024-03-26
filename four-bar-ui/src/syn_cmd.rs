@@ -108,6 +108,7 @@ where
     efd::U<D>: efd::EfdDim<D>,
 {
     s: SolverBox<'a, syn::PathSyn<M, N, D>>,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     atlas_fb: Option<(f64, M)>,
 }
 
