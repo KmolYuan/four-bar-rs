@@ -27,7 +27,7 @@ plotters-backend = { version = "0.3", optional = true }
 fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
-mh = { package = "metaheuristics-nature", git = "https://github.com/KmolYuan/metaheuristics-nature-rs.git" }
+mh = { version = "10", package = "metaheuristics-nature" }
 efd = { git = "https://github.com/KmolYuan/efd-rs" }
 
 [dependencies.plotters]
