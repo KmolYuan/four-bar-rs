@@ -31,7 +31,8 @@ where
     H: AsRef<[f64]>,
     P: AsRef<[usize]>,
 {
-    let font = ("Times New Roman", 24).into_font().color(&BLACK);
+    const FONT_SIZE: i32 = 24;
+    let font = ("Times New Roman", FONT_SIZE).into_font().color(&BLACK);
     let history = history.as_ref();
     let pareto = pareto.as_ref();
     let root = Canvas::from(root);
@@ -61,7 +62,12 @@ where
                 .y_desc("Fitness")
                 .y_label_style(font.clone())
                 .draw()?;
-            $chart.draw_series(LineSeries::new(history.iter().copied().enumerate(), BLUE))?;
+            $chart
+                .draw_series(LineSeries::new(history.iter().copied().enumerate(), BLUE))?
+                .label("Best Fitness")
+                .legend(|c| {
+                    EmptyElement::at(c) + PathElement::new([(1, 0), (FONT_SIZE - 1, 0)], BLUE)
+                });
         };
     }
     if pareto.is_empty() {
@@ -74,9 +80,20 @@ where
             .configure_secondary_axes()
             .label_style(font.clone())
             .y_desc("Pareto Size")
-            .axis_desc_style(font)
+            .axis_desc_style(font.clone())
             .draw()?;
-        chart.draw_secondary_series(LineSeries::new(pareto.iter().copied().enumerate(), RED))?;
+        chart
+            .draw_secondary_series(LineSeries::new(pareto.iter().copied().enumerate(), RED))?
+            .label("Pareto Size")
+            .legend(|c| EmptyElement::at(c) + PathElement::new([(1, 0), (FONT_SIZE - 1, 0)], RED));
+        chart
+            .configure_series_labels()
+            .legend_area_size(FONT_SIZE)
+            .position(SeriesLabelPosition::UpperLeft)
+            .background_style(WHITE)
+            .border_style(BLACK)
+            .label_font(font)
+            .draw()?;
     }
     Ok(())
 }
