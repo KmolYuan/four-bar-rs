@@ -88,6 +88,22 @@ impl Project {
         name
     }
 
+    pub(crate) fn convert_btn(&mut self, ui: &mut Ui) {
+        // SAFETY: `self` is unused until written.
+        let src = unsafe { std::ptr::read(self) };
+        let new_self = match src {
+            Self::P(FbProj { path, fb, .. }) if ui.button("🔁 Convert [P] to [M]").clicked() => {
+                Self::M(MFbProj::new_unsaved(path, MFourBar::from_fb_angle(fb, 0.)))
+            }
+            Self::M(MFbProj { path, fb, .. }) if ui.button("🔁 Convert [M] to [P]").clicked() => {
+                Self::P(FbProj::new_unsaved(path, fb.into_fb()))
+            }
+            _ => src,
+        };
+        // SAFETY: `self` is read and written only once.
+        unsafe { std::ptr::write(self, new_self) };
+    }
+
     impl_method! {
         fn show(self: &mut Self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg);
         fn plot(self: &Self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize);
@@ -222,6 +238,10 @@ where
 {
     fn new(path: Option<PathBuf>, fb: M::De) -> Self {
         Self { path, fb, ..Self::default() }
+    }
+
+    fn new_unsaved(path: Option<PathBuf>, fb: M::De) -> Self {
+        Self { path, fb, unsaved: true, ..Self::default() }
     }
 
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {

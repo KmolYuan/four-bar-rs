@@ -156,11 +156,13 @@ impl Projects {
                 self.close_curr();
             }
         });
-        if self.list.is_empty() {
+        if let Some(proj) = self.list.get_mut(self.curr) {
+            proj.convert_btn(ui);
+            proj.show(ui, &mut self.pivot, cfg);
+        } else {
             ui.heading("No project here!");
             ui.label("Please open or create a project.");
-        } else {
-            self.list[self.curr].show(ui, &mut self.pivot, cfg);
+            self.curr = 0;
         }
     }
 
