@@ -132,7 +132,7 @@ where
     path: Option<PathBuf>,
     fb: M::De,
     angle: f64,
-    c_range: Option<[f64; 2]>,
+    bound: Option<[f64; 2]>,
     res: usize,
     hide: bool,
     #[serde(skip)]
@@ -154,7 +154,7 @@ where
             path: Default::default(),
             fb: Default::default(),
             angle: 0.,
-            c_range: None,
+            bound: None,
             res: 40,
             hide: false,
             unsaved: false,
@@ -300,7 +300,7 @@ where
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
         ui.heading("Curve");
-        check_on(ui, "With range", &mut self.c_range, |ui, [start, end]| {
+        check_on(ui, "With range", &mut self.bound, |ui, [start, end]| {
             ui.vertical(|ui| angle(ui, "start: ", start, "") | angle(ui, "end: ", end, ""))
                 .inner
         });
@@ -310,7 +310,7 @@ where
             combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
             let get_curve = |pivot, fb: &M::De| -> Vec<_> {
                 use four_bar::mech::CurveGen as _;
-                let curve = if let Some([start, end]) = self.c_range {
+                let curve = if let Some([start, end]) = self.bound {
                     fb.curves_in(start, end, self.res).into_iter()
                 } else {
                     fb.curves(self.res).into_iter()
