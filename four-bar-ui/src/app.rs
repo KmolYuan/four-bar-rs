@@ -206,7 +206,7 @@ impl eframe::App for App {
             self.pc_view(ctx);
         }
         self.link.poll(ctx);
-        crate::io::push_err_msg(frame);
+        crate::io::show_err_msg(frame);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

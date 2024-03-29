@@ -1,5 +1,5 @@
 use super::widgets::*;
-use crate::io::{self, Alert as _};
+use crate::io;
 use eframe::egui::*;
 use four_bar::{mech, plot as fb_plot};
 use serde::{Deserialize, Serialize};
@@ -35,8 +35,10 @@ fn fig_ui<M, const D: usize>(
         if ui.button("🖴 Load from RON").clicked() {
             let fig = fig.clone();
             io::open_ron_single(move |_, fb| {
-                let done = |fb| fig.borrow_mut().fb = Some(Cow::Owned(fb));
-                get_fb(fb).alert_then("Wrong linkage type", done);
+                io::alert!(
+                    ("Wrong linkage type", get_fb(fb)),
+                    ("*", |fb| fig.borrow_mut().fb = Some(Cow::Owned(fb))),
+                );
             });
         }
     });
@@ -56,18 +58,23 @@ fn fig_ui<M, const D: usize>(
         if ui.button("🖴 Add from CSV").clicked() {
             let fig = fig.clone();
             io::open_csv(move |_, c| {
-                let done = |c| fig.borrow_mut().push_line_default("New Curve", c);
-                get_curve(c).alert_then("Wrong curve type", done);
+                io::alert!(
+                    ("Wrong curve type", get_curve(c)),
+                    ("*", |c| fig.borrow_mut().push_line_default("New Curve", c)),
+                );
             });
         }
         if ui.button("🖴 Add from RON").clicked() {
             let res = lnk.cfg.res;
             let fig = fig.clone();
             io::open_ron(move |_, fb| {
-                get_fb(fb).alert_then("Wrong linkage type", |fb| {
-                    fig.borrow_mut()
-                        .push_line_default("New Curve", fb.curve(res));
-                });
+                io::alert!(
+                    ("Wrong linkage type", get_fb(fb)),
+                    ("*", |fb: M| {
+                        fig.borrow_mut()
+                            .push_line_default("New Curve", fb.curve(res));
+                    })
+                );
             });
         }
     });
@@ -302,8 +309,8 @@ impl Plotter {
         for (root, p_opt) in zip(b.into_drawing_area().split_evenly(self.shape), &self.queue) {
             match &p_opt {
                 None => (),
-                Some(PlotType::P(fig)) => fig.borrow().plot(root).alert("Plot"),
-                Some(PlotType::S(fig)) => fig.borrow().plot(root).alert("Plot"),
+                Some(PlotType::P(fig)) => io::alert!("Plot", fig.borrow().plot(root)),
+                Some(PlotType::S(fig)) => io::alert!("Plot", fig.borrow().plot(root)),
             }
         }
         io::save_svg_ask(&buf, "figure.svg");

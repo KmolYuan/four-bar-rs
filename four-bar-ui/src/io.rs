@@ -17,9 +17,25 @@ const SVG_EXT: &[&str] = &["svg"];
 const IMG_FMT: &str = "Supported Image Format (PNG & JPEG)";
 const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 
+macro_rules! alert {
+    (@) => { |_| () };
+    (@($title1:literal, $expr1:expr) $(, ($title:literal, $expr:expr))* $(,)?) => {
+        |x| $expr1(x).alert_then($title1, alert!(@$(($title, $expr)),*))
+    };
+    ($title:literal, $expr:expr) => {
+        $crate::io::alert!(($title, $expr))
+    };
+    (($title1:literal, $expr1:expr) $(, ($title:literal, $expr:expr))* $(,)?) => {{
+        #[allow(unused_imports)]
+        use $crate::io::{Alert as _, alert};
+        #[allow(clippy::redundant_closure_call)]
+        $expr1.alert_then($title1, alert!(@$(($title, $expr)),*))
+    }};
+}
+pub(crate) use alert;
+
 #[cfg(target_arch = "wasm32")]
 mod impl_io {
-    use super::Alert;
     use std::{
         io::Cursor,
         path::{Path, PathBuf},
@@ -76,7 +92,7 @@ mod impl_io {
     pub(super) fn save_ask<W, E, C>(name: &str, _fmt: &str, _ext: &[&str], write: W, done: C)
     where
         W: FnOnce(Cursor<&mut Vec<u8>>) -> E,
-        E: Alert,
+        E: super::Alert,
         C: FnOnce(PathBuf),
     {
         let path = PathBuf::from(name);
@@ -87,63 +103,65 @@ mod impl_io {
     pub(super) fn save<W, E>(name: &Path, write: W)
     where
         W: FnOnce(Cursor<&mut Vec<u8>>) -> E,
-        E: Alert,
+        E: super::Alert,
     {
         let mut buf = Vec::new();
-        write(Cursor::new(&mut buf)).alert("Write File");
+        alert!("Write File", write(Cursor::new(&mut buf)));
         save_file(&buf, name.as_os_str().to_str().unwrap());
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod impl_io {
-    use super::Alert;
-    use std::path::{Path, PathBuf};
+    use std::{
+        fs::File,
+        path::{Path, PathBuf},
+    };
 
     pub(super) fn open<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(PathBuf, std::fs::File) + 'static,
+        C: Fn(PathBuf, File) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
             for path in paths {
-                std::fs::File::open(&path).alert_then("Open File", |r| done(path, r));
+                alert!(("Open File", File::open(&path)), ("*", |r| done(path, r)));
             }
         }
     }
 
     pub(super) fn open_bin<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: Fn(std::fs::File) + 'static,
+        C: Fn(File) + 'static,
     {
         if let Some(paths) = rfd::FileDialog::new().add_filter(fmt, ext).pick_files() {
-            paths
-                .into_iter()
-                .for_each(|path| std::fs::File::open(path).alert_then("Open File", &done));
+            for path in paths {
+                alert!(("Open File", File::open(path)), ("*", done));
+            }
         }
     }
 
     pub(super) fn open_single<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, std::fs::File) + 'static,
+        C: FnOnce(PathBuf, File) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            std::fs::File::open(&path).alert_then("Open File", |s| done(path, s));
+            alert!(("Open File", File::open(&path)), ("*", |s| done(path, s)));
         }
     }
 
     pub(super) fn open_bin_single<C>(fmt: &str, ext: &[&str], done: C)
     where
-        C: FnOnce(PathBuf, std::fs::File) + 'static,
+        C: FnOnce(PathBuf, File) + 'static,
     {
         if let Some(path) = rfd::FileDialog::new().add_filter(fmt, ext).pick_file() {
-            std::fs::File::open(&path).alert_then("Open File", |s| done(path, s));
+            alert!(("Open File", File::open(&path)), ("*", |s| done(path, s)));
         }
     }
 
     pub(super) fn save_ask<W, E, C>(name: &str, fmt: &str, ext: &[&str], write: W, done: C)
     where
-        W: FnOnce(std::fs::File) -> E,
-        E: Alert,
+        W: FnOnce(File) -> E,
+        E: super::Alert,
         C: FnOnce(PathBuf),
     {
         if let Some(path) = rfd::FileDialog::new()
@@ -151,18 +169,20 @@ mod impl_io {
             .add_filter(fmt, ext)
             .save_file()
         {
-            std::fs::File::create(&path).alert_then("Save File", |w| {
-                write(w).alert_then("Write File", |_| done(path));
-            });
+            alert!(
+                ("Save File", File::create(&path)),
+                ("Write File", write),
+                ("*", |_| done(path))
+            );
         }
     }
 
     pub(super) fn save<W, E>(path: &Path, write: W)
     where
-        W: FnOnce(std::fs::File) -> E,
-        E: Alert,
+        W: FnOnce(File) -> E,
+        E: super::Alert,
     {
-        std::fs::File::create(path).alert_then("Save File", |w| write(w).alert("Write File"));
+        alert!(("Save File", File::create(path)), ("Write File", write));
     }
 }
 
@@ -172,36 +192,41 @@ pub(crate) trait Alert: Sized {
     fn alert_then<C>(self, title: &'static str, done: C)
     where
         C: FnOnce(Self::Output);
+}
 
-    fn alert(self, title: &'static str) {
-        self.alert_then(title, |_| ());
+impl Alert for () {
+    type Output = ();
+    #[inline]
+    fn alert_then<C>(self, _title: &'static str, done: C)
+    where
+        C: FnOnce(Self::Output),
+    {
+        done(());
     }
 }
 
 impl<T, E: std::error::Error> Alert for Result<T, E> {
     type Output = T;
-
     fn alert_then<C>(self, title: &'static str, done: C)
     where
         C: FnOnce(Self::Output),
     {
         match self {
             Ok(t) => done(t),
-            Err(e) => alert(title, e.to_string()),
+            Err(e) => push_alert(title, e.to_string()),
         }
     }
 }
 
 impl<T> Alert for Option<T> {
     type Output = T;
-
-    fn alert_then<C>(self, msg: &'static str, done: C)
+    fn alert_then<C>(self, title: &'static str, done: C)
     where
         C: FnOnce(Self::Output),
     {
         match self {
             Some(t) => done(t),
-            None => alert("", msg),
+            None => push_alert(title, "Operation failed."),
         }
     }
 }
@@ -210,7 +235,7 @@ static ERR_MSG: std::sync::Mutex<Option<(Cow<'static, str>, Cow<'static, str>)>>
     std::sync::Mutex::new(None);
 
 #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
-pub(crate) fn push_err_msg(parent: &eframe::Frame) {
+pub(crate) fn show_err_msg(parent: &eframe::Frame) {
     let Some((title, msg)) = ERR_MSG.lock().unwrap().take() else {
         return;
     };
@@ -230,7 +255,7 @@ pub(crate) fn push_err_msg(parent: &eframe::Frame) {
     wasm_bindgen_futures::spawn_local(async move { _ = msg!(AsyncMessageDialog).await });
 }
 
-pub(crate) fn alert<S1, S2>(title: S1, msg: S2)
+fn push_alert<S1, S2>(title: S1, msg: S2)
 where
     S1: Into<Cow<'static, str>>,
     S2: Into<Cow<'static, str>>,
@@ -243,8 +268,12 @@ where
     S: serde::de::DeserializeOwned,
     C: FnOnce(PathBuf, S) + 'static,
 {
-    let done = move |path, r| ron::de::from_reader(r).alert_then("Parse File", |fb| done(path, fb));
-    open_single(FMT, EXT, done);
+    open_single(FMT, EXT, move |path, r| {
+        alert!(
+            ("Parse File", ron::de::from_reader(r)),
+            ("*", |s| done(path, s))
+        );
+    });
 }
 
 pub(crate) fn open_ron<S, C>(done: C)
@@ -252,8 +281,12 @@ where
     S: serde::de::DeserializeOwned,
     C: Fn(PathBuf, S) + 'static,
 {
-    let done = move |path, r| ron::de::from_reader(r).alert_then("Parse File", |s| done(path, s));
-    open(FMT, EXT, done);
+    open(FMT, EXT, move |path, r| {
+        alert!(
+            ("Parse File", ron::de::from_reader(r)),
+            ("*", |s| done(path, s))
+        );
+    });
 }
 
 pub(crate) fn open_csv_single<C>(done: C)
@@ -261,7 +294,7 @@ where
     C: FnOnce(PathBuf, Curve) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, move |p, r| {
-        Curve::from_reader(r).alert_then("Parse File", |d| done(p, d));
+        alert!(("Parse File", Curve::from_reader(r)), ("*", |d| done(p, d)));
     });
 }
 
@@ -270,7 +303,7 @@ where
     C: Fn(PathBuf, Curve) + 'static,
 {
     open(CSV_FMT, CSV_EXT, move |p, r| {
-        Curve::from_reader(r).alert_then("Parse File", |d| done(p, d));
+        alert!(("Parse File", Curve::from_reader(r)), ("*", |d| done(p, d)));
     });
 }
 
@@ -278,7 +311,7 @@ pub(crate) fn open_cb<C>(done: C)
 where
     C: Fn(Atlas) + 'static,
 {
-    let done = move |b| Atlas::from_reader(b).alert_then("Parse File", &done);
+    let done = move |b| alert!(("Parse File", Atlas::from_reader(b)), ("*", done));
     open_bin(ATLAS_FMT, ATLAS_EXT, done);
 }
 
@@ -286,8 +319,12 @@ pub(crate) fn open_img<C>(done: C)
 where
     C: FnOnce(PathBuf, ColorImage) + 'static,
 {
-    let done = move |path, buf| load_img(buf).alert_then("Parse File", |img| done(path, img));
-    open_bin_single(IMG_FMT, IMG_EXT, done);
+    open_bin_single(IMG_FMT, IMG_EXT, move |path, buf| {
+        alert!(
+            ("Load Image", load_img(buf)),
+            ("Parse File", |img| done(path, img))
+        );
+    });
 }
 
 pub(crate) fn save_csv_ask<S>(c: &[S])

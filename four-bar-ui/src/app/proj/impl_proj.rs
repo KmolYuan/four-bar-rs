@@ -254,12 +254,12 @@ where
             }
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = &self.path {
-                use crate::io::Alert;
                 if small_btn(ui, "🖴", "Reload from Disk") {
-                    std::fs::File::open(path).alert_then("Failed to open file.", |r| {
-                        ron::de::from_reader(r)
-                            .alert_then("Failed to deserialize file.", |fb| self.fb = fb);
-                    });
+                    io::alert!(
+                        ("Failed to open file", std::fs::File::open(path)),
+                        ("Failed to deserialize", ron::de::from_reader),
+                        ("*", |fb| self.fb = fb)
+                    );
                 }
             }
             path_label(ui, "🖹", self.path.as_ref(), "Unsaved");

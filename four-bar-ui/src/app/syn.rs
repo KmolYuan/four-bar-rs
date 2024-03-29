@@ -1,5 +1,5 @@
 use super::{link::Linkages, widgets::*};
-use crate::{io, io::Alert as _, syn_cmd, syn_cmd::Target};
+use crate::{io, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::{atlas, csv, mh, syn};
 use serde::{Deserialize, Serialize};
@@ -109,7 +109,7 @@ impl Synthesis {
         });
         match std::mem::replace(&mut *self.queue.write(), Cache::Empty) {
             Cache::Curve(curve) => self.target = curve,
-            Cache::Atlas(atlas) => self.atlas.merge_inplace(atlas).alert("Merge Atlas"),
+            Cache::Atlas(atlas) => io::alert!("Merge Atlas", self.atlas.merge_inplace(atlas)),
             Cache::Empty => (),
         }
         ui.checkbox(&mut self.cfg.on_unit, "Constrain on unit");
