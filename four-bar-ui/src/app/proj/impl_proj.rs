@@ -1,6 +1,6 @@
 use super::*;
 use four_bar::*;
-use std::path::Path;
+use std::{borrow::Cow, path::Path};
 
 macro_rules! hotkey {
     ($ui:ident, $mod1:ident + $key:ident) => {
@@ -79,13 +79,11 @@ impl Project {
     }
 
     pub(crate) fn proj_name(&self) -> String {
-        let (prefix, mut name) = match self {
-            Self::P(proj) => ("[P] ", proj.name()),
-            Self::M(proj) => ("[M] ", proj.name()),
-            Self::S(proj) => ("[S] ", proj.name()),
-        };
-        name.insert_str(0, prefix);
-        name
+        match self {
+            Self::P(proj) => format!("[P] {}", proj.name()),
+            Self::M(proj) => format!("[M] {}", proj.name()),
+            Self::S(proj) => format!("[S] {}", proj.name()),
+        }
     }
 
     pub(crate) fn convert_btn(&mut self, ui: &mut Ui) {
@@ -109,7 +107,7 @@ impl Project {
         fn plot(self: &Self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize);
         fn cache(self: &mut Self, res: usize);
         fn request_cache(self: &mut Self);
-        fn name(self: &Self) -> String;
+        fn name(self: &Self) -> Cow<str>;
         fn preload(self: &mut Self);
         fn set_path(self: &mut Self, path: PathBuf);
         fn path(self: &Self) -> Option<&Path>;
@@ -376,16 +374,16 @@ where
         self.cache.changed = true;
     }
 
-    fn name(&self) -> String {
+    fn name(&self) -> Cow<str> {
         if let Some(path) = &self.path {
             let name = path.file_name().unwrap().to_string_lossy();
             if name.ends_with(".ron") {
-                name.to_string()
+                name
             } else {
-                name.to_string() + ".ron"
+                name + ".ron"
             }
         } else {
-            "untitled.ron".to_string()
+            "untitled.ron".into()
         }
     }
 
