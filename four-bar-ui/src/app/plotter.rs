@@ -45,10 +45,11 @@ fn fig_ui<M, const D: usize>(
     ui.collapsing("Curves", |ui| {
         fig.borrow_mut()
             .retain_lines(|i, line| ui.group(|ui| fig_line_ui(ui, i, line)).inner);
+        const NEW_CURVE: &str = "New Curve";
         ui.horizontal(|ui| {
             if let Some(c) = lnk.projs.current_curve().and_then(get_curve) {
                 if ui.button("🖴 Add from").clicked() {
-                    fig.borrow_mut().push_line_default("New Curve", c);
+                    fig.borrow_mut().push_line_default(NEW_CURVE, c);
                 }
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
@@ -60,7 +61,7 @@ fn fig_ui<M, const D: usize>(
             io::open_csv(move |_, c| {
                 io::alert!(
                     ("Wrong curve type", get_curve(c)),
-                    ("*", |c| fig.borrow_mut().push_line_default("New Curve", c)),
+                    ("*", |c| fig.borrow_mut().push_line_default(NEW_CURVE, c)),
                 );
             });
         }
@@ -70,9 +71,8 @@ fn fig_ui<M, const D: usize>(
             io::open_ron(move |_, fb| {
                 io::alert!(
                     ("Wrong linkage type", get_fb(fb)),
-                    ("*", |fb: M| {
-                        fig.borrow_mut()
-                            .push_line_default("New Curve", fb.curve(res));
+                    ("*", |fb| {
+                        fig.borrow_mut().push_line_default(NEW_CURVE, fb.curve(res));
                     })
                 );
             });

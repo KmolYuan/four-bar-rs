@@ -17,19 +17,27 @@ const SVG_EXT: &[&str] = &["svg"];
 const IMG_FMT: &str = "Supported Image Format (PNG & JPEG)";
 const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 
+// A powerful macro for alerting the user in the GUI
 macro_rules! alert {
+    // end: do nothing
     (@) => { |_| () };
-    (@($title1:literal, $expr1:expr) $(, ($title:literal, $expr:expr))* $(,)?) => {
-        |x| $expr1(x).alert_then($title1, alert!(@$(($title, $expr)),*))
+    // for closures
+    (@($title1:literal, |$x:pat_param| $expr1:expr) $(, ($title:literal, $($expr:tt)+))* $(,)?) => {
+        |$x| $expr1.alert_then($title1, alert!(@$(($title, $($expr)+)),*))
     };
+    // for functions from path
+    (@($title1:literal, $expr1:path) $(, ($title:literal, $($expr:tt)+))* $(,)?) => {
+        |x| $expr1(x).alert_then($title1, alert!(@$(($title, $($expr)+)),*))
+    };
+    // (pub) single pair
     ($title:literal, $expr:expr) => {
         $crate::io::alert!(($title, $expr))
     };
-    (($title1:literal, $expr1:expr) $(, ($title:literal, $expr:expr))* $(,)?) => {{
+    // (pub) multiple pairs
+    (($title1:literal, $expr1:expr) $(, ($title:literal, $($expr:tt)+))* $(,)?) => {{
         #[allow(unused_imports)]
         use $crate::io::{Alert as _, alert};
-        #[allow(clippy::redundant_closure_call)]
-        $expr1.alert_then($title1, alert!(@$(($title, $expr)),*))
+        $expr1.alert_then($title1, alert!(@$(($title, $($expr)+)),*))
     }};
 }
 pub(crate) use alert;
@@ -188,7 +196,6 @@ mod impl_io {
 
 pub(crate) trait Alert: Sized {
     type Output;
-
     fn alert_then<C>(self, title: &'static str, done: C)
     where
         C: FnOnce(Self::Output);
