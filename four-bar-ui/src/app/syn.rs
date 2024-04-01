@@ -31,7 +31,7 @@ struct TaskInProg {
 impl TaskInProg {
     fn new(task: Task) -> Self {
         Self {
-            pg: Arc::new(AtomicU32::new(0)),
+            pg: Arc::new(AtomicU32::new(0f32.to_bits())),
             task: Arc::new(RwLock::new(task)),
         }
     }
@@ -302,7 +302,7 @@ impl Synthesis {
                     .harmonic(self.atlas_cfg.harmonic)
                     .is_open(self.atlas_cfg.is_open);
                 let queue = self.queue.clone();
-                let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
+                let pg = Arc::new(AtomicU32::new(0f32.to_bits()));
                 self.atlas_pg = Some(pg.clone());
                 let f = move || {
                     let atlas =
