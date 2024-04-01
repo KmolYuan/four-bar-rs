@@ -59,6 +59,7 @@ macro_rules! impl_ser {
                     where
                         A: MapAccess<'de>,
                     {
+                        // Missing field and duplicated field checkers
                         $(let $field = std::cell::OnceCell::new();)+
                         while let Some(k) = map.next_key()? {
                             match k {
@@ -67,11 +68,15 @@ macro_rules! impl_ser {
                                     .map_err(|_| serde::de::Error::duplicate_field(stringify!($field)))?,)+
                             }
                         }
-                        let mut fb = $ty::default();
-                        $(fb.$($unnorm.)?$field = $field
-                            .into_inner()
-                            .ok_or(serde::de::Error::missing_field(stringify!($field)))?;)+
-                        Ok(fb)
+                        let mut fb = std::mem::MaybeUninit::<$ty>::uninit();
+                        let fb_ptr = fb.as_mut_ptr();
+                        // SAFETY: We only write them and never read them.
+                        $(unsafe {
+                            (*fb_ptr).$($unnorm.)?$field = $field.into_inner()
+                                .ok_or_else(|| serde::de::Error::missing_field(stringify!($field)))?;
+                        })+
+                        // SAFETY: We have initialized all fields.
+                        Ok(unsafe { fb.assume_init() })
                     }
                 }
                 deserializer.deserialize_struct(stringify!($ty), FIELDS, StructVisitor)

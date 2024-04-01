@@ -33,6 +33,7 @@ where
     let harmonic = efd.harmonic();
     let (m, _) = efd.into_inner();
     let v = m.into_iter().flat_map(|m| m.data.0).flatten().collect();
+    // SAFETY: The shape is correct.
     unsafe { Array2::from_shape_vec_unchecked([harmonic, D * 2], v) }
 }
 
