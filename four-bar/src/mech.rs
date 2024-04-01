@@ -7,12 +7,12 @@ pub use self::{
     vectorized::*,
 };
 
+#[cfg(feature = "serde")]
+mod impl_serde;
+
 pub mod fb;
 pub mod mfb;
 pub mod sfb;
-
-#[cfg(feature = "serde")]
-mod impl_ser;
 mod stat;
 mod vectorized;
 

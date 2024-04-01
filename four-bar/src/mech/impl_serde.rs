@@ -2,7 +2,7 @@
 use super::{FourBar, MFourBar, SFourBar};
 use serde::{de::*, ser::*};
 
-macro_rules! impl_ser {
+macro_rules! impl_serde {
     ($ty:ident, $($field:ident $(.$unnorm:ident)?),+) => {
         impl Serialize for $ty {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -23,7 +23,7 @@ macro_rules! impl_ser {
                 const FIELDS: &[&str] = &[$(stringify!($field)),+];
                 #[allow(non_camel_case_types)]
                 enum Field {
-                    $($field),+
+                    $($field,)+
                 }
                 impl<'de> Deserialize<'de> for Field {
                     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -85,9 +85,9 @@ macro_rules! impl_ser {
     };
 }
 
-impl_ser!(FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, stat);
-impl_ser!(MFourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, e, stat);
-impl_ser!(
+impl_serde!(FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, stat);
+impl_serde!(MFourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, e, stat);
+impl_serde!(
     SFourBar, ox.unnorm, oy.unnorm, oz.unnorm, r.unnorm, p1i.unnorm, p1j.unnorm, a.unnorm, l1, l2,
     l3, l4, l5, g, stat
 );
