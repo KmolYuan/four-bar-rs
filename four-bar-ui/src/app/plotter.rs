@@ -65,14 +65,13 @@ fn fig_ui<M, const D: usize>(
                 );
             });
         }
-        if ui.button("🖴 Add from RON").clicked() {
-            let res = lnk.cfg.res;
+        if ui.button("🖴 Add from RON (360pt)").clicked() {
             let fig = fig.clone();
             io::open_ron(move |_, fb| {
                 io::alert!(
                     ("Wrong linkage type", get_fb(fb)),
                     ("*", |fb| {
-                        fig.borrow_mut().push_line_default(NEW_CURVE, fb.curve(res));
+                        fig.borrow_mut().push_line_default(NEW_CURVE, fb.curve(360));
                     })
                 );
             });

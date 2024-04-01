@@ -31,7 +31,7 @@ enum Panel {
     Synthesis,
     Plotter,
     BluePrint,
-    Options,
+    AppOptions,
     Off,
 }
 
@@ -85,7 +85,7 @@ impl App {
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
             .unwrap_or_default();
         app.bp.preload(&ctx.egui_ctx);
-        app.link.preload(files, app.link.cfg.res);
+        app.link.preload(files);
         #[cfg(target_arch = "wasm32")]
         {
             #[wasm_bindgen::prelude::wasm_bindgen]
@@ -137,7 +137,7 @@ impl App {
             (Panel::Synthesis, "💡", "Synthesis"),
             (Panel::Plotter, "", "Plotter"),
             (Panel::BluePrint, "🖻", "Blue Print"),
-            (Panel::Options, "🛠", "Options"),
+            (Panel::AppOptions, "🛠", "App Options"),
         ] {
             let is_current = self.panel == value;
             if ui
@@ -178,7 +178,7 @@ impl App {
             Panel::Synthesis => pan_panel(ui, |ui| self.syn.show(ui, &mut self.link)),
             Panel::Plotter => pan_panel(ui, |ui| self.plotter.show(ui, &mut self.link)),
             Panel::BluePrint => pan_panel(ui, |ui| self.bp.show(ui)),
-            Panel::Options => pan_panel(ui, |ui| self.link.option(ui)),
+            Panel::AppOptions => pan_panel(ui, |ui| self.link.option(ui)),
             Panel::Off => self.canvas(ui),
         });
     }
@@ -189,7 +189,7 @@ impl App {
             Panel::Synthesis => side_panel(ctx, |ui| self.syn.show(ui, &mut self.link)),
             Panel::Plotter => side_panel(ctx, |ui| self.plotter.show(ui, &mut self.link)),
             Panel::BluePrint => side_panel(ctx, |ui| self.bp.show(ui)),
-            Panel::Options => side_panel(ctx, |ui| self.link.option(ui)),
+            Panel::AppOptions => side_panel(ctx, |ui| self.link.option(ui)),
             Panel::Off => (),
         }
         CentralPanel::default().show(ctx, |ui| self.canvas(ui));

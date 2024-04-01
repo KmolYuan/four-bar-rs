@@ -90,11 +90,27 @@ impl Project {
         // SAFETY: `self` is unused until written.
         let src = unsafe { std::ptr::read(self) };
         let new_self = match src {
-            Self::P(FbProj { path, fb, .. }) if ui.button("🔁 Convert [P] to [M]").clicked() => {
-                Self::M(MFbProj::new_unsaved(path, MFourBar::from_fb_angle(fb, 0.)))
+            Self::P(FbProj { path, fb, res, .. })
+                if ui.button("🔁 Convert [P] to [M]").clicked() =>
+            {
+                Self::M(MFbProj {
+                    path,
+                    fb: MFourBar::from_fb_angle(fb, 0.),
+                    res,
+                    unsaved: true,
+                    ..MFbProj::default()
+                })
             }
-            Self::M(MFbProj { path, fb, .. }) if ui.button("🔁 Convert [M] to [P]").clicked() => {
-                Self::P(FbProj::new_unsaved(path, fb.into_fb()))
+            Self::M(MFbProj { path, fb, res, .. })
+                if ui.button("🔁 Convert [M] to [P]").clicked() =>
+            {
+                Self::P(FbProj {
+                    path,
+                    fb: fb.into_fb(),
+                    res,
+                    unsaved: true,
+                    ..FbProj::default()
+                })
             }
             _ => src,
         };
@@ -103,10 +119,9 @@ impl Project {
     }
 
     impl_method! {
-        fn show(self: &mut Self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg);
+        fn show(self: &mut Self, ui: &mut Ui, pivot: &mut Pivot);
         fn plot(self: &Self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize);
-        fn cache(self: &mut Self, res: usize);
-        fn request_cache(self: &mut Self);
+        fn cache(self: &mut Self);
         fn name(self: &Self) -> Cow<str>;
         fn preload(self: &mut Self);
         fn set_path(self: &mut Self, path: PathBuf);
@@ -238,11 +253,7 @@ where
         Self { path, fb, ..Self::default() }
     }
 
-    fn new_unsaved(path: Option<PathBuf>, fb: M::De) -> Self {
-        Self { path, fb, unsaved: true, ..Self::default() }
-    }
-
-    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
+    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot) {
         use four_bar::mech::Statable as _;
         ui.horizontal(|ui| {
             if small_btn(ui, "🔗", "Share with Link") {
@@ -292,18 +303,16 @@ where
                 self.undo.clear();
             }
         });
-        ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot, cfg));
+        ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot));
         self.undo.fetch(&self.fb);
     }
 
-    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot, cfg: &Cfg) {
+    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot) {
         ui.heading("Curve");
-        check_on(ui, "With range", &mut self.bound, |ui, [start, end]| {
-            ui.vertical(|ui| angle(ui, "start: ", start, "") | angle(ui, "end: ", end, ""))
-                .inner
-        });
-        nonzero_i(ui, "Resolution: ", &mut self.res, 1);
+        nonzero_i(ui, "Resolution: ", &mut self.res, 1)
+            .on_hover_text("Resolution of rendering and data export");
         ui.horizontal(|ui| {
+            ui.label("Export");
             const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];
             combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
             let get_curve = |pivot, fb: &M::De| -> Vec<_> {
@@ -327,6 +336,11 @@ where
                 ui.output_mut(|s| s.copied_text = t);
             }
         });
+        let callback = |ui: &mut Ui, [start, end]: &mut [_; 2]| {
+            ui.vertical(|ui| angle(ui, "start: ", start, "") | angle(ui, "end: ", end, ""))
+                .inner
+        };
+        check_on(ui, "Export in range", &mut self.bound, callback);
         ui.separator();
         ui.horizontal(|ui| {
             ui.heading("Offset");
@@ -340,7 +354,7 @@ where
                 self.unsaved = true;
             }
         });
-        let mut res = fb_ui::ProjUi::proj_ui(&mut self.fb, ui, cfg);
+        let mut res = fb_ui::ProjUi::proj_ui(&mut self.fb, ui);
         self.unsaved |= res.changed();
         ui.separator();
         ui.heading("Angle");
@@ -350,28 +364,24 @@ where
         res |= angle(ui, "Theta: ", &mut self.angle, "");
         self.cache.changed |= res.changed();
         if self.cache.changed {
-            self.cache(cfg.res);
+            self.cache();
         }
     }
 
-    fn cache(&mut self, res: usize) {
+    fn cache(&mut self) {
         use four_bar::mech::{CurveGen as _, Statable as _};
         self.cache.changed = false;
         self.cache.joints = self.fb.pos(self.angle);
         self.cache.angle_bound = self.fb.angle_bound();
-        self.cache.curves = self.fb.curves(res);
-        self.fb.cache_curve(&mut self.cache, res);
+        self.cache.curves = self.fb.curves(self.res);
+        self.fb.cache_curve(&mut self.cache, self.res);
     }
 
     fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize) {
-        use fb_ui::ProjPlot as _;
         if !self.hide {
+            use fb_ui::ProjPlot as _;
             self.fb.proj_plot(ui, &self.cache, ind == id);
         }
-    }
-
-    fn request_cache(&mut self) {
-        self.cache.changed = true;
     }
 
     fn name(&self) -> Cow<str> {

@@ -29,7 +29,6 @@ pub struct MNormFourBar {
 
 impl std::ops::Deref for MNormFourBar {
     type Target = NormFourBar;
-
     fn deref(&self) -> &Self::Target {
         &self.base
     }
