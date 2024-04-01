@@ -405,6 +405,7 @@ impl Synthesis {
         match &mut self.target {
             io::Curve::P(t) => t.push([p.x, p.y]),
             io::Curve::S(t) => {
+                // FIXME: Try block, ignore errors
                 let f = || {
                     let [sx, sy, sz, r] = lnk.projs.current_sphere()?;
                     let dx = p.x - sx;

@@ -428,6 +428,7 @@ fn run(
     refer: Option<&Path>,
     rerun: bool,
 ) {
+    // FIXME: Try block, ignore errors
     let f = || {
         let root = &info.root;
         if !rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {
