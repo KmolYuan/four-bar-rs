@@ -384,7 +384,7 @@ fn from_runtime(
                 log.log(&fb)?;
                 fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
             }
-            fig.fb = Some(Cow::Owned(fb.take_sphere()));
+            fig.fb = Some(Cow::Owned(fb.clone().take_sphere()));
             write_ron(root.join(CURVE_FIG), &fig)?;
             let path = root.join(CURVE_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));

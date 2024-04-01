@@ -151,15 +151,15 @@ impl PlotType {
             }
             PlotType::S(fig) => {
                 ui.heading("Spherical Plot");
-                {
-                    let mut fig = fig.borrow_mut();
-                    if let Some(fb) = &mut fig.fb {
-                        if ui
-                            .button("⚾ Take Sphere")
-                            .on_hover_text("Draw the sphere without the linkage")
-                            .clicked()
-                        {
-                            *fb = Cow::Owned(fb.take_sphere());
+                if let Some(fb) = &mut fig.borrow_mut().fb {
+                    if ui
+                        .button("⚾ Take Sphere")
+                        .on_hover_text("Draw the sphere without the linkage")
+                        .clicked()
+                    {
+                        match fb {
+                            Cow::Borrowed(src) => *fb = Cow::Owned(src.clone().take_sphere()),
+                            Cow::Owned(fb) => fb.take_sphere_inplace(),
                         }
                     }
                 }
@@ -221,12 +221,12 @@ impl Plotter {
             for i in 0..self.shape.0 {
                 for j in 0..self.shape.1 {
                     let n = i * self.shape.1 + j;
-                    let checked = self.curr == n;
-                    let mut text = format!("{{{n}}}");
-                    if self.queue[n].is_none() {
-                        text += "*";
-                    }
-                    if ui.selectable_label(checked, text).clicked() {
+                    let text = if self.queue[n].is_none() {
+                        format!("{{{n}}}?")
+                    } else {
+                        format!("{{{n}}}")
+                    };
+                    if ui.selectable_label(self.curr == n, text).clicked() {
                         self.curr = n;
                     }
                 }

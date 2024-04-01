@@ -3,7 +3,13 @@ use crate::{io, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::{atlas, csv, mh, syn};
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, sync::Arc};
+use std::{
+    borrow::Cow,
+    sync::{
+        atomic::{AtomicU32, Ordering::Relaxed},
+        Arc, RwLock,
+    },
+};
 
 #[inline]
 fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
@@ -14,6 +20,21 @@ fn ron_pretty<S: ?Sized + Serialize>(s: &S) -> String {
 struct Task {
     time: std::time::Duration,
     conv: Vec<f64>,
+}
+
+#[derive(Clone)]
+struct TaskInProg {
+    pg: Arc<AtomicU32>,
+    task: Arc<RwLock<Task>>,
+}
+
+impl TaskInProg {
+    fn new(task: Task) -> Self {
+        Self {
+            pg: Arc::new(AtomicU32::new(0)),
+            task: Arc::new(RwLock::new(task)),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -52,15 +73,15 @@ pub(crate) struct Synthesis {
     target: io::Curve,
     tasks: Vec<Task>,
     #[serde(skip)]
+    task_queue: Vec<TaskInProg>,
+    #[serde(skip)]
     atlas: io::AtlasPool,
     #[serde(skip)]
     atlas_vis: Vec<AtlasVis>,
     #[serde(skip)]
-    atlas_pg: Option<Arc<std::sync::atomic::AtomicU32>>,
+    atlas_pg: Option<Arc<AtomicU32>>,
     #[serde(skip)]
     queue: Arc<mutex::RwLock<Cache>>,
-    #[serde(skip)]
-    task_queue: Vec<Arc<mutex::RwLock<(f32, Task)>>>,
     #[serde(skip)]
     conv_open: bool,
     #[serde(skip)]
@@ -182,23 +203,22 @@ impl Synthesis {
             })
             .inner
         });
-        self.task_queue.retain(|task| {
-            let (pg, task) = &mut *task.write();
+        for i in (0..self.task_queue.len()).rev() {
+            let TaskInProg { pg, task } = &self.task_queue[i];
             ui.horizontal(|ui| {
                 if small_btn(ui, "⏹", "Stop") {
-                    *pg = 1.;
+                    pg_set(pg, 1.);
                 }
-                ui.label(format!("{:.4?}", task.time));
-                ui.add(ProgressBar::new(*pg).show_percentage().animate(true));
+                ui.label(format!("{:.4?}", task.read().unwrap().time));
+                ui.add(ProgressBar::new(pg_get(pg)).show_percentage().animate(true));
             });
-            // FIXME: Use `extract_if`
-            if *pg == 1. {
-                self.tasks.push(task.clone());
-                false
-            } else {
-                true
+            // Export the finished task to history
+            if Arc::strong_count(task) == 1 {
+                let task = self.task_queue.swap_remove(i).task;
+                self.tasks
+                    .push(Arc::into_inner(task).unwrap().into_inner().unwrap());
             }
-        });
+        }
         #[cfg(target_arch = "wasm32")]
         ui.colored_label(Color32::RED, "Web version freezes UI when solving starts!");
         ui.horizontal(|ui| {
@@ -285,10 +305,8 @@ impl Synthesis {
                 let pg = Arc::new(std::sync::atomic::AtomicU32::new(0));
                 self.atlas_pg = Some(pg.clone());
                 let f = move || {
-                    let atlas = atlas::$atlas::make_with(cfg, |p| {
-                        let p = p as f32 / size as f32;
-                        pg.store(p.to_bits(), std::sync::atomic::Ordering::Relaxed);
-                    });
+                    let atlas =
+                        atlas::$atlas::make_with(cfg, |p| pg_set(&pg, p as f32 / size as f32));
                     *queue.write() = Cache::Atlas(io::Atlas::$atlas_ty(atlas));
                 };
                 #[cfg(not(target_arch = "wasm32"))]
@@ -332,7 +350,7 @@ impl Synthesis {
             }
         });
         if let Some(pg) = &self.atlas_pg {
-            let pg = f32::from_bits(pg.load(std::sync::atomic::Ordering::Relaxed));
+            let pg = pg_get(pg);
             ui.add(ProgressBar::new(pg).show_percentage().animate(true));
             if pg == 1. {
                 self.atlas_pg = None;
@@ -355,8 +373,7 @@ impl Synthesis {
                         draw(&format!("Task {}", i), task);
                     }
                     for (i, task) in self.task_queue.iter().enumerate() {
-                        let (_, task) = &*task.read();
-                        draw(&format!("Queue {}", i), task);
+                        draw(&format!("Queue {}", i), &task.task.read().unwrap());
                     }
                 });
             });
@@ -473,7 +490,7 @@ impl Synthesis {
             time: std::time::Duration::from_secs(0),
             conv: Vec::new(),
         };
-        let task = Arc::new(mutex::RwLock::new((0., task)));
+        let task = TaskInProg::new(task);
         self.task_queue.push(task.clone());
         let alg = self.alg.clone();
         let target = match self.target.clone() {
@@ -481,17 +498,18 @@ impl Synthesis {
             io::Curve::S(t) => Target::S(t.into(), Cow::Owned(self.atlas.as_sfb().clone())),
         };
         let cfg = self.cfg.clone();
-        let total_gen = self.cfg.gen;
         let queue = lnk.projs.queue();
         let f = move || {
             let t0 = Instant::now();
             let stop = {
-                let task = task.clone();
-                move || task.read().0 == 1.
+                let pg = task.pg.clone();
+                let finish = 1f32.to_bits();
+                move || pg.load(Relaxed) == finish
             };
+            let total_gen = cfg.gen;
             let s = syn_cmd::Solver::new(alg, target, cfg, stop, move |best_f, gen| {
-                let (pg, task) = &mut *task.write();
-                *pg = gen as f32 / total_gen as f32;
+                pg_set(&task.pg, gen as f32 / total_gen as f32);
+                let mut task = task.task.write().unwrap();
                 task.conv.push(best_f);
                 task.time = t0.elapsed();
             });
@@ -502,4 +520,12 @@ impl Synthesis {
         #[cfg(target_arch = "wasm32")]
         f(); // Block
     }
+}
+
+fn pg_get(pg: &AtomicU32) -> f32 {
+    f32::from_bits(pg.load(Relaxed))
+}
+
+fn pg_set(pg: &AtomicU32, v: f32) {
+    pg.store(v.to_bits(), Relaxed);
 }
