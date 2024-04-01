@@ -70,10 +70,11 @@ macro_rules! impl_serde {
                         }
                         let mut fb = std::mem::MaybeUninit::<$ty>::uninit();
                         let fb_ptr = fb.as_mut_ptr();
-                        // SAFETY: We only write them and never read them.
+                        // Cannot use `&mut` and `=` on an uninitialized field, so we have to use `write`.
+                        // SAFETY: We only write them for initialization.
                         $(unsafe {
-                            (*fb_ptr).$($unnorm.)?$field = $field.into_inner()
-                                .ok_or_else(|| serde::de::Error::missing_field(stringify!($field)))?;
+                            std::ptr::addr_of_mut!((*fb_ptr).$($unnorm.)?$field)
+                                .write($field.into_inner().ok_or_else(|| serde::de::Error::missing_field(stringify!($field)))?);
                         })+
                         // SAFETY: We have initialized all fields.
                         Ok(unsafe { fb.assume_init() })
