@@ -69,6 +69,10 @@ impl Projects {
         self.queue.push(None, io::Fb::P(FourBar::example()));
     }
 
+    pub(crate) fn push_fb(&self, fb: io::Fb) {
+        self.queue.push(None, fb);
+    }
+
     fn pre_open(&mut self, path: PathBuf) {
         // Check duplicates
         if self.list.iter().all(|proj| proj.path() != Some(&path)) {
@@ -167,7 +171,9 @@ impl Projects {
     }
 
     fn save_curr(&mut self, ask: bool) {
-        let proj = &self.list[self.curr];
+        let proj = &mut self.list[self.curr];
+        proj.mark_saved();
+        let proj = &*proj;
         let (_, fb) = proj.fb_state();
         match proj.path() {
             Some(path) if !ask => io::save_ron(&fb, path),
@@ -176,7 +182,6 @@ impl Projects {
                 io::save_ron_ask(&fb, &proj.name(), move |p| *path.borrow_mut() = Some(p));
             }
         }
-        self.list[self.curr].mark_saved();
     }
 
     pub(crate) fn select(&mut self, ui: &mut Ui) {

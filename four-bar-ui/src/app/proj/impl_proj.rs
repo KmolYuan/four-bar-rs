@@ -309,8 +309,9 @@ where
 
     fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot) {
         ui.heading("Curve");
-        nonzero_i(ui, "Resolution: ", &mut self.res, 1)
-            .on_hover_text("Resolution of rendering and data export");
+        self.cache.changed |= nonzero_i(ui, "Resolution: ", &mut self.res, 1)
+            .on_hover_text("Resolution of rendering and data export")
+            .changed();
         ui.horizontal(|ui| {
             ui.label("Export");
             const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];

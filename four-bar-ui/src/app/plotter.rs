@@ -11,17 +11,24 @@ fn fig_ui<M, const D: usize>(
     lnk: &mut super::link::Linkages,
     get_fb: impl Fn(io::Fb) -> Option<M> + Copy + 'static,
     get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; D]>> + Copy + 'static,
+    to_fb: impl Fn(M) -> io::Fb + Copy + 'static,
 ) where
     M: Clone + mech::CurveGen<D>,
 {
     ui.collapsing("Linkage", |ui| {
-        if fig.borrow().fb.is_some() {
-            if ui.button("✖ Remove Linkage").clicked() {
-                fig.borrow_mut().fb = None;
+        ui.horizontal(|ui| {
+            let mut fig = fig.borrow_mut();
+            if let Some(fb) = &fig.fb {
+                if ui.button("✚ Export").clicked() {
+                    lnk.projs.push_fb(to_fb(fb.clone().into_owned()));
+                }
+                if ui.button("✖ Remove").clicked() {
+                    fig.fb = None;
+                }
+            } else {
+                ui.label("No linkage loaded");
             }
-        } else {
-            ui.label("No linkage loaded");
-        }
+        });
         ui.horizontal(|ui| {
             if let Some(fb) = lnk.projs.current_fb_state().and_then(|(_, fb)| get_fb(fb)) {
                 if ui.button("🖴 Load from").clicked() {
@@ -147,7 +154,7 @@ impl PlotType {
                     io::Curve::P(c) => Some(c),
                     _ => None,
                 };
-                fig_ui(ui, fig, lnk, get_fb, get_curve);
+                fig_ui(ui, fig, lnk, get_fb, get_curve, io::Fb::P);
             }
             PlotType::S(fig) => {
                 ui.heading("Spherical Plot");
@@ -171,7 +178,7 @@ impl PlotType {
                     io::Curve::S(c) => Some(c),
                     _ => None,
                 };
-                fig_ui(ui, fig, lnk, get_fb, get_curve);
+                fig_ui(ui, fig, lnk, get_fb, get_curve, io::Fb::S);
             }
         }
     }
