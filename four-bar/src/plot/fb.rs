@@ -214,10 +214,10 @@ impl Figure<'_, '_> {
             });
             chart.draw_series(grounded)?;
             let joints = joints.iter().enumerate().map(|(n, &[x, y])| {
-                let t_style = self.get_font3d().color(&BLUE);
+                let t_style = self.get_big_font().color(&BLUE);
                 EmptyElement::at((x, y))
                     + Circle::new((0, 0), dot_size, BLACK.filled())
-                    + Text::new(format!("P{}", Subscript(n + 1)), (5, 5), t_style)
+                    + Text::new(format!("p{}", Subscript(n + 1)), (5, 5), t_style)
             });
             chart.draw_series(joints)?;
         }
