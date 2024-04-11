@@ -2,7 +2,7 @@
 use super::{FourBar, MFourBar, SFourBar};
 use serde::{de::*, ser::*};
 
-macro_rules! impl_ser {
+macro_rules! impl_serde {
     ($ty:ident, $($field:ident $(.$unnorm:ident)?),+) => {
         impl Serialize for $ty {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -23,7 +23,7 @@ macro_rules! impl_ser {
                 const FIELDS: &[&str] = &[$(stringify!($field)),+];
                 #[allow(non_camel_case_types)]
                 enum Field {
-                    $($field),+
+                    $($field,)+
                 }
                 impl<'de> Deserialize<'de> for Field {
                     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -59,6 +59,7 @@ macro_rules! impl_ser {
                     where
                         A: MapAccess<'de>,
                     {
+                        // Missing field and duplicated field checkers
                         $(let $field = std::cell::OnceCell::new();)+
                         while let Some(k) = map.next_key()? {
                             match k {
@@ -67,11 +68,16 @@ macro_rules! impl_ser {
                                     .map_err(|_| serde::de::Error::duplicate_field(stringify!($field)))?,)+
                             }
                         }
-                        let mut fb = $ty::default();
-                        $(fb.$($unnorm.)?$field = $field
-                            .into_inner()
-                            .ok_or(serde::de::Error::missing_field(stringify!($field)))?;)+
-                        Ok(fb)
+                        let mut fb = std::mem::MaybeUninit::<$ty>::uninit();
+                        let fb_ptr = fb.as_mut_ptr();
+                        // Cannot use `&mut` and `=` on an uninitialized field, so we have to use `write`.
+                        // SAFETY: We only write them for initialization.
+                        $(unsafe {
+                            std::ptr::addr_of_mut!((*fb_ptr).$($unnorm.)?$field)
+                                .write($field.into_inner().ok_or_else(|| serde::de::Error::missing_field(stringify!($field)))?);
+                        })+
+                        // SAFETY: We have initialized all fields.
+                        Ok(unsafe { fb.assume_init() })
                     }
                 }
                 deserializer.deserialize_struct(stringify!($ty), FIELDS, StructVisitor)
@@ -80,9 +86,9 @@ macro_rules! impl_ser {
     };
 }
 
-impl_ser!(FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, stat);
-impl_ser!(MFourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, e, stat);
-impl_ser!(
+impl_serde!(FourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, stat);
+impl_serde!(MFourBar, p1x.unnorm, p1y.unnorm, a.unnorm, l1, l2.unnorm, l3, l4, l5, g, e, stat);
+impl_serde!(
     SFourBar, ox.unnorm, oy.unnorm, oz.unnorm, r.unnorm, p1i.unnorm, p1j.unnorm, a.unnorm, l1, l2,
     l3, l4, l5, g, stat
 );

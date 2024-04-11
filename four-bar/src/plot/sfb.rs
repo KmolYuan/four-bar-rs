@@ -94,7 +94,7 @@ impl Figure<'_, '_> {
                 axes.max_light_lines(0);
             }
             axes.light_grid_style(LIGHTGRAY)
-                .label_style(self.get_font3d())
+                .label_style(self.get_big_font())
                 .axis_panel_style(TRANSPARENT)
                 .x_labels(4)
                 .z_labels(4)
@@ -177,10 +177,10 @@ impl Figure<'_, '_> {
                 let is_front = is_front_of_sphere(sc, na::Point3::new(x, y, z), yaw);
                 let color = if is_front { BLACK } else { BACKLINK }.to_rgba();
                 let style = ShapeStyle { color, filled: n == 4, stroke_width: stroke };
-                let t_style = self.get_font3d().color(&BLUE);
+                let t_style = self.get_big_font().color(&BLUE);
                 let joint = EmptyElement::at((x, y, z))
                     + Circle::new((0, 0), dot_size, style)
-                    + Text::new(format!("P{}", Subscript(n + 1)), (15, 15), t_style);
+                    + Text::new(format!("p{}", Subscript(n + 1)), (15, 15), t_style);
                 if is_front {
                     joints_front.push(joint);
                 } else {
@@ -210,7 +210,7 @@ impl Figure<'_, '_> {
                 .position(legend)
                 .background_style(WHITE)
                 .border_style(BLACK)
-                .label_font(self.get_font3d())
+                .label_font(self.get_big_font())
                 .draw()?;
         }
         Ok(())

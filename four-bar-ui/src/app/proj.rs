@@ -1,5 +1,5 @@
 use self::impl_proj::*;
-use super::{link::Cfg, widgets::*};
+use super::widgets::*;
 use crate::io;
 use eframe::egui::*;
 use four_bar::{FourBar, MFourBar, SFourBar};
@@ -51,13 +51,13 @@ pub(crate) struct Projects {
 }
 
 impl Projects {
-    pub(crate) fn preload(&mut self, files: Vec<PathBuf>, res: usize) {
+    pub(crate) fn preload(&mut self, files: Vec<PathBuf>) {
         files.into_iter().for_each(|p| self.pre_open(p));
         self.list.iter_mut().for_each(|p| p.preload());
         if self.list.is_empty() && self.queue.0.read().is_empty() {
             self.push_fb_example();
         } else {
-            self.list.iter_mut().for_each(|p| p.cache(res));
+            self.list.iter_mut().for_each(|p| p.cache());
         }
         // Current index boundary check
         if !self.list.is_empty() && self.curr >= self.list.len() {
@@ -67,6 +67,10 @@ impl Projects {
 
     fn push_fb_example(&self) {
         self.queue.push(None, io::Fb::P(FourBar::example()));
+    }
+
+    pub(crate) fn push_fb(&self, fb: io::Fb) {
+        self.queue.push(None, fb);
     }
 
     fn pre_open(&mut self, path: PathBuf) {
@@ -82,7 +86,7 @@ impl Projects {
         self.queue.clone()
     }
 
-    pub(crate) fn poll(&mut self, ctx: &Context, n: usize) {
+    pub(crate) fn poll(&mut self, ctx: &Context) {
         #[cfg(not(target_arch = "wasm32"))]
         ctx.input(|s| {
             for file in s.raw.dropped_files.iter() {
@@ -95,7 +99,7 @@ impl Projects {
         if len > 0 {
             self.list.reserve(len);
             while let Some(mut proj) = self.queue.0.write().pop() {
-                proj.cache(n);
+                proj.cache();
                 self.list.push(proj);
             }
             self.curr = self.list.len() - 1;
@@ -108,7 +112,7 @@ impl Projects {
         }
     }
 
-    pub(crate) fn show(&mut self, ui: &mut Ui, cfg: &Cfg) {
+    pub(crate) fn show(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() || hotkey!(ui, CTRL + O) {
                 let q = self.queue();
@@ -158,7 +162,7 @@ impl Projects {
         });
         if let Some(proj) = self.list.get_mut(self.curr) {
             proj.convert_btn(ui);
-            proj.show(ui, &mut self.pivot, cfg);
+            proj.show(ui, &mut self.pivot);
         } else {
             ui.heading("No project here!");
             ui.label("Please open or create a project.");
@@ -167,7 +171,9 @@ impl Projects {
     }
 
     fn save_curr(&mut self, ask: bool) {
-        let proj = &self.list[self.curr];
+        let proj = &mut self.list[self.curr];
+        proj.mark_saved();
+        let proj = &*proj;
         let (_, fb) = proj.fb_state();
         match proj.path() {
             Some(path) if !ask => io::save_ron(&fb, path),
@@ -176,7 +182,6 @@ impl Projects {
                 io::save_ron_ask(&fb, &proj.name(), move |p| *path.borrow_mut() = Some(p));
             }
         }
-        self.list[self.curr].mark_saved();
     }
 
     pub(crate) fn select(&mut self, ui: &mut Ui) {
@@ -208,12 +213,6 @@ impl Projects {
 
     pub(crate) fn current_sphere(&self) -> Option<[f64; 4]> {
         self.list.get(self.curr)?.get_sphere()
-    }
-
-    pub(crate) fn request_cache(&mut self) {
-        if let Some(p) = self.list.get_mut(self.curr) {
-            p.request_cache();
-        }
     }
 
     pub(crate) fn plot(&self, ui: &mut egui_plot::PlotUi) {

@@ -193,7 +193,7 @@ impl ProjPlot<3> for SFourBar {
 }
 
 pub(crate) trait ProjUi {
-    fn proj_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response;
+    fn proj_ui(&mut self, ui: &mut Ui) -> Response;
 }
 
 // A dummy UI function for angles.
@@ -228,10 +228,10 @@ fn stat_combo(ui: &mut Ui, stat: &mut Stat, bound: AngleBound) -> Response {
 macro_rules! impl_ui {
     ($name:ty, $($header:literal, $(($field:ident $(.$unnorm:ident)?, $ui:ident, $des:literal)),+,)+) => {
         impl ProjUi for $name {
-            fn proj_ui(&mut self, ui: &mut Ui, cfg: &Cfg) -> Response {
+            fn proj_ui(&mut self, ui: &mut Ui) -> Response {
                 $(({
                     ui.heading($header);
-                    $($ui(ui, $des, &mut self.$($unnorm.)?$field, cfg.int))|+
+                    $($ui(ui, $des, &mut self.$($unnorm.)?$field, 1.))|+
                 }))|+ | ({
                     let bound = self.angle_bound();
                     stat_combo(ui, &mut self.stat, bound)

@@ -180,8 +180,15 @@ impl SFourBar {
     }
 
     /// Take the sphere part without the linkage length.
-    pub fn take_sphere(&self) -> Self {
-        Self { unnorm: self.unnorm.clone(), ..Default::default() }
+    pub fn take_sphere(self) -> Self {
+        Self { unnorm: self.unnorm, ..Default::default() }
+    }
+
+    /// Take the sphere part without the linkage length.
+    ///
+    /// This method is modified in-placed.
+    pub fn take_sphere_inplace(&mut self) {
+        self.norm = Default::default();
     }
 
     /// Get the sphere center. (`ox`, `oy`, `oz`)

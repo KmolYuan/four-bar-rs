@@ -694,14 +694,12 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         self.font_family.as_deref().unwrap_or(DEFAULT_FONT)
     }
 
-    pub(crate) fn get_font(&self) -> TextStyle {
-        (self.get_family(), self.font).into_font().color(&BLACK)
+    pub(crate) fn get_font(&self) -> FontDesc<'_> {
+        (self.get_family(), self.font).into_font()
     }
 
-    pub(crate) fn get_font3d(&self) -> TextStyle {
-        (self.get_family(), self.font * 1.15)
-            .into_font()
-            .color(&BLACK)
+    pub(crate) fn get_big_font(&self) -> FontDesc<'_> {
+        (self.get_family(), self.font * 1.15).into_font()
     }
 }
 

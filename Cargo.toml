@@ -13,3 +13,5 @@ categories = ["algorithms"]
 
 [workspace.lints.clippy]
 semicolon-if-nothing-returned = "warn"
+undocumented-unsafe-blocks = "warn"
+unnecessary-safety-comment = "warn"
