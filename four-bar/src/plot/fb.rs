@@ -196,11 +196,11 @@ impl Figure<'_, '_> {
             .draw()?;
         // Draw curve
         for data in self.lines() {
-            let LineData { label, line, style, .. } = data;
+            let LineData { label, line, style, mk_fp, .. } = data;
             let line = line.iter().map(|&[x, y]| (x, y));
             let (color, filled) = data.color();
             let color = ShapeStyle { color, filled, stroke_width: stroke };
-            style.draw(&mut chart, line, color, label, self.font)?;
+            style.draw(&mut chart, line, color, label, self.font, *mk_fp)?;
         }
         // Draw Linkage
         if let Some(joints @ [p1, p2, p3, p4, p5]) = joints {

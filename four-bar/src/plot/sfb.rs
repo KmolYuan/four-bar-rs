@@ -157,6 +157,7 @@ impl Figure<'_, '_> {
                             color.stroke_width(stroke),
                             "",
                             self.font,
+                            false,
                         )?;
                     }
                 }
@@ -189,11 +190,11 @@ impl Figure<'_, '_> {
         }
         // Draw layer 2: Draw curves
         for data in self.lines() {
-            let LineData { label, line, style, .. } = data;
+            let LineData { label, line, style, mk_fp, .. } = data;
             let line = line.iter().map(|&c| c.into());
             let (color, filled) = data.color();
             let color = ShapeStyle { color, filled, stroke_width: stroke };
-            style.draw(&mut chart, line, color, label, self.font)?;
+            style.draw(&mut chart, line, color, label, self.font, *mk_fp)?;
         }
         // Draw layer 3: Draw linkage in the front of the sphere
         for line in link_front {

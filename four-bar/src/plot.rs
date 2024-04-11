@@ -163,8 +163,6 @@ pub enum Style {
     DottedLine,
     /// Dash-dotted Line
     DashDottedLine,
-    /// Dashed Line with a Marker at the starting point
-    InitiatedLine,
     /// Circle Marker
     #[default]
     Circle,
@@ -178,12 +176,11 @@ pub enum Style {
 
 impl Style {
     /// Style list.
-    pub const LIST: [Self; 9] = [
+    pub const LIST: [Self; 8] = [
         Self::Line,
         Self::DashedLine,
         Self::DottedLine,
         Self::DashDottedLine,
-        Self::InitiatedLine,
         Self::Circle,
         Self::Triangle,
         Self::Cross,
@@ -197,12 +194,19 @@ impl Style {
             Self::DashedLine => "Dashed Line",
             Self::DottedLine => "Dotted Line",
             Self::DashDottedLine => "Dash-dotted Line",
-            Self::InitiatedLine => "Initiated Line",
             Self::Circle => "Circle Marker",
             Self::Triangle => "Triangle Marker",
             Self::Cross => "Cross Marker",
             Self::Square => "Square Marker",
         }
+    }
+
+    /// Check if the style is a line or marker.
+    pub const fn is_line(&self) -> bool {
+        matches!(
+            self,
+            Self::Line | Self::DashedLine | Self::DottedLine | Self::DashDottedLine
+        )
     }
 
     pub(crate) fn draw<'a, DB, CT, I>(
@@ -212,6 +216,7 @@ impl Style {
         color: ShapeStyle,
         label: &str,
         font: f64,
+        mk_fp: bool,
     ) -> PResult<(), DB>
     where
         DB: DrawingBackend + 'a,
@@ -223,6 +228,15 @@ impl Style {
         let font = (font * 0.9) as i32;
         let gap = color.stroke_width as i32;
         let has_label = !label.is_empty();
+        let mut line = line.into_iter().peekable();
+        if self.is_line() && mk_fp {
+            let dot_size = color.stroke_width * 2;
+            let fp = match line.peek() {
+                Some(c) => c.clone(),
+                None => return Ok(()),
+            };
+            chart.draw_series([Cross::new(fp, dot_size, color)])?;
+        }
         macro_rules! impl_marker {
             ($mk:expr) => {{
                 let dot_size = color.stroke_width * 2;
@@ -237,41 +251,54 @@ impl Style {
                 }
             }};
         }
+        macro_rules! impl_fp {
+            ($anno:ident, $($expr:expr),+) => {
+                if mk_fp {
+                    $anno.legend(move |c| {
+                        EmptyElement::at(c)
+                            $(+ $expr)+
+                            + Cross::new((gap, 0), color.stroke_width * 2, color)
+                    });
+                } else {
+                    $anno.legend(move |c| EmptyElement::at(c) $(+ $expr)+);
+                }
+            };
+        }
         match self {
             Self::Line => {
                 let line = LineSeries::new(line, color);
                 let anno = chart.draw_series(line)?;
                 if has_label {
-                    anno.label(label).legend(move |c| {
-                        EmptyElement::at(c) + PathElement::new([(gap, 0), (font - gap, 0)], color)
-                    });
+                    anno.label(label);
+                    impl_fp!(anno, PathElement::new([(gap, 0), (font - gap, 0)], color));
                 }
             }
             Self::DashedLine => {
                 let series = DashedPath::new(line, 30, 15, color).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
-                    anno.label(label).legend(move |c| {
-                        EmptyElement::at(c)
-                            + DashedPath::new([(gap, 0), (font - gap, 0)], 30, 15, color)
-                    });
+                    anno.label(label);
+                    impl_fp!(
+                        anno,
+                        DashedPath::new([(gap, 0), (font - gap, 0)], 30, 15, color)
+                    );
                 }
             }
             Self::DottedLine => {
                 let dot_size = color.stroke_width;
-                let color = color.stroke_width(color.stroke_width / 2);
-                let mk_f = move |c| Circle::new(c, dot_size, color);
+                let mk_color = color.stroke_width(color.stroke_width / 2);
+                let mk_f = move |c| Circle::new(c, dot_size, mk_color);
                 let series = DottedPath::new(line, 0, 20, mk_f).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
-                    anno.label(label).legend(move |c| {
-                        EmptyElement::at(c)
-                            + DottedPath::new([(gap, 0), (font - gap, 0)], 0, 20, mk_f)
-                    });
+                    anno.label(label);
+                    impl_fp!(
+                        anno,
+                        DottedPath::new([(gap, 0), (font - gap, 0)], 0, 20, mk_f)
+                    );
                 }
             }
             Self::DashDottedLine => {
-                let line = line.into_iter();
                 let series = DashedPath::new(line.clone(), 30, 16, color).series();
                 chart.draw_series(series)?;
                 let dot_size = color.stroke_width / 2;
@@ -279,28 +306,13 @@ impl Style {
                 let series = DottedPath::new(line, 30 + 8, 30 + 16, mk_f).series();
                 let anno = chart.draw_series(series)?;
                 if has_label {
-                    anno.label(label).legend(move |c| {
-                        let points = [(gap, 0), (font - gap, 0)];
-                        EmptyElement::at(c)
-                            + DashedPath::new(points, 30, 16, color)
-                            + DottedPath::new(points, 30 + 8, 30 + 16, mk_f)
-                    });
-                }
-            }
-            Self::InitiatedLine => {
-                let mut line = line.into_iter();
-                let series = DashedPath::new(line.clone(), 30, 15, color).series();
-                chart.draw_series(series)?;
-                let dot_size = color.stroke_width * 2;
-                let color2 = color.stroke_width(color.stroke_width / 2);
-                let series = [Circle::new(line.next().unwrap(), dot_size, color2)];
-                let anno = chart.draw_series(series)?;
-                if has_label {
-                    anno.label(label).legend(move |c| {
-                        EmptyElement::at(c)
-                            + DashedPath::new([(gap, 0), (font - gap, 0)], 30, 15, color)
-                            + Circle::new((gap, 0), dot_size, color2)
-                    });
+                    anno.label(label);
+                    let points = [(gap, 0), (font - gap, 0)];
+                    impl_fp!(
+                        anno,
+                        DashedPath::new(points, 30, 16, color),
+                        DottedPath::new(points, 30 + 8, 30 + 16, mk_f)
+                    );
                 }
             }
             Self::Circle => impl_marker!(Circle::new),
@@ -413,8 +425,10 @@ pub struct LineData<'a, C: Clone> {
     pub style: Style,
     /// Line color
     pub color: [u8; 3],
-    /// Whether the line is filled
+    /// Color is filled
     pub filled: bool,
+    /// Mark the first point
+    pub mk_fp: bool,
 }
 
 impl<'a, C: Clone> Default for LineData<'a, C> {
@@ -425,6 +439,7 @@ impl<'a, C: Clone> Default for LineData<'a, C> {
             style: Style::default(),
             color: [0; 3],
             filled: false,
+            mk_fp: false,
         }
     }
 }
@@ -522,6 +537,16 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         self
     }
 
+    /// Add a line with marked first point.
+    pub fn add_line_fp<S, L>(mut self, label: S, line: L, style: Style, color: RGBColor) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+        L: Into<Cow<'a, [C]>>,
+    {
+        self.push_line_fp(label, line, style, color);
+        self
+    }
+
     /// Add a line with default settings.
     pub fn add_line_default<S, L>(mut self, label: S, line: L) -> Self
     where
@@ -544,6 +569,23 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [C]>>,
     {
+        self.push_line_mk(label, line, style, color, false);
+    }
+
+    /// Add a line with marked first point in-placed.
+    pub fn push_line_fp<S, L>(&mut self, label: S, line: L, style: Style, color: RGBColor)
+    where
+        S: Into<Cow<'a, str>>,
+        L: Into<Cow<'a, [C]>>,
+    {
+        self.push_line_mk(label, line, style, color, true);
+    }
+
+    fn push_line_mk<S, L>(&mut self, label: S, line: L, style: Style, color: RGBColor, mk_fp: bool)
+    where
+        S: Into<Cow<'a, str>>,
+        L: Into<Cow<'a, [C]>>,
+    {
         let color = ShapeStyle::from(color);
         self.push_line_data(LineData {
             label: label.into(),
@@ -551,6 +593,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             style,
             color: [color.color.0, color.color.1, color.color.2],
             filled: color.filled,
+            mk_fp,
         });
     }
 

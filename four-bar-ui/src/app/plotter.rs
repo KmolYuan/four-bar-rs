@@ -117,6 +117,7 @@ fn fig_line_ui<const N: usize>(
         any_i(ui, &mut line.color[1]);
         any_i(ui, &mut line.color[2]);
         ui.checkbox(&mut line.filled, "Filled");
+        ui.checkbox(&mut line.mk_fp, "Mark the first point");
     });
     keep
 }
