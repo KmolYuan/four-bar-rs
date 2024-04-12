@@ -35,8 +35,14 @@ impl Entry {
         match entry.cmd {
             None => native(entry.files),
             Some(Cmd::Ui { files }) => native(files),
-            Some(Cmd::Syn(syn)) => syn::syn(syn),
-            Some(Cmd::Atlas(atlas)) => atlas::atlas(atlas),
+            Some(Cmd::Syn(syn)) => {
+                register_panic_hook();
+                syn::syn(syn);
+            }
+            Some(Cmd::Atlas(atlas)) => {
+                register_panic_hook();
+                atlas::atlas(atlas);
+            }
         }
     }
 }
@@ -52,5 +58,16 @@ fn native(files: Vec<PathBuf>) {
             .with_icon(eframe::icon_data::from_png_bytes(ICON).unwrap()),
         ..Default::default()
     };
-    eframe::run_native(APP_NAME, opt, App::create(files)).unwrap();
+    eframe::run_native(APP_NAME, opt, App::create(files)).expect("Startup failed");
+}
+
+fn register_panic_hook() {
+    // Print panic messages without stack trace
+    std::panic::set_hook(Box::new(|info| {
+        match info.payload().downcast_ref::<&str>() {
+            Some(s) => eprintln!("{s}"),
+            None => eprintln!("{info}"),
+        }
+        std::process::exit(1);
+    }));
 }

@@ -195,8 +195,7 @@ pub(super) fn syn(syn: Syn) {
         })
         .collect::<Vec<_>>();
     if tasks.is_empty() {
-        println!("No valid target files!");
-        std::process::exit(1);
+        panic!("No valid target files!");
     }
     if clean && !rerun {
         return;
@@ -212,7 +211,7 @@ pub(super) fn syn(syn: Syn) {
         .into_iter()
         .map(|path| Ok(io::Atlas::from_reader(std::fs::File::open(path)?)?))
         .collect::<Result<io::AtlasPool, Box<dyn std::error::Error>>>()
-        .expect("Load atlas failed!");
+        .expect("Load atlas failed");
     // Progress bar
     const STYLE: &str = "{eta} {wide_bar} {percent}%";
     let pb = ProgressBar::new(tasks.len() as u64 * cfg.gen);

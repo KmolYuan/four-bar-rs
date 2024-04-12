@@ -18,6 +18,6 @@ fn main() {
         eframe::WebRunner::new()
             .start("app", opt, app::App::create(Vec::new()))
             .await
-            .expect("startup failed");
+            .expect("Startup failed");
     });
 }
