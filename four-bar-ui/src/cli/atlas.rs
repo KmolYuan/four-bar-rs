@@ -43,15 +43,15 @@ pub(super) fn atlas(atlas: AtlasCfg) {
     let t0 = std::time::Instant::now();
     let cfg = atlas::Cfg { is_open, size, res, harmonic, seed: seed.into() };
     let pb = indicatif::ProgressBar::new(size as u64);
-    let fs = std::fs::File::create(file).unwrap();
     let callback = |n| pb.set_position(n as u64);
+    let fs = || std::fs::File::create(file).unwrap();
     if sphere {
-        atlas::SFbAtlas::make_with(cfg, callback).write(fs).unwrap();
+        atlas::SFbAtlas::make_with(cfg, callback).write(fs())
     } else {
-        atlas::FbAtlas::make_with(cfg, callback).write(fs).unwrap();
+        atlas::FbAtlas::make_with(cfg, callback).write(fs())
     }
-    let t0 = t0.elapsed();
+    .expect("Failed to write");
     pb.finish_and_clear();
-    println!("Time spent: {t0:?}");
+    println!("Time spent: {:?}", t0.elapsed());
     println!("Done");
 }
