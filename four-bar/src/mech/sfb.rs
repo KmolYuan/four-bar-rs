@@ -34,7 +34,24 @@ impl UnNorm {
 
     /// Create a new instance from the sphere radius.
     pub const fn from_radius(r: f64) -> Self {
-        Self { ox: 0., oy: 0., oz: 0., r, p1i: 0., p1j: 0., a: 0. }
+        Self::from_sphere(0., 0., 0., r)
+    }
+
+    /// Create a new instance from the sphere.
+    pub const fn from_sphere(ox: f64, oy: f64, oz: f64, r: f64) -> Self {
+        Self { ox, oy, oz, r, p1i: 0., p1j: 0., a: 0. }
+    }
+
+    /// Create from the ground joints and the sphere.
+    pub fn from_ground(p1: [f64; 3], p2: [f64; 3], center: [f64; 3], r: f64) -> Self {
+        let o = na::Point3::from(center);
+        let p1 = na::Point3::from(p1) - o;
+        let rot_inv =
+            na::UnitQuaternion::rotation_between(&p1, &na::Vector3::z()).unwrap_or_default();
+        let p2 = rot_inv * (na::Point3::from(p2) - o);
+        let [p1i, p1j] = to_sc(p1.x, p1.y, p1.z);
+        let a = (p2.y).atan2(p2.x);
+        Self { ox: o.x, oy: o.y, oz: o.z, r, p1i, p1j, a }
     }
 
     /// Set the origin of the sphere center.
@@ -106,7 +123,7 @@ impl Normalized<3> for SNormFourBar {
     type De = SFourBar;
 
     fn denormalize(self) -> Self::De {
-        SFourBar { unnorm: UnNorm::new(), norm: self }
+        SFourBar::new(UnNorm::new(), self)
     }
 
     fn normalize(de: Self::De) -> Self {
@@ -119,6 +136,13 @@ impl Normalized<3> for SNormFourBar {
 }
 
 impl SNormFourBar {
+    /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
+    pub fn new_wrap(fb: &NormFourBar, w: f64) -> Self {
+        let [l1, l2, l3, l4] = fb.planar_loop().map(|x| x / w * TAU);
+        let l5 = fb.l5 / w * TAU;
+        Self { l1, l2, l3, l4, l5, g: fb.g, stat: fb.stat }
+    }
+
     /// Create with linkage lengths in degrees.
     pub fn to_radians(self) -> Self {
         Self {
@@ -131,40 +155,9 @@ impl SNormFourBar {
             stat: self.stat,
         }
     }
-
-    /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
-    pub fn new_wrap(fb: &NormFourBar, w: f64) -> Self {
-        let [l1, l2, l3, l4] = fb.planar_loop().map(|x| x / w * TAU);
-        let l5 = fb.l5 / w * TAU;
-        Self { l1, l2, l3, l4, l5, g: fb.g, stat: fb.stat }
-    }
 }
 
 impl SFourBar {
-    /// Create with linkage lengths in degrees.
-    pub fn to_radians(self) -> Self {
-        let unnorm = UnNorm {
-            p1i: self.unnorm.p1i.to_radians(),
-            p1j: self.unnorm.p1j.to_radians(),
-            a: self.unnorm.a.to_radians(),
-            ..self.unnorm
-        };
-        Self { unnorm, norm: self.norm.to_radians() }
-    }
-
-    /// Wrap unit to link angle. The argument `w` maps to the angle of [`TAU`].
-    pub fn new_wrap(fb: &FourBar, center: [f64; 3], r: f64, w: f64) -> Self {
-        assert!(r > 0.);
-        let fb::UnNorm { p1x, p1y, a, l2 } = fb.unnorm;
-        let NormFourBar { l1, l3, l4, l5, g, stat } = fb.norm;
-        let [p1i, p1j, l1, l2, l3, l4, l5] = [p1x, p1y, l1, l2, l3, l4, l5].map(|x| x / w * TAU);
-        let [ox, oy, oz] = center;
-        Self {
-            unnorm: UnNorm { ox, oy, oz, r, p1j: FRAC_PI_2 - p1j, p1i, a },
-            norm: SNormFourBar { l1, l2, l3, l4, l5, g, stat },
-        }
-    }
-
     /// An example crank rocker.
     pub const fn example() -> Self {
         let norm = SNormFourBar {
@@ -179,9 +172,21 @@ impl SFourBar {
         Self::new(UnNorm::from_radius(90.), norm)
     }
 
+    /// Transform the linkage lengths to degrees.
+    pub fn to_radians(self) -> Self {
+        let unnorm = UnNorm {
+            p1i: self.unnorm.p1i.to_radians(),
+            p1j: self.unnorm.p1j.to_radians(),
+            a: self.unnorm.a.to_radians(),
+            ..self.unnorm
+        };
+        Self::new(unnorm, self.norm.to_radians())
+    }
+
     /// Take the sphere part without the linkage length.
-    pub fn take_sphere(self) -> Self {
-        Self { unnorm: self.unnorm, ..Default::default() }
+    pub fn take_sphere(mut self) -> Self {
+        self.take_sphere_inplace();
+        self
     }
 
     /// Take the sphere part without the linkage length.
@@ -356,6 +361,7 @@ fn curve_interval(fb: &SFourBar, b: f64, inv: bool) -> Option<[[f64; 3]; 5]> {
 /// To spherical coordinate.
 ///
 /// Return `[p1i, p1j]`, ignore the radius.
+#[inline]
 pub fn to_sc(x: f64, y: f64, z: f64) -> [f64; 2] {
     [x.hypot(y).atan2(z), y.atan2(x)]
 }
@@ -363,6 +369,7 @@ pub fn to_sc(x: f64, y: f64, z: f64) -> [f64; 2] {
 /// To Cartesian coordinate.
 ///
 /// Return `[x, y, z]`.
+#[inline]
 pub fn to_cc(p1i: f64, p1j: f64, sr: f64) -> [f64; 3] {
     let x = sr * p1i.sin() * p1j.cos();
     let y = sr * p1i.sin() * p1j.sin();
