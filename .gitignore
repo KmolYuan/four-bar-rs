@@ -2,11 +2,16 @@
 /target/
 dist/
 Cargo.lock
+
+# Atlas
 *.npz
-*.svg
-*.emf
-*.ron
+# Test cases
 !*.closed.ron
 !*.partial.ron
 !*.open.ron
+# Test results
+*.ron
 *.log
+target-efd.csv
+*.svg
+*.emf

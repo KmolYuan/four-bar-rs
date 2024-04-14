@@ -184,9 +184,11 @@ impl<'a> Solver<'a> {
         macro_rules! impl_solve {
             ($syn:ident, $s:ident, $atlas_fb:ident) => {{
                 let s = $s.solve();
-                let h = s.func().harmonic();
+                let func = s.func();
+                let h = func.harmonic();
+                let tar = func.tar.clone();
                 let (err, fb) = s.into_err_result();
-                Ok((err, h, SolvedFb::$syn(fb, $atlas_fb)))
+                Ok((err, h, SolvedFb::$syn(fb, tar, $atlas_fb)))
             }};
         }
         match self {
@@ -198,6 +200,6 @@ impl<'a> Solver<'a> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) enum SolvedFb {
-    P(FourBar, Option<(f64, NormFourBar)>),
-    S(SFourBar, Option<(f64, SNormFourBar)>),
+    P(FourBar, efd::Efd2, Option<(f64, NormFourBar)>),
+    S(SFourBar, efd::Efd3, Option<(f64, SNormFourBar)>),
 }

@@ -236,6 +236,7 @@ const HISTORY_SVG: &str = "history.svg";
 const LNK_RON: &str = "linkage.ron";
 const LNK_SVG: &str = "linkage.svg";
 const LNK_FIG: &str = "linkage.fig.ron";
+const EFD_CSV: &str = "target-efd.csv";
 const CURVE_SVG: &str = "curve.svg";
 const CURVE_FIG: &str = "curve.fig.ron";
 
@@ -272,11 +273,6 @@ fn from_runtime(
         let svg = plot::SVGBackend::new(&path, (800, 600));
         plot::fb::history(svg, history)?;
     }
-    let lnk_path = root.join(LNK_RON);
-    match &lnk_fb {
-        syn_cmd::SolvedFb::P(fb, _) => write_ron(lnk_path, fb)?,
-        syn_cmd::SolvedFb::S(fb, _) => write_ron(lnk_path, fb)?,
-    }
     // Log results
     let refer = refer
         .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
@@ -285,7 +281,9 @@ fn from_runtime(
     let mut log = super::logger::Logger::new(&mut log);
     log.top_title(title)?;
     match (target, &lnk_fb) {
-        (io::Curve::P(target), syn_cmd::SolvedFb::P(fb, atlas_fb)) if fb.is_valid() => {
+        (io::Curve::P(target), syn_cmd::SolvedFb::P(fb, efd, atlas_fb)) if fb.is_valid() => {
+            write_tar_efd(root.join(EFD_CSV), efd)?;
+            write_ron(root.join(LNK_RON), fb)?;
             let efd_target =
                 efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
@@ -337,7 +335,9 @@ fn from_runtime(
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        (io::Curve::S(target), syn_cmd::SolvedFb::S(fb, atlas_fb)) if fb.is_valid() => {
+        (io::Curve::S(target), syn_cmd::SolvedFb::S(fb, efd, atlas_fb)) if fb.is_valid() => {
+            write_tar_efd(root.join(EFD_CSV), efd)?;
+            write_ron(root.join(LNK_RON), fb)?;
             let efd_target =
                 efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
@@ -481,5 +481,25 @@ where
     S: serde::Serialize,
 {
     std::fs::write(path, ron::ser::to_string_pretty(s, Default::default())?)?;
+    Ok(())
+}
+
+fn write_tar_efd<const D: usize>(path: impl AsRef<Path>, efd: &efd::Efd<D>) -> Result<(), SynErr>
+where
+    efd::U<D>: efd::EfdDim<D>,
+{
+    use std::io::Write as _;
+    let mut w = std::fs::File::create(path)?;
+    for m in efd.coeffs_iter() {
+        for (i, c) in m.iter().enumerate() {
+            if i == m.len() - 1 {
+                write!(w, "{c:.4}")?;
+            } else {
+                write!(w, "{c:.4},")?;
+            }
+        }
+        writeln!(w)?;
+    }
+    w.flush()?;
     Ok(())
 }
