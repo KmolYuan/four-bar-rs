@@ -66,7 +66,11 @@ pub(crate) struct SynCfg {
     #[cfg_attr(not(target_arch = "wasm32"), clap(short, long))]
     pub(crate) seed: Option<u64>,
     /// Number of generation
-    #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = CFG_DEF.gen))]
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        clap(alias = "iter"),
+        clap(short, long, default_value_t = CFG_DEF.gen)
+    )]
     pub(crate) gen: u64,
     /// Number of population (the fetch number in atlas)
     #[cfg_attr(not(target_arch = "wasm32"), clap(short, long, default_value_t = CFG_DEF.pop))]
