@@ -17,7 +17,7 @@ FLAGS="--seed=0"
 $FB syn $FLAGS --atlas=closed.npz test-fb/mcgarva.closed.csv
 $FB syn $FLAGS test-fb/yu2.closed.csv
 $FB syn $FLAGS --gen=180 test-fb/bow.open.ron
-$FB syn $FLAGS test-fb/slice.partial.csv
+$FB syn $FLAGS test-fb/wu3.partial.csv
 $FB syn $FLAGS test-fb/straight-line.partial.csv
 
 $FB syn $FLAGS --atlas=closed-sphere.npz test-sfb/mullineux64.closed.csv
