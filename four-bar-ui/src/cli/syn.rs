@@ -163,7 +163,7 @@ pub(super) fn syn(syn: Syn) {
         files,
         each,
         cfg,
-        atlas,
+        mut atlas,
         refer,
         no_ref,
         alg,
@@ -175,7 +175,9 @@ pub(super) fn syn(syn: Syn) {
     }
     println!("gen={} pop={} res={}", cfg.gen, cfg.pop, cfg.res);
     // If atlas is provided, rerun is always enabled
-    let rerun = rerun || atlas.is_some();
+    if !rerun {
+        atlas = None;
+    }
     println!("rerun={rerun} clean={clean}");
     println!("-----");
     // Load target files & create project folders

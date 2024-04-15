@@ -13,7 +13,7 @@ else
 fi
 
 # Run the paper examples
-FLAGS="--seed=0 -f"
+FLAGS="--seed=0"
 $FB syn $FLAGS --atlas=closed.npz test-fb/mcgarva.closed.csv
 $FB syn $FLAGS test-fb/yu2.closed.csv
 $FB syn $FLAGS --gen=180 test-fb/bow.open.ron
