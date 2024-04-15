@@ -28,7 +28,7 @@ fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
 mh = { version = "10", package = "metaheuristics-nature" }
-efd = { git = "https://github.com/KmolYuan/efd-rs" }
+efd = "9.1"
 
 [dependencies.plotters]
 version = "0.3"
