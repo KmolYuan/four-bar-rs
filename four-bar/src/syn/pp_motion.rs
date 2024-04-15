@@ -77,10 +77,10 @@ where
                 &self.tar.curve,
             )
             .map(|(a, b)| a.l2_err(b))
-            .fold(0., |a, b| a + b);
+            .fold(0., f64::max);
             let pose = zip(efd.as_pose().recon_by(self.tar.as_t()), &self.tar.vectors)
                 .map(|(a, b)| a.l2_err(b))
-                .fold(0., |a, b| a + b);
+                .fold(0., f64::max);
             let err = curve.max(pose).max(self.unit_err(&geo));
             mh::WithProduct::new(err, fb)
         })
