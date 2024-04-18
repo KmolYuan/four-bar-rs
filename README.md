@@ -104,6 +104,20 @@ For example, `example.closed.csv` is a target closed curve in CSV format.
 
 The figure configuration is a RON file with the extension `.fig.ron`. Four🍀bar GUI can import figure configurations to generate linkage plots, and the `syn` command will redraw the linkage result without cleaning if the figure configuration exists.
 
+## Synthesis
+
+Four🍀bar can synthesize a four-bar linkage from the target curve. The synthesis algorithm is based on the paper by us.
+
+```bash
+four-bar syn TARGET_FILE_PATH --[OPTION FLAGS]
+# Print help message
+four-bar syn --help
+```
+
+The synthesis result will be saved in a project directory with the same name as the target file.
+
+Execute the `./paper-ex.sh` to reproduce the paper results under this repository.
+
 ## Citations
 
 + Chang, Y., Chang, JL., Lee, JJ. (2024). Atlas-Based Path Synthesis of Planar Four-Bar Linkages Using Elliptical Fourier Descriptors. In: Okada, M. (eds) Advances in Mechanism and Machine Science. IFToMM WC 2023. Mechanisms and Machine Science, vol 149. Springer, Cham. <https://doi.org/10.1007/978-3-031-45709-8_20>
