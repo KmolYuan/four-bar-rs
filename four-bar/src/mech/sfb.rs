@@ -385,30 +385,16 @@ Chiang, C. H. (1984). ON THE CLASSIFICATION OF SPHERICAL FOUR-BAR LINKAGES
 fn spherical_loop_reduce() {
     use approx::assert_abs_diff_eq;
     use FourBarTy::*;
-
     macro_rules! assert_fb_eq {
-        ([$l1:literal, $l2:literal, $l3:literal, $l4:literal],
-         [$pl1:literal, $pl2:literal, $pl3:literal, $pl4:literal],
-         $ty:expr) => {
-            let fb = SNormFourBar {
-                l1: $l1,
-                l2: $l2,
-                l3: $l3,
-                l4: $l4,
-                l5: 0.,
-                g: 0.,
-                stat: Stat::C1B1,
+        ($arr1:expr, $arr2:expr, $ty:expr) => {{
+            let [l1, l2, l3, l4] = $arr1;
+            let fb = SNormFourBar { l1, l2, l3, l4, l5: 0., g: 0., stat: Stat::C1B1 }.to_radians();
+            for (l, ans) in core::iter::zip(fb.planar_loop(), $arr2) {
+                assert_abs_diff_eq!(l.to_degrees(), ans, epsilon = 1e-12);
             }
-            .to_radians();
-            let [l1, l2, l3, l4] = fb.planar_loop();
-            assert_abs_diff_eq!(l1.to_degrees(), $pl1, epsilon = 1e-12);
-            assert_abs_diff_eq!(l2.to_degrees(), $pl2, epsilon = 1e-12);
-            assert_abs_diff_eq!(l3.to_degrees(), $pl3, epsilon = 1e-12);
-            assert_abs_diff_eq!(l4.to_degrees(), $pl4, epsilon = 1e-12);
             assert_eq!(fb.ty(), $ty);
-        };
+        }};
     }
-
     assert_fb_eq!([80., 20., 60., 75.], [80., 20., 60., 75.], GCRR);
     assert_fb_eq!([30., 60., 60., 75.], [30., 60., 60., 75.], GCCC);
     assert_fb_eq!([80., 75., 25., 70.], [80., 75., 25., 70.], GRCR);
