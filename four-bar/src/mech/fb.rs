@@ -210,7 +210,7 @@ pub(crate) fn curve_interval(
         angle(p3, l5, g + (p43.y).atan2(p43.x))
     };
     macro_rules! build_coords {
-        [$($p:ident),+] => { [$([$p.x, $p.y]),+] }
+        [$($p:ident),+] => { [$([$p.x, $p.y]),+] };
     }
     let js = build_coords![p1, p2, p3, p4, p5];
     js.iter().flatten().all(|x| x.is_finite()).then_some(js)
