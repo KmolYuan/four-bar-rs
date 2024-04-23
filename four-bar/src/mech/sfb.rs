@@ -4,6 +4,9 @@ pub use super::*;
 use efd::na;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
+const J: na::UnitVector3<f64> = na::Unit::new_unchecked(na::Vector3::new(0., 1., 0.));
+const K: na::UnitVector3<f64> = na::Unit::new_unchecked(na::Vector3::new(0., 0., 1.));
+
 /// Unnormalized part of spherical four-bar linkage.
 ///
 /// Please see [`SFourBar`] for more information.
@@ -46,8 +49,7 @@ impl UnNorm {
     pub fn from_ground(p1: [f64; 3], p2: [f64; 3], center: [f64; 3], r: f64) -> Self {
         let o = na::Point3::from(center);
         let p1 = na::Point3::from(p1) - o;
-        let rot_inv =
-            na::UnitQuaternion::rotation_between(&p1, &na::Vector3::z()).unwrap_or_default();
+        let rot_inv = na::UnitQuaternion::rotation_between(&p1, &K).unwrap_or_default();
         let p2 = rot_inv * (na::Point3::from(p2) - o);
         let [p1i, p1j] = to_sc(p1.x, p1.y, p1.z);
         let a = (p2.y).atan2(p2.x);
@@ -286,8 +288,7 @@ impl Transformable<3> for SFourBar {
         let pb = na::Point3::new(fb.a.cos(), fb.a.sin(), 0.) + p1_axis;
         let p1_axis = geo.rot() * p1_axis;
         [fb.p1i, fb.p1j] = to_sc(p1_axis.x, p1_axis.y, p1_axis.z);
-        let rot_inv =
-            na::UnitQuaternion::rotation_between(&p1_axis, &na::Vector3::z()).unwrap_or_default();
+        let rot_inv = na::UnitQuaternion::rotation_between(&p1_axis, &K).unwrap_or_default();
         let pb = rot_inv * geo.rot() * pb;
         fb.a = (pb.y).atan2(pb.x);
         fb.r *= geo.scale();
@@ -312,21 +313,29 @@ fn curve_interval(fb: &SFourBar, b: f64, inv: bool) -> Option<[[f64; 3]; 5]> {
         let h = (h3 * h3 - h1 * h1 + h2 * h2).sqrt() * if inv { -1. } else { 1. };
         2. * (-h3 + h).atan2(h1 - h2)
     };
-    let op1 = r * na::Vector3::z();
+    let op1 = r * *K;
     let op2 = {
-        let rot = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l1);
+        let rot = na::UnitQuaternion::from_axis_angle(&J, l1);
         rot * op1
     };
     let op3 = {
-        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), b);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l2);
+        let rot1 = na::UnitQuaternion::from_axis_angle(&K, b);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&J, l2);
         rot1 * rot2 * op1
     };
     let op4 = {
         let rot1 = na::UnitQuaternion::from_scaled_axis(op2.normalize() * d);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l4);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&J, l4);
         rot1 * rot2 * op2
     };
+    let rot_sphere = {
+        let p1_axis = na::Vector3::from(to_cc(p1i, p1j, 1.));
+        let rot1 = na::UnitQuaternion::from_scaled_axis(p1_axis * a);
+        let rot2 = na::UnitQuaternion::rotation_between(&K, &p1_axis).unwrap_or_default();
+        rot1 * rot2
+    };
+    let op3 = rot_sphere * op3;
+    let op4 = rot_sphere * op4;
     let op5 = {
         let rot_coupler = {
             let i = op3.normalize();
@@ -334,27 +343,19 @@ fn curve_interval(fb: &SFourBar, b: f64, inv: bool) -> Option<[[f64; 3]; 5]> {
             let j = k.cross(&i);
             na::UnitQuaternion::from_basis_unchecked(&[i, j, k])
         };
-        let rot1 = na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), g);
-        let rot2 = na::UnitQuaternion::from_axis_angle(&na::Vector3::y_axis(), l5);
+        let rot1 = na::UnitQuaternion::from_axis_angle(&K, g);
+        let rot2 = na::UnitQuaternion::from_axis_angle(&J, l5);
         rot_coupler * rot1 * rot2 * op1
     };
-    let rot_sphere = {
-        let p1_axis = na::Vector3::from(to_cc(p1i, p1j, 1.));
-        let rot1 = na::UnitQuaternion::from_scaled_axis(p1_axis * a);
-        let z_axis = na::Vector3::z();
-        let rot2 = na::UnitQuaternion::rotation_between(&z_axis, &p1_axis).unwrap_or_default();
-        rot1 * rot2
-    };
     let o = na::Point3::new(ox, oy, oz);
-    let p1 = o + rot_sphere * op1;
-    let p2 = o + rot_sphere * op2;
-    let p3 = o + rot_sphere * op3;
-    let p4 = o + rot_sphere * op4;
-    let p5 = o + rot_sphere * op5;
     macro_rules! build_coords {
-        [$($p:ident),+] => { [$([$p.x, $p.y, $p.z]),+] };
+        (@$p:expr) => {{
+            let p = o + $p;
+            [p.x, p.y, p.z]
+        }};
+        [$($p:expr),+] => {[$(build_coords!(@$p)),+]};
     }
-    let js = build_coords![p1, p2, p3, p4, p5];
+    let js = build_coords![rot_sphere * op1, rot_sphere * op2, op3, op4, op5];
     js.iter().flatten().all(|x| x.is_finite()).then_some(js)
 }
 
