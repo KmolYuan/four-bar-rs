@@ -324,7 +324,7 @@ fn curve_interval(fb: &SFourBar, b: f64, inv: bool) -> Option<[[f64; 3]; 5]> {
         rot1 * rot2 * op1
     };
     let op4 = {
-        let rot1 = na::UnitQuaternion::from_scaled_axis(op2.normalize() * d);
+        let rot1 = na::UnitQuaternion::from_scaled_axis(op2.scale(d / op2.norm()));
         let rot2 = na::UnitQuaternion::from_axis_angle(&J, l4);
         rot1 * rot2 * op2
     };
