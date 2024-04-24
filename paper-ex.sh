@@ -2,14 +2,13 @@
 cd "$(dirname "$0")"
 
 # Test if the "four-bar" command is available
-if command -v "four-bar" &> /dev/null
-then
+if command -v "four-bar" &> /dev/null; then
     FB="four-bar"
-elif command -v "./target/release/four-bar" &> /dev/null
-then
-    FB="./target/release/four-bar"
 else
-    FB="cargo run --release --"
+    if ! command -v "./target/release/four-bar" &> /dev/null; then
+        cargo build --release
+    fi
+    FB="./target/release/four-bar"
 fi
 
 # Run the paper examples

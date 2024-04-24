@@ -170,8 +170,9 @@ pub(super) fn syn(syn: Syn) {
         rerun,
         clean,
     } = syn;
+    println!("=====");
     if let Some(seed) = cfg.seed {
-        println!("seed={seed}");
+        print!("seed={seed} ");
     }
     println!("gen={} pop={} res={}", cfg.gen, cfg.pop, cfg.res);
     // If atlas is provided, rerun is always enabled
