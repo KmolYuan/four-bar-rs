@@ -216,8 +216,9 @@ impl Figure<'_, '_> {
         // Draw curve
         for data in self.lines() {
             let LineData { label, line, style, color } = data;
+            let color = color.stroke_width(stroke);
             let line = line.iter().map(|&[x, y]| (x, y));
-            style.draw(&mut chart, line, color, label, self.font)?;
+            style.draw(&mut chart, line, &color, label, self.font)?;
         }
         // Draw Linkage
         if let Some(joints @ [p1, p2, p3, p4, p5]) = joints {
