@@ -166,18 +166,42 @@ impl Figure<'_, '_> {
         B: DrawingBackend,
         Canvas<B>: From<R>,
     {
-        self.check_empty::<B>()?;
+        self.plot_by(&Canvas::from(root), None)
+    }
+
+    /// Plot the 2D curve and linkages dynamically. Designed for
+    /// [`BitMapBackend::gif()`].
+    ///
+    /// The `times` is the number of frames to plot.
+    pub fn plot_video<B, R>(&self, root: R, times: usize) -> PResult<(), B>
+    where
+        B: DrawingBackend,
+        Canvas<B>: From<R>,
+    {
         let root = Canvas::from(root);
+        for t in self.range_t(times) {
+            self.plot_by(&root, Some(t))?;
+        }
+        Ok(())
+    }
+
+    fn plot_by<B>(&self, root: &Canvas<B>, t: Option<f64>) -> PResult<(), B>
+    where
+        B: DrawingBackend,
+    {
+        self.check_empty::<B>()?;
         root.fill(&WHITE)?;
         let (stroke, dot_size) = self.get_dot_size();
-        let joints = self.get_joints(Into::into);
+        let joints = t
+            .and_then(|t| self.get_joints(t))
+            .or_else(|| self.get_joints_auto(Into::into));
         let Opt { grid, axis, legend, .. } = self.opt;
         let [x_spec, y_spec] = {
             let lines = self.lines().collect::<Vec<_>>();
             let iter = lines.iter().flat_map(|data| data.line.iter());
             area2d(iter.chain(joints.iter().flatten()), root.dim_in_pixel())
         };
-        let mut chart = ChartBuilder::on(&root)
+        let mut chart = ChartBuilder::on(root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
             .margin((4).percent())

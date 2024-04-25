@@ -57,11 +57,33 @@ impl Figure<'_, '_> {
         B: DrawingBackend,
         Canvas<B>: From<R>,
     {
-        self.check_empty::<B>()?;
+        self.plot_by(&Canvas::from(root), None)
+    }
+
+    /// Plot the spherical curve and linkages dynamically. Designed for
+    /// [`BitMapBackend::gif()`].
+    ///
+    /// The `times` is the number of frames to plot.
+    pub fn plot_video<B, R>(&self, root: R, times: usize) -> PResult<(), B>
+    where
+        B: DrawingBackend,
+        Canvas<B>: From<R>,
+    {
         let root = Canvas::from(root);
+        for t in self.range_t(times) {
+            self.plot_by(&root, Some(t))?;
+        }
+        Ok(())
+    }
+
+    fn plot_by<B>(&self, root: &Canvas<B>, t: Option<f64>) -> PResult<(), B>
+    where
+        B: DrawingBackend,
+    {
+        self.check_empty::<B>()?;
         root.fill(&WHITE)?;
         // Draw axis description
-        xyz_label(&root, self.font, ["x", "y", "z"])?;
+        xyz_label(root, self.font, ["x", "y", "z"])?;
         let (stroke, dot_size) = self.get_dot_size();
         let sphere = self.get_sphere_center_radius();
         let [x_spec, y_spec, z_spec] = if let Some((sc, r)) = &sphere {
@@ -72,15 +94,17 @@ impl Figure<'_, '_> {
             area3d(lines.iter().flat_map(|data| data.line.iter()))
         };
         let Opt { grid, axis, legend, .. } = self.opt;
-        let mut chart = ChartBuilder::on(&root)
+        let mut chart = ChartBuilder::on(root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
             .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
             .margin((2).percent())
             .margin_left((15).percent())
             .build_cartesian_3d(x_spec, y_spec, z_spec)?;
-        let joints = self.get_joints(|c| {
-            let (x, y) = chart.as_coord_spec().translate(&c.into());
-            na::Point2::new(x as f64, y as f64)
+        let joints = t.and_then(|t| self.get_joints(t)).or_else(|| {
+            self.get_joints_auto(|c| {
+                let (x, y) = chart.as_coord_spec().translate(&c.into());
+                na::Point2::new(x as f64, y as f64)
+            })
         });
         let yaw = std::f64::consts::FRAC_PI_4;
         chart.with_projection(|mut pb| {

@@ -650,7 +650,31 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             .ok_or(DrawingAreaErrorKind::LayoutError)
     }
 
-    pub(crate) fn get_joints<F, const D: usize>(&self, coord_map: F) -> Option<[[f64; D]; 5]>
+    pub(crate) fn as_fb(&self) -> Option<&M> {
+        self.fb.as_deref()
+    }
+
+    pub(crate) fn range_t<const D: usize>(&self, res: usize) -> Vec<f64>
+    where
+        M: crate::mech::CurveGen<D>,
+    {
+        use std::f64::consts::TAU;
+        let Some([start, end]) = self.as_fb().and_then(|fb| fb.angle_bound().to_value()) else {
+            return vec![0.];
+        };
+        let end = if end > start { end } else { end + TAU };
+        let step = (end - start) / res as f64;
+        (0..=res).map(|t| start + t as f64 * step).collect()
+    }
+
+    pub(crate) fn get_joints<const D: usize>(&self, t: f64) -> Option<[[f64; D]; 5]>
+    where
+        M: crate::mech::CurveGen<D>,
+    {
+        self.as_fb().and_then(|fb| fb.pos(t))
+    }
+
+    pub(crate) fn get_joints_auto<F, const D: usize>(&self, coord_map: F) -> Option<[[f64; D]; 5]>
     where
         M: crate::mech::CurveGen<D>,
         F: Fn([f64; D]) -> na::Point2<f64>,
@@ -664,7 +688,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             (ab.dot(&cb) / (ab.norm() * cb.norm())).acos()
         }
 
-        let fb = self.fb.as_deref()?;
+        let fb = self.as_fb()?;
         let [start, end] = fb.angle_bound().to_value()?;
         let end = if end > start { end } else { end + TAU };
         let step = (end - start) / RES as f64;
