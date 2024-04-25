@@ -20,6 +20,7 @@ use std::f64::consts::FRAC_PI_6;
 /// + Angle of the motion line `e`
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, PartialEq, Default)]
+#[repr(C)] // Ensure the same memory layout as `NormFourBar`
 pub struct MNormFourBar {
     /// Base parameters
     pub base: NormFourBar,
@@ -89,6 +90,21 @@ impl MFourBar {
     /// Convert to a four-bar linkage by dropping the motion line angle.
     pub const fn into_fb(self) -> FourBar {
         FourBar { unnorm: self.unnorm, norm: self.norm.base }
+    }
+
+    /// Convert to a four-bar linkage reference.
+    pub const fn as_fb(&self) -> &FourBar {
+        // Compile time checks memory layout compatibility.
+        #[allow(dead_code)]
+        const MFB: MFourBar = MFourBar::example();
+        #[allow(dead_code)]
+        const FB: &FourBar = MFB.as_fb();
+        const _: [(); (FB.unnorm.p1x != MFB.unnorm.p1x) as usize] = [];
+        const _: [(); (FB.unnorm.l2 != MFB.unnorm.l2) as usize] = [];
+        const _: [(); (FB.norm.l1 != MFB.norm.base.l1) as usize] = [];
+        const _: [(); (FB.norm.g != MFB.norm.base.g) as usize] = [];
+        // Safety: `MFourBar` and `FourBar` have the same memory layout.
+        unsafe { &*(self as *const Self as *const FourBar) }
     }
 
     /// An example crank rocker.
