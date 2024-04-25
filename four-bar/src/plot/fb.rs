@@ -169,20 +169,15 @@ impl Figure<'_, '_> {
         self.plot_by(&Canvas::from(root), None)
     }
 
-    /// Plot the 2D curve and linkages dynamically. Designed for
-    /// [`BitMapBackend::gif()`].
+    /// Plot the 2D curve and linkages dynamically.
     ///
-    /// The `times` is the number of frames to plot.
-    pub fn plot_video<B, R>(&self, root: R, times: usize) -> PResult<(), B>
+    /// This is the `curr`/`total` frame of the animation.
+    pub fn plot_video<B, R>(&self, root: R, curr: usize, total: usize) -> PResult<(), B>
     where
         B: DrawingBackend,
         Canvas<B>: From<R>,
     {
-        let root = Canvas::from(root);
-        for t in self.range_t(times) {
-            self.plot_by(&root, Some(t))?;
-        }
-        Ok(())
+        self.plot_by(&Canvas::from(root), Some(self.get_t(curr, total)))
     }
 
     fn plot_by<B>(&self, root: &Canvas<B>, t: Option<f64>) -> PResult<(), B>

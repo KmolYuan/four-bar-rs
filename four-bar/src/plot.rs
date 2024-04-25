@@ -649,17 +649,17 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         self.fb.as_deref()
     }
 
-    pub(crate) fn range_t<const D: usize>(&self, res: usize) -> Vec<f64>
+    pub(crate) fn get_t<const D: usize>(&self, curr: usize, total: usize) -> f64
     where
         M: crate::mech::CurveGen<D>,
     {
         use std::f64::consts::TAU;
         let Some([start, end]) = self.as_fb().and_then(|fb| fb.angle_bound().to_value()) else {
-            return vec![0.];
+            return 0.;
         };
         let end = if end > start { end } else { end + TAU };
-        let step = (end - start) / res as f64;
-        (0..=res).map(|t| start + t as f64 * step).collect()
+        let step = (end - start) / total as f64;
+        start + curr as f64 * step
     }
 
     pub(crate) fn get_joints<const D: usize>(&self, t: f64) -> Option<[[f64; D]; 5]>

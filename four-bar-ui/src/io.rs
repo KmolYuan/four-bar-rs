@@ -14,6 +14,8 @@ const ATLAS_FMT: &str = "Numpy Array Zip (NPZ)";
 const ATLAS_EXT: &[&str] = &["npz"];
 const SVG_FMT: &str = "Scalable Vector Graphics (SVG)";
 const SVG_EXT: &[&str] = &["svg"];
+const GIF_FMT: &str = "Graphics Interchange Format (GIF)";
+const GIF_EXT: &[&str] = &["gif"];
 const IMG_FMT: &str = "Supported Image Format (PNG & JPEG)";
 const IMG_EXT: &[&str] = &["png", "jpg", "jpeg"];
 
@@ -389,6 +391,11 @@ pub(crate) fn save_svg_ask(buf: &str, name: &str) {
         |mut w| w.write_all(buf.as_bytes()),
         |_| (),
     );
+}
+
+pub(crate) fn save_gif_ask(buf: Vec<u8>, name: &str) {
+    use std::io::Write as _;
+    save_ask(name, GIF_FMT, GIF_EXT, |mut w| w.write_all(&buf), |_| ());
 }
 
 pub(crate) fn save_history_ask(history: &[f64], name: &str) {

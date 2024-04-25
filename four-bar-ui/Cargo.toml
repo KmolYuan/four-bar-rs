@@ -41,7 +41,7 @@ features = ["accesskit", "persistence", "glow"]
 [dependencies.image]
 version = "0.25"
 default-features = false
-features = ["ico", "jpeg"]
+features = ["ico", "jpeg", "gif"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!

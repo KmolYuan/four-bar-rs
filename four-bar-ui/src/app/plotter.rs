@@ -3,7 +3,7 @@ use crate::io;
 use eframe::egui::*;
 use four_bar::{mech, plot as fb_plot};
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, iter::zip, rc::Rc};
 
 fn fig_ui<M, const D: usize>(
     ui: &mut Ui,
@@ -303,14 +303,21 @@ impl Plotter {
             });
         }
         ui.separator();
-        if ui.button("💾 Save Plot").clicked() {
-            self.save_plot();
+        if self.queue.iter().all(Option::is_none) {
+            return;
         }
+        ui.horizontal(|ui| {
+            if ui.button("💾 Save Plot").clicked() {
+                self.save_plot();
+            }
+            if ui.button("💾 Save GIF Plot").clicked() {
+                self.save_plot_gif();
+            }
+        });
     }
 
     fn save_plot(&mut self) {
         use four_bar::plot::IntoDrawingArea as _;
-        use std::iter::zip;
         let mut buf = String::new();
         let size = (
             self.size * self.shape.1 as u32,
@@ -325,5 +332,40 @@ impl Plotter {
             }
         }
         io::save_svg_ask(&buf, "figure.svg");
+    }
+
+    fn save_plot_gif(&mut self) {
+        use four_bar::plot::IntoDrawingArea as _;
+        use image::{codecs::gif, DynamicImage, Frame, RgbImage};
+        const TIMES: usize = 60;
+        let mut buf = Vec::new();
+        let size = (
+            self.size * self.shape.1 as u32,
+            self.size * self.shape.0 as u32,
+        );
+        let mut w = gif::GifEncoder::new_with_speed(&mut buf, 30);
+        io::alert!("Plot", w.set_repeat(gif::Repeat::Infinite));
+        for curr in 0..TIMES {
+            let mut frame = vec![0; size.0 as usize * size.1 as usize * 3];
+            let b = fb_plot::BitMapBackend::with_buffer(&mut frame, size);
+            for (root, p_opt) in zip(b.into_drawing_area().split_evenly(self.shape), &self.queue) {
+                match &p_opt {
+                    None => (),
+                    Some(PlotType::P(fig)) => {
+                        io::alert!("Plot", fig.borrow().plot_video(root, curr, TIMES));
+                    }
+                    Some(PlotType::S(fig)) => {
+                        io::alert!("Plot", fig.borrow().plot_video(root, curr, TIMES));
+                    }
+                }
+            }
+            let image = RgbImage::from_vec(size.0, size.1, frame).unwrap();
+            io::alert!(
+                "Plot",
+                w.encode_frame(Frame::new(DynamicImage::from(image).into_rgba8()))
+            );
+        }
+        drop(w);
+        io::save_gif_ask(buf, "figure.gif");
     }
 }
