@@ -6,8 +6,11 @@ use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     sync::{
-        atomic::{AtomicU32, Ordering::Relaxed},
-        Arc, RwLock,
+        atomic::{
+            AtomicU32,
+            Ordering::{Relaxed, SeqCst},
+        },
+        Arc, Mutex,
     },
 };
 
@@ -25,14 +28,14 @@ struct Task {
 #[derive(Clone)]
 struct TaskInProg {
     pg: Arc<AtomicU32>,
-    task: Arc<RwLock<Task>>,
+    task: Arc<Mutex<Task>>,
 }
 
 impl TaskInProg {
     fn new(task: Task) -> Self {
         Self {
             pg: Arc::new(AtomicU32::new(0f32.to_bits())),
-            task: Arc::new(RwLock::new(task)),
+            task: Arc::new(Mutex::new(task)),
         }
     }
 }
@@ -81,7 +84,7 @@ pub(crate) struct Synthesis {
     #[serde(skip)]
     atlas_pg: Option<Arc<AtomicU32>>,
     #[serde(skip)]
-    queue: Arc<mutex::RwLock<Cache>>,
+    queue: Arc<mutex::Mutex<Cache>>,
     #[serde(skip)]
     conv_open: bool,
     #[serde(skip)]
@@ -128,7 +131,7 @@ impl Synthesis {
                 ui.selectable_value(&mut self.cfg.mode, mode, name);
             }
         });
-        match std::mem::replace(&mut *self.queue.write(), Cache::Empty) {
+        match std::mem::replace(&mut *self.queue.lock(), Cache::Empty) {
             Cache::Curve(curve) => self.target = curve,
             Cache::Atlas(atlas) => io::alert!("Merge Atlas", self.atlas.merge_inplace(atlas)),
             Cache::Empty => (),
@@ -147,7 +150,7 @@ impl Synthesis {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load from CSV").clicked() {
                 let queue = self.queue.clone();
-                io::open_csv_single(move |_, c| *queue.write() = Cache::Curve(c));
+                io::open_csv_single(move |_, c| *queue.lock() = Cache::Curve(c));
             }
             if ui.button("💾 Save CSV").clicked() {
                 match &self.target {
@@ -207,9 +210,9 @@ impl Synthesis {
             let TaskInProg { pg, task } = &self.task_queue[i];
             ui.horizontal(|ui| {
                 if small_btn(ui, "⏹", "Stop") {
-                    pg_set(pg, 1.);
+                    pg.store(1f32.to_bits(), SeqCst);
                 }
-                ui.label(format!("{:.4?}", task.read().unwrap().time));
+                ui.label(format!("{:.4?}", task.lock().unwrap().time));
                 ui.add(ProgressBar::new(pg_get(pg)).show_percentage().animate(true));
             });
             // Export the finished task to history
@@ -273,7 +276,7 @@ impl Synthesis {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();
-                io::open_cb(move |atlas| *queue.write() = Cache::Atlas(atlas));
+                io::open_cb(move |atlas| *queue.lock() = Cache::Atlas(atlas));
             }
             ui.group(|ui| {
                 if ui.button("☁ Point Cloud Visualize").clicked() {
@@ -307,7 +310,7 @@ impl Synthesis {
                 let f = move || {
                     let atlas =
                         atlas::$atlas::make_with(cfg, |p| pg_set(&pg, p as f32 / size as f32));
-                    *queue.write() = Cache::Atlas(io::Atlas::$atlas_ty(atlas));
+                    *queue.lock() = Cache::Atlas(io::Atlas::$atlas_ty(atlas));
                 };
                 #[cfg(not(target_arch = "wasm32"))]
                 mh::rayon::spawn(f);
@@ -373,7 +376,7 @@ impl Synthesis {
                         draw(&format!("Task {}", i), task);
                     }
                     for (i, task) in self.task_queue.iter().enumerate() {
-                        draw(&format!("Queue {}", i), &task.task.read().unwrap());
+                        draw(&format!("Queue {}", i), &task.task.lock().unwrap());
                     }
                 });
             });
@@ -406,13 +409,12 @@ impl Synthesis {
             io::Curve::P(t) => t.push([p.x, p.y]),
             io::Curve::S(t) => {
                 // FIXME: Try block, ignore errors
-                let f = || {
+                if let Some(c) = (|| {
                     let [sx, sy, sz, r] = lnk.projs.current_sphere()?;
                     let dx = p.x - sx;
                     let dy = p.y - sy;
                     (dx.hypot(dy) <= r).then_some([p.x, p.y, r * r - dx * dx - dy * dy + sz])
-                };
-                if let Some(c) = f() {
+                })() {
                     t.push(c);
                 } else {
                     let p = egui_plot::Points::new([p.x, p.y])
@@ -505,12 +507,12 @@ impl Synthesis {
             let stop = {
                 let pg = task.pg.clone();
                 let finish = 1f32.to_bits();
-                move || pg.load(Relaxed) == finish
+                move || pg.load(SeqCst) == finish
             };
             let total_gen = cfg.gen;
             let s = syn_cmd::Solver::new(alg, target, cfg, stop, move |best_f, gen| {
                 pg_set(&task.pg, gen as f32 / total_gen as f32);
-                let mut task = task.task.write().unwrap();
+                let mut task = task.task.lock().unwrap();
                 task.conv.push(best_f);
                 task.time = t0.elapsed();
             });

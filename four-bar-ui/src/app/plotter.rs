@@ -3,11 +3,23 @@ use crate::io;
 use eframe::egui::*;
 use four_bar::{mech, plot as fb_plot};
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, cell::RefCell, iter::zip, rc::Rc};
+use std::{
+    borrow::Cow,
+    iter::zip,
+    sync::{
+        atomic::{
+            AtomicUsize,
+            Ordering::{Relaxed, SeqCst},
+        },
+        Arc, Mutex,
+    },
+};
+
+const GIF_RES: usize = 60;
 
 fn fig_ui<M, const D: usize>(
     ui: &mut Ui,
-    fig: &mut Rc<RefCell<fb_plot::FigureBase<'static, 'static, M, [f64; D]>>>,
+    fig: &mut Arc<Mutex<fb_plot::FigureBase<'static, 'static, M, [f64; D]>>>,
     lnk: &mut super::link::Linkages,
     get_fb: impl Fn(io::Fb) -> Option<M> + Copy + 'static,
     get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; D]>> + Copy + 'static,
@@ -17,7 +29,7 @@ fn fig_ui<M, const D: usize>(
 {
     ui.collapsing("Linkage", |ui| {
         ui.horizontal(|ui| {
-            let mut fig = fig.borrow_mut();
+            let mut fig = fig.lock().unwrap();
             if let Some(fb) = &fig.fb {
                 if ui.button("✚ Export").clicked() {
                     lnk.projs.push_fb(to_fb(fb.clone().into_owned()));
@@ -32,7 +44,7 @@ fn fig_ui<M, const D: usize>(
         ui.horizontal(|ui| {
             if let Some(fb) = lnk.projs.current_fb_state().and_then(|(_, fb)| get_fb(fb)) {
                 if ui.button("🖴 Load from").clicked() {
-                    fig.borrow_mut().fb = Some(Cow::Owned(fb));
+                    fig.lock().unwrap().fb = Some(Cow::Owned(fb));
                 }
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
@@ -44,19 +56,20 @@ fn fig_ui<M, const D: usize>(
             io::open_ron_single(move |_, fb| {
                 io::alert!(
                     ("Wrong linkage type", get_fb(fb)),
-                    ("*", |fb| fig.borrow_mut().fb = Some(Cow::Owned(fb))),
+                    ("*", |fb| fig.lock().unwrap().fb = Some(Cow::Owned(fb))),
                 );
             });
         }
     });
     ui.collapsing("Curves", |ui| {
-        fig.borrow_mut()
+        fig.lock()
+            .unwrap()
             .retain_lines(|i, line| ui.group(|ui| fig_line_ui(ui, i, line)).inner);
         const NEW_CURVE: &str = "New Curve";
         ui.horizontal(|ui| {
             if let Some(c) = lnk.projs.current_curve().and_then(get_curve) {
                 if ui.button("🖴 Add from").clicked() {
-                    fig.borrow_mut().push_line_default(NEW_CURVE, c);
+                    fig.lock().unwrap().push_line_default(NEW_CURVE, c);
                 }
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
@@ -68,7 +81,7 @@ fn fig_ui<M, const D: usize>(
             io::open_csv(move |_, c| {
                 io::alert!(
                     ("Wrong curve type", get_curve(c)),
-                    ("*", |c| fig.borrow_mut().push_line_default(NEW_CURVE, c)),
+                    ("*", |c| fig.lock().unwrap().push_line_default(NEW_CURVE, c)),
                 );
             });
         }
@@ -78,14 +91,16 @@ fn fig_ui<M, const D: usize>(
                 io::alert!(
                     ("Wrong linkage type", get_fb(fb)),
                     ("*", |fb| {
-                        fig.borrow_mut().push_line_default(NEW_CURVE, fb.curve(360));
+                        fig.lock()
+                            .unwrap()
+                            .push_line_default(NEW_CURVE, fb.curve(360));
                     })
                 );
             });
         }
     });
     ui.collapsing("Plot Option", |ui| {
-        let mut fig = fig.borrow_mut();
+        let mut fig = fig.lock().unwrap();
         nonzero_i(ui, "Stroke size: ", &mut fig.stroke, 1);
         nonzero_i(ui, "Font size: ", &mut fig.font, 1);
         check_on(ui, "Font Family", &mut fig.font_family, |ui, s| {
@@ -134,17 +149,27 @@ fn fig_line_ui<const N: usize>(
 
 #[derive(Deserialize, Serialize, Clone)]
 enum PlotType {
-    P(Rc<RefCell<fb_plot::fb::Figure<'static, 'static>>>),
-    S(Rc<RefCell<fb_plot::sfb::Figure<'static, 'static>>>),
+    P(Arc<Mutex<fb_plot::fb::Figure<'static, 'static>>>),
+    S(Arc<Mutex<fb_plot::sfb::Figure<'static, 'static>>>),
 }
 
 impl PlotType {
     fn new_p() -> Self {
-        Self::P(Default::default())
+        Self::new_p_and_get().0
+    }
+
+    fn new_p_and_get() -> (Self, Arc<Mutex<fb_plot::fb::Figure<'static, 'static>>>) {
+        let fig = Arc::new(Mutex::new(Default::default()));
+        (Self::P(fig.clone()), fig)
     }
 
     fn new_s() -> Self {
         Self::S(Default::default())
+    }
+
+    fn new_s_and_get() -> (Self, Arc<Mutex<fb_plot::sfb::Figure<'static, 'static>>>) {
+        let fig = Arc::new(Mutex::new(Default::default()));
+        (Self::S(fig.clone()), fig)
     }
 
     fn show(&mut self, ui: &mut Ui, lnk: &mut super::link::Linkages) {
@@ -164,7 +189,7 @@ impl PlotType {
             }
             PlotType::S(fig) => {
                 ui.heading("Spherical Plot");
-                if let Some(fb) = &mut fig.borrow_mut().fb {
+                if let Some(fb) = &mut fig.lock().unwrap().fb {
                     if ui
                         .button("⚾ Take Sphere")
                         .on_hover_text("Draw the sphere without the linkage")
@@ -198,6 +223,10 @@ pub(crate) struct Plotter {
     queue: Vec<Option<PlotType>>,
     #[serde(skip)]
     curr: usize,
+    #[serde(skip)]
+    gif_pg: Option<Arc<AtomicUsize>>,
+    #[serde(skip)]
+    gif_queue: Arc<mutex::Mutex<Vec<u8>>>,
 }
 
 impl Default for Plotter {
@@ -207,6 +236,8 @@ impl Default for Plotter {
             shape: (1, 1),
             curr: 0,
             queue: vec![None],
+            gif_pg: None,
+            gif_queue: Default::default(),
         }
     }
 }
@@ -252,8 +283,8 @@ impl Plotter {
             if ui.button("💾 Save Plot Settings").clicked() {
                 let name = "plot.fig.ron";
                 match plot {
-                    PlotType::P(fig) => io::save_ron_ask(&*fig.borrow(), name, |_| ()),
-                    PlotType::S(fig) => io::save_ron_ask(&*fig.borrow(), name, |_| ()),
+                    PlotType::P(fig) => io::save_ron_ask(&*fig.lock().unwrap(), name, |_| ()),
+                    PlotType::S(fig) => io::save_ron_ask(&*fig.lock().unwrap(), name, |_| ()),
                 }
             }
             if ui.button("✖ Delete Plot").clicked() {
@@ -271,18 +302,14 @@ impl Plotter {
             });
             ui.horizontal(|ui| {
                 if ui.button("🖴 Load Planar").clicked() {
-                    let PlotType::P(fig) = self.queue[self.curr].insert(PlotType::new_p()) else {
-                        unreachable!()
-                    };
-                    let fig = fig.clone();
-                    io::open_ron(move |_, cfg| *fig.borrow_mut() = cfg);
+                    let (plot, fig) = PlotType::new_p_and_get();
+                    self.queue[self.curr] = Some(plot);
+                    io::open_ron(move |_, cfg| *fig.lock().unwrap() = cfg);
                 }
                 if ui.button("🖴 Load Spherical").clicked() {
-                    let PlotType::S(fig) = self.queue[self.curr].insert(PlotType::new_s()) else {
-                        unreachable!()
-                    };
-                    let fig = fig.clone();
-                    io::open_ron(move |_, cfg| *fig.borrow_mut() = cfg);
+                    let (plot, fig) = PlotType::new_s_and_get();
+                    self.queue[self.curr] = Some(plot);
+                    io::open_ron(move |_, cfg| *fig.lock().unwrap() = cfg);
                 }
             });
             ui.menu_button("Copy From ⏷", |ui| {
@@ -304,6 +331,21 @@ impl Plotter {
             });
         }
         ui.separator();
+        ui.horizontal(|ui| {
+            if let Some(pg) = &self.gif_pg {
+                let pg_value = pg.load(Relaxed) as f32 / GIF_RES as f32;
+                if small_btn(ui, "⏹", "Stop") {
+                    pg.store(GIF_RES, SeqCst);
+                    self.gif_pg = None;
+                }
+                ui.add(ProgressBar::new(pg_value).show_percentage().animate(true));
+                let mut queue = self.gif_queue.lock();
+                if !queue.is_empty() {
+                    io::save_gif_ask(std::mem::take(&mut queue), "figure.gif");
+                    self.gif_pg = None;
+                }
+            }
+        });
         if self.queue.iter().all(Option::is_none) {
             return;
         }
@@ -311,7 +353,10 @@ impl Plotter {
             if ui.button("💾 Save Plot").clicked() {
                 self.save_plot();
             }
-            if ui.button("💾 Save GIF Plot").clicked() {
+            if ui
+                .add_enabled(self.gif_pg.is_none(), Button::new("🎥 Save GIF Plot"))
+                .clicked()
+            {
                 self.save_plot_gif();
             }
         });
@@ -328,8 +373,8 @@ impl Plotter {
         for (root, p_opt) in zip(b.into_drawing_area().split_evenly(self.shape), &self.queue) {
             match &p_opt {
                 None => (),
-                Some(PlotType::P(fig)) => io::alert!("Plot", fig.borrow().plot(root)),
-                Some(PlotType::S(fig)) => io::alert!("Plot", fig.borrow().plot(root)),
+                Some(PlotType::P(fig)) => io::alert!("Plot", fig.lock().unwrap().plot(root)),
+                Some(PlotType::S(fig)) => io::alert!("Plot", fig.lock().unwrap().plot(root)),
             }
         }
         io::save_svg_ask(&buf, "figure.svg");
@@ -338,35 +383,46 @@ impl Plotter {
     fn save_plot_gif(&mut self) {
         use four_bar::plot::IntoDrawingArea as _;
         use image::{codecs::gif, DynamicImage, Frame, RgbImage};
-        const TIMES: usize = 60;
-        let mut buf = Vec::new();
-        let size = (
-            self.size * self.shape.1 as u32,
-            self.size * self.shape.0 as u32,
-        );
-        let mut w = gif::GifEncoder::new_with_speed(&mut buf, 30);
-        io::alert!("Plot", w.set_repeat(gif::Repeat::Infinite));
-        for curr in 0..TIMES {
-            let mut frame = vec![0; size.0 as usize * size.1 as usize * 3];
-            let b = fb_plot::BitMapBackend::with_buffer(&mut frame, size);
-            for (root, p_opt) in zip(b.into_drawing_area().split_evenly(self.shape), &self.queue) {
-                match &p_opt {
-                    None => (),
-                    Some(PlotType::P(fig)) => {
-                        io::alert!("Plot", fig.borrow().plot_video(root, curr, TIMES));
-                    }
-                    Some(PlotType::S(fig)) => {
-                        io::alert!("Plot", fig.borrow().plot_video(root, curr, TIMES));
+        let pg = Arc::new(AtomicUsize::new(0));
+        self.gif_pg = Some(pg.clone());
+        let queue = self.gif_queue.clone();
+        let fig_queue = self.queue.clone();
+        let shape = self.shape;
+        let size = (self.size * shape.1 as u32, self.size * shape.0 as u32);
+        let f = move || {
+            let mut buf = Vec::new();
+            let mut w = gif::GifEncoder::new_with_speed(&mut buf, 30);
+            io::alert!("Plot", w.set_repeat(gif::Repeat::Infinite));
+            for curr in 0..GIF_RES {
+                if pg.load(SeqCst) == GIF_RES {
+                    return;
+                }
+                let mut frame = vec![0; size.0 as usize * size.1 as usize * 3];
+                let b = fb_plot::BitMapBackend::with_buffer(&mut frame, size);
+                for (root, p_opt) in zip(b.into_drawing_area().split_evenly(shape), &fig_queue) {
+                    match &p_opt {
+                        None => (),
+                        Some(PlotType::P(fig)) => {
+                            io::alert!("Plot", fig.lock().unwrap().plot_video(root, curr, GIF_RES));
+                        }
+                        Some(PlotType::S(fig)) => {
+                            io::alert!("Plot", fig.lock().unwrap().plot_video(root, curr, GIF_RES));
+                        }
                     }
                 }
+                let image = RgbImage::from_vec(size.0, size.1, frame).unwrap();
+                io::alert!(
+                    "Plot",
+                    w.encode_frame(Frame::new(DynamicImage::from(image).into_rgba8()))
+                );
+                pg.store(curr, Relaxed);
             }
-            let image = RgbImage::from_vec(size.0, size.1, frame).unwrap();
-            io::alert!(
-                "Plot",
-                w.encode_frame(Frame::new(DynamicImage::from(image).into_rgba8()))
-            );
-        }
-        drop(w);
-        io::save_gif_ask(buf, "figure.gif");
+            drop(w);
+            *queue.lock() = buf;
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        four_bar::mh::rayon::spawn(f);
+        #[cfg(target_arch = "wasm32")]
+        f(); // Block
     }
 }

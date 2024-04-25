@@ -29,11 +29,11 @@ impl Pivot {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct Queue(Arc<mutex::RwLock<Vec<Project>>>);
+pub(crate) struct Queue(Arc<mutex::Mutex<Vec<Project>>>);
 
 impl Queue {
     pub(crate) fn push(&self, path: Option<PathBuf>, fb: io::Fb) {
-        self.0.write().push(Project::new(path, fb));
+        self.0.lock().push(Project::new(path, fb));
     }
 }
 
@@ -54,7 +54,7 @@ impl Projects {
     pub(crate) fn preload(&mut self, files: Vec<PathBuf>) {
         files.into_iter().for_each(|p| self.pre_open(p));
         self.list.iter_mut().for_each(|p| p.preload());
-        if self.list.is_empty() && self.queue.0.read().is_empty() {
+        if self.list.is_empty() && self.queue.0.lock().is_empty() {
             self.push_fb_example();
         } else {
             self.list.iter_mut().for_each(|p| p.cache());
@@ -95,10 +95,10 @@ impl Projects {
                 }
             }
         });
-        let len = self.queue.0.read().len();
+        let len = self.queue.0.lock().len();
         if len > 0 {
             self.list.reserve(len);
-            while let Some(mut proj) = self.queue.0.write().pop() {
+            while let Some(mut proj) = self.queue.0.lock().pop() {
                 proj.cache();
                 self.list.push(proj);
             }
