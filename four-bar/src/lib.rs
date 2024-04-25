@@ -1,14 +1,4 @@
-//! Four🍀bar is a simulator, a synthesizing tool for four-bar linkage
-//! mechanism.
-//!
-//! <https://en.wikipedia.org/wiki/Four-bar_linkage>
-//!
-//! ```
-//! use four_bar::FourBar;
-//!
-//! // Get the trajectory of the coupler point
-//! let path = FourBar::example().curve(360);
-//! ```
+#![doc = include_str!("../README.md")]
 #![cfg_attr(doc_cfg, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 

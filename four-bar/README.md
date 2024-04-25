@@ -11,15 +11,18 @@ use four_bar::FourBar;
 let path = FourBar::example().curve(360);
 ```
 
-The synthesis function let you synthesize a four-bar mechanism by fitting target curve.
+## Features
++ **Simulation**: Calculate the trajectory of the coupler point (or any point) on the planar/spherical four-bar linkage.
+    + `FourBar` struct defines a planar four-bar linkage.
+    + `MFourBar` struct defines a planar four-bar linkage for motion generation (rigid body guidance) synthesis.
+    + `SFourBar` struct defines a spherical four-bar linkage.
+    + `*NormFourBar` structs are the normalized versions of the above linkages without the translation, rotation, and scaling.
++ **Serialization**: Serialize and deserialize four-bar linkages and their trajectories to/from a file via `serde`. (`serde` and `csv` feature)
++ **Plotting**: Visualize the four-bar linkage and the trajectory of the coupler point. (`plot` feature)
++ **Synthesis**: Find the dimensions of the four-bar linkage that will guide the coupler point through a desired trajectory. You can use the `rayon` feature to speed up the synthesis process. Also, the `clap` feature provides a CLI interface for the synthesis tool.
++ **Atlas**: A collection of four-bar linkages with known trajectories. It can be used to find the best match for a given trajectory, which is similar to the synthesis process but without the optimization part. (`atlas` feature)
++ **GUI**: A graphical user interface `four-bar-ui` is available at the [repo](https://github.com/KmolYuan/four-bar-rs) with a web demo.
 
-```rust
-use four_bar::{mh, syn};
-
-let func = syn::FbSyn::from_curve(curve, syn::Mode::Closed).res(res);
-let s = mh::Solver::build(mh::Rga::default(), func)
-    .task(|ctx| ctx.gen == gen)
-    .pop_num(pop)
-    .solve()
-    .unwrap();
-```
+## Citations
+The synthesis technique is based on the paper by us:
++ Chang, Y., Chang, JL., Lee, JJ. (2024). Atlas-Based Path Synthesis of Planar Four-Bar Linkages Using Elliptical Fourier Descriptors. In: Okada, M. (eds) Advances in Mechanism and Machine Science. IFToMM WC 2023. Mechanisms and Machine Science, vol 149. Springer, Cham. <https://doi.org/10.1007/978-3-031-45709-8_20>

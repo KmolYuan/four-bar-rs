@@ -12,12 +12,12 @@ categories.workspace = true
 
 [features]
 default = []
-plot = ["plotters", "plotters-backend", "fmtastic"]
 serde = ["dep:serde", "mh/serde"]
-clap = ["dep:clap", "mh/clap"]
-rayon = ["mh/rayon"]
-atlas = ["ndarray", "ndarray-npy"]
 csv = ["dep:csv", "serde"]
+plot = ["plotters", "plotters-backend", "fmtastic"]
+rayon = ["mh/rayon"]
+clap = ["dep:clap", "mh/clap"]
+atlas = ["ndarray", "ndarray-npy"]
 
 [dependencies]
 ndarray = { version = "0.15", features = ["rayon"], optional = true }
