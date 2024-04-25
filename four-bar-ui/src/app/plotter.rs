@@ -153,6 +153,7 @@ impl PlotType {
                 ui.heading("Planar Plot");
                 let get_fb = |fb| match fb {
                     io::Fb::P(fb) => Some(fb),
+                    io::Fb::M(mfb) => Some(mfb.into_fb()),
                     _ => None,
                 };
                 let get_curve = |c| match c {
