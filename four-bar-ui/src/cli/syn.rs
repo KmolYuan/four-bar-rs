@@ -290,7 +290,7 @@ fn from_runtime(
             let efd_target =
                 efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
-            let mut fig = plot::fb::Figure::new_ref(Some(fb))
+            let mut fig = plot::fb::Figure::new_ref(fb)
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
             {
@@ -344,7 +344,7 @@ fn from_runtime(
             let efd_target =
                 efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
             let curve = fb.curve(cfg.res);
-            let mut fig = plot::sfb::Figure::new_ref(Some(fb))
+            let mut fig = plot::sfb::Figure::new_ref(fb)
                 .add_line("Target", target, plot::Style::Circle, RED)
                 .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
             {

@@ -38,6 +38,7 @@ mod ball;
 mod dashed_line;
 mod dotted_line;
 pub mod fb;
+pub mod mfb;
 pub mod sfb;
 
 pub(crate) type PResult<T, B> = Result<T, DrawingAreaErrorKind<<B as DrawingBackend>::ErrorType>>;
@@ -213,10 +214,9 @@ impl Style {
         &self,
         chart: &mut ChartContext<'a, DB, CT>,
         line: I,
-        color: ShapeStyle,
+        &color: &ShapeStyle,
         label: &str,
         font: f64,
-        mk_fp: bool,
     ) -> PResult<(), DB>
     where
         DB: DrawingBackend + 'a,
@@ -228,15 +228,6 @@ impl Style {
         let font = (font * 0.9) as i32;
         let gap = color.stroke_width as i32;
         let has_label = !label.is_empty();
-        let mut line = line.into_iter().peekable();
-        if self.is_line() && mk_fp {
-            let dot_size = color.stroke_width * 2;
-            let fp = match line.peek() {
-                Some(c) => c.clone(),
-                None => return Ok(()),
-            };
-            chart.draw_series([Cross::new(fp, dot_size, color)])?;
-        }
         macro_rules! impl_marker {
             ($mk:expr) => {{
                 let dot_size = color.stroke_width * 2;
@@ -251,26 +242,15 @@ impl Style {
                 }
             }};
         }
-        macro_rules! impl_fp {
-            ($anno:ident, $($expr:expr),+) => {
-                if mk_fp {
-                    $anno.legend(move |c| {
-                        EmptyElement::at(c)
-                            $(+ $expr)+
-                            + Cross::new((gap, 0), color.stroke_width * 2, color)
-                    });
-                } else {
-                    $anno.legend(move |c| EmptyElement::at(c) $(+ $expr)+);
-                }
-            };
-        }
         match self {
             Self::Line => {
                 let line = LineSeries::new(line, color);
                 let anno = chart.draw_series(line)?;
                 if has_label {
                     anno.label(label);
-                    impl_fp!(anno, PathElement::new([(gap, 0), (font - gap, 0)], color));
+                    anno.legend(move |c| {
+                        EmptyElement::at(c) + PathElement::new([(gap, 0), (font - gap, 0)], color)
+                    });
                 }
             }
             Self::DashedLine => {
@@ -278,10 +258,10 @@ impl Style {
                 let anno = chart.draw_series(series)?;
                 if has_label {
                     anno.label(label);
-                    impl_fp!(
-                        anno,
-                        DashedPath::new([(gap, 0), (font - gap, 0)], 30, 15, color)
-                    );
+                    anno.legend(move |c| {
+                        EmptyElement::at(c)
+                            + DashedPath::new([(gap, 0), (font - gap, 0)], 30, 15, color)
+                    });
                 }
             }
             Self::DottedLine => {
@@ -292,13 +272,14 @@ impl Style {
                 let anno = chart.draw_series(series)?;
                 if has_label {
                     anno.label(label);
-                    impl_fp!(
-                        anno,
-                        DottedPath::new([(gap, 0), (font - gap, 0)], 0, 20, mk_f)
-                    );
+                    anno.legend(move |c| {
+                        EmptyElement::at(c)
+                            + DottedPath::new([(gap, 0), (font - gap, 0)], 0, 20, mk_f)
+                    });
                 }
             }
             Self::DashDottedLine => {
+                let line = line.into_iter();
                 let series = DashedPath::new(line.clone(), 30, 16, color).series();
                 chart.draw_series(series)?;
                 let dot_size = color.stroke_width / 2;
@@ -308,11 +289,11 @@ impl Style {
                 if has_label {
                     anno.label(label);
                     let points = [(gap, 0), (font - gap, 0)];
-                    impl_fp!(
-                        anno,
-                        DashedPath::new(points, 30, 16, color),
-                        DottedPath::new(points, 30 + 8, 30 + 16, mk_f)
-                    );
+                    anno.legend(move |c| {
+                        EmptyElement::at(c)
+                            + DashedPath::new(points, 30, 16, color)
+                            + DottedPath::new(points, 30 + 8, 30 + 16, mk_f)
+                    });
                 }
             }
             Self::Circle => impl_marker!(Circle::new),
@@ -424,11 +405,23 @@ pub struct LineData<'a, C: Clone> {
     /// Line style
     pub style: Style,
     /// Line color
-    pub color: [u8; 3],
-    /// Color is filled
-    pub filled: bool,
-    /// Mark the first point
-    pub mk_fp: bool,
+    #[cfg_attr(feature = "serde", serde(with = "ShapeStyleSerde"))]
+    pub color: ShapeStyle,
+}
+
+#[cfg(feature = "serde")]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(remote = "RGBAColor")]
+struct RGBAColorSerde(u8, u8, u8, f64);
+
+#[cfg(feature = "serde")]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(remote = "ShapeStyle")]
+struct ShapeStyleSerde {
+    #[serde(with = "RGBAColorSerde")]
+    color: RGBAColor,
+    filled: bool,
+    stroke_width: u32,
 }
 
 impl<'a, C: Clone> Default for LineData<'a, C> {
@@ -437,17 +430,8 @@ impl<'a, C: Clone> Default for LineData<'a, C> {
             label: Cow::Borrowed(""),
             line: Cow::Borrowed(&[]),
             style: Style::default(),
-            color: [0; 3],
-            filled: false,
-            mk_fp: false,
+            color: BLACK.into(),
         }
-    }
-}
-
-impl<'a, C: Clone> LineData<'a, C> {
-    pub(crate) fn color(&self) -> (RGBAColor, bool) {
-        let color = RGBAColor(self.color[0], self.color[1], self.color[2], 1.);
-        (color, self.filled)
     }
 }
 
@@ -469,33 +453,32 @@ pub struct FigureBase<'a, 'b, M: Clone, C: Clone> {
 
 impl<M: Clone, C: Clone> Default for FigureBase<'_, '_, M, C> {
     fn default() -> Self {
-        Self {
-            fb: None,
-            opt: Default::default(),
-            lines: Default::default(),
-        }
+        Self::new()
     }
 }
 
 impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
-    /// Create a new instance with linkage.
-    pub fn new(fb: Option<M>) -> Self {
-        Self { fb: fb.map(Cow::Owned), ..Default::default() }
+    /// Create a new figure without linkage.
+    pub const fn new() -> Self {
+        Self { fb: None, lines: Vec::new(), opt: Opt::new() }
     }
 
-    /// From an optional linkage setting.
-    pub fn new_ref(fb: Option<&'b M>) -> Self {
-        Self { fb: fb.map(Cow::Borrowed), ..Default::default() }
+    /// Create from an optional linkage.
+    pub const fn new_fb(fb: M) -> Self {
+        Self {
+            fb: Some(Cow::Owned(fb)),
+            lines: Vec::new(),
+            opt: Opt::new(),
+        }
     }
 
-    /// Attach linkage.
-    pub fn with_fb(self, fb: M) -> Self {
-        FigureBase { fb: Some(Cow::Owned(fb)), ..self }
-    }
-
-    /// Attach linkage with its reference.
-    pub fn with_fb_ref(self, fb: &'b M) -> Self {
-        FigureBase { fb: Some(Cow::Borrowed(fb)), ..self }
+    /// Create from an optional linkage reference.
+    pub const fn new_ref(fb: &'b M) -> Self {
+        Self {
+            fb: Some(Cow::Borrowed(fb)),
+            lines: Vec::new(),
+            opt: Opt::new(),
+        }
     }
 
     /// Remove linkage.
@@ -537,13 +520,21 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         self
     }
 
-    /// Add a line with marked first point.
-    pub fn add_line_fp<S, L>(mut self, label: S, line: L, style: Style, color: RGBColor) -> Self
+    /// Add a motion.
+    pub fn add_pose<S, L1, L2, Color>(
+        mut self,
+        label: S,
+        curve: L1,
+        pose: L2,
+        style: Style,
+        color: Color,
+    ) -> Self
     where
         S: Into<Cow<'a, str>>,
-        L: Into<Cow<'a, [C]>>,
+        Cow<'a, [C]>: From<L1> + From<L2>,
+        Color: Into<ShapeStyle>,
     {
-        self.push_line_fp(label, line, style, color);
+        self.push_pose(label, curve, pose, style, color);
         self
     }
 
@@ -564,42 +555,41 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     }
 
     /// Add a line in-placed.
-    pub fn push_line<S, L>(&mut self, label: S, line: L, style: Style, color: RGBColor)
+    pub fn push_line<S, L, Color>(&mut self, label: S, line: L, style: Style, color: Color)
     where
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [C]>>,
+        Color: Into<ShapeStyle>,
     {
-        self.push_line_mk(label, line, style, color, false);
-    }
-
-    /// Add a line with marked first point in-placed.
-    pub fn push_line_fp<S, L>(&mut self, label: S, line: L, style: Style, color: RGBColor)
-    where
-        S: Into<Cow<'a, str>>,
-        L: Into<Cow<'a, [C]>>,
-    {
-        self.push_line_mk(label, line, style, color, true);
-    }
-
-    fn push_line_mk<S, L>(&mut self, label: S, line: L, style: Style, color: RGBColor, mk_fp: bool)
-    where
-        S: Into<Cow<'a, str>>,
-        L: Into<Cow<'a, [C]>>,
-    {
-        let color = ShapeStyle::from(color);
         self.push_line_data(LineData {
             label: label.into(),
             line: line.into(),
             style,
-            color: [color.color.0, color.color.1, color.color.2],
-            filled: color.filled,
-            mk_fp,
+            color: color.into(),
         });
     }
 
-    /// Add a line from a [`LineData`] instance in-placed.
-    pub fn push_line_data(&mut self, data: LineData<'a, C>) {
-        self.lines.push(data);
+    /// Add a motion.
+    pub fn push_pose<S, L1, L2, Color>(
+        &mut self,
+        label: S,
+        curve: L1,
+        pose: L2,
+        style: Style,
+        color: Color,
+    ) where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [C]>: From<L1> + From<L2>,
+        Color: Into<ShapeStyle>,
+    {
+        let curve = Cow::from(curve);
+        let pose = Cow::from(pose);
+        let color = color.into();
+        for (p, v) in (*curve).iter().zip(&*pose) {
+            self.push_line("", vec![p.clone(), v.clone()], style, color);
+        }
+        self.push_line(label, curve, style, color);
+        self.push_line("", pose, Style::Circle, color);
     }
 
     /// Add a line with default settings in-placed.
@@ -613,6 +603,11 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             line: line.into(),
             ..Default::default()
         });
+    }
+
+    /// Add a line from a [`LineData`] instance in-placed.
+    pub fn push_line_data(&mut self, data: LineData<'a, C>) {
+        self.lines.push(data);
     }
 
     /// Iterate over lines.
@@ -762,15 +757,22 @@ pub struct Opt<'a> {
     pub legend: LegendPos,
 }
 
-impl Default for Opt<'_> {
-    fn default() -> Self {
+impl Opt<'_> {
+    /// Create a new instance.
+    pub const fn new() -> Self {
         Self {
             stroke: 7,
             font: 90.,
             font_family: None,
             grid: false,
             axis: true,
-            legend: LegendPos::default(),
+            legend: LegendPos::UR,
         }
+    }
+}
+
+impl Default for Opt<'_> {
+    fn default() -> Self {
+        Self::new()
     }
 }

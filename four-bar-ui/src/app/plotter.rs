@@ -118,12 +118,16 @@ fn fig_line_ui<const N: usize>(
         combo_enum(ui, id, &mut line.style, fb_plot::Style::LIST, |e| e.name());
     });
     ui.horizontal(|ui| {
-        ui.color_edit_button_srgb(&mut line.color);
-        any_i(ui, &mut line.color[0]);
-        any_i(ui, &mut line.color[1]);
-        any_i(ui, &mut line.color[2]);
-        ui.checkbox(&mut line.filled, "Filled");
-        ui.checkbox(&mut line.mk_fp, "Mark the first point");
+        let color = &mut line.color.color;
+        {
+            let mut buf = [color.0, color.1, color.2];
+            ui.color_edit_button_srgb(&mut buf);
+            [color.0, color.1, color.2] = buf;
+        }
+        any_i(ui, &mut color.0);
+        any_i(ui, &mut color.1);
+        any_i(ui, &mut color.2);
+        ui.checkbox(&mut line.color.filled, "Filled");
     });
     keep
 }
