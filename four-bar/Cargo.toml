@@ -23,18 +23,13 @@ csv = ["dep:csv", "serde"]
 ndarray = { version = "0.15", features = ["rayon"], optional = true }
 ndarray-npy = { version = "0.8", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
+plotters = { version = "0.3", optional = true }
 plotters-backend = { version = "0.3", optional = true }
 fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
 mh = { version = "10", package = "metaheuristics-nature" }
 efd = "9.1"
-
-[dependencies.plotters]
-version = "0.3"
-default-features = false
-features = ["svg_backend", "all_series", "all_elements", "full_palette"]
-optional = true
 
 [dev-dependencies]
 approx = "0.5"

@@ -232,7 +232,7 @@ impl Figure<'_, '_> {
                 .label_font(self.get_font())
                 .draw()?;
         }
-        Ok(())
+        root.present()
     }
 }
 

@@ -213,7 +213,7 @@ impl Figure<'_, '_> {
                 .label_font(self.get_big_font())
                 .draw()?;
         }
-        Ok(())
+        root.present()
     }
 }
 
