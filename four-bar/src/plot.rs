@@ -8,7 +8,7 @@
 //! ```
 //! use four_bar::plot::*;
 //!
-//! let fig = fb::Figure::new(None).add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
+//! let fig = fb::Figure::new().add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
 //! let mut buf = String::new();
 //! let svg = SVGBackend::with_string(&mut buf, (1600, 1600));
 //! fig.plot(svg).unwrap();
@@ -19,7 +19,7 @@
 //! ```
 //! use four_bar::plot::*;
 //!
-//! let fig = fb::Figure::new(None).add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
+//! let fig = fb::Figure::new().add_line("", vec![[0.; 2], [1.; 2]], Style::Line, BLACK);
 //! let mut buf = String::new();
 //! let svg = SVGBackend::with_string(&mut buf, (1600, 800));
 //! let (root_l, root_r) = svg.into_drawing_area().split_horizontally(800);

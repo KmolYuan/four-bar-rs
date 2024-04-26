@@ -1,12 +1,12 @@
 use super::*;
 use std::iter::zip;
 
-/// Precise-point motion generation task of planar four-bar linkage.
-pub type MFbPPSyn = PPMotionSyn<MNormFourBar, 6, 2>;
-/// Precise-point motion generation of a mechanism `M`.
-pub type PPMotionSyn<M, const N: usize, const D: usize> = Syn<efd::posed::MotionSig<D>, M, N, D>;
+/// Distance-discrepancy motion generation task of planar four-bar linkage.
+pub type MFbDDSyn = DDMotionSyn<MNormFourBar, 6, 2>;
+/// Distance-discrepancy motion generation of a mechanism `M`.
+pub type DDMotionSyn<M, const N: usize, const D: usize> = Syn<efd::posed::MotionSig<D>, M, N, D>;
 
-impl<M, const N: usize, const D: usize> PPMotionSyn<M, N, D>
+impl<M, const N: usize, const D: usize> DDMotionSyn<M, N, D>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -37,7 +37,7 @@ where
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::Bounded for PPMotionSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::Bounded for DDMotionSyn<M, N, D>
 where
     Self: mh::ObjFunc,
     M: mech::FromVectorized<N>,
@@ -53,7 +53,7 @@ where
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::ObjFunc for PPMotionSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::ObjFunc for DDMotionSyn<M, N, D>
 where
     M: SynBound<N> + mech::Normalized<D> + mech::PoseGen<D>,
     M::De: Default + Clone + Sync + Send + 'static,

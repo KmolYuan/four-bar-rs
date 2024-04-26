@@ -7,9 +7,9 @@ pub use super::*;
 /// ```
 /// use four_bar::{plot::fb, FourBar};
 /// // From linkage
-/// let figure = fb::Figure::new(Some(FourBar::example()));
+/// let figure = fb::Figure::new_fb(FourBar::example());
 /// // Without linkage
-/// let figure = fb::Figure::new(None);
+/// let figure = fb::Figure::new();
 /// ```
 pub type Figure<'a, 'b> = FigureBase<'a, 'b, FourBar, [f64; 2]>;
 
@@ -95,7 +95,7 @@ where
             .label_font(font)
             .draw()?;
     }
-    Ok(())
+    root.present()
 }
 
 /// Plot the Pareto front of the synthesis result.
@@ -145,7 +145,7 @@ where
             .iter()
             .map(|ys| Circle::new((ys.curve, ys.pose, ys.center), 3, RED)),
     )?;
-    Ok(())
+    root.present()
 }
 
 impl Figure<'_, '_> {
@@ -155,7 +155,7 @@ impl Figure<'_, '_> {
     /// use four_bar::{plot::*, FourBar};
     /// let fb = FourBar::example();
     /// let mut buf = String::new();
-    /// fb::Figure::new_ref(Some(&fb))
+    /// fb::Figure::new_ref(&fb)
     ///     .axis(false)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
     ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))

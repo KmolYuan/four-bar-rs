@@ -46,7 +46,7 @@ impl Figure<'_, '_> {
     /// use four_bar::{plot::*, SFourBar};
     /// let fb = SFourBar::example();
     /// let mut buf = String::new();
-    /// sfb::Figure::new_ref(Some(&fb))
+    /// sfb::Figure::new_ref(&fb)
     ///     .axis(false)
     ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
     ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))

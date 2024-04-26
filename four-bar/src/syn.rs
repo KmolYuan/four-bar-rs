@@ -14,17 +14,17 @@
 //!     .solve();
 //! ```
 pub use self::{
+    dd_motion::{DDMotionSyn, MFbDDSyn},
+    dd_path::{DDPathSyn, FbDDSyn, SFbDDSyn},
     motion::{MFbSyn, MOFit, MotionSyn},
     path::{FbSyn, PathSyn, SFbSyn},
-    pp_motion::{MFbPPSyn, PPMotionSyn},
-    pp_path::{FbPPSyn, PPPathSyn, SFbPPSyn},
 };
 use crate::*;
 
+mod dd_motion;
+mod dd_path;
 mod motion;
 mod path;
-mod pp_motion;
-mod pp_path;
 
 /// Base type of a mechanism `M` synthesis.
 pub struct Syn<T, M, const N: usize, const D: usize> {
@@ -215,7 +215,7 @@ assert_impl!(
     FbSyn,
     SFbSyn,
     MFbSyn,
-    FbPPSyn,
-    SFbPPSyn,
-    MFbPPSyn
+    FbDDSyn,
+    SFbDDSyn,
+    MFbDDSyn
 );

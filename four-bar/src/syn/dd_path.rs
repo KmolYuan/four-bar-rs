@@ -1,13 +1,13 @@
 use super::*;
 
-/// Precise-point path generation task of planar four-bar linkage.
-pub type FbPPSyn = PPPathSyn<NormFourBar, 5, 2>;
-/// Precise-point path generation task of spherical four-bar linkage.
-pub type SFbPPSyn = PPPathSyn<SNormFourBar, 6, 3>;
-/// Precise-point path generation of a mechanism `M`.
-pub type PPPathSyn<M, const N: usize, const D: usize> = Syn<efd::PathSig<D>, M, N, D>;
+/// Distance-discrepancy path generation task of planar four-bar linkage.
+pub type FbDDSyn = DDPathSyn<NormFourBar, 5, 2>;
+/// Distance-discrepancy path generation task of spherical four-bar linkage.
+pub type SFbDDSyn = DDPathSyn<SNormFourBar, 6, 3>;
+/// Distance-discrepancy path generation of a mechanism `M`.
+pub type DDPathSyn<M, const N: usize, const D: usize> = Syn<efd::PathSig<D>, M, N, D>;
 
-impl<M, const N: usize, const D: usize> PPPathSyn<M, N, D>
+impl<M, const N: usize, const D: usize> DDPathSyn<M, N, D>
 where
     efd::U<D>: efd::EfdDim<D>,
 {
@@ -21,7 +21,7 @@ where
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::Bounded for PPPathSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::Bounded for DDPathSyn<M, N, D>
 where
     Self: mh::ObjFunc,
     M: mech::FromVectorized<N>,
@@ -37,7 +37,7 @@ where
     }
 }
 
-impl<M, const N: usize, const D: usize> mh::ObjFunc for PPPathSyn<M, N, D>
+impl<M, const N: usize, const D: usize> mh::ObjFunc for DDPathSyn<M, N, D>
 where
     M: SynBound<N> + mech::Normalized<D> + mech::CurveGen<D>,
     M::De: Default + Clone + Sync + Send + 'static,
