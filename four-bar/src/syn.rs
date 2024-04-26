@@ -116,6 +116,11 @@ impl Mode {
     pub const fn is_result_open(&self) -> bool {
         matches!(self, Self::Open)
     }
+
+    /// Return true if the synthesis mode is partial matched.
+    pub const fn is_partial(&self) -> bool {
+        matches!(self, Self::Partial)
+    }
 }
 
 pub(crate) trait Infeasible {

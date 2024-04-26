@@ -106,26 +106,27 @@ pub(crate) enum Target<'a> {
     S(Cow<'a, [[f64; 3]]>, Cow<'a, atlas::SFbAtlas>),
 }
 
-struct SynData<'a, M, const N: usize, const D: usize>
+pub(crate) struct PathSynData<'a, M, const N: usize, const D: usize>
 where
     syn::PathSyn<M, N, D>: mh::ObjFunc,
     efd::U<D>: efd::EfdDim<D>,
 {
-    s: SolverBox<'a, syn::PathSyn<M, N, D>>,
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    atlas_fb: Option<(f64, M)>,
+    pub(crate) s: SolverBox<'a, syn::PathSyn<M, N, D>>,
+    pub(crate) atlas_fb: Option<(f64, M)>,
 }
 
-#[allow(private_interfaces)]
-pub(crate) enum Solver<'a> {
-    FbSyn(SynData<'a, NormFourBar, 5, 2>),
-    SFbSyn(SynData<'a, SNormFourBar, 6, 3>),
-}
-
-impl<'a> Solver<'a> {
-    pub(crate) fn new<S, C>(
+impl<'a, M, const N: usize, const D: usize> PathSynData<'a, M, N, D>
+where
+    syn::PathSyn<M, N, D>: mh::ObjFunc<Ys = mh::WithProduct<f64, M::De>>,
+    M: atlas::Code<N, D>,
+    M::De: Default + Clone + Sync + Send + 'static,
+    efd::U<D>: efd::EfdDim<D>,
+    efd::Efd<D>: Sync,
+{
+    fn new<S, C>(
         alg: SynAlg,
-        target: Target,
+        target: &[[f64; D]],
+        atlas: &atlas::Atlas<M, N, D>,
         cfg: SynCfg,
         stop: S,
         mut callback: C,
@@ -135,51 +136,66 @@ impl<'a> Solver<'a> {
         C: FnMut(f64, u64) + Send + 'a,
     {
         let SynCfg { seed, gen, pop, mode, res, on_unit } = cfg;
-        macro_rules! impl_solve {
-            ($target:ident, $atlas:ident, $syn:ident) => {{
-                let mut syn = syn::$syn::from_curve(&$target, mode).res(res);
-                if on_unit {
-                    syn = syn.on_unit();
-                }
-                let mut s = alg
-                    .build_solver(syn)
-                    .seed(seed)
-                    .task(move |ctx| !stop() && ctx.gen >= gen)
-                    .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
-                let mut atlas_fb = None;
-                if let Some(candi) = matches!(mode, syn::Mode::Closed | syn::Mode::Open)
-                    .then(|| $atlas.fetch_raw(&$target, mode.is_target_open(), pop))
-                    .filter(|candi| !candi.is_empty())
-                {
-                    use four_bar::mech::{IntoVectorized as _, Normalized as _};
-                    atlas_fb = Some(candi[0].clone());
-                    let pop = candi.len();
-                    s = s.pop_num(pop);
-                    let pool_y = candi
-                        .iter()
-                        .map(|(f, fb)| mh::WithProduct::new(*f, fb.clone().denormalize()))
-                        .collect();
-                    let pool = candi
-                        .into_iter()
-                        .map(|(_, fb)| fb.into_vectorized().0)
-                        .collect();
-                    s = s.init_pool(mh::Pool::Ready { pool, pool_y });
-                } else {
-                    s = s.pop_num(pop);
-                }
-                Self::$syn(SynData { s, atlas_fb })
-            }};
+        let mut syn = syn::PathSyn::from_curve(target, mode).res(res);
+        if on_unit {
+            syn = syn.on_unit();
         }
+        let s = alg
+            .build_solver(syn)
+            .seed(seed)
+            .task(move |ctx| !stop() && ctx.gen >= gen)
+            .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
+        let mut data = Self { s, atlas_fb: None };
+        if let Some(candi) = (!mode.is_partial())
+            .then(|| atlas.fetch_raw(target, mode.is_target_open(), pop))
+            .filter(|candi| !candi.is_empty())
+        {
+            data.atlas_fb = Some(candi[0].clone());
+            let pool_y = candi
+                .iter()
+                .map(|(f, fb)| mh::WithProduct::new(*f, fb.clone().denormalize()))
+                .collect();
+            let pool = candi
+                .into_iter()
+                .map(|(_, fb)| fb.into_vectorized().0)
+                .collect();
+            data.s = data.s.init_pool(mh::Pool::Ready { pool, pool_y });
+        } else {
+            data.s = data.s.pop_num(pop);
+        }
+        data
+    }
+
+    fn solve(self) -> (M::De, Option<(f64, M)>) {
+        (self.s.solve().into_result(), self.atlas_fb)
+    }
+}
+
+pub(crate) enum Solver<'a> {
+    FbSyn(PathSynData<'a, NormFourBar, 5, 2>),
+    SFbSyn(PathSynData<'a, SNormFourBar, 6, 3>),
+}
+
+impl<'a> Solver<'a> {
+    pub(crate) fn new<S, C>(alg: SynAlg, target: Target, cfg: SynCfg, stop: S, callback: C) -> Self
+    where
+        S: Fn() -> bool + Send + 'a,
+        C: FnMut(f64, u64) + Send + 'a,
+    {
         match target {
-            Target::P(target, atlas) => impl_solve!(target, atlas, FbSyn),
-            Target::S(target, atlas) => impl_solve!(target, atlas, SFbSyn),
+            Target::P(target, atlas) => {
+                Self::FbSyn(PathSynData::new(alg, &target, &atlas, cfg, stop, callback))
+            }
+            Target::S(target, atlas) => {
+                Self::SFbSyn(PathSynData::new(alg, &target, &atlas, cfg, stop, callback))
+            }
         }
     }
 
     pub(crate) fn solve(self) -> io::Fb {
         match self {
-            Self::FbSyn(SynData { s, .. }) => io::Fb::P(s.solve().into_result()),
-            Self::SFbSyn(SynData { s, .. }) => io::Fb::S(s.solve().into_result()),
+            Self::FbSyn(s) => io::Fb::P(s.solve().0),
+            Self::SFbSyn(s) => io::Fb::S(s.solve().0),
         }
     }
 
@@ -196,8 +212,8 @@ impl<'a> Solver<'a> {
             }};
         }
         match self {
-            Self::FbSyn(SynData { s, atlas_fb }) => impl_solve!(P, s, atlas_fb),
-            Self::SFbSyn(SynData { s, atlas_fb }) => impl_solve!(S, s, atlas_fb),
+            Self::FbSyn(PathSynData { s, atlas_fb }) => impl_solve!(P, s, atlas_fb),
+            Self::SFbSyn(PathSynData { s, atlas_fb }) => impl_solve!(S, s, atlas_fb),
         }
     }
 }
