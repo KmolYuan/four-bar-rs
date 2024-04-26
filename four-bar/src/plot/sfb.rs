@@ -37,40 +37,9 @@ impl Figure<'_, '_> {
         let fb = &self.fb.as_deref()?.unnorm;
         Some((na::Point3::new(fb.ox, fb.oy, fb.oz), fb.r))
     }
+}
 
-    /// Plot 3D spherical linkage.
-    ///
-    /// Please see [`Opt`] for more options.
-    ///
-    /// ```
-    /// use four_bar::{plot::*, SFourBar};
-    /// let fb = SFourBar::example();
-    /// let mut buf = String::new();
-    /// sfb::Figure::new_ref(&fb)
-    ///     .axis(false)
-    ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
-    ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))
-    ///     .unwrap();
-    /// ```
-    pub fn plot<B, R>(&self, root: R) -> PResult<(), B>
-    where
-        B: DrawingBackend,
-        Canvas<B>: From<R>,
-    {
-        self.plot_by(&Canvas::from(root), None)
-    }
-
-    /// Plot the spherical curve and linkages dynamically.
-    ///
-    /// The `times` is the number of frames to plot.
-    pub fn plot_video<B, R>(&self, root: R, curr: usize, total: usize) -> PResult<(), B>
-    where
-        B: DrawingBackend,
-        Canvas<B>: From<R>,
-    {
-        self.plot_by(&Canvas::from(root), Some(self.get_t(curr, total)))
-    }
-
+impl Plot for Figure<'_, '_> {
     fn plot_by<B>(&self, root: &Canvas<B>, t: Option<f64>) -> PResult<(), B>
     where
         B: DrawingBackend,

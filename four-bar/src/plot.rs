@@ -435,6 +435,23 @@ impl<'a, C: Clone> Default for LineData<'a, C> {
     }
 }
 
+/// Drawing implementation.
+pub trait Plot {
+    /// Plot the figure with the backend and an optional time parameter.
+    fn plot_by<B>(&self, root: &Canvas<B>, t: Option<f64>) -> PResult<(), B>
+    where
+        B: DrawingBackend;
+
+    /// Plot the figure with the backend.
+    fn plot<B, R>(&self, root: R) -> PResult<(), B>
+    where
+        B: DrawingBackend,
+        Canvas<B>: From<R>,
+    {
+        self.plot_by(&Canvas::from(root), None)
+    }
+}
+
 /// Option type base.
 #[cfg_attr(
     feature = "serde",
@@ -719,6 +736,60 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
 
     pub(crate) fn get_big_font(&self) -> FontDesc<'_> {
         (self.get_family(), self.font * 1.15).into_font()
+    }
+
+    /// Plot curves and linkages.
+    ///
+    /// 2D example:
+    ///
+    /// ```
+    /// use four_bar::{plot::*, FourBar};
+    /// let fb = FourBar::example();
+    /// let mut buf = String::new();
+    /// fb::Figure::new_ref(&fb)
+    ///     .axis(false)
+    ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
+    ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))
+    ///     .unwrap();
+    /// ```
+    ///
+    /// 3D example:
+    ///
+    /// ```
+    /// use four_bar::{plot::*, SFourBar};
+    /// let fb = SFourBar::example();
+    /// let mut buf = String::new();
+    /// sfb::Figure::new_ref(&fb)
+    ///     .axis(false)
+    ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
+    ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))
+    ///     .unwrap();
+    /// ```
+    pub fn plot<B, R>(&self, root: R) -> PResult<(), B>
+    where
+        B: DrawingBackend,
+        Canvas<B>: From<R>,
+        Self: Plot,
+    {
+        Plot::plot(self, root)
+    }
+
+    /// Plot the 2D curve and linkages dynamically.
+    ///
+    /// This is the `curr`/`total` frame of the animation.
+    pub fn plot_video<B, R, const D: usize>(
+        &self,
+        root: R,
+        curr: usize,
+        total: usize,
+    ) -> PResult<(), B>
+    where
+        B: DrawingBackend,
+        Canvas<B>: From<R>,
+        M: crate::mech::CurveGen<D>,
+        Self: Plot,
+    {
+        Plot::plot_by(self, &Canvas::from(root), Some(self.get_t(curr, total)))
     }
 }
 

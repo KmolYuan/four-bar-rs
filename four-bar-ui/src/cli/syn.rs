@@ -399,25 +399,22 @@ fn from_runtime(
 }
 
 fn from_exist(info: &Info) -> Result<(), SynErr> {
-    let root = &info.root;
-    macro_rules! impl_plot {
-        ($fig:ty) => {{
-            let path = root.join(LNK_FIG);
-            let fig = ron::de::from_reader::<_, $fig>(std::fs::File::open(path)?)?;
-            let path = root.join(LNK_SVG);
-            let svg = plot::SVGBackend::new(&path, (1600, 1600));
-            fig.plot(svg)?;
-            let path = root.join(CURVE_FIG);
-            let fig = ron::de::from_reader::<_, $fig>(std::fs::File::open(path)?)?;
-            let path = root.join(CURVE_SVG);
-            let svg = plot::SVGBackend::new(&path, (1600, 1600));
-            fig.plot(svg)?;
-            Ok(())
-        }};
+    fn plot<Fig>(root: &Path) -> Result<(), SynErr>
+    where
+        Fig: serde::de::DeserializeOwned + plot::Plot,
+    {
+        for (path, svg_path) in [
+            (root.join(LNK_FIG), root.join(LNK_SVG)),
+            (root.join(CURVE_FIG), root.join(CURVE_SVG)),
+        ] {
+            ron::de::from_reader::<_, Fig>(std::fs::File::open(path)?)?
+                .plot(plot::SVGBackend::new(&svg_path, (1600, 1600)))?;
+        }
+        Ok(())
     }
     match info.target {
-        io::Curve::P(_) => impl_plot!(plot::fb::Figure),
-        io::Curve::S(_) => impl_plot!(plot::sfb::Figure),
+        io::Curve::P(_) => plot::<plot::fb::Figure>(&info.root),
+        io::Curve::S(_) => plot::<plot::sfb::Figure>(&info.root),
     }
 }
 

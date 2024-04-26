@@ -148,38 +148,7 @@ where
     root.present()
 }
 
-impl Figure<'_, '_> {
-    /// Plot 2D curves and linkages.
-    ///
-    /// ```
-    /// use four_bar::{plot::*, FourBar};
-    /// let fb = FourBar::example();
-    /// let mut buf = String::new();
-    /// fb::Figure::new_ref(&fb)
-    ///     .axis(false)
-    ///     .add_line("First Curve", fb.curve(180), Style::Line, BLACK)
-    ///     .plot(SVGBackend::with_string(&mut buf, (1600, 1600)))
-    ///     .unwrap();
-    /// ```
-    pub fn plot<B, R>(&self, root: R) -> PResult<(), B>
-    where
-        B: DrawingBackend,
-        Canvas<B>: From<R>,
-    {
-        self.plot_by(&Canvas::from(root), None)
-    }
-
-    /// Plot the 2D curve and linkages dynamically.
-    ///
-    /// This is the `curr`/`total` frame of the animation.
-    pub fn plot_video<B, R>(&self, root: R, curr: usize, total: usize) -> PResult<(), B>
-    where
-        B: DrawingBackend,
-        Canvas<B>: From<R>,
-    {
-        self.plot_by(&Canvas::from(root), Some(self.get_t(curr, total)))
-    }
-
+impl Plot for Figure<'_, '_> {
     fn plot_by<B>(&self, root: &Canvas<B>, t: Option<f64>) -> PResult<(), B>
     where
         B: DrawingBackend,
