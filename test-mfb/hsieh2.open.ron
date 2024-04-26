@@ -1,0 +1,16 @@
+/* C.-Y. Hsieh. 2017. “Synthesis of Four-Bar Linkage for Path Generation and Motion
+   Generation Using Fourier Descriptor.” Master’s Thesis, Department of Mechanical
+   Engineering, National Taiwan University, Taiwan. */
+(
+    p1x: -2.,
+    p1y: -3.,
+    a: 0.2,
+    l1: 5.,
+    l2: 12.,
+    l3: 4.,
+    l4: 9.,
+    l5: 6.,
+    g: 2.6,
+    e: 0.1411398,
+    stat: c1b1,
+)
