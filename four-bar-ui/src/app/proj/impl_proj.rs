@@ -293,10 +293,6 @@ where
         self.path.as_deref()
     }
 
-    fn curve(&self) -> Vec<[f64; D]> {
-        self.cache.curves.iter().map(|[.., c]| *c).collect()
-    }
-
     fn is_unsaved(&self) -> bool {
         self.unsaved
     }
@@ -431,31 +427,25 @@ where
     }
 }
 
-impl MFbProj {
-    fn pose(&self) -> Vec<([f64; 2], [f64; 2])> {
-        std::iter::zip(self.curve(), self.cache.state_curves[0].clone()).collect()
-    }
-}
-
 trait CouplerGen {
     fn coupler(&self) -> io::Curve;
 }
 
 impl CouplerGen for FbProj {
     fn coupler(&self) -> io::Curve {
-        io::Curve::P(self.curve())
+        io::Curve::P(self.fb.curve(self.res))
     }
 }
 
 impl CouplerGen for MFbProj {
     fn coupler(&self) -> io::Curve {
-        io::Curve::M(self.pose())
+        io::Curve::M(self.fb.pose_zipped(self.res))
     }
 }
 
 impl CouplerGen for SFbProj {
     fn coupler(&self) -> io::Curve {
-        io::Curve::S(self.curve())
+        io::Curve::S(self.fb.curve(self.res))
     }
 }
 
