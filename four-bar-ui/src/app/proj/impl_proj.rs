@@ -236,6 +236,86 @@ fn angle_bound_ui(ui: &mut Ui, theta2: &mut f64, start: f64, end: f64) -> Respon
 impl<M, const D: usize> ProjInner<M, D>
 where
     M: mech::Normalized<D>,
+    M::De: mech::CurveGen<D> + undo::IntoDelta + Default,
+    efd::U<D>: efd::EfdDim<D>,
+{
+    fn new(path: Option<PathBuf>, fb: M::De) -> Self {
+        Self { path, fb, ..Self::default() }
+    }
+
+    fn cache(&mut self)
+    where
+        M::De: CacheAdaptor<D>,
+    {
+        use four_bar::mech::{CurveGen as _, Statable as _};
+        self.cache.changed = false;
+        self.cache.joints = self.fb.pos(self.angle);
+        self.cache.angle_bound = self.fb.angle_bound();
+        self.cache.curves = self.fb.curves(self.res);
+        self.fb.cache_curve(&mut self.cache, self.res);
+    }
+
+    fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize)
+    where
+        M::De: fb_ui::ProjPlot<D>,
+    {
+        if !self.hide {
+            fb_ui::ProjPlot::proj_plot(&self.fb, ui, &self.cache, ind == id);
+        }
+    }
+
+    fn name(&self) -> Cow<str> {
+        if let Some(path) = &self.path {
+            let name = path.file_name().unwrap().to_string_lossy();
+            if name.ends_with(".ron") {
+                name
+            } else {
+                name + ".ron"
+            }
+        } else {
+            "untitled.ron".into()
+        }
+    }
+
+    fn preload(&mut self)
+    where
+        M::De: serde::de::DeserializeOwned + PartialEq,
+    {
+        // FIXME: Try block, ignore errors
+        #[cfg(not(target_arch = "wasm32"))]
+        (|| {
+            let r = std::fs::File::open(self.path.as_ref()?).ok()?;
+            if self.fb != ron::de::from_reader(r).ok()? {
+                self.unsaved = true;
+            }
+            Some(())
+        })();
+    }
+
+    fn set_path(&mut self, path: PathBuf) {
+        self.path = Some(path);
+    }
+
+    fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
+    }
+
+    fn curve(&self) -> Vec<[f64; D]> {
+        self.cache.curves.iter().map(|[.., c]| *c).collect()
+    }
+
+    fn is_unsaved(&self) -> bool {
+        self.unsaved
+    }
+
+    fn mark_saved(&mut self) {
+        self.unsaved = false;
+    }
+}
+
+impl<M, const D: usize> ProjInner<M, D>
+where
+    M: mech::Normalized<D>,
     M::De: mech::CurveGen<D>
         + mech::Statable
         + undo::IntoDelta
@@ -249,18 +329,13 @@ where
     [f64; D]: Serialize,
     efd::U<D>: efd::EfdDim<D>,
 {
-    fn new(path: Option<PathBuf>, fb: M::De) -> Self {
-        Self { path, fb, ..Self::default() }
-    }
-
     fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot) {
         use four_bar::mech::Statable as _;
         ui.horizontal(|ui| {
             if small_btn(ui, "🔗", "Share with Link") {
-                let mut url = "https://kmolyuan.github.io/four-bar-rs/?code=".to_string();
-                self.fb
-                    .serialize(&mut ron::Serializer::new(&mut url, None).unwrap())
-                    .unwrap();
+                const URL_PREFIX: &str = "https://kmolyuan.github.io/four-bar-rs/?code=";
+                let mut url = ron::to_string(&self.fb).unwrap();
+                url.insert_str(0, URL_PREFIX);
                 ui.ctx().open_url(OpenUrl::new_tab(url));
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -367,67 +442,6 @@ where
         if self.cache.changed {
             self.cache();
         }
-    }
-
-    fn cache(&mut self) {
-        use four_bar::mech::{CurveGen as _, Statable as _};
-        self.cache.changed = false;
-        self.cache.joints = self.fb.pos(self.angle);
-        self.cache.angle_bound = self.fb.angle_bound();
-        self.cache.curves = self.fb.curves(self.res);
-        self.fb.cache_curve(&mut self.cache, self.res);
-    }
-
-    fn plot(&self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize) {
-        if !self.hide {
-            use fb_ui::ProjPlot as _;
-            self.fb.proj_plot(ui, &self.cache, ind == id);
-        }
-    }
-
-    fn name(&self) -> Cow<str> {
-        if let Some(path) = &self.path {
-            let name = path.file_name().unwrap().to_string_lossy();
-            if name.ends_with(".ron") {
-                name
-            } else {
-                name + ".ron"
-            }
-        } else {
-            "untitled.ron".into()
-        }
-    }
-
-    fn preload(&mut self) {
-        // FIXME: Try block, ignore errors
-        #[cfg(not(target_arch = "wasm32"))]
-        (|| {
-            let r = std::fs::File::open(self.path.as_ref()?).ok()?;
-            if self.fb != ron::de::from_reader(r).ok()? {
-                self.unsaved = true;
-            }
-            Some(())
-        })();
-    }
-
-    fn set_path(&mut self, path: PathBuf) {
-        self.path = Some(path);
-    }
-
-    fn path(&self) -> Option<&Path> {
-        self.path.as_deref()
-    }
-
-    fn curve(&self) -> Vec<[f64; D]> {
-        self.cache.curves.iter().map(|[.., c]| *c).collect()
-    }
-
-    fn is_unsaved(&self) -> bool {
-        self.unsaved
-    }
-
-    fn mark_saved(&mut self) {
-        self.unsaved = false;
     }
 }
 
