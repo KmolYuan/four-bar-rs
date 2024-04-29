@@ -23,7 +23,6 @@ enum SynErr {
     RonSerde(ron::error::SpannedError),
     RonIo(ron::error::Error),
     Linkage,
-    Solver,
 }
 
 impl std::fmt::Display for SynErr {
@@ -36,7 +35,6 @@ impl std::fmt::Display for SynErr {
             Self::RonSerde(e) => write!(f, "[RON-Serde] {e}"),
             Self::RonIo(e) => write!(f, "[RON-IO] {e}"),
             Self::Linkage => write!(f, "invalid linkage input"),
-            Self::Solver => write!(f, "solved error"),
         }
     }
 }
@@ -279,7 +277,7 @@ fn from_runtime(
             pb.inc(1);
         })
     };
-    let (cost, harmonic, lnk_fb) = s.solve_verbose().map_err(|_| SynErr::Solver)?;
+    let (cost, harmonic, lnk_fb) = s.solve_verbose();
     let t1 = t0.elapsed();
     {
         let path = root.join(HISTORY_SVG);

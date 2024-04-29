@@ -205,7 +205,7 @@ impl<'a> Solver<'a> {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn solve_verbose(self) -> Result<(f64, usize, SolvedFb), ndarray::ShapeError> {
+    pub(crate) fn solve_verbose(self) -> (f64, usize, SolvedFb) {
         macro_rules! impl_solve {
             ($syn:ident, $s:ident, $atlas_fb:ident) => {{
                 let s = $s.solve();
@@ -213,7 +213,7 @@ impl<'a> Solver<'a> {
                 let h = func.harmonic();
                 let tar = func.tar.clone();
                 let (err, fb) = s.into_err_result();
-                Ok((err, h, SolvedFb::$syn(fb, tar, $atlas_fb)))
+                (err, h, SolvedFb::$syn(fb, tar, $atlas_fb))
             }};
         }
         match self {
