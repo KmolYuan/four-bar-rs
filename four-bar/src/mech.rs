@@ -292,6 +292,24 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
         self.uvec_iter(t.iter().copied()).unzip()
     }
 
+    /// Obtain the zipped pose from known position.
+    fn pose_zipped_in(&self, start: f64, end: f64, res: usize) -> Vec<([f64; D], [f64; D])> {
+        self.uvec_iter(linspace(start, end, res)).collect()
+    }
+
+    /// Obtain the zipped pose in the range of motion.
+    fn pose_zipped(&self, res: usize) -> Vec<([f64; D], [f64; D])> {
+        self.angle_bound()
+            .to_value()
+            .map(|[start, end]| self.pose_zipped_in(start, end, res))
+            .unwrap_or_default()
+    }
+
+    /// Obtain the zipped pose by an input angle list.
+    fn pose_zipped_by(&self, t: &[f64]) -> Vec<([f64; D], [f64; D])> {
+        self.uvec_iter(t.iter().copied()).collect()
+    }
+
     /// Obtain the pose from known position.
     fn pose_from_curves(&self, curves: &[[[f64; D]; 3]]) -> Vec<[f64; D]> {
         curves.iter().map(|pos| self.uvec(pos)).collect()

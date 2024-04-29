@@ -126,6 +126,15 @@ fn get_info(
     };
     match &target {
         io::Curve::P(t) => _ = efd::util::valid_curve(t).ok_or(SynErr::Linkage)?,
+        io::Curve::M(t) => {
+            if t.len() < 3
+                && t.iter()
+                    .flat_map(|(c, v)| c.iter().chain(v))
+                    .any(|x| !x.is_finite())
+            {
+                return Err(SynErr::Linkage);
+            }
+        }
         io::Curve::S(t) => _ = efd::util::valid_curve(t).ok_or(SynErr::Linkage)?,
     }
     let mode = match Path::new(title).extension().and_then(|p| p.to_str()) {
@@ -258,8 +267,9 @@ fn from_runtime(
     let mut history = Vec::with_capacity(cfg.gen as usize);
     let t0 = std::time::Instant::now();
     let s = {
-        let target = match &target {
+        let target = match target {
             io::Curve::P(t) => syn_cmd::Target::P(Cow::Borrowed(t), Cow::Borrowed(atlas.as_fb())),
+            io::Curve::M(t) => syn_cmd::Target::M(Cow::Borrowed(t)),
             io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(atlas.as_sfb())),
         };
         let cfg = syn_cmd::SynCfg { mode, ..cfg.clone() };
@@ -413,7 +423,8 @@ fn from_exist(info: &Info) -> Result<(), SynErr> {
         Ok(())
     }
     match info.target {
-        io::Curve::P(_) => plot::<plot::fb::Figure>(&info.root),
+        // HINT: `fb::Figure` and `mfb::Figure` are the same type
+        io::Curve::P(_) | io::Curve::M(_) => plot::<plot::fb::Figure>(&info.root),
         io::Curve::S(_) => plot::<plot::sfb::Figure>(&info.root),
     }
 }

@@ -154,7 +154,14 @@ pub(crate) fn path_label(ui: &mut Ui, icon: &str, path: Option<&PathBuf>, warn: 
 pub(crate) fn table<const N: usize>(ui: &mut Ui, xs: &mut Vec<[f64; N]>) {
     fn render<const N: usize>(ui: &mut Ui, c: &mut [f64; N]) -> bool {
         let keep = !ui.button("✖").clicked();
-        for (c, label) in c.iter_mut().zip(["x: ", "y: ", "z: "]) {
+        let labels: &'static [&'static str] = match N {
+            2 => &["x: ", "y: "],
+            3 => &["x: ", "y: ", "z: "],
+            4 => &["x: ", "y: ", "a: ", "b: "],
+            6 => &["x: ", "y: ", "z: ", "a: ", "b: ", "c: "],
+            _ => unreachable!(),
+        };
+        for (c, label) in c.iter_mut().zip(labels) {
             let w = DragValue::new(c)
                 .prefix(label)
                 .speed(0.01)

@@ -104,6 +104,7 @@ impl Default for SynCfg {
 pub(crate) enum Target<'a> {
     P(Cow<'a, [[f64; 2]]>, Cow<'a, atlas::FbAtlas>),
     S(Cow<'a, [[f64; 3]]>, Cow<'a, atlas::SFbAtlas>),
+    M(Cow<'a, [([f64; 2], [f64; 2])]>),
 }
 
 pub(crate) struct PathSynData<'a, M, const N: usize, const D: usize>
@@ -185,6 +186,10 @@ impl<'a> Solver<'a> {
         match target {
             Target::P(target, atlas) => {
                 Self::FbSyn(PathSynData::new(alg, &target, &atlas, cfg, stop, callback))
+            }
+            Target::M(target) => {
+                // TODO: Implement this!
+                unimplemented!("synthesis with {target:?}")
             }
             Target::S(target, atlas) => {
                 Self::SFbSyn(PathSynData::new(alg, &target, &atlas, cfg, stop, callback))

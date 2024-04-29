@@ -416,6 +416,7 @@ pub(crate) enum Fb {
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub(crate) enum Curve {
     P(Vec<[f64; 2]>),
+    M(Vec<([f64; 2], [f64; 2])>),
     S(Vec<[f64; 3]>),
 }
 
@@ -441,6 +442,7 @@ impl Curve {
     pub(crate) fn len(&self) -> usize {
         match self {
             Curve::P(c) => c.len(),
+            Curve::M(c) => c.len(),
             Curve::S(c) => c.len(),
         }
     }
@@ -449,21 +451,27 @@ impl Curve {
         self.len() == 0
     }
 
-    pub(crate) fn is_planar(&self) -> bool {
-        matches!(self, Self::P(_))
+    pub(crate) fn convert_to_planar(&mut self) {
+        match self {
+            Self::S(c) => *self = Self::P(c.iter().map(|&[x, y, _]| [x, y]).collect()),
+            Self::M(c) => *self = Self::P(c.iter().map(|&([x, y], _)| [x, y]).collect()),
+            Self::P(_) => (),
+        }
     }
 
-    pub(crate) fn convert_to_planar(&mut self) {
-        if let Self::S(c) = self {
-            let c = c.iter().map(|&[x, y, _]| [x, y]).collect();
-            *self = Self::P(c);
+    pub(crate) fn convert_to_motion(&mut self) {
+        match self {
+            Self::P(c) => *self = Self::M(c.iter().map(|&[x, y]| ([x, y], [0., 0.])).collect()),
+            Self::S(c) => *self = Self::M(c.iter().map(|&[x, y, _]| ([x, y], [0., 0.])).collect()),
+            Self::M(_) => (),
         }
     }
 
     pub(crate) fn convert_to_spatial(&mut self) {
-        if let Self::P(c) = self {
-            let c = c.iter().map(|&[x, y]| [x, y, 0.]).collect();
-            *self = Self::S(c);
+        match self {
+            Self::P(c) => *self = Self::S(c.iter().map(|&[x, y]| [x, y, 0.]).collect()),
+            Self::M(c) => *self = Self::S(c.iter().map(|&([x, y], [_, _])| [x, y, 0.]).collect()),
+            Self::S(_) => (),
         }
     }
 }

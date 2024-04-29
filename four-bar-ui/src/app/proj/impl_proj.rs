@@ -66,7 +66,7 @@ impl Project {
     pub(crate) fn curve(&self) -> io::Curve {
         match self {
             Self::P(proj) => io::Curve::P(proj.curve()),
-            Self::M(proj) => io::Curve::P(proj.curve()),
+            Self::M(proj) => io::Curve::M(proj.pose()),
             Self::S(proj) => io::Curve::S(proj.curve()),
         }
     }
@@ -428,6 +428,12 @@ where
 
     fn mark_saved(&mut self) {
         self.unsaved = false;
+    }
+}
+
+impl MFbProj {
+    fn pose(&self) -> Vec<([f64; 2], [f64; 2])> {
+        std::iter::zip(self.curve(), self.cache.state_curves[0].clone()).collect()
     }
 }
 

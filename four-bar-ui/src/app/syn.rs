@@ -112,11 +112,22 @@ impl Synthesis {
         ui.horizontal(|ui| {
             ui.label("Type: ");
             ui.group(|ui| {
-                let is_planar = self.target.is_planar();
-                if ui.selectable_label(is_planar, "Planar").clicked() {
+                if ui
+                    .selectable_label(matches!(self.target, io::Curve::P(..)), "Planar")
+                    .clicked()
+                {
                     self.target.convert_to_planar();
                 }
-                if ui.selectable_label(!is_planar, "Spatial").clicked() {
+                if ui
+                    .selectable_label(matches!(self.target, io::Curve::M(..)), "Motion")
+                    .clicked()
+                {
+                    self.target.convert_to_motion();
+                }
+                if ui
+                    .selectable_label(matches!(self.target, io::Curve::S(..)), "Spherical")
+                    .clicked()
+                {
                     self.target.convert_to_spatial();
                 }
             });
@@ -155,6 +166,7 @@ impl Synthesis {
             if ui.button("💾 Save CSV").clicked() {
                 match &self.target {
                     io::Curve::P(t) => io::save_csv_ask(t),
+                    io::Curve::M(t) => io::save_csv_ask(t),
                     io::Curve::S(t) => io::save_csv_ask(t),
                 }
             }
@@ -163,6 +175,7 @@ impl Synthesis {
             if ui.button("🗐 Copy CSV").clicked() {
                 let text = match &self.target {
                     io::Curve::P(t) => csv::to_string(t).unwrap(),
+                    io::Curve::M(t) => csv::to_string(t).unwrap(),
                     io::Curve::S(t) => csv::to_string(t).unwrap(),
                 };
                 ui.output_mut(|s| s.copied_text = text);
@@ -170,6 +183,7 @@ impl Synthesis {
             if ui.button("🗐 Copy Array of Tuple").clicked() {
                 let text = match &self.target {
                     io::Curve::P(t) => ron_pretty(t),
+                    io::Curve::M(t) => ron_pretty(t),
                     io::Curve::S(t) => ron_pretty(t),
                 };
                 ui.output_mut(|s| s.copied_text = text);
@@ -182,6 +196,11 @@ impl Synthesis {
                 }
                 let text = match &self.target {
                     io::Curve::P(t) => ron_pretty(&vec_nest!(t)),
+                    io::Curve::M(t) => ron_pretty(
+                        &t.iter()
+                            .map(|&(c1, c2)| [c1, c2].concat())
+                            .collect::<Vec<_>>(),
+                    ),
                     io::Curve::S(t) => ron_pretty(&vec_nest!(t)),
                 };
                 ui.output_mut(|s| s.copied_text = text);
@@ -189,6 +208,8 @@ impl Synthesis {
         });
         match &mut self.target {
             io::Curve::P(t) => table(ui, t),
+            // Safety: Cast `Vec<([f64; 2], [f64; 2])>` to `Vec<[f64; 4]>`
+            io::Curve::M(t) => table::<4>(ui, unsafe { std::mem::transmute(t) }),
             io::Curve::S(t) => table(ui, t),
         }
         ui.separator();
@@ -387,7 +408,9 @@ impl Synthesis {
             const NAME: &str = "Synthesis target";
             let target = match &self.target {
                 io::Curve::P(t) => t.clone(),
-                io::Curve::S(t) => t.iter().map(|[x, y, _]| [*x, *y]).collect(),
+                // TODO: Support drawing uvec here
+                io::Curve::M(t) => t.iter().map(|&([x, y], _)| [x, y]).collect(),
+                io::Curve::S(t) => t.iter().map(|&[x, y, _]| [x, y]).collect(),
             };
             let line = egui_plot::Line::new(target.clone())
                 .name(NAME)
@@ -407,6 +430,8 @@ impl Synthesis {
         let p = ui.pointer_coordinate().unwrap();
         match &mut self.target {
             io::Curve::P(t) => t.push([p.x, p.y]),
+            // TODO: Support adding uvec here
+            io::Curve::M(t) => t.push(([p.x, p.y], [0., 0.])),
             io::Curve::S(t) => {
                 // FIXME: Try block, ignore errors
                 if let Some(c) = (|| {
@@ -498,6 +523,7 @@ impl Synthesis {
         let alg = self.alg.clone();
         let target = match self.target.clone() {
             io::Curve::P(t) => Target::P(t.into(), Cow::Owned(self.atlas.as_fb().clone())),
+            io::Curve::M(t) => Target::M(Cow::Owned(t)),
             io::Curve::S(t) => Target::S(t.into(), Cow::Owned(self.atlas.as_sfb().clone())),
         };
         let cfg = self.cfg.clone();
