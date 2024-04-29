@@ -108,12 +108,12 @@ fn get_info(
     let mut target_fb = None;
     let ext = file.extension().and_then(|p| p.to_str());
     let target = match ext.ok_or(SynErr::Format)? {
-        "csv" | "txt" => io::Curve::from_reader(std::fs::File::open(file)?)?,
+        "csv" | "txt" => io::Curve::from_csv_reader(std::fs::File::open(file)?)?,
         "ron" => {
             let fb = ron::de::from_reader(std::fs::File::open(file)?)?;
             let curve = match &fb {
                 io::Fb::P(fb) => io::Curve::P(fb.curve(res)),
-                io::Fb::M(fb) => io::Curve::P(fb.curve(res)),
+                io::Fb::M(fb) => io::Curve::M(fb.pose_zipped(res)),
                 io::Fb::S(fb) => io::Curve::S(fb.curve(res)),
             };
             target_fb = Some(fb);

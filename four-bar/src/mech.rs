@@ -96,6 +96,14 @@ impl<UN, NM> Mech<UN, NM> {
         PoseGen::<D>::pose(self, res)
     }
 
+    /// Pose generation for coupler curve in zipped form.
+    pub fn pose_zipped<const D: usize>(&self, res: usize) -> Vec<([f64; D], [f64; D])>
+    where
+        Self: PoseGen<D>,
+    {
+        PoseGen::<D>::pose_zipped(self, res)
+    }
+
     /// Check if the data is valid.
     pub fn is_valid(&self) -> bool
     where

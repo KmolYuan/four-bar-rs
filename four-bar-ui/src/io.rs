@@ -303,7 +303,10 @@ where
     C: FnOnce(PathBuf, Curve) + 'static,
 {
     open_single(CSV_FMT, CSV_EXT, move |p, r| {
-        alert!(("Parse File", Curve::from_reader(r)), ("*", |d| done(p, d)));
+        alert!(
+            ("Parse File", Curve::from_csv_reader(r)),
+            ("*", |d| done(p, d))
+        );
     });
 }
 
@@ -312,7 +315,10 @@ where
     C: Fn(PathBuf, Curve) + 'static,
 {
     open(CSV_FMT, CSV_EXT, move |p, r| {
-        alert!(("Parse File", Curve::from_reader(r)), ("*", |d| done(p, d)));
+        alert!(
+            ("Parse File", Curve::from_csv_reader(r)),
+            ("*", |d| done(p, d))
+        );
     });
 }
 
@@ -427,16 +433,21 @@ impl Default for Curve {
 }
 
 impl Curve {
-    pub(crate) fn from_reader<R>(mut r: R) -> Result<Self, csv::Error>
+    pub(crate) fn from_csv_reader<R>(mut r: R) -> Result<Self, csv::Error>
     where
         R: std::io::Read + std::io::Seek,
     {
-        if let Ok(c) = csv::from_reader(&mut r) {
-            Ok(Self::S(c))
-        } else {
-            r.rewind()?;
-            Ok(Self::P(csv::from_reader(r)?))
-        }
+        // Please be aware of the order of the array size,
+        // it should be in descending order to avoid ambiguity.
+        (csv::from_reader(&mut r).map(Self::M)) // 4
+            .or_else(|_| {
+                r.rewind()?;
+                csv::from_reader(&mut r).map(Self::S) // 3
+            })
+            .or_else(|_| {
+                r.rewind()?;
+                csv::from_reader(r).map(Self::P) // 2
+            })
     }
 
     pub(crate) fn len(&self) -> usize {

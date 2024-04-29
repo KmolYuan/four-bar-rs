@@ -157,6 +157,7 @@ impl<const N: usize> ExtBound<N> {
 #[non_exhaustive]
 pub enum Style {
     /// Continuous Line
+    #[default]
     Line,
     /// Dashed Line
     DashedLine,
@@ -165,7 +166,6 @@ pub enum Style {
     /// Dash-dotted Line
     DashDottedLine,
     /// Circle Marker
-    #[default]
     Circle,
     /// Triangle Marker
     Triangle,
@@ -430,7 +430,7 @@ impl<'a, C: Clone> Default for LineData<'a, C> {
             label: Cow::Borrowed(""),
             line: Cow::Borrowed(&[]),
             style: Style::default(),
-            color: BLACK.into(),
+            color: RED.into(),
         }
     }
 }
@@ -620,6 +620,15 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
             line: line.into(),
             ..Default::default()
         });
+    }
+
+    /// Add a motion with default settings in-placed.
+    pub fn push_pose_default<S, L1, L2>(&mut self, label: S, curve: L1, pose: L2)
+    where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [C]>: From<L1> + From<L2>,
+    {
+        self.push_pose(label, curve, pose, Style::default(), RED);
     }
 
     /// Add a line from a [`LineData`] instance in-placed.

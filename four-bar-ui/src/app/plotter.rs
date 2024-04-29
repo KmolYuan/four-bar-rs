@@ -16,13 +16,15 @@ use std::{
 };
 
 const GIF_RES: usize = 60;
+const NEW_CURVE: &str = "New Curve";
+type Fig<M, const D: usize> = fb_plot::FigureBase<'static, 'static, M, [f64; D]>;
 
 fn fig_ui<M, const D: usize>(
     ui: &mut Ui,
-    fig: &mut Arc<Mutex<fb_plot::FigureBase<'static, 'static, M, [f64; D]>>>,
+    fig: &mut Arc<Mutex<Fig<M, D>>>,
     lnk: &mut super::link::Linkages,
     get_fb: impl Fn(io::Fb) -> Option<M> + Copy + 'static,
-    get_curve: impl Fn(io::Curve) -> Option<Vec<[f64; D]>> + Copy + 'static,
+    get_curve: impl Fn(&mut Fig<M, D>, io::Curve) + 'static,
     to_fb: impl Fn(M) -> io::Fb + Copy + 'static,
 ) where
     M: Clone + mech::CurveGen<D>,
@@ -65,11 +67,10 @@ fn fig_ui<M, const D: usize>(
         fig.lock()
             .unwrap()
             .retain_lines(|i, line| ui.group(|ui| fig_line_ui(ui, i, line)).inner);
-        const NEW_CURVE: &str = "New Curve";
         ui.horizontal(|ui| {
-            if let Some(c) = lnk.projs.current_curve().and_then(get_curve) {
+            if let Some(c) = lnk.projs.current_curve() {
                 if ui.button("🖴 Add from").clicked() {
-                    fig.lock().unwrap().push_line_default(NEW_CURVE, c);
+                    get_curve(&mut *fig.lock().unwrap(), c);
                 }
             } else {
                 ui.add_enabled(false, Button::new("🖴 Load from"));
@@ -79,10 +80,7 @@ fn fig_ui<M, const D: usize>(
         if ui.button("🖴 Add from CSV").clicked() {
             let fig = fig.clone();
             io::open_csv(move |_, c| {
-                io::alert!(
-                    ("Wrong curve type", get_curve(c)),
-                    ("*", |c| fig.lock().unwrap().push_line_default(NEW_CURVE, c)),
-                );
+                io::alert!("Wrong curve type", get_curve(&mut *fig.lock().unwrap(), c));
             });
         }
         if ui.button("🖴 Add from RON (360pt)").clicked() {
@@ -181,9 +179,13 @@ impl PlotType {
                     io::Fb::M(mfb) => Some(mfb.into_fb()),
                     _ => None,
                 };
-                let get_curve = |c| match c {
-                    io::Curve::P(c) => Some(c),
-                    _ => None,
+                let get_curve = |fig: &mut Fig<_, 2>, c| match c {
+                    io::Curve::P(c) => fig.push_line_default(NEW_CURVE, c),
+                    io::Curve::M(c) => {
+                        let (c, v) = c.into_iter().unzip::<_, _, Vec<_>, Vec<_>>();
+                        fig.push_pose_default(NEW_CURVE, c, v);
+                    }
+                    _ => (),
                 };
                 fig_ui(ui, fig, lnk, get_fb, get_curve, io::Fb::P);
             }
@@ -205,9 +207,10 @@ impl PlotType {
                     io::Fb::S(fb) => Some(fb),
                     _ => None,
                 };
-                let get_curve = |c| match c {
-                    io::Curve::S(c) => Some(c),
-                    _ => None,
+                let get_curve = |fig: &mut Fig<_, 3>, c| {
+                    if let io::Curve::S(c) = c {
+                        fig.push_line_default(NEW_CURVE, c);
+                    }
                 };
                 fig_ui(ui, fig, lnk, get_fb, get_curve, io::Fb::S);
             }
