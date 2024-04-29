@@ -10,24 +10,6 @@ mod fb_ui;
 mod impl_proj;
 mod undo;
 
-#[derive(Default, Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]
-pub(crate) enum Pivot {
-    Driver,
-    Follower,
-    #[default]
-    Coupler,
-}
-
-impl Pivot {
-    const fn name(&self) -> &'static str {
-        match self {
-            Pivot::Driver => "Driver",
-            Pivot::Follower => "Follower",
-            Pivot::Coupler => "Coupler",
-        }
-    }
-}
-
 #[derive(Default, Clone)]
 pub(crate) struct Queue(Arc<mutex::Mutex<Vec<Project>>>);
 
@@ -42,8 +24,6 @@ impl Queue {
 pub(crate) struct Projects {
     curr: usize,
     list: Vec<Project>,
-    #[serde(skip)]
-    pivot: Pivot,
     #[serde(skip)]
     queue: Queue,
     #[serde(skip)]
@@ -162,7 +142,7 @@ impl Projects {
         });
         if let Some(proj) = self.list.get_mut(self.curr) {
             proj.convert_btn(ui);
-            proj.show(ui, &mut self.pivot);
+            proj.show(ui);
         } else {
             ui.heading("No project here!");
             ui.label("Please open or create a project.");
@@ -208,7 +188,7 @@ impl Projects {
     }
 
     pub(crate) fn current_curve(&self) -> Option<io::Curve> {
-        Some(self.list.get(self.curr)?.curve())
+        Some(self.list.get(self.curr)?.coupler())
     }
 
     pub(crate) fn current_sphere(&self) -> Option<[f64; 4]> {

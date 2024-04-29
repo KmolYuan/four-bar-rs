@@ -63,14 +63,6 @@ impl Project {
         }
     }
 
-    pub(crate) fn curve(&self) -> io::Curve {
-        match self {
-            Self::P(proj) => io::Curve::P(proj.curve()),
-            Self::M(proj) => io::Curve::M(proj.pose()),
-            Self::S(proj) => io::Curve::S(proj.curve()),
-        }
-    }
-
     pub(crate) fn get_sphere(&self) -> Option<[f64; 4]> {
         match self {
             Self::S(proj) => Some(proj.fb.scr()),
@@ -119,9 +111,10 @@ impl Project {
     }
 
     impl_method! {
-        fn show(self: &mut Self, ui: &mut Ui, pivot: &mut Pivot);
-        fn plot(self: &Self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize);
+        fn show(self: &mut Self, ui: &mut Ui);
         fn cache(self: &mut Self);
+        fn plot(self: &Self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize);
+        fn coupler(self: &Self) -> io::Curve;
         fn name(self: &Self) -> Cow<str>;
         fn preload(self: &mut Self);
         fn set_path(self: &mut Self, path: PathBuf);
@@ -326,10 +319,10 @@ where
         + Default
         + Serialize
         + serde::de::DeserializeOwned,
-    [f64; D]: Serialize,
+    Self: CouplerGen,
     efd::U<D>: efd::EfdDim<D>,
 {
-    fn show(&mut self, ui: &mut Ui, pivot: &mut Pivot) {
+    fn show(&mut self, ui: &mut Ui) {
         use four_bar::mech::Statable as _;
         ui.horizontal(|ui| {
             if small_btn(ui, "🔗", "Share with Link") {
@@ -378,38 +371,31 @@ where
                 self.undo.clear();
             }
         });
-        ui.add_enabled_ui(!self.hide, |ui| self.ui(ui, pivot));
+        ui.add_enabled_ui(!self.hide, |ui| self.ui(ui));
         self.undo.fetch(&self.fb);
     }
 
-    fn ui(&mut self, ui: &mut Ui, pivot: &mut Pivot) {
+    fn ui(&mut self, ui: &mut Ui) {
         ui.heading("Curve");
         self.cache.changed |= nonzero_i(ui, "Resolution: ", &mut self.res, 1)
             .on_hover_text("Resolution of rendering and data export")
             .changed();
         ui.horizontal(|ui| {
-            ui.label("Export");
-            const OPTS: [Pivot; 3] = [Pivot::Coupler, Pivot::Driver, Pivot::Follower];
-            combo_enum(ui, "pivot", pivot, OPTS, |e| e.name());
-            let get_curve = |pivot, fb: &M::De| -> Vec<_> {
-                use four_bar::mech::CurveGen as _;
-                let curve = if let Some([start, end]) = self.bound {
-                    fb.curves_in(start, end, self.res).into_iter()
-                } else {
-                    fb.curves(self.res).into_iter()
-                };
-                match pivot {
-                    Pivot::Driver => curve.map(|[c, _, _]| c).collect(),
-                    Pivot::Follower => curve.map(|[_, c, _]| c).collect(),
-                    Pivot::Coupler => curve.map(|[_, _, c]| c).collect(),
-                }
-            };
+            ui.label("Coupler Motion: ");
             if small_btn(ui, "💾", "Save") {
-                io::save_csv_ask(&get_curve(*pivot, &self.fb));
+                match self.coupler() {
+                    io::Curve::P(c) => io::save_csv_ask(&c),
+                    io::Curve::M(c) => io::save_csv_ask(&c),
+                    io::Curve::S(c) => io::save_csv_ask(&c),
+                }
             }
             if small_btn(ui, "🗐", "Copy") {
-                let t = csv::to_string(get_curve(*pivot, &self.fb)).unwrap();
-                ui.output_mut(|s| s.copied_text = t);
+                let text = match self.coupler() {
+                    io::Curve::P(c) => csv::to_string(c).unwrap(),
+                    io::Curve::M(c) => csv::to_string(c).unwrap(),
+                    io::Curve::S(c) => csv::to_string(c).unwrap(),
+                };
+                ui.output_mut(|s| s.copied_text = text);
             }
         });
         let callback = |ui: &mut Ui, [start, end]: &mut [_; 2]| {
@@ -448,6 +434,28 @@ where
 impl MFbProj {
     fn pose(&self) -> Vec<([f64; 2], [f64; 2])> {
         std::iter::zip(self.curve(), self.cache.state_curves[0].clone()).collect()
+    }
+}
+
+trait CouplerGen {
+    fn coupler(&self) -> io::Curve;
+}
+
+impl CouplerGen for FbProj {
+    fn coupler(&self) -> io::Curve {
+        io::Curve::P(self.curve())
+    }
+}
+
+impl CouplerGen for MFbProj {
+    fn coupler(&self) -> io::Curve {
+        io::Curve::M(self.pose())
+    }
+}
+
+impl CouplerGen for SFbProj {
+    fn coupler(&self) -> io::Curve {
+        io::Curve::S(self.curve())
     }
 }
 
