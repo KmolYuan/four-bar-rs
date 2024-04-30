@@ -1,9 +1,12 @@
-use crate::{io, syn_cmd};
+use crate::{
+    io,
+    syn_cmd::{self, Target},
+};
 use four_bar::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{
-    borrow::Cow,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 macro_rules! impl_err_from {
@@ -90,51 +93,52 @@ pub(super) struct Syn {
 
 struct Info {
     root: PathBuf,
-    target: io::Curve,
-    target_fb: Option<io::Fb>,
     title: String,
     mode: syn::Mode,
 }
 
-fn get_info(
+fn get_info<'a>(
     title: &str,
     file: &Path,
     res: usize,
+    atlas: Option<&'a io::AtlasPool>,
     rerun: bool,
     clean: bool,
-) -> Result<Info, SynErr> {
-    let mut target_fb = None;
+) -> Result<(Info, Target<'static, 'a>), SynErr> {
     let ext = file.extension().and_then(|p| p.to_str());
+    macro_rules! check {
+        ($c:expr) => {
+            efd::util::valid_curve($c).ok_or(SynErr::Linkage)?.into()
+        };
+        (@ $c:expr) => {{
+            let c = $c;
+            if c.len() < 3
+                || c.iter()
+                    .flat_map(|(c, v)| c.iter().chain(v))
+                    .any(|x| !x.is_finite())
+            {
+                return Err(SynErr::Linkage);
+            } else {
+                c.into()
+            }
+        }};
+    }
     let target = match ext.ok_or(SynErr::Format)? {
-        "csv" | "txt" => io::Curve::from_csv_reader(std::fs::File::open(file)?)?,
-        "ron" => {
-            let fb = ron::de::from_reader(std::fs::File::open(file)?)?;
-            let curve = match &fb {
-                io::Fb::P(fb) => io::Curve::P(fb.curve(res)),
-                io::Fb::M(fb) => io::Curve::M(fb.pose_zipped(res)),
-                io::Fb::S(fb) => io::Curve::S(fb.curve(res)),
-            };
-            target_fb = Some(fb);
-            curve
-        }
+        "csv" | "txt" => match io::Curve::from_csv_reader(std::fs::File::open(file)?)? {
+            io::Curve::P(t) => Target::P(check!(t), None, atlas.map(|a| a.as_fb())),
+            io::Curve::M(t) => Target::M(check!(@t), None),
+            io::Curve::S(t) => Target::S(check!(t), None, None),
+        },
+        "ron" => match ron::de::from_reader(std::fs::File::open(file)?)? {
+            io::Fb::P(fb) => Target::P(check!(fb.curve(res)), Some(fb), None),
+            io::Fb::M(fb) => Target::M(check!(@fb.pose_zipped(res)), Some(fb)),
+            io::Fb::S(fb) => Target::S(check!(fb.curve(res)), Some(fb), None),
+        },
         _ => {
             println!("Ignored: {}", file.display());
             Err(SynErr::Format)?
         }
     };
-    match &target {
-        io::Curve::P(t) => _ = efd::util::valid_curve(t).ok_or(SynErr::Linkage)?,
-        io::Curve::M(t) => {
-            if t.len() < 3
-                && t.iter()
-                    .flat_map(|(c, v)| c.iter().chain(v))
-                    .any(|x| !x.is_finite())
-            {
-                return Err(SynErr::Linkage);
-            }
-        }
-        io::Curve::S(t) => _ = efd::util::valid_curve(t).ok_or(SynErr::Linkage)?,
-    }
     let mode = match Path::new(title).extension().and_then(|p| p.to_str()) {
         Some("closed") => syn::Mode::Closed,
         Some("partial") => syn::Mode::Partial,
@@ -162,7 +166,7 @@ fn get_info(
         std::fs::create_dir(&root)?;
     }
     let title = title.to_string();
-    Ok(Info { root, target, target_fb, title, mode })
+    Ok((Info { root, title, mode }, target))
 }
 
 pub(super) fn syn(syn: Syn) {
@@ -188,13 +192,29 @@ pub(super) fn syn(syn: Syn) {
     }
     println!("rerun={rerun} clean={clean}");
     println!("-----");
+    // Load atlas
+    let atlas = atlas
+        .map(|atlas| std::env::split_paths(&atlas).collect::<Vec<_>>())
+        .unwrap_or_default();
+    let atlas = if atlas.is_empty() {
+        None
+    } else {
+        println!("Loading atlas database...");
+        Some(
+            atlas
+                .into_iter()
+                .map(|path| Ok(io::Atlas::from_reader(std::fs::File::open(path)?)?))
+                .collect::<Result<io::AtlasPool, Box<dyn std::error::Error>>>()
+                .expect("Load atlas failed"),
+        )
+    };
     // Load target files & create project folders
     let tasks = files
         .into_iter()
         .filter_map(|file| {
             let file = file.canonicalize().ok().filter(|f| f.is_file())?;
             let title = file.file_stem()?.to_str()?;
-            match get_info(title, &file, cfg.res, rerun, clean) {
+            match get_info(title, &file, cfg.res, atlas.as_ref(), rerun, clean) {
                 Ok(info) => Some(info),
                 Err(SynErr::Format) => None,
                 Err(e) => {
@@ -210,18 +230,6 @@ pub(super) fn syn(syn: Syn) {
     if clean && !rerun {
         return;
     }
-    // Load atlas
-    let atlas = atlas
-        .map(|atlas| std::env::split_paths(&atlas).collect::<Vec<_>>())
-        .unwrap_or_default();
-    if !atlas.is_empty() {
-        println!("Loading atlas database...");
-    }
-    let atlas = atlas
-        .into_iter()
-        .map(|path| Ok(io::Atlas::from_reader(std::fs::File::open(path)?)?))
-        .collect::<Result<io::AtlasPool, Box<dyn std::error::Error>>>()
-        .expect("Load atlas failed");
     // Progress bar
     const STYLE: &str = "{eta} {wide_bar} {percent}%";
     let pb = ProgressBar::new(tasks.len() as u64 * cfg.gen);
@@ -229,7 +237,7 @@ pub(super) fn syn(syn: Syn) {
     // Tasks
     let alg = alg.unwrap_or_default();
     let refer = (!no_ref).then_some(refer.as_path());
-    let run = |info| run(&pb, alg.clone(), info, &cfg, &atlas, refer, rerun);
+    let run = |(info, target)| run(&pb, alg.clone(), info, target, &cfg, refer, rerun);
     let t0 = std::time::Instant::now();
     if each {
         tasks.into_iter().for_each(run);
@@ -250,163 +258,132 @@ const EFD_CSV: &str = "target-efd.csv";
 const CURVE_SVG: &str = "curve.svg";
 const CURVE_FIG: &str = "curve.fig.ron";
 
+impl<M, const N: usize, const D: usize> syn_cmd::PathSynData<'_, M, N, D>
+where
+    syn::PathSyn<M, N, D>: mh::ObjFunc<Ys = mh::WithProduct<f64, M::De>>,
+    M: atlas::Code<N, D>,
+    M::De: mech::CurveGen<D>
+        + serde::Serialize
+        + serde::de::DeserializeOwned
+        + Default
+        + Clone
+        + Sync
+        + Send
+        + 'static,
+    efd::U<D>: efd::EfdDim<D>,
+    efd::Efd<D>: Sync,
+    for<'f1, 'f2> plot::FigureBase<'f1, 'f2, M::De, [f64; D]>: plot::Plot + serde::Serialize,
+{
+    fn solve_cli(
+        self,
+        cfg: &syn_cmd::SynCfg,
+        info: &Info,
+        refer: Option<&Path>,
+        history: Arc<Mutex<Vec<f64>>>,
+    ) -> Result<(), SynErr> {
+        use four_bar::mech::CurveGen as _;
+        use plot::full_palette::*;
+        let Self { s, target, target_fb, atlas_fb } = self;
+        let Info { root, title, mode } = info;
+        let t0 = std::time::Instant::now();
+        let s = s.solve();
+        let t1 = t0.elapsed();
+        let func = s.func();
+        let harmonic = func.harmonic();
+        let efd = func.tar.clone();
+        let (cost, fb) = s.into_err_result();
+        {
+            let path = root.join(HISTORY_SVG);
+            let svg = plot::SVGBackend::new(&path, (800, 600));
+            plot::fb::history(svg, Arc::into_inner(history).unwrap().into_inner().unwrap())?;
+        }
+        let refer = refer
+            .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
+            .filter(|p| p.is_file());
+        let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
+        let mut log = super::logger::Logger::new(&mut log);
+        log.top_title(title)?;
+        write_tar_efd(root.join(EFD_CSV), &efd)?;
+        write_ron(root.join(LNK_RON), &fb)?;
+        let efd_target = efd::Efd::from_curve_harmonic(&target, mode.is_target_open(), harmonic);
+        let curve = fb.curve(cfg.res);
+        let mut fig = plot::FigureBase::new_ref(&fb)
+            .add_line("Target", &*target, plot::Style::Circle, RED)
+            .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
+        {
+            write_ron(root.join(LNK_FIG), &fig)?;
+            let path = root.join(LNK_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+        }
+        if let Some(fb) = target_fb {
+            log.title("target.fb")?;
+            log.log(fb)?;
+        }
+        if let Some((cost, fb)) = atlas_fb {
+            let c = fb.curve(cfg.res);
+            let efd = efd::Efd::from_curve_harmonic(c, mode.is_result_open(), harmonic);
+            let geo = efd.as_geo().to(efd_target.as_geo());
+            let fb = fb.clone().trans_denorm(&geo);
+            let c = fb.curve(cfg.res.min(30));
+            log.title("atlas")?;
+            log.log(Performance::cost(cost).harmonic(harmonic))?;
+            log.title("atlas.fb")?;
+            log.log(&fb)?;
+            write_ron(root.join("atlas.ron"), &fb)?;
+            fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
+        }
+        log.title("optimized")?;
+        log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
+        log.title("optimized.fb")?;
+        log.log(&fb)?;
+        if let Some(refer) = refer {
+            let fb = ron::de::from_reader::<_, M::De>(std::fs::File::open(refer)?)?;
+            let c = fb.curve(cfg.res);
+            log.title("competitor")?;
+            if !matches!(mode, syn::Mode::Partial) {
+                let efd = efd::Efd::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
+                log.log(Performance::cost(efd.err(&efd_target)))?;
+            }
+            log.title("competitor.fb")?;
+            log.log(&fb)?;
+            fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
+        }
+        fig.fb = None;
+        write_ron(root.join(CURVE_FIG), &fig)?;
+        let path = root.join(CURVE_SVG);
+        let svg = plot::SVGBackend::new(&path, (1600, 1600));
+        fig.plot(svg)?;
+        log.flush()?;
+        Ok(())
+    }
+}
+
 fn from_runtime(
     pb: &ProgressBar,
     alg: syn_cmd::SynAlg,
     info: &Info,
+    target: Target,
     cfg: &syn_cmd::SynCfg,
-    atlas: &io::AtlasPool,
     refer: Option<&Path>,
 ) -> Result<(), SynErr> {
-    use four_bar::mech::{CurveGen as _, Normalized as _};
-    use plot::full_palette::*;
-    let Info { root, target, target_fb, title, mode } = info;
-    let mode = *mode;
-    let mut history = Vec::with_capacity(cfg.gen as usize);
-    let t0 = std::time::Instant::now();
+    let history = Arc::new(Mutex::new(Vec::with_capacity(cfg.gen as usize)));
     let s = {
-        let target = match target {
-            io::Curve::P(t) => syn_cmd::Target::P(Cow::Borrowed(t), Cow::Borrowed(atlas.as_fb())),
-            io::Curve::M(t) => syn_cmd::Target::M(Cow::Borrowed(t)),
-            io::Curve::S(t) => syn_cmd::Target::S(Cow::Borrowed(t), Cow::Borrowed(atlas.as_sfb())),
-        };
-        let cfg = syn_cmd::SynCfg { mode, ..cfg.clone() };
+        let history = history.clone();
+        let cfg = syn_cmd::SynCfg { mode: info.mode, ..cfg.clone() };
         let stop = || false;
-        syn_cmd::Solver::new(alg, target, cfg, stop, |best_f, _| {
-            history.push(best_f);
+        syn_cmd::Solver::new(alg, target, cfg, stop, move |best_f, _| {
+            history.lock().unwrap().push(best_f);
             pb.inc(1);
         })
     };
-    let (cost, harmonic, lnk_fb) = s.solve_verbose();
-    let t1 = t0.elapsed();
-    {
-        let path = root.join(HISTORY_SVG);
-        let svg = plot::SVGBackend::new(&path, (800, 600));
-        plot::fb::history(svg, history)?;
+    match s {
+        syn_cmd::Solver::FbSyn(s) => s.solve_cli(cfg, info, refer, history),
+        syn_cmd::Solver::SFbSyn(s) => s.solve_cli(cfg, info, refer, history),
     }
-    // Log results
-    let refer = refer
-        .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
-        .filter(|p| p.is_file());
-    let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
-    let mut log = super::logger::Logger::new(&mut log);
-    log.top_title(title)?;
-    match (target, &lnk_fb) {
-        (io::Curve::P(target), syn_cmd::SolvedFb::P(fb, efd, atlas_fb)) if fb.is_valid() => {
-            write_tar_efd(root.join(EFD_CSV), efd)?;
-            write_ron(root.join(LNK_RON), fb)?;
-            let efd_target =
-                efd::Efd2::from_curve_harmonic(target, mode.is_target_open(), harmonic);
-            let curve = fb.curve(cfg.res);
-            let mut fig = plot::fb::Figure::new_ref(fb)
-                .add_line("Target", target, plot::Style::Circle, RED)
-                .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
-            {
-                write_ron(root.join(LNK_FIG), &fig)?;
-                let path = root.join(LNK_SVG);
-                let svg = plot::SVGBackend::new(&path, (1600, 1600));
-                fig.plot(svg)?;
-            }
-            if let Some(io::Fb::P(fb)) = target_fb {
-                log.title("target.fb")?;
-                log.log(fb)?;
-            }
-            if let Some((cost, fb)) = atlas_fb {
-                let c = fb.curve(cfg.res);
-                let efd = efd::Efd2::from_curve_harmonic(c, mode.is_result_open(), harmonic);
-                let geo = efd.as_geo().to(efd_target.as_geo());
-                let fb = fb.clone().trans_denorm(&geo);
-                let c = fb.curve(cfg.res.min(30));
-                log.title("atlas")?;
-                log.log(Performance::cost(*cost).harmonic(harmonic))?;
-                log.title("atlas.fb")?;
-                log.log(&fb)?;
-                write_ron(root.join("atlas.ron"), &fb)?;
-                fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
-            }
-            log.title("optimized")?;
-            log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
-            log.title("optimized.fb")?;
-            log.log(fb)?;
-            if let Some(refer) = refer {
-                let fb = ron::de::from_reader::<_, FourBar>(std::fs::File::open(refer)?)?;
-                let c = fb.curve(cfg.res);
-                log.title("competitor")?;
-                if !matches!(mode, syn::Mode::Partial) {
-                    let efd = efd::Efd2::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                    log.log(Performance::cost(efd.err(&efd_target)))?;
-                }
-                log.title("competitor.fb")?;
-                log.log(&fb)?;
-                fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
-            }
-            fig.fb = None;
-            write_ron(root.join(CURVE_FIG), &fig)?;
-            let path = root.join(CURVE_SVG);
-            let svg = plot::SVGBackend::new(&path, (1600, 1600));
-            fig.plot(svg)?;
-        }
-        (io::Curve::S(target), syn_cmd::SolvedFb::S(fb, efd, atlas_fb)) if fb.is_valid() => {
-            write_tar_efd(root.join(EFD_CSV), efd)?;
-            write_ron(root.join(LNK_RON), fb)?;
-            let efd_target =
-                efd::Efd3::from_curve_harmonic(target, mode.is_target_open(), harmonic);
-            let curve = fb.curve(cfg.res);
-            let mut fig = plot::sfb::Figure::new_ref(fb)
-                .add_line("Target", target, plot::Style::Circle, RED)
-                .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
-            {
-                write_ron(root.join(LNK_FIG), &fig)?;
-                let path = root.join(LNK_SVG);
-                let svg = plot::SVGBackend::new(&path, (1600, 1600));
-                fig.plot(svg)?;
-            }
-            if let Some(io::Fb::S(fb)) = target_fb {
-                log.title("target.fb")?;
-                log.log(fb)?;
-            }
-            if let Some((cost, fb)) = atlas_fb {
-                let c = fb.curve(cfg.res);
-                let efd = efd::Efd3::from_curve_harmonic(c, mode.is_result_open(), harmonic);
-                let geo = efd.as_geo().to(efd_target.as_geo());
-                let fb = fb.clone().trans_denorm(&geo);
-                let c = fb.curve(cfg.res.min(30));
-                log.title("atlas")?;
-                log.log(Performance::cost(*cost).harmonic(harmonic))?;
-                log.title("atlas.fb")?;
-                log.log(&fb)?;
-                write_ron(root.join("atlas.ron"), &fb)?;
-                fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
-            }
-            log.title("optimized")?;
-            log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
-            log.title("optimized.fb")?;
-            log.log(fb)?;
-            if let Some(refer) = refer {
-                let fb = ron::de::from_reader::<_, SFourBar>(std::fs::File::open(refer)?)?;
-                let c = fb.curve(cfg.res);
-                log.title("competitor")?;
-                if !matches!(mode, syn::Mode::Partial) {
-                    let efd = efd::Efd3::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                    log.log(Performance::cost(efd.err(&efd_target)))?;
-                }
-                log.title("competitor.fb")?;
-                log.log(&fb)?;
-                fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
-            }
-            fig.fb = Some(Cow::Owned(fb.clone().take_sphere()));
-            write_ron(root.join(CURVE_FIG), &fig)?;
-            let path = root.join(CURVE_SVG);
-            let svg = plot::SVGBackend::new(&path, (1600, 1600));
-            fig.plot(svg)?;
-        }
-        _ => unreachable!(),
-    }
-    log.flush()?;
-    Ok(())
 }
 
-fn from_exist(info: &Info) -> Result<(), SynErr> {
+fn from_exist(root: &Path, target: &Target) -> Result<(), SynErr> {
     fn plot<Fig>(root: &Path) -> Result<(), SynErr>
     where
         Fig: serde::de::DeserializeOwned + plot::Plot,
@@ -420,10 +397,10 @@ fn from_exist(info: &Info) -> Result<(), SynErr> {
         }
         Ok(())
     }
-    match info.target {
+    match target {
         // HINT: `fb::Figure` and `mfb::Figure` are the same type
-        io::Curve::P(_) | io::Curve::M(_) => plot::<plot::fb::Figure>(&info.root),
-        io::Curve::S(_) => plot::<plot::sfb::Figure>(&info.root),
+        Target::P(..) | Target::M(..) => plot::<plot::fb::Figure>(root),
+        Target::S(..) => plot::<plot::sfb::Figure>(root),
     }
 }
 
@@ -431,8 +408,8 @@ fn run(
     pb: &ProgressBar,
     alg: syn_cmd::SynAlg,
     info: Info,
+    target: Target,
     cfg: &syn_cmd::SynCfg,
-    atlas: &io::AtlasPool,
     refer: Option<&Path>,
     rerun: bool,
 ) {
@@ -441,9 +418,9 @@ fn run(
         let root = &info.root;
         if !rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {
             pb.inc(cfg.gen);
-            from_exist(&info)
+            from_exist(&info.root, &target)
         } else {
-            from_runtime(pb, alg, &info, cfg, atlas, refer)
+            from_runtime(pb, alg, &info, target, cfg, refer)
         }
     };
     let title = &info.title;

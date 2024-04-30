@@ -101,18 +101,29 @@ impl Default for SynCfg {
 }
 
 #[derive(Clone)]
-pub(crate) enum Target<'a> {
-    P(Cow<'a, [[f64; 2]]>, Cow<'a, atlas::FbAtlas>),
-    S(Cow<'a, [[f64; 3]]>, Cow<'a, atlas::SFbAtlas>),
-    M(Cow<'a, [([f64; 2], [f64; 2])]>),
+pub(crate) enum Target<'a, 'b> {
+    P(
+        Cow<'a, [[f64; 2]]>,
+        Option<FourBar>,
+        Option<&'b atlas::FbAtlas>,
+    ),
+    S(
+        Cow<'a, [[f64; 3]]>,
+        Option<SFourBar>,
+        Option<&'b atlas::SFbAtlas>,
+    ),
+    M(Cow<'a, [([f64; 2], [f64; 2])]>, Option<MFourBar>),
 }
 
 pub(crate) struct PathSynData<'a, M, const N: usize, const D: usize>
 where
+    M: mech::Normalized<D>,
     syn::PathSyn<M, N, D>: mh::ObjFunc,
     efd::U<D>: efd::EfdDim<D>,
 {
     pub(crate) s: SolverBox<'a, syn::PathSyn<M, N, D>>,
+    pub(crate) target: Cow<'a, [[f64; D]]>,
+    pub(crate) target_fb: Option<M::De>,
     pub(crate) atlas_fb: Option<(f64, M)>,
 }
 
@@ -126,8 +137,9 @@ where
 {
     fn new<S, C>(
         alg: SynAlg,
-        target: &[[f64; D]],
-        atlas: &atlas::Atlas<M, N, D>,
+        target: Cow<'a, [[f64; D]]>,
+        target_fb: Option<M::De>,
+        atlas: Option<&atlas::Atlas<M, N, D>>,
         cfg: SynCfg,
         stop: S,
         mut callback: C,
@@ -137,21 +149,24 @@ where
         C: FnMut(f64, u64) + Send + 'a,
     {
         let SynCfg { seed, gen, pop, mode, res, on_unit } = cfg;
-        let mut syn = syn::PathSyn::from_curve(target, mode).res(res);
+        let mut syn = syn::PathSyn::from_curve(&target, mode).res(res);
         if on_unit {
             syn = syn.on_unit();
         }
-        let s = alg
+        let mut s = alg
             .build_solver(syn)
             .seed(seed)
             .task(move |ctx| !stop() && ctx.gen >= gen)
             .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
-        let mut data = Self { s, atlas_fb: None };
+        let Some(atlas) = atlas else {
+            return Self { s, target, target_fb, atlas_fb: None };
+        };
+        let mut atlas_fb = None;
         if let Some(candi) = (!mode.is_partial())
-            .then(|| atlas.fetch_raw(target, mode.is_target_open(), pop))
+            .then(|| atlas.fetch_raw(&target, mode.is_target_open(), pop))
             .filter(|candi| !candi.is_empty())
         {
-            data.atlas_fb = Some(candi[0].clone());
+            atlas_fb = Some(candi[0].clone());
             let pool_y = candi
                 .iter()
                 .map(|(f, fb)| mh::WithProduct::new(*f, fb.clone().denormalize()))
@@ -160,11 +175,11 @@ where
                 .into_iter()
                 .map(|(_, fb)| fb.into_vectorized().0)
                 .collect();
-            data.s = data.s.init_pool(mh::Pool::Ready { pool, pool_y });
+            s = s.init_pool(mh::Pool::Ready { pool, pool_y });
         } else {
-            data.s = data.s.pop_num(pop);
+            s = s.pop_num(pop);
         }
-        data
+        Self { s, target, target_fb, atlas_fb }
     }
 
     fn solve(self) -> (M::De, Option<(f64, M)>) {
@@ -178,22 +193,28 @@ pub(crate) enum Solver<'a> {
 }
 
 impl<'a> Solver<'a> {
-    pub(crate) fn new<S, C>(alg: SynAlg, target: Target, cfg: SynCfg, stop: S, callback: C) -> Self
+    pub(crate) fn new<S, C>(
+        alg: SynAlg,
+        target: Target<'a, '_>,
+        cfg: SynCfg,
+        stop: S,
+        callback: C,
+    ) -> Self
     where
         S: Fn() -> bool + Send + 'a,
         C: FnMut(f64, u64) + Send + 'a,
     {
         match target {
-            Target::P(target, atlas) => {
-                Self::FbSyn(PathSynData::new(alg, &target, &atlas, cfg, stop, callback))
-            }
-            Target::M(target) => {
+            Target::P(target, target_fb, atlas) => Self::FbSyn(PathSynData::new(
+                alg, target, target_fb, atlas, cfg, stop, callback,
+            )),
+            Target::M(target, target_fb) => {
                 // TODO: Implement this!
-                unimplemented!("synthesis with {target:?}")
+                unimplemented!("synthesis with {target:?} {target_fb:?}")
             }
-            Target::S(target, atlas) => {
-                Self::SFbSyn(PathSynData::new(alg, &target, &atlas, cfg, stop, callback))
-            }
+            Target::S(target, target_fb, atlas) => Self::SFbSyn(PathSynData::new(
+                alg, target, target_fb, atlas, cfg, stop, callback,
+            )),
         }
     }
 
@@ -203,28 +224,4 @@ impl<'a> Solver<'a> {
             Self::SFbSyn(s) => io::Fb::S(s.solve().0),
         }
     }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn solve_verbose(self) -> (f64, usize, SolvedFb) {
-        macro_rules! impl_solve {
-            ($syn:ident, $s:ident, $atlas_fb:ident) => {{
-                let s = $s.solve();
-                let func = s.func();
-                let h = func.harmonic();
-                let tar = func.tar.clone();
-                let (err, fb) = s.into_err_result();
-                (err, h, SolvedFb::$syn(fb, tar, $atlas_fb))
-            }};
-        }
-        match self {
-            Self::FbSyn(PathSynData { s, atlas_fb }) => impl_solve!(P, s, atlas_fb),
-            Self::SFbSyn(PathSynData { s, atlas_fb }) => impl_solve!(S, s, atlas_fb),
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) enum SolvedFb {
-    P(FourBar, efd::Efd2, Option<(f64, NormFourBar)>),
-    S(SFourBar, efd::Efd3, Option<(f64, SNormFourBar)>),
 }

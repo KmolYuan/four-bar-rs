@@ -3,15 +3,12 @@ use crate::{io, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::{atlas, csv, mh, syn};
 use serde::{Deserialize, Serialize};
-use std::{
-    borrow::Cow,
-    sync::{
-        atomic::{
-            AtomicU32,
-            Ordering::{Relaxed, SeqCst},
-        },
-        Arc, Mutex,
+use std::sync::{
+    atomic::{
+        AtomicU32,
+        Ordering::{Relaxed, SeqCst},
     },
+    Arc, Mutex,
 };
 
 #[inline]
@@ -522,28 +519,26 @@ impl Synthesis {
         self.task_queue.push(task.clone());
         let alg = self.alg.clone();
         let target = match self.target.clone() {
-            io::Curve::P(t) => Target::P(t.into(), Cow::Owned(self.atlas.as_fb().clone())),
-            io::Curve::M(t) => Target::M(Cow::Owned(t)),
-            io::Curve::S(t) => Target::S(t.into(), Cow::Owned(self.atlas.as_sfb().clone())),
+            io::Curve::P(t) => Target::P(t.into(), None, Some(self.atlas.as_fb())),
+            io::Curve::S(t) => Target::S(t.into(), None, Some(self.atlas.as_sfb())),
+            io::Curve::M(t) => Target::M(t.into(), None),
         };
         let cfg = self.cfg.clone();
         let queue = lnk.projs.queue();
-        let f = move || {
-            let t0 = Instant::now();
-            let stop = {
-                let pg = task.pg.clone();
-                let finish = 1f32.to_bits();
-                move || pg.load(SeqCst) == finish
-            };
-            let total_gen = cfg.gen;
-            let s = syn_cmd::Solver::new(alg, target, cfg, stop, move |best_f, gen| {
-                pg_set(&task.pg, gen as f32 / total_gen as f32);
-                let mut task = task.task.lock().unwrap();
-                task.conv.push(best_f);
-                task.time = t0.elapsed();
-            });
-            queue.push(None, s.solve());
+        let stop = {
+            let pg = task.pg.clone();
+            let finish = 1f32.to_bits();
+            move || pg.load(SeqCst) == finish
         };
+        let total_gen = cfg.gen;
+        let t0 = Instant::now();
+        let s = syn_cmd::Solver::new(alg, target, cfg, stop, move |best_f, gen| {
+            pg_set(&task.pg, gen as f32 / total_gen as f32);
+            let mut task = task.task.lock().unwrap();
+            task.conv.push(best_f);
+            task.time = t0.elapsed();
+        });
+        let f = move || queue.push(None, s.solve());
         #[cfg(not(target_arch = "wasm32"))]
         mh::rayon::spawn(f);
         #[cfg(target_arch = "wasm32")]
