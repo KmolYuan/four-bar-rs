@@ -519,9 +519,9 @@ impl Synthesis {
         self.task_queue.push(task.clone());
         let alg = self.alg.clone();
         let target = match self.target.clone() {
-            io::Curve::P(t) => Target::P(t.into(), None, Some(self.atlas.as_fb())),
-            io::Curve::S(t) => Target::S(t.into(), None, Some(self.atlas.as_sfb())),
-            io::Curve::M(t) => Target::M(t.into(), None),
+            io::Curve::P(t) => Target::fb(t.into(), None, Some(self.atlas.as_fb())),
+            io::Curve::M(t) => Target::mfb(t.into(), None),
+            io::Curve::S(t) => Target::sfb(t.into(), None, Some(self.atlas.as_sfb())),
         };
         let cfg = self.cfg.clone();
         let queue = lnk.projs.queue();

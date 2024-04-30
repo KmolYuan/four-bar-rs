@@ -125,14 +125,14 @@ fn get_info<'a>(
     }
     let target = match ext.ok_or(SynErr::Format)? {
         "csv" | "txt" => match io::Curve::from_csv_reader(std::fs::File::open(file)?)? {
-            io::Curve::P(t) => Target::P(check!(t), None, atlas.map(|a| a.as_fb())),
-            io::Curve::M(t) => Target::M(check!(@t), None),
-            io::Curve::S(t) => Target::S(check!(t), None, None),
+            io::Curve::P(t) => Target::fb(check!(t), None, atlas.map(|a| a.as_fb())),
+            io::Curve::M(t) => Target::mfb(check!(@t), None),
+            io::Curve::S(t) => Target::sfb(check!(t), None, None),
         },
         "ron" => match ron::de::from_reader(std::fs::File::open(file)?)? {
-            io::Fb::P(fb) => Target::P(check!(fb.curve(res)), Some(fb), None),
-            io::Fb::M(fb) => Target::M(check!(@fb.pose_zipped(res)), Some(fb)),
-            io::Fb::S(fb) => Target::S(check!(fb.curve(res)), Some(fb), None),
+            io::Fb::P(fb) => Target::fb(check!(fb.curve(res)), Some(fb), None),
+            io::Fb::M(fb) => Target::mfb(check!(@fb.pose_zipped(res)), Some(fb)),
+            io::Fb::S(fb) => Target::sfb(check!(fb.curve(res)), Some(fb), None),
         },
         _ => {
             println!("Ignored: {}", file.display());
@@ -378,8 +378,8 @@ fn from_runtime(
         })
     };
     match s {
-        syn_cmd::Solver::FbSyn(s) => s.solve_cli(cfg, info, refer, history),
-        syn_cmd::Solver::SFbSyn(s) => s.solve_cli(cfg, info, refer, history),
+        syn_cmd::Solver::Fb(s) => s.solve_cli(cfg, info, refer, history),
+        syn_cmd::Solver::SFb(s) => s.solve_cli(cfg, info, refer, history),
     }
 }
 
@@ -399,8 +399,8 @@ fn from_exist(root: &Path, target: &Target) -> Result<(), SynErr> {
     }
     match target {
         // HINT: `fb::Figure` and `mfb::Figure` are the same type
-        Target::P(..) | Target::M(..) => plot::<plot::fb::Figure>(root),
-        Target::S(..) => plot::<plot::sfb::Figure>(root),
+        Target::Fb { .. } | Target::MFb { .. } => plot::<plot::fb::Figure>(root),
+        Target::SFb { .. } => plot::<plot::sfb::Figure>(root),
     }
 }
 

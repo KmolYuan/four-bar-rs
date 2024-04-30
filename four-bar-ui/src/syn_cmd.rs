@@ -102,17 +102,45 @@ impl Default for SynCfg {
 
 #[derive(Clone)]
 pub(crate) enum Target<'a, 'b> {
-    P(
-        Cow<'a, [[f64; 2]]>,
-        Option<FourBar>,
-        Option<&'b atlas::FbAtlas>,
-    ),
-    S(
-        Cow<'a, [[f64; 3]]>,
-        Option<SFourBar>,
-        Option<&'b atlas::SFbAtlas>,
-    ),
-    M(Cow<'a, [([f64; 2], [f64; 2])]>, Option<MFourBar>),
+    Fb {
+        target: Cow<'a, [[f64; 2]]>,
+        target_fb: Option<FourBar>,
+        atlas: Option<&'b atlas::FbAtlas>,
+    },
+    MFb {
+        target: Cow<'a, [([f64; 2], [f64; 2])]>,
+        target_fb: Option<MFourBar>,
+    },
+    SFb {
+        target: Cow<'a, [[f64; 3]]>,
+        target_fb: Option<SFourBar>,
+        atlas: Option<&'b atlas::SFbAtlas>,
+    },
+}
+
+impl<'a, 'b> Target<'a, 'b> {
+    pub(crate) fn fb(
+        target: Cow<'a, [[f64; 2]]>,
+        target_fb: Option<FourBar>,
+        atlas: Option<&'b atlas::FbAtlas>,
+    ) -> Self {
+        Self::Fb { target, target_fb, atlas }
+    }
+
+    pub(crate) fn mfb(
+        target: Cow<'a, [([f64; 2], [f64; 2])]>,
+        target_fb: Option<MFourBar>,
+    ) -> Self {
+        Self::MFb { target, target_fb }
+    }
+
+    pub(crate) fn sfb(
+        target: Cow<'a, [[f64; 3]]>,
+        target_fb: Option<SFourBar>,
+        atlas: Option<&'b atlas::SFbAtlas>,
+    ) -> Self {
+        Self::SFb { target, target_fb, atlas }
+    }
 }
 
 pub(crate) struct PathSynData<'a, M, const N: usize, const D: usize>
@@ -188,8 +216,8 @@ where
 }
 
 pub(crate) enum Solver<'a> {
-    FbSyn(PathSynData<'a, NormFourBar, 5, 2>),
-    SFbSyn(PathSynData<'a, SNormFourBar, 6, 3>),
+    Fb(PathSynData<'a, NormFourBar, 5, 2>),
+    SFb(PathSynData<'a, SNormFourBar, 6, 3>),
 }
 
 impl<'a> Solver<'a> {
@@ -205,14 +233,14 @@ impl<'a> Solver<'a> {
         C: FnMut(f64, u64) + Send + 'a,
     {
         match target {
-            Target::P(target, target_fb, atlas) => Self::FbSyn(PathSynData::new(
+            Target::Fb { target, target_fb, atlas } => Self::Fb(PathSynData::new(
                 alg, target, target_fb, atlas, cfg, stop, callback,
             )),
-            Target::M(target, target_fb) => {
+            Target::MFb { target, target_fb } => {
                 // TODO: Implement this!
                 unimplemented!("synthesis with {target:?} {target_fb:?}")
             }
-            Target::S(target, target_fb, atlas) => Self::SFbSyn(PathSynData::new(
+            Target::SFb { target, target_fb, atlas } => Self::SFb(PathSynData::new(
                 alg, target, target_fb, atlas, cfg, stop, callback,
             )),
         }
@@ -220,8 +248,8 @@ impl<'a> Solver<'a> {
 
     pub(crate) fn solve(self) -> io::Fb {
         match self {
-            Self::FbSyn(s) => io::Fb::P(s.solve().0),
-            Self::SFbSyn(s) => io::Fb::S(s.solve().0),
+            Self::Fb(s) => io::Fb::P(s.solve().0),
+            Self::SFb(s) => io::Fb::S(s.solve().0),
         }
     }
 }
