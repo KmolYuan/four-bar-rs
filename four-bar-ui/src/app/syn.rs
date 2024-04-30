@@ -391,10 +391,10 @@ impl Synthesis {
                         ui.points(egui_plot::Points::new(pts2).name(name).stems(0.));
                     };
                     for (i, task) in self.tasks.iter().enumerate() {
-                        draw(&format!("Task {}", i), task);
+                        draw(&format!("Task {i}"), task);
                     }
                     for (i, task) in self.task_queue.iter().enumerate() {
-                        draw(&format!("Queue {}", i), &task.task.lock().unwrap());
+                        draw(&format!("Queue {i}"), &task.task.lock().unwrap());
                     }
                 });
             });
