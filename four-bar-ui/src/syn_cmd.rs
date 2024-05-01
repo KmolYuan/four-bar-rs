@@ -47,7 +47,11 @@ impl SynAlg {
         fn tlbo, Tlbo, "TLBO", "Teaching Learning Based Optimization", "https://doi.org/10.1016/j.cad.2010.12.015"
     }
 
-    pub(crate) fn build_solver<F: mh::ObjFunc>(self, f: F) -> SolverBox<'static, F> {
+    pub(crate) fn build_solver<F>(self, f: F) -> SolverBox<'static, F>
+    where
+        F: mh::ObjFunc,
+        F::Ys: Send,
+    {
         match self {
             Self::De(s) => mh::Solver::build_boxed(s, f),
             Self::Fa(s) => mh::Solver::build_boxed(s, f),
