@@ -140,6 +140,7 @@ impl<'a, 'b> Target<'a, 'b> {
     }
 }
 
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub(crate) struct PathSynData<'a, M, const N: usize, const D: usize>
 where
     M: mech::Normalized<D>,
@@ -181,6 +182,7 @@ where
         let mut s = alg
             .build_solver(syn)
             .seed(seed)
+            .pop_num(pop)
             .task(move |ctx| !stop() && ctx.gen >= gen)
             .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
         let Some(atlas) = atlas else {
@@ -201,8 +203,6 @@ where
                 .map(|(_, fb)| fb.into_vectorized().0)
                 .collect();
             s = s.init_pool(mh::Pool::Ready { pool, pool_y });
-        } else {
-            s = s.pop_num(pop);
         }
         Self { s, tar_curve, tar_fb, atlas_fb }
     }
@@ -212,6 +212,7 @@ where
     }
 }
 
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub(crate) struct MotionSynData<'a> {
     pub(crate) s: SolverBox<'a, syn::MFbSyn>,
     pub(crate) tar_curve: Vec<[f64; 2]>,
