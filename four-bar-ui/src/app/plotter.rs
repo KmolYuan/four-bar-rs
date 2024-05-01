@@ -125,6 +125,7 @@ fn fig_line_ui<const N: usize>(
             !ui.button("✖").clicked()
         })
         .inner;
+    // TODO: Line type options
     ui.horizontal(|ui| {
         ui.label("Style");
         let id = Id::new("sty").with(i);
@@ -183,7 +184,7 @@ impl PlotType {
                     io::Curve::P(c) => fig.push_line_default(NEW_CURVE, c),
                     io::Curve::M(c) => {
                         let (c, v) = c.into_iter().unzip::<_, _, Vec<_>, Vec<_>>();
-                        fig.push_pose_default(NEW_CURVE, c, v);
+                        fig.push_pose_default(NEW_CURVE, (c, v, 1.), false);
                     }
                     _ => (),
                 };

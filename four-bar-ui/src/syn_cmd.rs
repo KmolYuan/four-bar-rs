@@ -103,43 +103,40 @@ impl Default for SynCfg {
 #[derive(Clone)]
 pub(crate) enum Target<'a, 'b> {
     Fb {
-        target: Cow<'a, [[f64; 2]]>,
-        target_fb: Option<FourBar>,
+        tar_curve: Cow<'a, [[f64; 2]]>,
+        tar_fb: Option<FourBar>,
         atlas: Option<&'b atlas::FbAtlas>,
     },
     MFb {
         target: Cow<'a, [([f64; 2], [f64; 2])]>,
-        target_fb: Option<MFourBar>,
+        tar_fb: Option<MFourBar>,
     },
     SFb {
-        target: Cow<'a, [[f64; 3]]>,
-        target_fb: Option<SFourBar>,
+        tar_curve: Cow<'a, [[f64; 3]]>,
+        tar_fb: Option<SFourBar>,
         atlas: Option<&'b atlas::SFbAtlas>,
     },
 }
 
 impl<'a, 'b> Target<'a, 'b> {
     pub(crate) fn fb(
-        target: Cow<'a, [[f64; 2]]>,
-        target_fb: Option<FourBar>,
+        tar_curve: Cow<'a, [[f64; 2]]>,
+        tar_fb: Option<FourBar>,
         atlas: Option<&'b atlas::FbAtlas>,
     ) -> Self {
-        Self::Fb { target, target_fb, atlas }
+        Self::Fb { tar_curve, tar_fb, atlas }
     }
 
-    pub(crate) fn mfb(
-        target: Cow<'a, [([f64; 2], [f64; 2])]>,
-        target_fb: Option<MFourBar>,
-    ) -> Self {
-        Self::MFb { target, target_fb }
+    pub(crate) fn mfb(target: Cow<'a, [([f64; 2], [f64; 2])]>, tar_fb: Option<MFourBar>) -> Self {
+        Self::MFb { target, tar_fb }
     }
 
     pub(crate) fn sfb(
-        target: Cow<'a, [[f64; 3]]>,
-        target_fb: Option<SFourBar>,
+        tar_curve: Cow<'a, [[f64; 3]]>,
+        tar_fb: Option<SFourBar>,
         atlas: Option<&'b atlas::SFbAtlas>,
     ) -> Self {
-        Self::SFb { target, target_fb, atlas }
+        Self::SFb { tar_curve, tar_fb, atlas }
     }
 }
 
@@ -150,8 +147,8 @@ where
     efd::U<D>: efd::EfdDim<D>,
 {
     pub(crate) s: SolverBox<'a, syn::PathSyn<M, N, D>>,
-    pub(crate) target: Cow<'a, [[f64; D]]>,
-    pub(crate) target_fb: Option<M::De>,
+    pub(crate) tar_curve: Cow<'a, [[f64; D]]>,
+    pub(crate) tar_fb: Option<M::De>,
     pub(crate) atlas_fb: Option<(f64, M)>,
 }
 
@@ -165,8 +162,8 @@ where
 {
     fn new<S, C>(
         alg: SynAlg,
-        target: Cow<'a, [[f64; D]]>,
-        target_fb: Option<M::De>,
+        tar_curve: Cow<'a, [[f64; D]]>,
+        tar_fb: Option<M::De>,
         atlas: Option<&atlas::Atlas<M, N, D>>,
         cfg: SynCfg,
         stop: S,
@@ -177,7 +174,7 @@ where
         C: FnMut(f64, u64) + Send + 'a,
     {
         let SynCfg { seed, gen, pop, mode, res, on_unit } = cfg;
-        let mut syn = syn::PathSyn::from_curve(&target, mode).res(res);
+        let mut syn = syn::PathSyn::from_curve(&tar_curve, mode).res(res);
         if on_unit {
             syn = syn.on_unit();
         }
@@ -187,11 +184,11 @@ where
             .task(move |ctx| !stop() && ctx.gen >= gen)
             .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
         let Some(atlas) = atlas else {
-            return Self { s, target, target_fb, atlas_fb: None };
+            return Self { s, tar_curve, tar_fb, atlas_fb: None };
         };
         let mut atlas_fb = None;
         if let Some(candi) = (!mode.is_partial())
-            .then(|| atlas.fetch_raw(&target, mode.is_target_open(), pop))
+            .then(|| atlas.fetch_raw(&tar_curve, mode.is_target_open(), pop))
             .filter(|candi| !candi.is_empty())
         {
             atlas_fb = Some(candi[0].clone());
@@ -207,16 +204,57 @@ where
         } else {
             s = s.pop_num(pop);
         }
-        Self { s, target, target_fb, atlas_fb }
+        Self { s, tar_curve, tar_fb, atlas_fb }
     }
 
-    fn solve(self) -> (M::De, Option<(f64, M)>) {
-        (self.s.solve().into_result(), self.atlas_fb)
+    fn solve(self) -> M::De {
+        self.s.solve().into_result()
+    }
+}
+
+pub(crate) struct MotionSynData<'a> {
+    pub(crate) s: SolverBox<'a, syn::MFbSyn>,
+    pub(crate) tar_curve: Vec<[f64; 2]>,
+    pub(crate) tar_pose: Vec<[f64; 2]>,
+    pub(crate) tar_fb: Option<MFourBar>,
+}
+
+impl<'a> MotionSynData<'a> {
+    fn new<S, C>(
+        alg: SynAlg,
+        target: Cow<'a, [([f64; 2], [f64; 2])]>,
+        tar_fb: Option<MFourBar>,
+        cfg: SynCfg,
+        stop: S,
+        mut callback: C,
+    ) -> Self
+    where
+        S: Fn() -> bool + Send + 'a,
+        C: FnMut(f64, u64) + Send + 'a,
+    {
+        let SynCfg { seed, gen, pop, mode, res, on_unit } = cfg;
+        let (tar_curve, tar_pose) = target.iter().copied().unzip();
+        let mut syn = syn::MFbSyn::from_uvec(&tar_curve, &tar_pose, mode).res(res);
+        if on_unit {
+            syn = syn.on_unit();
+        }
+        let s = alg
+            .build_solver(syn)
+            .seed(seed)
+            .pop_num(pop)
+            .task(move |ctx| !stop() && ctx.gen >= gen)
+            .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
+        Self { s, tar_curve, tar_pose, tar_fb }
+    }
+
+    fn solve(self) -> MFourBar {
+        self.s.solve().into_result()
     }
 }
 
 pub(crate) enum Solver<'a> {
     Fb(PathSynData<'a, NormFourBar, 5, 2>),
+    MFb(MotionSynData<'a>),
     SFb(PathSynData<'a, SNormFourBar, 6, 3>),
 }
 
@@ -233,23 +271,23 @@ impl<'a> Solver<'a> {
         C: FnMut(f64, u64) + Send + 'a,
     {
         match target {
-            Target::Fb { target, target_fb, atlas } => Self::Fb(PathSynData::new(
-                alg, target, target_fb, atlas, cfg, stop, callback,
+            Target::Fb { tar_curve, tar_fb, atlas } => Self::Fb(PathSynData::new(
+                alg, tar_curve, tar_fb, atlas, cfg, stop, callback,
             )),
-            Target::MFb { target, target_fb } => {
-                // TODO: Implement this!
-                unimplemented!("synthesis with {target:?} {target_fb:?}")
+            Target::MFb { target, tar_fb } => {
+                Self::MFb(MotionSynData::new(alg, target, tar_fb, cfg, stop, callback))
             }
-            Target::SFb { target, target_fb, atlas } => Self::SFb(PathSynData::new(
-                alg, target, target_fb, atlas, cfg, stop, callback,
+            Target::SFb { tar_curve, tar_fb, atlas } => Self::SFb(PathSynData::new(
+                alg, tar_curve, tar_fb, atlas, cfg, stop, callback,
             )),
         }
     }
 
     pub(crate) fn solve(self) -> io::Fb {
         match self {
-            Self::Fb(s) => io::Fb::P(s.solve().0),
-            Self::SFb(s) => io::Fb::S(s.solve().0),
+            Self::Fb(s) => io::Fb::P(s.solve()),
+            Self::MFb(s) => io::Fb::M(s.solve()),
+            Self::SFb(s) => io::Fb::S(s.solve()),
         }
     }
 }

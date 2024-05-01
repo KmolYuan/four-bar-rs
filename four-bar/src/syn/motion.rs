@@ -69,6 +69,12 @@ pub struct MOFit {
     pub unit: f64,
 }
 
+impl MOFit {
+    pub fn into_eval(self) -> f64 {
+        mh::Fitness::eval(&self)
+    }
+}
+
 impl mh::Fitness for MOFit {
     type Best<T: mh::Fitness> = mh::pareto::Pareto<T>;
     type Eval = f64;

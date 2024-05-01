@@ -162,8 +162,11 @@ impl Plot for Figure<'_, '_> {
         let Opt { grid, axis, legend, .. } = self.opt;
         let [x_spec, y_spec] = {
             let lines = self.lines().collect::<Vec<_>>();
-            let iter = lines.iter().flat_map(|data| data.line.iter());
-            area2d(iter.chain(joints.iter().flatten()), root.dim_in_pixel())
+            let iter = lines.iter().map(|data| data.line.boundary());
+            area2d(
+                iter.chain(Some(joints.iter().flatten().collect())),
+                root.dim_in_pixel(),
+            )
         };
         let mut chart = ChartBuilder::on(root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())
@@ -184,10 +187,7 @@ impl Plot for Figure<'_, '_> {
             .draw()?;
         // Draw curve
         for data in self.lines() {
-            let LineData { label, line, style, color } = data;
-            let color = color.stroke_width(stroke);
-            let line = line.iter().map(|&[x, y]| (x, y));
-            style.draw(&mut chart, line, &color, label, self.font)?;
+            data.draw(&mut chart, stroke, self.font)?;
         }
         // Draw Linkage
         if let Some(joints @ [p1, p2, p3, p4, p5]) = joints {
@@ -224,12 +224,13 @@ impl Plot for Figure<'_, '_> {
 }
 
 /// Get the 1:1 bounding box of the data, ignore the labels.
-pub fn area2d<'a, I>(pts: I, area: (u32, u32)) -> [std::ops::Range<f64>; 2]
+pub fn area2d<I>(pts: I, area: (u32, u32)) -> [std::ops::Range<f64>; 2]
 where
-    I: IntoIterator<Item = &'a [f64; 2]>,
+    I: IntoIterator,
+    ExtBound<2>: FromIterator<I::Item>,
 {
     let [w, h] = [area.0 as f64, area.1 as f64];
-    let [[x_min, x_max], [y_min, y_max]] = ExtBound::from_pts(pts).map_to(|min, max| [min, max]);
+    let [[x_min, x_max], [y_min, y_max]] = ExtBound::from_iter(pts).map_to(|min, max| [min, max]);
     let dx = (x_max - x_min).abs();
     let dy = (y_max - y_min).abs();
     let x_cen = (x_min + x_max) * 0.5;

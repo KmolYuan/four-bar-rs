@@ -55,7 +55,7 @@ impl Plot for Figure<'_, '_> {
             [sc.x - r..sc.x + r, sc.y - r..sc.y + r, sc.z - r..sc.z + r]
         } else {
             let lines = self.lines().collect::<Vec<_>>();
-            area3d(lines.iter().flat_map(|data| data.line.iter()))
+            area3d(lines.iter().map(|data| data.line.boundary()))
         };
         let Opt { grid, axis, legend, .. } = self.opt;
         let mut chart = ChartBuilder::on(root)
@@ -171,10 +171,7 @@ impl Plot for Figure<'_, '_> {
         }
         // Draw layer 2: Draw curves
         for data in self.lines() {
-            let LineData { label, line, style, color } = data;
-            let color = color.stroke_width(stroke);
-            let line = line.iter().map(|&c| c.into());
-            style.draw(&mut chart, line, &color, label, self.font)?;
+            data.draw(&mut chart, stroke, self.font)?;
         }
         // Draw layer 3: Draw linkage in the front of the sphere
         for line in link_front {
@@ -198,11 +195,12 @@ impl Plot for Figure<'_, '_> {
 }
 
 /// Get the area of a set of points in 3D.
-pub fn area3d<'a, I>(pts: I) -> [std::ops::Range<f64>; 3]
+pub fn area3d<I>(pts: I) -> [std::ops::Range<f64>; 3]
 where
-    I: IntoIterator<Item = &'a [f64; 3]>,
+    I: IntoIterator,
+    ExtBound<3>: FromIterator<I::Item>,
 {
-    ExtBound::from_pts(pts)
+    ExtBound::from_iter(pts)
         .to_square(0.2)
         .map_to(|min, max| min..max)
 }

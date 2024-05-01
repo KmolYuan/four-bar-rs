@@ -25,3 +25,6 @@ $FB syn $FLAGS test-sfb/sunpos-taiwan.closed.csv
 $FB syn $FLAGS test-sfb/flap.closed.csv
 $FB syn $FLAGS --gen=140 test-sfb/fish.open.csv
 $FB syn $FLAGS --on-unit test-sfb/circle.partial.csv
+
+$FB syn $FLAGS test-mfb/hsieh1.open.csv --gen=200 --pop=2000
+$FB syn $FLAGS test-mfb/hsieh2.open.ron --gen=200 --pop=2000

@@ -2,7 +2,7 @@ use crate::{
     io,
     syn_cmd::{self, Target},
 };
-use four_bar::*;
+use four_bar::{plot::Style, *};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{
     path::{Path, PathBuf},
@@ -251,6 +251,8 @@ pub(super) fn syn(syn: Syn) {
 }
 
 const HISTORY_SVG: &str = "history.svg";
+const TAR_SVG: &str = "target.svg";
+const TAR_FIG: &str = "target.fig.ron";
 const LNK_RON: &str = "linkage.ron";
 const LNK_SVG: &str = "linkage.svg";
 const LNK_FIG: &str = "linkage.fig.ron";
@@ -283,14 +285,14 @@ where
     ) -> Result<(), SynErr> {
         use four_bar::mech::CurveGen as _;
         use plot::full_palette::*;
-        let Self { s, target, target_fb, atlas_fb } = self;
+        let Self { s, tar_curve, tar_fb, atlas_fb } = self;
         let Info { root, title, mode } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
         let t1 = t0.elapsed();
         let func = s.func();
         let harmonic = func.harmonic();
-        let efd = func.tar.clone();
+        let target_efd = func.tar.clone();
         let (cost, fb) = s.into_err_result();
         {
             let path = root.join(HISTORY_SVG);
@@ -303,27 +305,33 @@ where
         let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
         let mut log = super::logger::Logger::new(&mut log);
         log.top_title(title)?;
-        write_tar_efd(root.join(EFD_CSV), &efd)?;
+        write_tar_efd(root.join(EFD_CSV), &target_efd)?;
         write_ron(root.join(LNK_RON), &fb)?;
-        let efd_target = efd::Efd::from_curve_harmonic(&target, mode.is_target_open(), harmonic);
         let curve = fb.curve(cfg.res);
-        let mut fig = plot::FigureBase::new_ref(&fb)
-            .add_line("Target", &*target, plot::Style::Circle, RED)
-            .add_line("Optimized", &curve, plot::Style::Line, BLUE_900);
+        let mut fig = plot::FigureBase::new();
+        fig.push_line("Target", &*tar_curve, Style::Circle, RED);
+        {
+            write_ron(root.join(TAR_FIG), &fig)?;
+            let path = root.join(TAR_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+        }
+        fig.set_fb_ref(&fb);
+        fig.push_line("Optimized", &curve, Style::Line, BLUE_900);
         {
             write_ron(root.join(LNK_FIG), &fig)?;
             let path = root.join(LNK_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        if let Some(fb) = target_fb {
+        if let Some(fb) = tar_fb {
             log.title("target.fb")?;
             log.log(fb)?;
         }
         if let Some((cost, fb)) = atlas_fb {
             let c = fb.curve(cfg.res);
             let efd = efd::Efd::from_curve_harmonic(c, mode.is_result_open(), harmonic);
-            let geo = efd.as_geo().to(efd_target.as_geo());
+            let geo = efd.as_geo().to(target_efd.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
             let c = fb.curve(cfg.res.min(30));
             log.title("atlas")?;
@@ -331,7 +339,7 @@ where
             log.title("atlas.fb")?;
             log.log(&fb)?;
             write_ron(root.join("atlas.ron"), &fb)?;
-            fig.push_line("Atlas", c, plot::Style::Triangle, GREEN_900);
+            fig.push_line("Atlas", c, Style::Triangle, GREEN_900);
         }
         log.title("optimized")?;
         log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
@@ -343,11 +351,109 @@ where
             log.title("competitor")?;
             if !matches!(mode, syn::Mode::Partial) {
                 let efd = efd::Efd::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                log.log(Performance::cost(efd.err(&efd_target)))?;
+                log.log(Performance::cost(efd.err(&target_efd)))?;
             }
             log.title("competitor.fb")?;
             log.log(&fb)?;
-            fig.push_line("Ref. [?]", c, plot::Style::DashedLine, ORANGE_900);
+            fig.push_line("Ref. [?]", c, Style::DashedLine, ORANGE_900);
+        }
+        fig.fb = None;
+        write_ron(root.join(CURVE_FIG), &fig)?;
+        let path = root.join(CURVE_SVG);
+        let svg = plot::SVGBackend::new(&path, (1600, 1600));
+        fig.plot(svg)?;
+        log.flush()?;
+        Ok(())
+    }
+}
+
+impl<'a> syn_cmd::MotionSynData<'a> {
+    fn solve_cli(
+        self,
+        cfg: &syn_cmd::SynCfg,
+        info: &Info,
+        refer: Option<&Path>,
+        history: Arc<Mutex<Vec<f64>>>,
+    ) -> Result<(), SynErr> {
+        use plot::full_palette::*;
+        let Self { s, tar_curve, tar_pose, tar_fb } = self;
+        let Info { root, title, mode } = info;
+        let t0 = std::time::Instant::now();
+        let s = s.solve();
+        let t1 = t0.elapsed();
+        let func = s.func();
+        let harmonic = func.harmonic();
+        let target_efd = func.tar.clone();
+        let (fit, fb) = s.into_err_result();
+        let cost = fit.into_eval();
+        {
+            let path = root.join(HISTORY_SVG);
+            let svg = plot::SVGBackend::new(&path, (800, 600));
+            plot::fb::history(svg, Arc::into_inner(history).unwrap().into_inner().unwrap())?;
+        }
+        let refer = refer
+            .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
+            .filter(|p| p.is_file());
+        let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
+        let mut log = super::logger::Logger::new(&mut log);
+        log.top_title(title)?;
+        write_tar_efd(root.join(EFD_CSV), target_efd.as_curve())?;
+        write_ron(root.join(LNK_RON), &fb)?;
+        let (curve, pose) = fb.pose(cfg.res);
+        let mut fig = plot::mfb::Figure::new();
+        let length = fb.unnorm.l2;
+        fig.push_pose(
+            "Target",
+            (&tar_curve, &tar_pose, length),
+            Style::Line,
+            RED,
+            false,
+        );
+        {
+            write_ron(root.join(TAR_FIG), &fig)?;
+            let path = root.join(TAR_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+        }
+        fig.set_fb_ref(fb.as_fb());
+        fig.push_pose(
+            "Optimized",
+            (&curve, &pose, length),
+            Style::DashedLine,
+            BLUE_900,
+            true,
+        );
+        {
+            write_ron(root.join(LNK_FIG), &fig)?;
+            let path = root.join(LNK_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+        }
+        if let Some(fb) = tar_fb {
+            log.title("target.fb")?;
+            log.log(fb)?;
+        }
+        log.title("optimized")?;
+        log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
+        log.title("optimized.fb")?;
+        log.log(&fb)?;
+        if let Some(refer) = refer {
+            let fb = ron::de::from_reader::<_, MFourBar>(std::fs::File::open(refer)?)?;
+            let (c, v) = fb.pose(cfg.res);
+            log.title("competitor")?;
+            if !matches!(mode, syn::Mode::Partial) {
+                let efd = efd::PosedEfd::from_uvec_harmonic(&c, &v, harmonic);
+                log.log(Performance::cost(efd.err(&target_efd)))?;
+            }
+            log.title("competitor.fb")?;
+            log.log(&fb)?;
+            fig.push_pose(
+                "Ref. [?]",
+                (c, v, length),
+                Style::DashDottedLine,
+                ORANGE_900,
+                true,
+            );
         }
         fig.fb = None;
         write_ron(root.join(CURVE_FIG), &fig)?;
@@ -379,6 +485,7 @@ fn from_runtime(
     };
     match s {
         syn_cmd::Solver::Fb(s) => s.solve_cli(cfg, info, refer, history),
+        syn_cmd::Solver::MFb(s) => s.solve_cli(cfg, info, refer, history),
         syn_cmd::Solver::SFb(s) => s.solve_cli(cfg, info, refer, history),
     }
 }
@@ -389,6 +496,7 @@ fn from_exist(root: &Path, target: &Target) -> Result<(), SynErr> {
         Fig: serde::de::DeserializeOwned + plot::Plot,
     {
         for (path, svg_path) in [
+            (root.join(TAR_FIG), root.join(TAR_SVG)),
             (root.join(LNK_FIG), root.join(LNK_SVG)),
             (root.join(CURVE_FIG), root.join(CURVE_SVG)),
         ] {

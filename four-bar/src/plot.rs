@@ -32,7 +32,7 @@ use efd::na;
 use fmtastic::Subscript;
 #[doc(no_inline)]
 pub use plotters::{prelude::*, *};
-use std::borrow::Cow;
+use std::{borrow::Cow, iter::zip};
 
 mod ball;
 mod dashed_line;
@@ -92,24 +92,44 @@ pub struct ExtBound<const N: usize> {
     pub max: [f64; N],
 }
 
-impl<const N: usize> ExtBound<N> {
-    /// Create a new instance from an iterator of points.
-    pub fn from_pts<'a, I>(iter: I) -> Self
-    where
-        I: IntoIterator<Item = &'a [f64; N]>,
-    {
+impl<'a, const N: usize> FromIterator<&'a [f64; N]> for ExtBound<N> {
+    fn from_iter<I: IntoIterator<Item = &'a [f64; N]>>(iter: I) -> Self {
         let init = Self {
             min: [f64::INFINITY; N],
             max: [f64::NEG_INFINITY; N],
         };
         iter.into_iter().fold(init, |mut bound, p| {
-            use std::iter::zip;
-            for ((p, min), max) in zip(zip(p, &mut bound.min), &mut bound.max) {
+            for ((max, min), p) in zip(zip(&mut bound.max, &mut bound.min), p) {
                 *min = min.min(*p);
                 *max = max.max(*p);
             }
             bound
         })
+    }
+}
+
+impl<const N: usize> FromIterator<ExtBound<N>> for ExtBound<N> {
+    fn from_iter<T: IntoIterator<Item = ExtBound<N>>>(iter: T) -> Self {
+        let init = Self {
+            min: [f64::INFINITY; N],
+            max: [f64::NEG_INFINITY; N],
+        };
+        iter.into_iter().fold(init, |mut bound, ext| {
+            for ((max, min), (ext_max, ext_min)) in
+                zip(zip(&mut bound.max, &mut bound.min), zip(&ext.max, &ext.min))
+            {
+                *min = min.min(*ext_min);
+                *max = max.max(*ext_max);
+            }
+            bound
+        })
+    }
+}
+
+impl<const N: usize> ExtBound<N> {
+    /// Create a new boundary.
+    pub const fn new(min: [f64; N], max: [f64; N]) -> Self {
+        Self { min, max }
     }
 
     /// Map the extreme values to another type.
@@ -130,12 +150,11 @@ impl<const N: usize> ExtBound<N> {
     /// ```
     /// use four_bar::plot::ExtBound;
     ///
-    /// let ext = ExtBound { min: [0., 0.], max: [1., 2.] }.to_square(0.);
+    /// let ext = ExtBound::new([0., 0.], [1., 2.]).to_square(0.);
     /// assert_eq!(ext.min, [-0.5, 0.]);
     /// assert_eq!(ext.max, [1.5, 2.]);
     /// ```
     pub fn to_square(mut self, margin: f64) -> Self {
-        use std::iter::zip;
         let center = self.center();
         let width = zip(&self.min, &self.max)
             .map(|(min, max)| (max - min).abs())
@@ -390,6 +409,46 @@ impl LegendPos {
     }
 }
 
+/// Line type of the [`LineData`].
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone)]
+pub enum LineType<'a, C: Clone> {
+    /// Simple Line
+    Line(Cow<'a, [C]>),
+    /// Motion Line
+    Pose {
+        /// Curve data
+        curve: Cow<'a, [C]>,
+        /// Pose data (`curve` + `uvec`)
+        pose: Cow<'a, [C]>,
+        /// Use frame style
+        is_frame: bool,
+    },
+}
+
+impl<'a, C: Clone> LineType<'a, C> {
+    /// Create a new empty line.
+    pub const fn new_empty() -> Self {
+        Self::Line(Cow::Borrowed(&[]))
+    }
+}
+
+impl<'a, const D: usize> LineType<'a, [f64; D]> {
+    /// Get the boundary of the line.
+    pub fn boundary(&self) -> ExtBound<D> {
+        match self {
+            Self::Line(line) => line.iter().collect(),
+            Self::Pose { curve, pose, is_frame: _ } => curve.iter().chain(pose.iter()).collect(),
+        }
+    }
+}
+
+impl<C: Clone> Default for LineType<'_, C> {
+    fn default() -> Self {
+        Self::new_empty()
+    }
+}
+
 /// Drawing options of a line series.
 #[cfg_attr(
     feature = "serde",
@@ -401,12 +460,55 @@ pub struct LineData<'a, C: Clone> {
     /// Label of the line
     pub label: Cow<'a, str>,
     /// Line data
-    pub line: Cow<'a, [C]>,
+    pub line: LineType<'a, C>,
     /// Line style
     pub style: Style,
     /// Line color
     #[cfg_attr(feature = "serde", serde(with = "ShapeStyleSerde"))]
     pub color: ShapeStyle,
+}
+
+impl<const D: usize> LineData<'_, [f64; D]> {
+    fn draw<'a, DB, CT>(
+        &self,
+        chart: &mut ChartContext<'a, DB, CT>,
+        stroke: u32,
+        font: f64,
+    ) -> PResult<(), DB>
+    where
+        DB: DrawingBackend + 'a,
+        CT: CoordTranslate,
+        CT::From: From<[f64; D]> + Clone + 'static,
+    {
+        let LineData { label, line, style, color } = self;
+        let color = color.stroke_width(stroke);
+        match line {
+            LineType::Line(line) => {
+                let line = line.iter().map(|&c| c.into());
+                style.draw(chart, line, &color, label, font)
+            }
+            LineType::Pose { curve, pose, is_frame } => {
+                let curve = curve.iter().map(|&c| c.into());
+                let pose = pose.iter().map(|&c| c.into());
+                if *is_frame {
+                    let iter = zip(curve.clone(), pose.clone());
+                    let last = iter.len();
+                    for (i, (p, v)) in iter.enumerate() {
+                        if i == 0 || i == last - 1 {
+                            style.draw(chart, [p, v], &color, "", font)?;
+                        }
+                    }
+                } else {
+                    for (p, v) in zip(curve.clone(), pose.clone()) {
+                        style.draw(chart, [p, v], &color, "", font)?;
+                    }
+                }
+                style.draw(chart, curve, &color, label, font)?;
+                let guid_style = if *is_frame { style } else { &Style::Circle };
+                guid_style.draw(chart, pose, &color, "", font)
+            }
+        }
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -428,7 +530,7 @@ impl<'a, C: Clone> Default for LineData<'a, C> {
     fn default() -> Self {
         Self {
             label: Cow::Borrowed(""),
-            line: Cow::Borrowed(&[]),
+            line: LineType::default(),
             style: Style::default(),
             color: RED.into(),
         }
@@ -498,6 +600,16 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         }
     }
 
+    /// Set the linkage.
+    pub fn set_fb(&mut self, fb: M) {
+        self.fb = Some(Cow::Owned(fb));
+    }
+
+    /// Set the linkage.
+    pub fn set_fb_ref(&mut self, fb: &'b M) {
+        self.fb = Some(Cow::Borrowed(fb));
+    }
+
     /// Remove linkage.
     pub fn remove_fb(self) -> Self {
         Self { fb: None, ..self }
@@ -537,24 +649,6 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         self
     }
 
-    /// Add a motion.
-    pub fn add_pose<S, L1, L2, Color>(
-        mut self,
-        label: S,
-        curve: L1,
-        pose: L2,
-        style: Style,
-        color: Color,
-    ) -> Self
-    where
-        S: Into<Cow<'a, str>>,
-        Cow<'a, [C]>: From<L1> + From<L2>,
-        Color: Into<ShapeStyle>,
-    {
-        self.push_pose(label, curve, pose, style, color);
-        self
-    }
-
     /// Add a line with default settings.
     pub fn add_line_default<S, L>(mut self, label: S, line: L) -> Self
     where
@@ -580,33 +674,10 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     {
         self.push_line_data(LineData {
             label: label.into(),
-            line: line.into(),
+            line: LineType::Line(line.into()),
             style,
             color: color.into(),
         });
-    }
-
-    /// Add a motion.
-    pub fn push_pose<S, L1, L2, Color>(
-        &mut self,
-        label: S,
-        curve: L1,
-        pose: L2,
-        style: Style,
-        color: Color,
-    ) where
-        S: Into<Cow<'a, str>>,
-        Cow<'a, [C]>: From<L1> + From<L2>,
-        Color: Into<ShapeStyle>,
-    {
-        let curve = Cow::from(curve);
-        let pose = Cow::from(pose);
-        let color = color.into();
-        for (p, v) in (*curve).iter().zip(&*pose) {
-            self.push_line("", vec![p.clone(), v.clone()], style, color);
-        }
-        self.push_line(label, curve, style, color);
-        self.push_line("", pose, Style::Circle, color);
     }
 
     /// Add a line with default settings in-placed.
@@ -615,20 +686,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         S: Into<Cow<'a, str>>,
         L: Into<Cow<'a, [C]>>,
     {
-        self.push_line_data(LineData {
-            label: label.into(),
-            line: line.into(),
-            ..Default::default()
-        });
-    }
-
-    /// Add a motion with default settings in-placed.
-    pub fn push_pose_default<S, L1, L2>(&mut self, label: S, curve: L1, pose: L2)
-    where
-        S: Into<Cow<'a, str>>,
-        Cow<'a, [C]>: From<L1> + From<L2>,
-    {
-        self.push_pose(label, curve, pose, Style::default(), RED);
+        self.push_line(label, line, Style::default(), RED);
     }
 
     /// Add a line from a [`LineData`] instance in-placed.
@@ -799,6 +857,61 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         Self: Plot,
     {
         Plot::plot_by(self, &Canvas::from(root), Some(self.get_t(curr, total)))
+    }
+}
+
+impl<'a, M: Clone, const D: usize> FigureBase<'a, '_, M, [f64; D]> {
+    /// Add a line with unit vectors.
+    pub fn add_pose<S, L1, L2, Color>(
+        mut self,
+        label: S,
+        pose: (L1, L2, f64),
+        style: Style,
+        color: Color,
+        is_frame: bool,
+    ) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
+        Color: Into<ShapeStyle>,
+    {
+        self.push_pose(label, pose, style, color, is_frame);
+        self
+    }
+
+    /// Add a line with unit vectors in-placed.
+    pub fn push_pose<S, L1, L2, Color>(
+        &mut self,
+        label: S,
+        (curve, uvec, length): (L1, L2, f64),
+        style: Style,
+        color: Color,
+        is_frame: bool,
+    ) where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
+        Color: Into<ShapeStyle>,
+    {
+        let curve = Cow::from(curve);
+        let uvec = Cow::from(uvec);
+        let pose = zip(&*curve, &*uvec)
+            .map(|(p, v)| std::array::from_fn(|i| p[i] + length * v[i]))
+            .collect();
+        self.push_line_data(LineData {
+            label: label.into(),
+            line: LineType::Pose { curve, pose, is_frame },
+            style,
+            color: color.into(),
+        });
+    }
+
+    /// Add a line with unit vectors and default settings.
+    pub fn push_pose_default<S, L1, L2>(&mut self, label: S, pose: (L1, L2, f64), is_frame: bool)
+    where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
+    {
+        self.push_pose(label, pose, Style::default(), RED, is_frame);
     }
 }
 
