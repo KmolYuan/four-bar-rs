@@ -329,17 +329,13 @@ where
             log.log(fb)?;
         }
         if let Some((cost, fb)) = atlas_fb {
-            let c = fb.curve(cfg.res);
-            let efd = efd::Efd::from_curve_harmonic(c, mode.is_result_open(), harmonic);
-            let geo = efd.as_geo().to(target_efd.as_geo());
-            let fb = fb.clone().trans_denorm(&geo);
-            let c = fb.curve(cfg.res.min(30));
+            let curve = fb.curve(cfg.res);
             log.title("atlas")?;
             log.log(Performance::cost(cost).harmonic(harmonic))?;
             log.title("atlas.fb")?;
             log.log(&fb)?;
             write_ron(root.join("atlas.ron"), &fb)?;
-            fig.push_line("Atlas", c, Style::Triangle, GREEN_900);
+            fig.push_line("Atlas", curve, Style::Triangle, GREEN_900);
         }
         log.title("optimized")?;
         log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;

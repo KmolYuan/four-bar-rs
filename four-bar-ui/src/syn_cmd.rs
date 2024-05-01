@@ -154,7 +154,7 @@ where
     pub(crate) s: SolverBox<'a, syn::PathSyn<M, N, D>>,
     pub(crate) tar_curve: Cow<'a, [[f64; D]]>,
     pub(crate) tar_fb: Option<M::De>,
-    pub(crate) atlas_fb: Option<(f64, M)>,
+    pub(crate) atlas_fb: Option<(f64, M::De)>,
 }
 
 impl<'a, M, const N: usize, const D: usize> PathSynData<'a, M, N, D>
@@ -189,15 +189,11 @@ where
             .pop_num(pop)
             .task(move |ctx| !stop() && ctx.gen >= gen)
             .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
-        let Some(atlas) = atlas else {
+        let (true, Some(atlas)) = (!mode.is_partial(), atlas) else {
             return Self { s, tar_curve, tar_fb, atlas_fb: None };
         };
-        let mut atlas_fb = None;
-        if let Some(candi) = (!mode.is_partial())
-            .then(|| atlas.fetch_raw(&tar_curve, mode.is_target_open(), pop))
-            .filter(|candi| !candi.is_empty())
-        {
-            atlas_fb = Some(candi[0].clone());
+        let (atlas_fb, candi) = atlas.fetch_raw(&tar_curve, mode.is_target_open(), pop);
+        if candi.len() > pop {
             let pool_y = candi
                 .iter()
                 .map(|(f, fb)| mh::WithProduct::new(*f, fb.clone().denormalize()))

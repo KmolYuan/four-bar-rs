@@ -217,14 +217,22 @@ where
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// This method will keep the dimensional variables without transform.
-    pub fn fetch_raw(&self, target: &[[f64; D]], is_open: bool, size: usize) -> Vec<(f64, M)>
+    #[allow(clippy::type_complexity)]
+    pub fn fetch_raw(
+        &self,
+        target: &[[f64; D]],
+        is_open: bool,
+        size: usize,
+    ) -> (Option<(f64, M::De)>, Vec<(f64, M)>)
     where
         efd::Efd<D>: Sync,
     {
         if self.is_empty() {
-            return Vec::new();
+            return (None, Vec::new());
         }
+        let res = target.len();
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
+        let geo = target.as_geo();
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
         #[cfg(feature = "rayon")]
@@ -233,20 +241,28 @@ where
             .map(|arr| target.err(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         if size == 1 {
-            return dis
+            let ind = dis
                 .into_iter()
                 .enumerate()
-                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
+            let first = ind.map(|(i, err)| (err, self.pick(i, geo, is_open, res)));
+            let pool = ind
                 .map(|(i, err)| (err, self.pick_norm(i)))
                 .into_iter()
                 .collect();
+            return (first, pool);
         }
         let mut ind = (0..dis.len()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
-        ind.into_iter()
+        let first = ind
+            .first()
+            .map(|&i| (dis[i], self.pick(i, geo, is_open, res)));
+        let pool = ind
+            .into_iter()
             .take(size)
             .map(|i| (dis[i], self.pick_norm(i)))
-            .collect()
+            .collect();
+        (first, pool)
     }
 
     /// Get the nearest four-bar linkage from a target curve.
