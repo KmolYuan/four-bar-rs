@@ -1,5 +1,6 @@
 use super::*;
 use four_bar::plot::Style;
+use plot::{full_palette::*, RGBColor};
 use std::{
     path::Path,
     sync::{Arc, Mutex},
@@ -14,6 +15,10 @@ const LNK_FIG: &str = "linkage.fig.ron";
 const EFD_CSV: &str = "target-efd.csv";
 const CURVE_SVG: &str = "curve.svg";
 const CURVE_FIG: &str = "curve.fig.ron";
+const TARGET_COLOR: RGBColor = RED;
+const SYN_COLOR: RGBColor = BLUE_900;
+const ATLAS_COLOR: RGBColor = GREEN_900;
+const REF_COLOR: RGBColor = ORANGE_900;
 
 impl<M, const N: usize, const D: usize> PathSynData<'_, M::De, syn::PathSyn<M, N, D>, D>
 where
@@ -39,7 +44,6 @@ where
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
         use four_bar::mech::CurveGen as _;
-        use plot::full_palette::*;
         let Self { s, tar_curve, tar_fb, atlas_fb } = self;
         let Info { root, title, mode } = info;
         let t0 = std::time::Instant::now();
@@ -64,7 +68,7 @@ where
         write_ron(root.join(LNK_RON), &fb)?;
         let curve = fb.curve(cfg.res);
         let mut fig = plot::FigureBase::new();
-        fig.push_line("Target", &*tar_curve, Style::Circle, RED);
+        fig.push_line("Target", &*tar_curve, Style::Circle, TARGET_COLOR);
         {
             write_ron(root.join(TAR_FIG), &fig)?;
             let path = root.join(TAR_SVG);
@@ -72,7 +76,7 @@ where
             fig.plot(svg)?;
         }
         fig.set_fb_ref(&fb);
-        fig.push_line("Optimized", &curve, Style::Line, BLUE_900);
+        fig.push_line("Optimized", &curve, Style::Line, SYN_COLOR);
         {
             write_ron(root.join(LNK_FIG), &fig)?;
             let path = root.join(LNK_SVG);
@@ -90,7 +94,7 @@ where
             log.title("atlas.fb")?;
             log.log(&fb)?;
             write_ron(root.join("atlas.ron"), &fb)?;
-            fig.push_line("Atlas", curve, Style::Triangle, GREEN_900);
+            fig.push_line("Atlas", curve, Style::Triangle, ATLAS_COLOR);
         }
         log.title("optimized")?;
         log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
@@ -106,7 +110,7 @@ where
             }
             log.title("competitor.fb")?;
             log.log(&fb)?;
-            fig.push_line("Ref. [?]", c, Style::DashedLine, ORANGE_900);
+            fig.push_line("Ref. [?]", c, Style::DashedLine, REF_COLOR);
         }
         fig.fb = None;
         write_ron(root.join(CURVE_FIG), &fig)?;
@@ -126,7 +130,6 @@ impl<'a> MotionSynData<'a> {
         refer: Option<&Path>,
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
-        use plot::full_palette::*;
         let Self { s, tar_curve, tar_pose, tar_fb } = self;
         let Info { root, title, mode } = info;
         let t0 = std::time::Instant::now();
@@ -152,26 +155,37 @@ impl<'a> MotionSynData<'a> {
         write_ron(root.join(LNK_RON), &fb)?;
         let (curve, pose) = fb.pose(cfg.res);
         let mut fig = plot::mfb::Figure::new();
-        let length = fb.unnorm.l2;
+        let length = tar_efd.as_geo().scale();
         fig.push_pose(
             "Target",
             (&tar_curve, &tar_pose, length),
             Style::Line,
-            RED,
+            TARGET_COLOR,
             false,
         );
         {
+            let t = efd::MotionSig::new(&tar_curve, &tar_pose).t;
+            let curve = tar_efd.as_curve().recon_by(&t).into();
+            let pose = tar_efd.as_pose().recon_by(&t);
+            let pose = tar_efd.as_geo().transform(pose).into();
+            fig.push_line_data(plot::LineData {
+                label: "Target Recon.".into(),
+                line: plot::LineType::Pose { curve, pose, is_frame: false },
+                style: Style::DashedLine,
+                color: SYN_COLOR.into(),
+            });
             write_ron(root.join(TAR_FIG), &fig)?;
             let path = root.join(TAR_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
+            fig.lines.pop();
         }
         fig.set_fb_ref(fb.as_fb());
         fig.push_pose(
             "Optimized",
             (&curve, &pose, length),
             Style::DashedLine,
-            BLUE_900,
+            SYN_COLOR,
             true,
         );
         {
@@ -202,7 +216,7 @@ impl<'a> MotionSynData<'a> {
                 "Ref. [?]",
                 (c, v, length),
                 Style::DashDottedLine,
-                ORANGE_900,
+                ATLAS_COLOR,
                 true,
             );
         }
@@ -240,7 +254,6 @@ where
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
         use four_bar::mech::CurveGen as _;
-        use plot::full_palette::*;
         let Self { s, tar_curve, tar_fb, atlas_fb } = self;
         let Info { root, title, mode: _ } = info;
         let t0 = std::time::Instant::now();
@@ -261,7 +274,7 @@ where
         write_ron(root.join(LNK_RON), &fb)?;
         let curve = fb.curve(cfg.res);
         let mut fig = plot::FigureBase::new();
-        fig.push_line("Target", &*tar_curve, Style::Circle, RED);
+        fig.push_line("Target", &*tar_curve, Style::Circle, TARGET_COLOR);
         {
             write_ron(root.join(TAR_FIG), &fig)?;
             let path = root.join(TAR_SVG);
@@ -269,7 +282,7 @@ where
             fig.plot(svg)?;
         }
         fig.set_fb_ref(&fb);
-        fig.push_line("Optimized", &curve, Style::Line, BLUE_900);
+        fig.push_line("Optimized", &curve, Style::Line, SYN_COLOR);
         {
             write_ron(root.join(LNK_FIG), &fig)?;
             let path = root.join(LNK_SVG);
@@ -287,7 +300,7 @@ where
             log.title("atlas.fb")?;
             log.log(&fb)?;
             write_ron(root.join("atlas.ron"), &fb)?;
-            fig.push_line("Atlas", curve, Style::Triangle, GREEN_900);
+            fig.push_line("Atlas", curve, Style::Triangle, ATLAS_COLOR);
         }
         log.title("optimized")?;
         log.log(Performance::cost(cost).time(t1))?;
@@ -299,7 +312,7 @@ where
             log.title("competitor")?;
             log.title("competitor.fb")?;
             log.log(&fb)?;
-            fig.push_line("Ref. [?]", c, Style::DashedLine, ORANGE_900);
+            fig.push_line("Ref. [?]", c, Style::DashedLine, REF_COLOR);
         }
         fig.fb = None;
         write_ron(root.join(CURVE_FIG), &fig)?;

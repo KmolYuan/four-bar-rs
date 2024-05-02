@@ -26,8 +26,8 @@ $FB syn $FLAGS test-sfb/flap.closed.csv
 $FB syn $FLAGS test-sfb/fish.open.csv --gen=140
 $FB syn $FLAGS test-sfb/circle.partial.csv --on-unit
 
-$FB syn $FLAGS test-fb/yu2.closed.csv --dd
+$FB syn $FLAGS test-fb/yu2.closed.csv --dd --no-ref
 $FB syn $FLAGS test-fb/crunode.closed.ron --dd
 
 $FB syn $FLAGS test-mfb/hsieh1.open.csv --gen=200 --pop=2000
-$FB syn $FLAGS test-mfb/hsieh2.open.ron --gen=200 --pop=2000
+$FB syn $FLAGS test-mfb/hsieh2.open.ron --gen=200 --pop=2600 --res=60
