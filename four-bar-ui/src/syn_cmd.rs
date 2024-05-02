@@ -47,11 +47,7 @@ impl SynAlg {
         fn tlbo, Tlbo, "TLBO", "Teaching Learning Based Optimization", "https://doi.org/10.1016/j.cad.2010.12.015"
     }
 
-    pub(crate) fn build_solver<F>(self, f: F) -> SolverBox<'static, F>
-    where
-        F: mh::ObjFunc,
-        F::Ys: Send,
-    {
+    pub(crate) fn build_solver<F: mh::ObjFunc>(self, f: F) -> SolverBox<'static, F> {
         match self {
             Self::De(s) => mh::Solver::build_boxed(s, f),
             Self::Fa(s) => mh::Solver::build_boxed(s, f),
@@ -149,14 +145,14 @@ impl<'a, 'b> Target<'a, 'b> {
 }
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-pub(crate) struct PathSynData<'a, MDe, F: mh::ObjFunc, const D: usize> {
+pub(crate) struct PSynData<'a, MDe, F: mh::ObjFunc, const D: usize> {
     pub(crate) s: SolverBox<'a, F>,
     pub(crate) tar_curve: Cow<'a, [[f64; D]]>,
     pub(crate) tar_fb: Option<MDe>,
     pub(crate) atlas_fb: Option<(f64, MDe)>,
 }
 
-impl<'a, MDe, F, const D: usize> PathSynData<'a, MDe, F, D>
+impl<'a, MDe, F, const D: usize> PSynData<'a, MDe, F, D>
 where
     F: mh::ObjFunc<Ys = mh::WithProduct<f64, MDe>>,
     MDe: Default + Clone + Sync + Send + 'static,
@@ -210,17 +206,26 @@ where
 }
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-pub(crate) struct MotionSynData<'a> {
-    pub(crate) s: SolverBox<'a, syn::MFbSyn>,
+pub(crate) struct MSynData<'a, Y, F: mh::ObjFunc>
+where
+    Y: mh::Fitness<Eval = f64>,
+    F: mh::ObjFunc<Ys = mh::WithProduct<Y, MFourBar>>,
+{
+    pub(crate) s: SolverBox<'a, F>,
     pub(crate) tar_curve: Vec<[f64; 2]>,
     pub(crate) tar_pose: Vec<[f64; 2]>,
     pub(crate) tar_fb: Option<MFourBar>,
 }
 
-impl<'a> MotionSynData<'a> {
+impl<'a, Y, F: mh::ObjFunc> MSynData<'a, Y, F>
+where
+    Y: mh::Fitness<Eval = f64>,
+    F: mh::ObjFunc<Ys = mh::WithProduct<Y, MFourBar>>,
+{
     fn new<S, C>(
-        alg: SynAlg,
-        target: Cow<'a, [([f64; 2], [f64; 2])]>,
+        s: SolverBox<'a, F>,
+        tar_curve: Vec<[f64; 2]>,
+        tar_pose: Vec<[f64; 2]>,
         tar_fb: Option<MFourBar>,
         cfg: SynCfg,
         stop: S,
@@ -230,13 +235,8 @@ impl<'a> MotionSynData<'a> {
         S: Fn() -> bool + Send + 'a,
         C: FnMut(f64, u64) + Send + 'a,
     {
-        let (tar_curve, tar_pose) = target.iter().copied().unzip();
-        let mut syn = syn::MFbSyn::from_uvec(&tar_curve, &tar_pose, cfg.mode).res(cfg.res);
-        if cfg.on_unit {
-            syn = syn.on_unit();
-        }
-        let s = alg
-            .build_solver(syn)
+        use mh::pareto::Best as _;
+        let s = s
             .seed(cfg.seed)
             .pop_num(cfg.pop)
             .task(move |ctx| !stop() && ctx.gen >= cfg.gen)
@@ -250,11 +250,12 @@ impl<'a> MotionSynData<'a> {
 }
 
 pub(crate) enum Solver<'a> {
-    Fb(PathSynData<'a, FourBar, syn::FbSyn, 2>),
-    MFb(MotionSynData<'a>),
-    SFb(PathSynData<'a, SFourBar, syn::SFbSyn, 3>),
-    DDFb(PathSynData<'a, FourBar, syn::FbDDSyn, 2>),
-    DDSFb(PathSynData<'a, SFourBar, syn::SFbDDSyn, 3>),
+    Fb(PSynData<'a, FourBar, syn::FbSyn, 2>),
+    MFb(MSynData<'a, syn::MOFit, syn::MFbSyn>),
+    SFb(PSynData<'a, SFourBar, syn::SFbSyn, 3>),
+    DDFb(PSynData<'a, FourBar, syn::FbDDSyn, 2>),
+    DDSFb(PSynData<'a, SFourBar, syn::SFbDDSyn, 3>),
+    DDMFb(MSynData<'a, f64, syn::MFbDDSyn>),
 }
 
 impl<'a> Solver<'a> {
@@ -277,33 +278,54 @@ impl<'a> Solver<'a> {
                 }
                 alg.build_solver(obj)
             }};
+            (@ $ty:ident, $target:ident) => {{
+                let (tar_curve, tar_pose) = $target
+                    .into_owned()
+                    .into_iter()
+                    .unzip::<_, _, Vec<_>, Vec<_>>();
+                let mut obj = syn::$ty::from_uvec(&tar_curve, &tar_pose, cfg.mode).res(cfg.res);
+                if cfg.on_unit {
+                    obj = obj.on_unit();
+                }
+                (alg.build_solver(obj), tar_curve, tar_pose)
+            }};
         }
         match target {
             Target::Fb { tar_curve, tar_fb, atlas } => {
                 if cfg.use_dd {
                     let s = build_solver!(FbDDSyn, tar_curve);
-                    Self::DDFb(PathSynData::new(
+                    Self::DDFb(PSynData::new(
                         s, tar_curve, tar_fb, atlas, cfg, stop, callback,
                     ))
                 } else {
                     let s = build_solver!(FbSyn, tar_curve);
-                    Self::Fb(PathSynData::new(
+                    Self::Fb(PSynData::new(
                         s, tar_curve, tar_fb, atlas, cfg, stop, callback,
                     ))
                 }
             }
             Target::MFb { target, tar_fb } => {
-                Self::MFb(MotionSynData::new(alg, target, tar_fb, cfg, stop, callback))
+                if cfg.use_dd {
+                    let (s, tar_curve, tar_pose) = build_solver!(@MFbDDSyn, target);
+                    Self::DDMFb(MSynData::new(
+                        s, tar_curve, tar_pose, tar_fb, cfg, stop, callback,
+                    ))
+                } else {
+                    let (s, tar_curve, tar_pose) = build_solver!(@MFbSyn, target);
+                    Self::MFb(MSynData::new(
+                        s, tar_curve, tar_pose, tar_fb, cfg, stop, callback,
+                    ))
+                }
             }
             Target::SFb { tar_curve, tar_fb, atlas } => {
                 if cfg.use_dd {
                     let s = build_solver!(SFbDDSyn, tar_curve);
-                    Self::DDSFb(PathSynData::new(
+                    Self::DDSFb(PSynData::new(
                         s, tar_curve, tar_fb, atlas, cfg, stop, callback,
                     ))
                 } else {
                     let s = build_solver!(SFbSyn, tar_curve);
-                    Self::SFb(PathSynData::new(
+                    Self::SFb(PSynData::new(
                         s, tar_curve, tar_fb, atlas, cfg, stop, callback,
                     ))
                 }
@@ -318,6 +340,7 @@ impl<'a> Solver<'a> {
             Self::SFb(s) => io::Fb::S(s.solve()),
             Self::DDFb(s) => io::Fb::P(s.solve()),
             Self::DDSFb(s) => io::Fb::S(s.solve()),
+            Self::DDMFb(s) => io::Fb::M(s.solve()),
         }
     }
 }

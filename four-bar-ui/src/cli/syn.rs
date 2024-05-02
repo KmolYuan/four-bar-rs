@@ -192,7 +192,7 @@ pub(super) fn loader(syn: Syn) {
     if !rerun {
         atlas = None;
     }
-    println!("rerun={rerun} clean={clean}");
+    println!("rerun={rerun} clean={clean} dd={}", cfg.use_dd);
     println!("-----");
     // Load atlas
     let atlas = atlas

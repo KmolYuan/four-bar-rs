@@ -14,20 +14,24 @@ fi
 # Run the paper examples
 # User can pass additional flags to the command
 FLAGS="--seed=0 $@"
+# Planar four-bar
 $FB syn $FLAGS test-fb/mcgarva.closed.csv --atlas=closed.npz
 $FB syn $FLAGS test-fb/yu2.closed.csv
 $FB syn $FLAGS test-fb/bow.open.ron --gen=180
 $FB syn $FLAGS test-fb/wu3.partial.csv
 $FB syn $FLAGS test-fb/straight-line.partial.csv
-
+# Spherical four-bar
 $FB syn $FLAGS test-sfb/mullineux64.closed.csv --atlas=closed-sphere.npz
 $FB syn $FLAGS test-sfb/sunpos-taiwan.closed.csv
 $FB syn $FLAGS test-sfb/flap.closed.csv
 $FB syn $FLAGS test-sfb/fish.open.csv --gen=140
 $FB syn $FLAGS test-sfb/circle.partial.csv --on-unit
-
+# Planar distance discrepancy
 $FB syn $FLAGS test-fb/yu2.closed.csv --dd --no-ref
 $FB syn $FLAGS test-fb/crunode.closed.ron --dd
-
+# Planar motion generation
 $FB syn $FLAGS test-mfb/hsieh1.open.csv --gen=200 --pop=2000
 $FB syn $FLAGS test-mfb/hsieh2.open.ron --gen=200 --pop=2600 --res=60
+# Planar motion distance discrepancy
+$FB syn $FLAGS test-mfb/hsieh1.open.csv --gen=200 --pop=500 --dd
+$FB syn $FLAGS test-mfb/hsieh2.open.ron --gen=200 --pop=1000 --res=60 --dd --no-ref

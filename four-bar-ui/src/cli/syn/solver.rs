@@ -20,7 +20,7 @@ const SYN_COLOR: RGBColor = BLUE_900;
 const ATLAS_COLOR: RGBColor = GREEN_900;
 const REF_COLOR: RGBColor = ORANGE_900;
 
-impl<M, const N: usize, const D: usize> PathSynData<'_, M::De, syn::PathSyn<M, N, D>, D>
+impl<M, const N: usize, const D: usize> PSynData<'_, M::De, syn::PathSyn<M, N, D>, D>
 where
     syn::PathSyn<M, N, D>: mh::ObjFunc<Ys = mh::WithProduct<f64, M::De>>,
     M: atlas::Code<N, D>,
@@ -122,115 +122,7 @@ where
     }
 }
 
-impl<'a> MotionSynData<'a> {
-    fn solve_cli(
-        self,
-        cfg: &SynCfg,
-        info: &Info,
-        refer: Option<&Path>,
-        history: Arc<Mutex<Vec<f64>>>,
-    ) -> Result<(), SynErr> {
-        let Self { s, tar_curve, tar_pose, tar_fb } = self;
-        let Info { root, title, mode } = info;
-        let t0 = std::time::Instant::now();
-        let s = s.solve();
-        let t1 = t0.elapsed();
-        let func = s.func();
-        let harmonic = func.harmonic();
-        let tar_efd = func.tar.clone();
-        let (fit, fb) = s.into_err_result();
-        let cost = fit.into_eval();
-        {
-            let path = root.join(HISTORY_SVG);
-            let svg = plot::SVGBackend::new(&path, (800, 600));
-            plot::fb::history(svg, Arc::into_inner(history).unwrap().into_inner().unwrap())?;
-        }
-        let refer = refer
-            .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
-            .filter(|p| p.is_file());
-        let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
-        let mut log = super::logger::Logger::new(&mut log);
-        log.top_title(title)?;
-        write_tar_efd(root.join(EFD_CSV), tar_efd.as_curve())?;
-        write_ron(root.join(LNK_RON), &fb)?;
-        let (curve, pose) = fb.pose(cfg.res);
-        let mut fig = plot::mfb::Figure::new();
-        let length = tar_efd.as_geo().scale();
-        fig.push_pose(
-            "Target",
-            (&tar_curve, &tar_pose, length),
-            Style::Line,
-            TARGET_COLOR,
-            false,
-        );
-        {
-            let t = efd::MotionSig::new(&tar_curve, &tar_pose).t;
-            let curve = tar_efd.as_curve().recon_by(&t).into();
-            let pose = tar_efd.as_pose().recon_by(&t);
-            let pose = tar_efd.as_geo().transform(pose).into();
-            fig.push_line_data(plot::LineData {
-                label: "Target Recon.".into(),
-                line: plot::LineType::Pose { curve, pose, is_frame: false },
-                style: Style::DashedLine,
-                color: SYN_COLOR.into(),
-            });
-            write_ron(root.join(TAR_FIG), &fig)?;
-            let path = root.join(TAR_SVG);
-            let svg = plot::SVGBackend::new(&path, (1600, 1600));
-            fig.plot(svg)?;
-            fig.lines.pop();
-        }
-        fig.set_fb_ref(fb.as_fb());
-        fig.push_pose(
-            "Optimized",
-            (&curve, &pose, length),
-            Style::DashedLine,
-            SYN_COLOR,
-            true,
-        );
-        {
-            write_ron(root.join(LNK_FIG), &fig)?;
-            let path = root.join(LNK_SVG);
-            let svg = plot::SVGBackend::new(&path, (1600, 1600));
-            fig.plot(svg)?;
-        }
-        if let Some(fb) = tar_fb {
-            log.title("target.fb")?;
-            log.log(fb)?;
-        }
-        log.title("optimized")?;
-        log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
-        log.title("optimized.fb")?;
-        log.log(&fb)?;
-        if let Some(refer) = refer {
-            let fb = ron::de::from_reader::<_, MFourBar>(std::fs::File::open(refer)?)?;
-            let (c, v) = fb.pose(cfg.res);
-            log.title("competitor")?;
-            if !matches!(mode, syn::Mode::Partial) {
-                let efd = efd::PosedEfd::from_uvec_harmonic(&c, &v, harmonic);
-                log.log(Performance::cost(efd.err(&tar_efd)))?;
-            }
-            log.title("competitor.fb")?;
-            log.log(&fb)?;
-            fig.push_pose(
-                "Ref. [?]",
-                (c, v, length),
-                Style::DashDottedLine,
-                ATLAS_COLOR,
-                true,
-            );
-        }
-        fig.fb = None;
-        write_ron(root.join(CURVE_FIG), &fig)?;
-        let path = root.join(CURVE_SVG);
-        let svg = plot::SVGBackend::new(&path, (1600, 1600));
-        fig.plot(svg)?;
-        log.flush()?;
-        Ok(())
-    }
-}
-
-impl<M, const N: usize, const D: usize> PathSynData<'_, M::De, syn::DDPathSyn<M, N, D>, D>
+impl<M, const N: usize, const D: usize> PSynData<'_, M::De, syn::DDPathSyn<M, N, D>, D>
 where
     syn::DDPathSyn<M, N, D>: mh::ObjFunc<Ys = mh::WithProduct<f64, M::De>>,
     M: atlas::Code<N, D>,
@@ -324,6 +216,202 @@ where
     }
 }
 
+impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
+    fn solve_cli(
+        self,
+        cfg: &SynCfg,
+        info: &Info,
+        refer: Option<&Path>,
+        history: Arc<Mutex<Vec<f64>>>,
+    ) -> Result<(), SynErr> {
+        let Self { s, tar_curve, tar_pose, tar_fb } = self;
+        let Info { root, title, mode } = info;
+        let t0 = std::time::Instant::now();
+        let s = s.solve();
+        let t1 = t0.elapsed();
+        let func = s.func();
+        let harmonic = func.harmonic();
+        let tar_efd = func.tar.clone();
+        let (cost, fb) = s.into_err_result();
+        {
+            let path = root.join(HISTORY_SVG);
+            let svg = plot::SVGBackend::new(&path, (800, 600));
+            plot::fb::history(svg, Arc::into_inner(history).unwrap().into_inner().unwrap())?;
+        }
+        let refer = refer
+            .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
+            .filter(|p| p.is_file());
+        let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
+        let mut log = super::logger::Logger::new(&mut log);
+        log.top_title(title)?;
+        write_tar_efd(root.join(EFD_CSV), tar_efd.as_curve())?;
+        write_ron(root.join(LNK_RON), &fb)?;
+        let (curve, pose) = fb.pose(cfg.res);
+        let mut fig = plot::mfb::Figure::new();
+        let length = tar_efd.as_geo().scale();
+        fig.push_pose(
+            "Target",
+            (&tar_curve, &tar_pose, length),
+            Style::Line,
+            TARGET_COLOR,
+            false,
+        );
+        {
+            let t = efd::MotionSig::new(&tar_curve, &tar_pose).t;
+            let curve = tar_efd.as_curve().recon_by(&t).into();
+            let pose = tar_efd.as_pose().recon_by(&t);
+            let pose = tar_efd.as_geo().transform(pose).into();
+            fig.push_line_data(plot::LineData {
+                label: "Target Recon.".into(),
+                line: plot::LineType::Pose { curve, pose, is_frame: false },
+                style: Style::DashedLine,
+                color: SYN_COLOR.into(),
+            });
+            write_ron(root.join(TAR_FIG), &fig)?;
+            let path = root.join(TAR_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+            fig.lines.pop();
+        }
+        fig.set_fb_ref(fb.as_fb());
+        fig.push_pose(
+            "Optimized",
+            (&curve, &pose, length),
+            Style::DashedLine,
+            SYN_COLOR,
+            true,
+        );
+        {
+            write_ron(root.join(LNK_FIG), &fig)?;
+            let path = root.join(LNK_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+        }
+        if let Some(fb) = tar_fb {
+            log.title("target.fb")?;
+            log.log(fb)?;
+        }
+        log.title("optimized")?;
+        log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
+        log.title("optimized.fb")?;
+        log.log(&fb)?;
+        if let Some(refer) = refer {
+            let fb = ron::de::from_reader::<_, MFourBar>(std::fs::File::open(refer)?)?;
+            let (c, v) = fb.pose(cfg.res);
+            log.title("competitor")?;
+            if !matches!(mode, syn::Mode::Partial) {
+                let efd = efd::PosedEfd::from_uvec_harmonic(&c, &v, harmonic);
+                log.log(Performance::cost(efd.err(&tar_efd)))?;
+            }
+            log.title("competitor.fb")?;
+            log.log(&fb)?;
+            fig.push_pose(
+                "Ref. [?]",
+                (c, v, length),
+                Style::DashDottedLine,
+                ATLAS_COLOR,
+                true,
+            );
+        }
+        fig.fb = None;
+        write_ron(root.join(CURVE_FIG), &fig)?;
+        let path = root.join(CURVE_SVG);
+        let svg = plot::SVGBackend::new(&path, (1600, 1600));
+        fig.plot(svg)?;
+        log.flush()?;
+        Ok(())
+    }
+}
+
+impl MSynData<'_, f64, syn::MFbDDSyn> {
+    fn solve_cli(
+        self,
+        cfg: &SynCfg,
+        info: &Info,
+        refer: Option<&Path>,
+        history: Arc<Mutex<Vec<f64>>>,
+    ) -> Result<(), SynErr> {
+        let Self { s, tar_curve, tar_pose, tar_fb } = self;
+        let Info { root, title, mode: _ } = info;
+        let t0 = std::time::Instant::now();
+        let s = s.solve();
+        let t1 = t0.elapsed();
+        let (cost, fb, func) = s.into_err_result_func();
+        let tar_efd = func.tar;
+        {
+            let path = root.join(HISTORY_SVG);
+            let svg = plot::SVGBackend::new(&path, (800, 600));
+            plot::fb::history(svg, Arc::into_inner(history).unwrap().into_inner().unwrap())?;
+        }
+        let refer = refer
+            .map(|p| root.join("..").join(p).join(format!("{title}.ron")))
+            .filter(|p| p.is_file());
+        let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
+        let mut log = super::logger::Logger::new(&mut log);
+        log.top_title(title)?;
+        write_ron(root.join(LNK_RON), &fb)?;
+        let (curve, pose) = fb.pose(cfg.res);
+        let mut fig = plot::mfb::Figure::new();
+        let length = tar_efd.as_geo().scale();
+        fig.push_pose(
+            "Target",
+            (&tar_curve, &tar_pose, length),
+            Style::Line,
+            TARGET_COLOR,
+            false,
+        );
+        {
+            write_ron(root.join(TAR_FIG), &fig)?;
+            let path = root.join(TAR_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+        }
+        fig.set_fb_ref(fb.as_fb());
+        fig.push_pose(
+            "Optimized",
+            (&curve, &pose, length),
+            Style::DashedLine,
+            SYN_COLOR,
+            true,
+        );
+        {
+            write_ron(root.join(LNK_FIG), &fig)?;
+            let path = root.join(LNK_SVG);
+            let svg = plot::SVGBackend::new(&path, (1600, 1600));
+            fig.plot(svg)?;
+        }
+        if let Some(fb) = tar_fb {
+            log.title("target.fb")?;
+            log.log(fb)?;
+        }
+        log.title("optimized")?;
+        log.log(Performance::cost(cost).time(t1))?;
+        log.title("optimized.fb")?;
+        log.log(&fb)?;
+        if let Some(refer) = refer {
+            let fb = ron::de::from_reader::<_, MFourBar>(std::fs::File::open(refer)?)?;
+            let (c, v) = fb.pose(cfg.res);
+            log.title("competitor")?;
+            log.title("competitor.fb")?;
+            log.log(&fb)?;
+            fig.push_pose(
+                "Ref. [?]",
+                (c, v, length),
+                Style::DashDottedLine,
+                ATLAS_COLOR,
+                true,
+            );
+        }
+        fig.fb = None;
+        write_ron(root.join(CURVE_FIG), &fig)?;
+        let path = root.join(CURVE_SVG);
+        let svg = plot::SVGBackend::new(&path, (1600, 1600));
+        fig.plot(svg)?;
+        log.flush()?;
+        Ok(())
+    }
+}
+
 pub(crate) fn run(
     pb: &ProgressBar,
     alg: SynAlg,
@@ -374,6 +462,7 @@ fn from_runtime(
         Solver::SFb(s) => s.solve_cli(cfg, info, refer, history),
         Solver::DDFb(s) => s.solve_cli(cfg, info, refer, history),
         Solver::DDSFb(s) => s.solve_cli(cfg, info, refer, history),
+        Solver::DDMFb(s) => s.solve_cli(cfg, info, refer, history),
     }
 }
 
