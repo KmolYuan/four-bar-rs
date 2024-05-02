@@ -260,7 +260,7 @@ const EFD_CSV: &str = "target-efd.csv";
 const CURVE_SVG: &str = "curve.svg";
 const CURVE_FIG: &str = "curve.fig.ron";
 
-impl<M, const N: usize, const D: usize> syn_cmd::PathSynData<'_, M, N, D>
+impl<M, const N: usize, const D: usize> syn_cmd::PathSynData<'_, M::De, syn::PathSyn<M, N, D>, D>
 where
     syn::PathSyn<M, N, D>: mh::ObjFunc<Ys = mh::WithProduct<f64, M::De>>,
     M: atlas::Code<N, D>,
@@ -517,7 +517,7 @@ fn run(
     refer: Option<&Path>,
     rerun: bool,
 ) {
-    // FIXME: Try block, ignore errors
+    // FIXME: Try block
     let f = || {
         let root = &info.root;
         if !rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {

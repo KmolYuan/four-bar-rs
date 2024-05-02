@@ -430,7 +430,7 @@ impl Synthesis {
             // TODO: Support adding uvec here
             io::Curve::M(t) => t.push(([p.x, p.y], [0., 0.])),
             io::Curve::S(t) => {
-                // FIXME: Try block, ignore errors
+                // FIXME: Try block
                 if let Some(c) = (|| {
                     let [sx, sy, sz, r] = lnk.projs.current_sphere()?;
                     let dx = p.x - sx;

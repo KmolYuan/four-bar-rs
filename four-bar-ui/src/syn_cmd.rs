@@ -145,28 +145,20 @@ impl<'a, 'b> Target<'a, 'b> {
 }
 
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-pub(crate) struct PathSynData<'a, M, const N: usize, const D: usize>
-where
-    M: mech::Normalized<D>,
-    syn::PathSyn<M, N, D>: mh::ObjFunc,
-    efd::U<D>: efd::EfdDim<D>,
-{
-    pub(crate) s: SolverBox<'a, syn::PathSyn<M, N, D>>,
+pub(crate) struct PathSynData<'a, MDe, F: mh::ObjFunc, const D: usize> {
+    pub(crate) s: SolverBox<'a, F>,
     pub(crate) tar_curve: Cow<'a, [[f64; D]]>,
-    pub(crate) tar_fb: Option<M::De>,
-    pub(crate) atlas_fb: Option<(f64, M::De)>,
+    pub(crate) tar_fb: Option<MDe>,
+    pub(crate) atlas_fb: Option<(f64, MDe)>,
 }
 
-impl<'a, M, const N: usize, const D: usize> PathSynData<'a, M, N, D>
+impl<'a, MDe, F, const D: usize> PathSynData<'a, MDe, F, D>
 where
-    syn::PathSyn<M, N, D>: mh::ObjFunc<Ys = mh::WithProduct<f64, M::De>>,
-    M: atlas::Code<N, D>,
-    M::De: Default + Clone + Sync + Send + 'static,
-    efd::U<D>: efd::EfdDim<D>,
-    efd::Efd<D>: Sync,
+    F: mh::ObjFunc<Ys = mh::WithProduct<f64, MDe>>,
+    MDe: Default + Clone + Sync + Send + 'static,
 {
-    fn new<S, C>(
-        alg: SynAlg,
+    fn new<M, S, C, const N: usize>(
+        s: SolverBox<'a, F>,
         tar_curve: Cow<'a, [[f64; D]]>,
         tar_fb: Option<M::De>,
         atlas: Option<&atlas::Atlas<M, N, D>>,
@@ -175,25 +167,21 @@ where
         mut callback: C,
     ) -> Self
     where
+        M: atlas::Code<N, D> + mech::Normalized<D, De = MDe>,
         S: Fn() -> bool + Send + 'a,
         C: FnMut(f64, u64) + Send + 'a,
+        efd::U<D>: efd::EfdDim<D>,
+        efd::Efd<D>: Sync,
     {
-        let SynCfg { seed, gen, pop, mode, res, on_unit } = cfg;
-        let mut syn = syn::PathSyn::from_curve(&tar_curve, mode).res(res);
-        if on_unit {
-            syn = syn.on_unit();
-        }
-        let mut s = alg
-            .build_solver(syn)
-            .seed(seed)
-            .pop_num(pop)
-            .task(move |ctx| !stop() && ctx.gen >= gen)
+        let mut s = s
+            .seed(cfg.seed)
+            .pop_num(cfg.pop)
+            .task(move |ctx| !stop() && ctx.gen >= cfg.gen)
             .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
-        let (true, Some(atlas)) = (!mode.is_partial(), atlas) else {
-            return Self { s, tar_curve, tar_fb, atlas_fb: None };
-        };
-        let (atlas_fb, candi) = atlas.fetch_raw(&tar_curve, mode.is_target_open(), pop);
-        if candi.len() > pop {
+        // FIXME: Try block
+        let atlas_fb = if let Some((fb, pool, pool_y)) = (|| {
+            let atlas = atlas.filter(|_| !cfg.mode.is_partial())?;
+            let (best, candi) = atlas.fetch_raw(&tar_curve, cfg.mode.is_target_open(), cfg.pop)?;
             let pool_y = candi
                 .iter()
                 .map(|(f, fb)| mh::WithProduct::new(*f, fb.clone().denormalize()))
@@ -202,12 +190,17 @@ where
                 .into_iter()
                 .map(|(_, fb)| fb.into_vectorized().0)
                 .collect();
+            Some((best, pool, pool_y))
+        })() {
             s = s.init_pool(mh::Pool::Ready { pool, pool_y });
-        }
+            Some(fb)
+        } else {
+            None
+        };
         Self { s, tar_curve, tar_fb, atlas_fb }
     }
 
-    fn solve(self) -> M::De {
+    fn solve(self) -> MDe {
         self.s.solve().into_result()
     }
 }
@@ -254,9 +247,9 @@ impl<'a> MotionSynData<'a> {
 }
 
 pub(crate) enum Solver<'a> {
-    Fb(PathSynData<'a, NormFourBar, 5, 2>),
+    Fb(PathSynData<'a, FourBar, syn::FbSyn, 2>),
     MFb(MotionSynData<'a>),
-    SFb(PathSynData<'a, SNormFourBar, 6, 3>),
+    SFb(PathSynData<'a, SFourBar, syn::SFbSyn, 3>),
 }
 
 impl<'a> Solver<'a> {
@@ -271,16 +264,31 @@ impl<'a> Solver<'a> {
         S: Fn() -> bool + Send + 'a,
         C: FnMut(f64, u64) + Send + 'a,
     {
+        macro_rules! build_solver {
+            ($ty:ident, $tar_curve:ident) => {{
+                let mut obj = syn::$ty::from_curve(&$tar_curve, cfg.mode).res(cfg.res);
+                if cfg.on_unit {
+                    obj = obj.on_unit();
+                }
+                alg.build_solver(obj)
+            }};
+        }
         match target {
-            Target::Fb { tar_curve, tar_fb, atlas } => Self::Fb(PathSynData::new(
-                alg, tar_curve, tar_fb, atlas, cfg, stop, callback,
-            )),
+            Target::Fb { tar_curve, tar_fb, atlas } => {
+                let s = build_solver!(FbSyn, tar_curve);
+                Self::Fb(PathSynData::new(
+                    s, tar_curve, tar_fb, atlas, cfg, stop, callback,
+                ))
+            }
             Target::MFb { target, tar_fb } => {
                 Self::MFb(MotionSynData::new(alg, target, tar_fb, cfg, stop, callback))
             }
-            Target::SFb { tar_curve, tar_fb, atlas } => Self::SFb(PathSynData::new(
-                alg, tar_curve, tar_fb, atlas, cfg, stop, callback,
-            )),
+            Target::SFb { tar_curve, tar_fb, atlas } => {
+                let s = build_solver!(SFbSyn, tar_curve);
+                Self::SFb(PathSynData::new(
+                    s, tar_curve, tar_fb, atlas, cfg, stop, callback,
+                ))
+            }
         }
     }
 

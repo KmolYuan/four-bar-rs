@@ -223,12 +223,12 @@ where
         target: &[[f64; D]],
         is_open: bool,
         size: usize,
-    ) -> (Option<(f64, M::De)>, Vec<(f64, M)>)
+    ) -> Option<((f64, M::De), Vec<(f64, M)>)>
     where
         efd::Efd<D>: Sync,
     {
         if self.is_empty() {
-            return (None, Vec::new());
+            return None;
         }
         let res = target.len();
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
@@ -241,28 +241,24 @@ where
             .map(|arr| target.err(&arr_to_efd(arr)))
             .collect::<Vec<_>>();
         if size == 1 {
-            let ind = dis
+            let (first_i, err) = dis
                 .into_iter()
                 .enumerate()
-                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
-            let first = ind.map(|(i, err)| (err, self.pick(i, geo, is_open, res)));
-            let pool = ind
-                .map(|(i, err)| (err, self.pick_norm(i)))
-                .into_iter()
-                .collect();
-            return (first, pool);
+                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())?;
+            let first = (err, self.pick(first_i, geo, is_open, res));
+            let pool = vec![(err, self.pick_norm(first_i))];
+            return Some((first, pool));
         }
         let mut ind = (0..dis.len()).collect::<Vec<_>>();
         ind.sort_by(|&a, &b| dis[a].partial_cmp(&dis[b]).unwrap());
-        let first = ind
-            .first()
-            .map(|&i| (dis[i], self.pick(i, geo, is_open, res)));
+        let first_i = *ind.first()?;
+        let first = (dis[first_i], self.pick(first_i, geo, is_open, res));
         let pool = ind
             .into_iter()
             .take(size)
             .map(|i| (dis[i], self.pick_norm(i)))
             .collect();
-        (first, pool)
+        Some((first, pool))
     }
 
     /// Get the nearest four-bar linkage from a target curve.

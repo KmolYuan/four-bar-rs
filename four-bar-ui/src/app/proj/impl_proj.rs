@@ -274,7 +274,8 @@ where
     where
         M::De: serde::de::DeserializeOwned + PartialEq,
     {
-        // FIXME: Try block, ignore errors
+        // FIXME: Try block
+        // ignore errors
         #[cfg(not(target_arch = "wasm32"))]
         (|| {
             let r = std::fs::File::open(self.path.as_ref()?).ok()?;
