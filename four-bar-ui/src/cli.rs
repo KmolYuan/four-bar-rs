@@ -2,7 +2,6 @@ use crate::app::App;
 use std::path::PathBuf;
 
 mod atlas;
-mod logger;
 mod syn;
 
 const APP_NAME: &str = env!("CARGO_BIN_NAME");
@@ -37,7 +36,7 @@ impl Entry {
             Some(Cmd::Ui { files }) => native(files),
             Some(Cmd::Syn(syn)) => {
                 register_panic_hook();
-                syn::syn(syn);
+                syn::loader(syn);
             }
             Some(Cmd::Atlas(atlas)) => {
                 register_panic_hook();

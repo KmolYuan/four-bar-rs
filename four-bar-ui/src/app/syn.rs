@@ -102,6 +102,7 @@ impl Synthesis {
             nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
+            ui.checkbox(&mut self.cfg.use_dd, "Use distance discrepancy");
         });
         ui.collapsing("Atlas Database", |ui| self.atlas_setting(ui));
         ui.separator();
@@ -518,12 +519,12 @@ impl Synthesis {
         let task = TaskInProg::new(task);
         self.task_queue.push(task.clone());
         let alg = self.alg.clone();
+        let cfg = self.cfg.clone();
         let target = match self.target.clone() {
             io::Curve::P(t) => Target::fb(t.into(), None, Some(self.atlas.as_fb())),
             io::Curve::M(t) => Target::mfb(t.into(), None),
             io::Curve::S(t) => Target::sfb(t.into(), None, Some(self.atlas.as_sfb())),
         };
-        let cfg = self.cfg.clone();
         let queue = lnk.projs.queue();
         let stop = {
             let pg = task.pg.clone();

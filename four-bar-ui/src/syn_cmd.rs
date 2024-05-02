@@ -85,6 +85,9 @@ pub(crate) struct SynCfg {
     /// Specify the mechanism on the origin and unit scale
     #[cfg_attr(not(target_arch = "wasm32"), clap(long))]
     pub(crate) on_unit: bool,
+    /// Use the distance-discrepancy method
+    #[cfg_attr(not(target_arch = "wasm32"), clap(long = "dd"))]
+    pub(crate) use_dd: bool,
     #[cfg_attr(not(target_arch = "wasm32"), clap(skip = CFG_DEF.mode))]
     pub(crate) mode: syn::Mode,
 }
@@ -95,6 +98,7 @@ const CFG_DEF: SynCfg = SynCfg {
     pop: 200,
     res: 180,
     on_unit: false,
+    use_dd: false,
     mode: syn::Mode::Closed,
 };
 
@@ -226,17 +230,16 @@ impl<'a> MotionSynData<'a> {
         S: Fn() -> bool + Send + 'a,
         C: FnMut(f64, u64) + Send + 'a,
     {
-        let SynCfg { seed, gen, pop, mode, res, on_unit } = cfg;
         let (tar_curve, tar_pose) = target.iter().copied().unzip();
-        let mut syn = syn::MFbSyn::from_uvec(&tar_curve, &tar_pose, mode).res(res);
-        if on_unit {
+        let mut syn = syn::MFbSyn::from_uvec(&tar_curve, &tar_pose, cfg.mode).res(cfg.res);
+        if cfg.on_unit {
             syn = syn.on_unit();
         }
         let s = alg
             .build_solver(syn)
-            .seed(seed)
-            .pop_num(pop)
-            .task(move |ctx| !stop() && ctx.gen >= gen)
+            .seed(cfg.seed)
+            .pop_num(cfg.pop)
+            .task(move |ctx| !stop() && ctx.gen >= cfg.gen)
             .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
         Self { s, tar_curve, tar_pose, tar_fb }
     }
@@ -250,6 +253,8 @@ pub(crate) enum Solver<'a> {
     Fb(PathSynData<'a, FourBar, syn::FbSyn, 2>),
     MFb(MotionSynData<'a>),
     SFb(PathSynData<'a, SFourBar, syn::SFbSyn, 3>),
+    DDFb(PathSynData<'a, FourBar, syn::FbDDSyn, 2>),
+    DDSFb(PathSynData<'a, SFourBar, syn::SFbDDSyn, 3>),
 }
 
 impl<'a> Solver<'a> {
@@ -275,19 +280,33 @@ impl<'a> Solver<'a> {
         }
         match target {
             Target::Fb { tar_curve, tar_fb, atlas } => {
-                let s = build_solver!(FbSyn, tar_curve);
-                Self::Fb(PathSynData::new(
-                    s, tar_curve, tar_fb, atlas, cfg, stop, callback,
-                ))
+                if cfg.use_dd {
+                    let s = build_solver!(FbDDSyn, tar_curve);
+                    Self::DDFb(PathSynData::new(
+                        s, tar_curve, tar_fb, atlas, cfg, stop, callback,
+                    ))
+                } else {
+                    let s = build_solver!(FbSyn, tar_curve);
+                    Self::Fb(PathSynData::new(
+                        s, tar_curve, tar_fb, atlas, cfg, stop, callback,
+                    ))
+                }
             }
             Target::MFb { target, tar_fb } => {
                 Self::MFb(MotionSynData::new(alg, target, tar_fb, cfg, stop, callback))
             }
             Target::SFb { tar_curve, tar_fb, atlas } => {
-                let s = build_solver!(SFbSyn, tar_curve);
-                Self::SFb(PathSynData::new(
-                    s, tar_curve, tar_fb, atlas, cfg, stop, callback,
-                ))
+                if cfg.use_dd {
+                    let s = build_solver!(SFbDDSyn, tar_curve);
+                    Self::DDSFb(PathSynData::new(
+                        s, tar_curve, tar_fb, atlas, cfg, stop, callback,
+                    ))
+                } else {
+                    let s = build_solver!(SFbSyn, tar_curve);
+                    Self::SFb(PathSynData::new(
+                        s, tar_curve, tar_fb, atlas, cfg, stop, callback,
+                    ))
+                }
             }
         }
     }
@@ -297,6 +316,8 @@ impl<'a> Solver<'a> {
             Self::Fb(s) => io::Fb::P(s.solve()),
             Self::MFb(s) => io::Fb::M(s.solve()),
             Self::SFb(s) => io::Fb::S(s.solve()),
+            Self::DDFb(s) => io::Fb::P(s.solve()),
+            Self::DDSFb(s) => io::Fb::S(s.solve()),
         }
     }
 }

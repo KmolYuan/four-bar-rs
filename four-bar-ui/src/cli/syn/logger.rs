@@ -1,6 +1,5 @@
-use std::io::Write;
-
 use serde::ser::SerializeSeq;
+use std::io::Write;
 
 macro_rules! impl_disp_methods {
     ($(($method:ident, $ty:ty)),+ $(,)?) => {$(
