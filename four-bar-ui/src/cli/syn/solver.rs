@@ -150,11 +150,12 @@ where
     ) -> Result<(), SynErr> {
         use four_bar::mech::CurveGen as _;
         let Self { s, tar_curve, tar_fb, atlas_fb } = self;
-        let Info { root, title, refer, .. } = info;
+        let Info { root, title, refer, mode, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
         let t1 = t0.elapsed();
-        let (cost, fb) = s.into_err_result();
+        let (cost, fb, func) = s.into_err_result_func();
+        let tar_sig = func.tar;
         {
             let path = root.join(HISTORY_SVG);
             let svg = plot::SVGBackend::new(&path, (800, 600));
@@ -208,6 +209,10 @@ where
             let fb = ron::de::from_reader::<_, M::De>(std::fs::File::open(refer)?)?;
             let c = fb.curve(cfg.res);
             log.title("competitor")?;
+            if !matches!(mode, syn::Mode::Partial) {
+                let efd = efd::Efd::from_curve(&c, mode.is_result_open());
+                log.log(Performance::cost(efd.err_sig(&tar_sig)))?;
+            }
             log.title("competitor.fb")?;
             log.log(&fb)?;
             fig.push_line("Ref. [?]", c, Style::DashedLine, REF_COLOR);
@@ -340,7 +345,7 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
         let Self { s, tar_curve, tar_pose, tar_fb } = self;
-        let Info { root, title, refer, .. } = info;
+        let Info { root, title, refer, mode, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
         let t1 = t0.elapsed();
@@ -414,6 +419,10 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             let fb = ron::de::from_reader::<_, MFourBar>(std::fs::File::open(refer)?)?;
             let (c, v) = fb.pose(cfg.res);
             log.title("competitor")?;
+            if !matches!(mode, syn::Mode::Partial) {
+                let efd = efd::PosedEfd::from_uvec(&c, &v);
+                log.log(Performance::cost(efd.err_sig(&tar_sig)))?;
+            }
             log.title("competitor.fb")?;
             log.log(&fb)?;
             fig.push_pose(
