@@ -71,14 +71,12 @@ pub(super) struct Syn {
     each: bool,
     /// Provide pre-generated atlas databases, support multiple paths joined by
     /// ";" (Windows) or ":" (Unix) characters
-    ///
-    /// If the atlas is provided, the rerun flag will be enabled
     #[clap(long)]
     atlas: Option<std::ffi::OsString>,
     /// Competitor (reference) folder path, under the same folder of the target
     /// file
     ///
-    /// The reference file should be named as "[target name].[target mode].ron"
+    /// The reference file should be named as "[target_name].[target_mode].ron"
     #[clap(short, long, default_value = "refer")]
     refer: PathBuf,
     /// The legend position of the plot
