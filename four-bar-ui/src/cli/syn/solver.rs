@@ -40,12 +40,11 @@ where
         self,
         cfg: &SynCfg,
         info: &Info,
-        refer: Option<&Path>,
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
         use four_bar::mech::CurveGen as _;
         let Self { s, tar_curve, tar_fb, atlas_fb } = self;
-        let Info { root, title, mode } = info;
+        let Info { root, title, mode, refer, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
         let t1 = t0.elapsed();
@@ -68,6 +67,9 @@ where
         write_ron(root.join(LNK_RON), &fb)?;
         let curve = fb.curve(cfg.res);
         let mut fig = plot::FigureBase::new();
+        if let Some(legend) = info.legend {
+            fig.legend = legend;
+        }
         fig.push_line("Target", &*tar_curve, Style::Circle, TARGET_COLOR);
         {
             write_ron(root.join(TAR_FIG), &fig)?;
@@ -142,12 +144,11 @@ where
         self,
         cfg: &SynCfg,
         info: &Info,
-        refer: Option<&Path>,
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
         use four_bar::mech::CurveGen as _;
         let Self { s, tar_curve, tar_fb, atlas_fb } = self;
-        let Info { root, title, mode: _ } = info;
+        let Info { root, title, refer, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
         let t1 = t0.elapsed();
@@ -166,6 +167,9 @@ where
         write_ron(root.join(LNK_RON), &fb)?;
         let curve = fb.curve(cfg.res);
         let mut fig = plot::FigureBase::new();
+        if let Some(legend) = info.legend {
+            fig.legend = legend;
+        }
         fig.push_line("Target", &*tar_curve, Style::Circle, TARGET_COLOR);
         {
             write_ron(root.join(TAR_FIG), &fig)?;
@@ -221,11 +225,10 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
         self,
         cfg: &SynCfg,
         info: &Info,
-        refer: Option<&Path>,
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
         let Self { s, tar_curve, tar_pose, tar_fb } = self;
-        let Info { root, title, mode } = info;
+        let Info { root, title, mode, refer, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
         let t1 = t0.elapsed();
@@ -248,6 +251,9 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
         write_ron(root.join(LNK_RON), &fb)?;
         let (curve, pose) = fb.pose(cfg.res);
         let mut fig = plot::mfb::Figure::new();
+        if let Some(legend) = info.legend {
+            fig.legend = legend;
+        }
         let length = tar_efd.as_geo().scale();
         fig.push_pose(
             "Target",
@@ -328,11 +334,10 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
         self,
         cfg: &SynCfg,
         info: &Info,
-        refer: Option<&Path>,
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
         let Self { s, tar_curve, tar_pose, tar_fb } = self;
-        let Info { root, title, mode: _ } = info;
+        let Info { root, title, refer, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
         let t1 = t0.elapsed();
@@ -352,6 +357,9 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
         write_ron(root.join(LNK_RON), &fb)?;
         let (curve, pose) = fb.pose(cfg.res);
         let mut fig = plot::mfb::Figure::new();
+        if let Some(legend) = info.legend {
+            fig.legend = legend;
+        }
         let length = tar_efd.as_geo().scale();
         fig.push_pose(
             "Target",
@@ -412,23 +420,15 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
     }
 }
 
-pub(crate) fn run(
-    pb: &ProgressBar,
-    alg: SynAlg,
-    info: Info,
-    target: Target,
-    cfg: &SynCfg,
-    refer: Option<&Path>,
-    rerun: bool,
-) {
+pub(crate) fn run(pb: &ProgressBar, alg: SynAlg, info: Info, target: Target, cfg: &SynCfg) {
     // FIXME: Try block
     let f = || {
         let root = &info.root;
-        if !rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {
+        if !info.rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {
             pb.inc(cfg.gen);
-            from_exist(&info.root, &target)
+            from_exist(&info, &target)
         } else {
-            from_runtime(pb, alg, &info, target, cfg, refer)
+            from_runtime(pb, alg, &info, target, cfg)
         }
     };
     let title = &info.title;
@@ -444,7 +444,6 @@ fn from_runtime(
     info: &Info,
     target: Target,
     cfg: &SynCfg,
-    refer: Option<&Path>,
 ) -> Result<(), SynErr> {
     let history = Arc::new(Mutex::new(Vec::with_capacity(cfg.gen as usize)));
     let s = {
@@ -457,35 +456,38 @@ fn from_runtime(
         })
     };
     match s {
-        Solver::Fb(s) => s.solve_cli(cfg, info, refer, history),
-        Solver::MFb(s) => s.solve_cli(cfg, info, refer, history),
-        Solver::SFb(s) => s.solve_cli(cfg, info, refer, history),
-        Solver::DDFb(s) => s.solve_cli(cfg, info, refer, history),
-        Solver::DDSFb(s) => s.solve_cli(cfg, info, refer, history),
-        Solver::DDMFb(s) => s.solve_cli(cfg, info, refer, history),
+        Solver::Fb(s) => s.solve_cli(cfg, info, history),
+        Solver::MFb(s) => s.solve_cli(cfg, info, history),
+        Solver::SFb(s) => s.solve_cli(cfg, info, history),
+        Solver::DDFb(s) => s.solve_cli(cfg, info, history),
+        Solver::DDSFb(s) => s.solve_cli(cfg, info, history),
+        Solver::DDMFb(s) => s.solve_cli(cfg, info, history),
     }
 }
 
-fn from_exist(root: &Path, target: &Target) -> Result<(), SynErr> {
-    fn plot<Fig>(root: &Path) -> Result<(), SynErr>
-    where
-        Fig: serde::de::DeserializeOwned + plot::Plot,
-    {
-        for (path, svg_path) in [
-            (root.join(TAR_FIG), root.join(TAR_SVG)),
-            (root.join(LNK_FIG), root.join(LNK_SVG)),
-            (root.join(CURVE_FIG), root.join(CURVE_SVG)),
-        ] {
-            ron::de::from_reader::<_, Fig>(std::fs::File::open(path)?)?
-                .plot(plot::SVGBackend::new(&svg_path, (1600, 1600)))?;
-        }
-        Ok(())
+fn from_exist(info: &Info, target: &Target) -> Result<(), SynErr> {
+    let root = &info.root;
+    macro_rules! plot {
+        ($ty:ty) => {
+            for (path, svg_path) in [
+                (root.join(TAR_FIG), root.join(TAR_SVG)),
+                (root.join(LNK_FIG), root.join(LNK_SVG)),
+                (root.join(CURVE_FIG), root.join(CURVE_SVG)),
+            ] {
+                let mut fig = ron::de::from_reader::<_, $ty>(std::fs::File::open(path)?)?;
+                if let Some(legend) = info.legend {
+                    fig.legend = legend;
+                }
+                fig.plot(plot::SVGBackend::new(&svg_path, (1600, 1600)))?;
+            }
+        };
     }
     match target {
         // HINT: `fb::Figure` and `mfb::Figure` are the same type
-        Target::Fb { .. } | Target::MFb { .. } => plot::<plot::fb::Figure>(root),
-        Target::SFb { .. } => plot::<plot::sfb::Figure>(root),
+        Target::Fb { .. } | Target::MFb { .. } => plot!(plot::fb::Figure),
+        Target::SFb { .. } => plot!(plot::sfb::Figure),
     }
+    Ok(())
 }
 
 #[derive(serde::Serialize)]

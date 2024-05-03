@@ -353,9 +353,6 @@ pub enum LegendPos {
     MR,
     /// Lower Right
     LR,
-    /// Coordinate
-    #[cfg_attr(feature = "clap", clap(skip))]
-    Coord(i32, i32),
 }
 
 impl LegendPos {
@@ -386,7 +383,6 @@ impl LegendPos {
             Self::UR => "Upper Right",
             Self::MR => "Middle Right",
             Self::LR => "Lower Right",
-            Self::Coord(_, _) => "Coordinate",
         }
     }
 
@@ -404,7 +400,6 @@ impl LegendPos {
             Self::UR => UpperRight,
             Self::MR => MiddleRight,
             Self::LR => LowerRight,
-            &Self::Coord(x, y) => Coordinate(x, y),
         })
     }
 }

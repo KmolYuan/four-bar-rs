@@ -69,16 +69,23 @@ pub(super) struct Syn {
     /// benchmarking
     #[clap(long)]
     each: bool,
-    /// Provide pre-generated atlas databases, support multiple paths as
-    #[cfg_attr(windows, doc = "\"a.npz;b.npz\"")]
-    #[cfg_attr(not(windows), doc = "\"a.npz:b.npz\"")]
+    /// Provide pre-generated atlas databases, support multiple paths joined by
+    /// ";" (Windows) or ":" (Unix) characters
     ///
     /// If the atlas is provided, the rerun flag will be enabled
     #[clap(long)]
     atlas: Option<std::ffi::OsString>,
-    /// Competitor path starting from file root with the same filename
+    /// Competitor (reference) folder path, under the same folder of the target
+    /// file
+    ///
+    /// The reference file should be named as "[target name].[target mode].ron"
     #[clap(short, long, default_value = "refer")]
     refer: PathBuf,
+    /// The legend position of the plot
+    ///
+    /// Defalut to upper right (ur), override when redrawing
+    #[clap(long)]
+    legend: Option<plot::LegendPos>,
     /// Disable reference comparison
     #[clap(long)]
     no_ref: bool,
@@ -88,87 +95,13 @@ pub(super) struct Syn {
     alg: Option<SynAlg>,
 }
 
-pub(crate) struct Info {
+pub(crate) struct Info<'a> {
     pub(crate) root: PathBuf,
     pub(crate) title: String,
     pub(crate) mode: syn::Mode,
-}
-
-fn get_info<'a>(
-    title: &str,
-    file: &Path,
-    cfg: &SynCfg,
-    atlas: Option<&'a io::AtlasPool>,
-    rerun: bool,
-    clean: bool,
-) -> Result<(Info, Target<'static, 'a>), SynErr> {
-    let ext = file.extension().and_then(|p| p.to_str());
-    macro_rules! check {
-        ($c:expr) => {
-            efd::util::valid_curve($c).ok_or(SynErr::Linkage)?.into()
-        };
-        (@ $c:expr) => {{
-            let c = $c;
-            if c.len() < 3
-                || c.iter()
-                    .flat_map(|(c, v)| c.iter().chain(v))
-                    .any(|x| !x.is_finite())
-            {
-                return Err(SynErr::Linkage);
-            } else {
-                c.into()
-            }
-        }};
-    }
-    let target = match ext.ok_or(SynErr::Format)? {
-        "csv" | "txt" => match io::Curve::from_csv_reader(std::fs::File::open(file)?)? {
-            io::Curve::P(t) => Target::fb(check!(t), None, atlas.map(|a| a.as_fb())),
-            io::Curve::M(t) => Target::mfb(check!(@t), None),
-            io::Curve::S(t) => Target::sfb(check!(t), None, None),
-        },
-        "ron" => match ron::de::from_reader(std::fs::File::open(file)?)? {
-            io::Fb::P(fb) => Target::fb(check!(fb.curve(cfg.res)), Some(fb), None),
-            io::Fb::M(fb) => Target::mfb(check!(@fb.pose_zipped(cfg.res)), Some(fb)),
-            io::Fb::S(fb) => Target::sfb(check!(fb.curve(cfg.res)), Some(fb), None),
-        },
-        _ => {
-            println!("Ignored: {}", file.display());
-            Err(SynErr::Format)?
-        }
-    };
-    let mode = match Path::new(title).extension().and_then(|p| p.to_str()) {
-        Some("closed") => syn::Mode::Closed,
-        Some("partial") => syn::Mode::Partial,
-        Some("open") => syn::Mode::Open,
-        _ => Err(SynErr::Format)?,
-    };
-    let title = title.to_string();
-    let parent = file.parent().unwrap();
-    let root = if cfg.use_dd {
-        parent.join(title.clone() + ".dd")
-    } else {
-        parent.join(&title)
-    };
-    if root.is_dir() {
-        if rerun {
-            // Clear the root folder
-            // Avoid file browser missing opening folders
-            for e in std::fs::read_dir(&root)? {
-                let path = e?.path();
-                if path.is_dir() {
-                    std::fs::remove_dir_all(path)?;
-                } else {
-                    std::fs::remove_file(path)?;
-                }
-            }
-        } else if clean {
-            // Just remove root folder
-            std::fs::remove_dir_all(&root)?;
-        }
-    } else if !clean || rerun {
-        std::fs::create_dir(&root)?;
-    }
-    Ok((Info { root, title, mode }, target))
+    pub(crate) refer: Option<&'a Path>,
+    pub(crate) legend: Option<plot::LegendPos>,
+    pub(crate) rerun: bool,
 }
 
 pub(super) fn loader(syn: Syn) {
@@ -182,18 +115,21 @@ pub(super) fn loader(syn: Syn) {
         alg,
         rerun,
         clean,
+        legend,
     } = syn;
     println!("=====");
     if let Some(seed) = cfg.seed {
         print!("seed={seed} ");
     }
     println!("gen={} pop={} res={}", cfg.gen, cfg.pop, cfg.res);
-    // If atlas is provided, rerun is always enabled
+    // If rerun is disabled, the atlas will be ignored
     if !rerun {
         atlas = None;
     }
     println!("rerun={rerun} clean={clean} dd={}", cfg.use_dd);
     println!("-----");
+    // Reference folder path
+    let refer = (!no_ref).then_some(refer.as_path());
     // Load atlas
     let atlas = atlas
         .map(|atlas| std::env::split_paths(&atlas).collect::<Vec<_>>())
@@ -210,13 +146,91 @@ pub(super) fn loader(syn: Syn) {
                 .expect("Load atlas failed"),
         )
     };
+    let atlas_ref = atlas.as_ref();
     // Load target files & create project folders
     let tasks = files
         .into_iter()
+        .filter_map(|file| file.canonicalize().ok().filter(|f| f.is_file()))
         .filter_map(|file| {
-            let file = file.canonicalize().ok().filter(|f| f.is_file())?;
-            let title = file.file_stem()?.to_str()?;
-            match get_info(title, &file, &cfg, atlas.as_ref(), rerun, clean) {
+            let title = file.file_stem().and_then(|p| p.to_str())?;
+            // FIXME: Try block
+            let info_ret = (|| {
+                let ext = file.extension().and_then(|p| p.to_str());
+                macro_rules! check {
+                    ($c:expr) => {
+                        efd::util::valid_curve($c).ok_or(SynErr::Linkage)?.into()
+                    };
+                    (@ $c:expr) => {{
+                        let c = $c;
+                        if c.len() < 3
+                            || c.iter()
+                                .flat_map(|(c, v)| c.iter().chain(v))
+                                .any(|x| !x.is_finite())
+                        {
+                            return Err(SynErr::Linkage);
+                        } else {
+                            c.into()
+                        }
+                    }};
+                }
+                let target = match ext.ok_or(SynErr::Format)? {
+                    "csv" | "txt" => {
+                        match io::Curve::from_csv_reader(std::fs::File::open(&file)?)? {
+                            io::Curve::P(t) => {
+                                Target::fb(check!(t), None, atlas_ref.map(|a| a.as_fb()))
+                            }
+                            io::Curve::M(t) => Target::mfb(check!(@t), None),
+                            io::Curve::S(t) => {
+                                Target::sfb(check!(t), None, atlas_ref.map(|a| a.as_sfb()))
+                            }
+                        }
+                    }
+                    "ron" => match ron::de::from_reader(std::fs::File::open(&file)?)? {
+                        io::Fb::P(fb) => Target::fb(check!(fb.curve(cfg.res)), Some(fb), None),
+                        io::Fb::M(fb) => Target::mfb(check!(@fb.pose_zipped(cfg.res)), Some(fb)),
+                        io::Fb::S(fb) => Target::sfb(check!(fb.curve(cfg.res)), Some(fb), None),
+                    },
+                    _ => {
+                        println!("Ignored: {}", file.display());
+                        Err(SynErr::Format)?
+                    }
+                };
+                let mode = match Path::new(title).extension().and_then(|p| p.to_str()) {
+                    Some("closed") => syn::Mode::Closed,
+                    Some("partial") => syn::Mode::Partial,
+                    Some("open") => syn::Mode::Open,
+                    _ => Err(SynErr::Format)?,
+                };
+                let parent = file.parent().unwrap();
+                let root = if cfg.use_dd {
+                    parent.join(format!("{title}.dd"))
+                } else {
+                    parent.join(title)
+                };
+                if root.is_dir() {
+                    if rerun {
+                        // Clear the root folder
+                        // Avoid file browser missing opening folders
+                        for e in std::fs::read_dir(&root)? {
+                            let path = e?.path();
+                            if path.is_dir() {
+                                std::fs::remove_dir_all(path)?;
+                            } else {
+                                std::fs::remove_file(path)?;
+                            }
+                        }
+                    } else if clean {
+                        // Just remove root folder
+                        std::fs::remove_dir_all(&root)?;
+                    }
+                } else if !clean || rerun {
+                    std::fs::create_dir(&root)?;
+                }
+                let title = title.to_string();
+                let info = Info { root, title, mode, refer, legend, rerun };
+                Ok((info, target))
+            })();
+            match info_ret {
                 Ok(info) => Some(info),
                 Err(SynErr::Format) => None,
                 Err(e) => {
@@ -238,8 +252,7 @@ pub(super) fn loader(syn: Syn) {
     pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     // Tasks
     let alg = alg.unwrap_or_default();
-    let refer = (!no_ref).then_some(refer.as_path());
-    let run = |(info, target)| solver::run(&pb, alg.clone(), info, target, &cfg, refer, rerun);
+    let run = |(info, target)| solver::run(&pb, alg.clone(), info, target, &cfg);
     let t0 = std::time::Instant::now();
     if each {
         tasks.into_iter().for_each(run);
