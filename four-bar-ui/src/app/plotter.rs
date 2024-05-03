@@ -121,11 +121,20 @@ fn fig_line_ui<const N: usize>(
 ) -> bool {
     let keep = ui
         .horizontal(|ui| {
-            ui.text_edit_singleline(line.label.to_mut());
-            !ui.button("✖").clicked()
+            match &mut line.line {
+                fb_plot::LineType::Line(..) => _ = ui.label("[Line]"),
+                fb_plot::LineType::Pose { is_frame, .. } => {
+                    ui.label("[Pose]");
+                    ui.checkbox(is_frame, "Frame Style");
+                }
+            };
+            ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
+                !ui.button("✖").clicked()
+            })
+            .inner
         })
         .inner;
-    // TODO: Line type options
+    ui.text_edit_singleline(line.label.to_mut());
     ui.horizontal(|ui| {
         ui.label("Style");
         let id = Id::new("sty").with(i);
