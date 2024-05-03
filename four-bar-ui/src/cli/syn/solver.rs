@@ -13,6 +13,8 @@ const LNK_RON: &str = "linkage.ron";
 const LNK_SVG: &str = "linkage.svg";
 const LNK_FIG: &str = "linkage.fig.ron";
 const EFD_CSV: &str = "target-efd.csv";
+const EFD_CRUVE_CSV: &str = "target-curve-efd.csv";
+const EFD_POSE_CSV: &str = "target-pose-efd.csv";
 const CURVE_SVG: &str = "curve.svg";
 const CURVE_FIG: &str = "curve.fig.ron";
 const TARGET_COLOR: RGBColor = RED;
@@ -247,7 +249,8 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
         let mut log = std::fs::File::create(root.join(format!("{title}.log")))?;
         let mut log = super::logger::Logger::new(&mut log);
         log.top_title(title)?;
-        write_tar_efd(root.join(EFD_CSV), tar_efd.as_curve())?;
+        write_tar_efd(root.join(EFD_CRUVE_CSV), tar_efd.as_curve())?;
+        write_tar_efd(root.join(EFD_POSE_CSV), tar_efd.as_pose())?;
         write_ron(root.join(LNK_RON), &fb)?;
         let (curve, pose) = fb.pose(cfg.res);
         let mut fig = plot::mfb::Figure::new();
@@ -342,7 +345,7 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
         let s = s.solve();
         let t1 = t0.elapsed();
         let (cost, fb, func) = s.into_err_result_func();
-        let tar_efd = func.tar;
+        let tar_sig = func.tar;
         {
             let path = root.join(HISTORY_SVG);
             let svg = plot::SVGBackend::new(&path, (800, 600));
@@ -360,7 +363,7 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
         if let Some(legend) = info.legend {
             fig.legend = legend;
         }
-        let length = tar_efd.as_geo().scale();
+        let length = tar_sig.as_geo().scale();
         fig.push_pose(
             "Target",
             (&tar_curve, &tar_pose, length),
@@ -369,10 +372,21 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             false,
         );
         {
+            let efd = efd::PosedEfd::from_uvec(&curve, &pose);
+            let curve = efd.as_curve().recon_by(tar_sig.as_t()).into();
+            let pose = efd.as_pose().recon_by(tar_sig.as_t());
+            let pose = efd.as_geo().transform(pose).into();
+            fig.push_line_data(plot::LineData {
+                label: "DD Recon.".into(),
+                line: plot::LineType::Pose { curve, pose, is_frame: false },
+                style: Style::DashedLine,
+                color: SYN_COLOR.into(),
+            });
             write_ron(root.join(TAR_FIG), &fig)?;
             let path = root.join(TAR_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
+            fig.lines.pop();
         }
         fig.set_fb_ref(fb.as_fb());
         fig.push_pose(
