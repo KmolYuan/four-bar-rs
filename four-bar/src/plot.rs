@@ -606,8 +606,8 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     }
 
     /// Remove linkage.
-    pub fn remove_fb(self) -> Self {
-        Self { fb: None, ..self }
+    pub fn remove_fb(&mut self) {
+        self.fb = None;
     }
 
     /// Set the font family.

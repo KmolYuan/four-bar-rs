@@ -116,7 +116,7 @@ where
             log.log(&fb)?;
             fig.push_line("Ref. [?]", c, Style::DashedLine, REF_COLOR);
         }
-        fig.fb = None;
+        fig.remove_fb();
         write_ron(root.join(CURVE_FIG), &fig)?;
         let path = root.join(CURVE_SVG);
         let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -217,7 +217,7 @@ where
             log.log(&fb)?;
             fig.push_line("Ref. [?]", c, Style::DashedLine, REF_COLOR);
         }
-        fig.fb = None;
+        fig.remove_fb();
         write_ron(root.join(CURVE_FIG), &fig)?;
         let path = root.join(CURVE_SVG);
         let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -327,7 +327,7 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
                 true,
             );
         }
-        fig.fb = None;
+        fig.remove_fb();
         write_ron(root.join(CURVE_FIG), &fig)?;
         let path = root.join(CURVE_SVG);
         let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -433,7 +433,7 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
                 true,
             );
         }
-        fig.fb = None;
+        fig.remove_fb();
         write_ron(root.join(CURVE_FIG), &fig)?;
         let path = root.join(CURVE_SVG);
         let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -444,20 +444,16 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
 }
 
 pub(crate) fn run(pb: &ProgressBar, alg: SynAlg, info: Info, target: Target, cfg: &SynCfg) {
-    // FIXME: Try block
-    let f = || {
-        let root = &info.root;
-        if !info.rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {
-            pb.inc(cfg.gen);
-            from_exist(&info, &target)
-        } else {
-            from_runtime(pb, alg, &info, target, cfg)
-        }
+    let root = &info.root;
+    let ret = if !info.rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {
+        pb.inc(cfg.gen);
+        from_exist(&info, &target)
+    } else {
+        from_runtime(pb, alg, &info, target, cfg)
     };
-    let title = &info.title;
-    match f() {
-        Ok(()) => pb.println(format!("Finished: {title}")),
-        Err(e) => pb.println(format!("Error in {title}: {e}")),
+    match ret {
+        Ok(()) => pb.println(format!("Finished: {}", info.title)),
+        Err(e) => pb.println(format!("Error in {}: {e}", info.title)),
     }
 }
 
