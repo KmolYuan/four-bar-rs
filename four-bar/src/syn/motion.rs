@@ -16,7 +16,6 @@ where
         C1: efd::Curve<D>,
         C2: efd::Curve<D>,
     {
-        assert_ne!(mode, Mode::Closed, "Closed mode is not supported");
         let efd = efd::PosedEfd::from_series(curve1, curve2);
         Self::from_efd(efd, mode)
     }
@@ -28,7 +27,6 @@ where
         C: efd::Curve<D>,
         V: efd::Curve<D>,
     {
-        assert_ne!(mode, Mode::Closed, "Closed mode is not supported");
         let efd = efd::PosedEfd::from_uvec(curve, vectors);
         Self::from_efd(efd, mode)
     }
@@ -67,12 +65,6 @@ pub struct MOFit {
     pub pose: f64,
     pub center: f64,
     pub unit: f64,
-}
-
-impl MOFit {
-    pub fn into_eval(self) -> f64 {
-        mh::Fitness::eval(&self)
-    }
 }
 
 impl mh::Fitness for MOFit {

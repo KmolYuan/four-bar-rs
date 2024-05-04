@@ -1,10 +1,9 @@
-use std::iter::zip;
-
 use super::{impl_proj::Cache, *};
 use four_bar::{
     efd::na,
     mech::{AngleBound, Stat},
 };
+use std::iter::zip;
 
 const JOINT_COLOR: Color32 = Color32::from_rgb(93, 69, 56);
 const LINK_COLOR: Color32 = Color32::from_rgb(165, 151, 132);
@@ -102,28 +101,26 @@ fn state_curves_style(s: egui_plot::Line) -> egui_plot::Line {
         .style(egui_plot::LineStyle::dashed_dense())
 }
 
-impl Cache<2> {
-    fn plot2d(&self, ui: &mut egui_plot::PlotUi, is_main: bool) {
-        // Plot mechanism
-        if let Some(joints) = self.joints {
-            draw_link2d(ui, &[joints[0], joints[2]], is_main);
-            draw_link2d(ui, &[joints[1], joints[3]], is_main);
-            draw_link2d(ui, &joints[2..], is_main);
-            for (js, fixed) in [(&joints[2..], false), (&joints[..2], true)] {
-                for &[x, y] in js {
-                    draw_joint(ui, [x, y], fixed, |p| p);
-                }
+fn plot2d_basic(ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
+    // Plot mechanism
+    if let Some(joints) = cache.joints {
+        draw_link2d(ui, &[joints[0], joints[2]], is_main);
+        draw_link2d(ui, &[joints[1], joints[3]], is_main);
+        draw_link2d(ui, &joints[2..], is_main);
+        for (js, fixed) in [(&joints[2..], false), (&joints[..2], true)] {
+            for &[x, y] in js {
+                draw_joint(ui, [x, y], fixed, |p| p);
             }
         }
-        // Plot curves
-        for (i, name) in CURVE_NAME.iter().enumerate() {
-            let iter = self.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
-            let line = egui_plot::Line::new(iter)
-                .name(name)
-                .width(3.)
-                .color(pick_color(i));
-            ui.line(line);
-        }
+    }
+    // Plot curves
+    for (i, name) in CURVE_NAME.iter().enumerate() {
+        let iter = cache.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
+        let line = egui_plot::Line::new(iter)
+            .name(name)
+            .width(3.)
+            .color(pick_color(i));
+        ui.line(line);
     }
 }
 
@@ -133,7 +130,7 @@ pub(crate) trait ProjPlot<const D: usize> {
 
 impl ProjPlot<2> for FourBar {
     fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
-        cache.plot2d(ui, is_main);
+        plot2d_basic(ui, cache, is_main);
         for line in &cache.state_curves {
             ui.line(state_curves_style(egui_plot::Line::new(line.clone())));
         }
@@ -142,14 +139,14 @@ impl ProjPlot<2> for FourBar {
 
 impl ProjPlot<2> for MFourBar {
     fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
-        cache.plot2d(ui, is_main);
+        plot2d_basic(ui, cache, is_main);
         let bound = ui.plot_bounds();
         let scale = bound.width().min(bound.height()) / 2.;
-        let pose = zip(&cache.curves, &cache.state_curves[0])
-            .map(|([.., p], v)| std::array::from_fn(|i| p[i] + scale * v[i]))
-            .collect::<Vec<_>>();
-        for ([.., p], q) in zip(&cache.curves, &pose) {
-            ui.line(state_curves_style(egui_plot::Line::new(vec![*p, *q])));
+        let mut pose = Vec::with_capacity(cache.curves.len());
+        for ([.., p], v) in zip(&cache.curves, &cache.state_curves[0]) {
+            let q = std::array::from_fn(|i| p[i] + scale * v[i]);
+            ui.line(state_curves_style(egui_plot::Line::new(vec![*p, q])));
+            pose.push(q);
         }
         ui.line(state_curves_style(egui_plot::Line::new(pose)));
     }
