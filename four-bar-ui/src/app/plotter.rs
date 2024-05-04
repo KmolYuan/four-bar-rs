@@ -192,7 +192,7 @@ impl PlotType {
                 let get_curve = |fig: &mut Fig<_, 2>, c| match c {
                     io::Curve::P(c) => fig.push_line_default(NEW_CURVE, c),
                     io::Curve::M(c) => {
-                        let (c, v) = c.into_iter().unzip::<_, _, Vec<_>, Vec<_>>();
+                        let (c, v): (Vec<_>, Vec<_>) = c.into_iter().unzip();
                         fig.push_pose_default(NEW_CURVE, (c, v, 1.), false);
                     }
                     _ => (),

@@ -476,7 +476,7 @@ impl CacheAdaptor<2> for FourBar {
 impl CacheAdaptor<2> for MFourBar {
     fn cache_curve(&self, cache: &mut Cache<2>, _res: usize) {
         use mech::PoseGen as _;
-        cache.state_curves = vec![self.ext_curve_from_curves(self.unnorm.l2, &cache.curves)];
+        cache.state_curves = vec![cache.curves.iter().map(|p| self.uvec(p)).collect()];
     }
 }
 impl CacheAdaptor<3> for SFourBar {

@@ -1,3 +1,5 @@
+use std::iter::zip;
+
 use super::{impl_proj::Cache, *};
 use four_bar::{
     efd::na,
@@ -113,10 +115,6 @@ impl Cache<2> {
                 }
             }
         }
-        // Plot state curves
-        for line in &self.state_curves {
-            ui.line(state_curves_style(egui_plot::Line::new(line.clone())));
-        }
         // Plot curves
         for (i, name) in CURVE_NAME.iter().enumerate() {
             let iter = self.curves.iter().map(|c| c[i]).collect::<Vec<_>>();
@@ -136,19 +134,24 @@ pub(crate) trait ProjPlot<const D: usize> {
 impl ProjPlot<2> for FourBar {
     fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
         cache.plot2d(ui, is_main);
+        for line in &cache.state_curves {
+            ui.line(state_curves_style(egui_plot::Line::new(line.clone())));
+        }
     }
 }
 
 impl ProjPlot<2> for MFourBar {
     fn proj_plot(&self, ui: &mut egui_plot::PlotUi, cache: &Cache<2>, is_main: bool) {
         cache.plot2d(ui, is_main);
-        // Plot vectors
-        for (p, q) in std::iter::zip(
-            cache.curves.iter().map(|[.., p5]| p5),
-            &cache.state_curves[0],
-        ) {
+        let bound = ui.plot_bounds();
+        let scale = bound.width().min(bound.height()) / 2.;
+        let pose = zip(&cache.curves, &cache.state_curves[0])
+            .map(|([.., p], v)| std::array::from_fn(|i| p[i] + scale * v[i]))
+            .collect::<Vec<_>>();
+        for ([.., p], q) in zip(&cache.curves, &pose) {
             ui.line(state_curves_style(egui_plot::Line::new(vec![*p, *q])));
         }
+        ui.line(state_curves_style(egui_plot::Line::new(pose)));
     }
 }
 

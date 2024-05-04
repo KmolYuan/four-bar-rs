@@ -3,12 +3,15 @@ use crate::{io, syn_cmd, syn_cmd::Target};
 use eframe::egui::*;
 use four_bar::{atlas, csv, mh, syn};
 use serde::{Deserialize, Serialize};
-use std::sync::{
-    atomic::{
-        AtomicU32,
-        Ordering::{Relaxed, SeqCst},
+use std::{
+    iter::zip,
+    sync::{
+        atomic::{
+            AtomicU32,
+            Ordering::{Relaxed, SeqCst},
+        },
+        Arc, Mutex,
     },
-    Arc, Mutex,
 };
 
 #[inline]
@@ -206,8 +209,17 @@ impl Synthesis {
         });
         match &mut self.target {
             io::Curve::P(t) => table(ui, t),
-            // Safety: Cast `Vec<([f64; 2], [f64; 2])>` to `Vec<[f64; 4]>`
-            io::Curve::M(t) => table::<4>(ui, unsafe { std::mem::transmute(t) }),
+            io::Curve::M(t) => {
+                // Safety: Same memory layout of `([f64; 2], [f64; 2])` and `[f64; 4]`
+                table(ui, unsafe { &mut *(t as *mut _ as *mut Vec<[f64; 4]>) });
+                if ui.button("Normalize vectors").clicked() {
+                    for (_, v) in t {
+                        let norm = v[0].hypot(v[1]);
+                        v[0] /= norm;
+                        v[1] /= norm;
+                    }
+                }
+            }
             io::Curve::S(t) => table(ui, t),
         }
         ui.separator();
@@ -402,33 +414,51 @@ impl Synthesis {
     }
 
     pub(crate) fn plot(&mut self, ui: &mut egui_plot::PlotUi, lnk: &Linkages) {
-        if !self.target.is_empty() {
+        if self.from_plot_open && ui.response().clicked() {
+            // Add target curve from clicking canvas
+            self.on_click_canvas(ui, lnk);
+        }
+        if self.target.is_empty() {
+            return;
+        }
+        let bound = ui.plot_bounds();
+        let mut draw_curve = |target: Vec<_>| {
             const NAME: &str = "Synthesis target";
-            let target = match &self.target {
-                io::Curve::P(t) => t.clone(),
-                // TODO: Support drawing uvec here
-                io::Curve::M(t) => t.iter().map(|&([x, y], _)| [x, y]).collect(),
-                io::Curve::S(t) => t.iter().map(|&[x, y, _]| [x, y]).collect(),
-            };
             let line = egui_plot::Line::new(target.clone())
                 .name(NAME)
+                .color(Color32::BLUE)
                 .style(egui_plot::LineStyle::dashed_loose())
                 .width(3.);
             ui.line(line);
             let points = egui_plot::Points::new(target)
                 .name(NAME)
+                .color(Color32::BLUE)
                 .filled(false)
                 .radius(5.);
             ui.points(points);
+        };
+        match &self.target {
+            io::Curve::P(t) => draw_curve(t.clone()),
+            io::Curve::M(t) => {
+                let scale = bound.width().min(bound.height()) / 2.;
+                let (curve, pose): (Vec<_>, Vec<_>) = t
+                    .iter()
+                    .map(|(p, v)| (p, std::array::from_fn(|i| p[i] + scale * v[i])))
+                    .unzip();
+                for (p, v) in zip(&curve, &pose) {
+                    draw_curve(vec![*p, *v]);
+                }
+                draw_curve(curve);
+                draw_curve(pose);
+            }
+            io::Curve::S(t) => draw_curve(t.iter().map(|&[x, y, _]| [x, y]).collect()),
         }
-        if !self.from_plot_open || !ui.response().clicked() {
-            return;
-        }
-        // Add target curve from canvas
+    }
+
+    fn on_click_canvas(&mut self, ui: &mut egui_plot::PlotUi, lnk: &Linkages) {
         let p = ui.pointer_coordinate().unwrap();
         match &mut self.target {
             io::Curve::P(t) => t.push([p.x, p.y]),
-            // TODO: Support adding uvec here
             io::Curve::M(t) => t.push(([p.x, p.y], [0., 0.])),
             io::Curve::S(t) => {
                 // FIXME: Try block
@@ -461,7 +491,7 @@ impl Synthesis {
                 .unwrap()
                 .transform(atlas.data())
                 .unwrap();
-            std::iter::zip(atlas.open_iter(), reduced.rows())
+            zip(atlas.open_iter(), reduced.rows())
                 .map(|(is_open, pt)| AtlasVis { pt: [pt[0], pt[1]], is_open, is_sphere })
                 .collect()
         }

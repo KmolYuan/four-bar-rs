@@ -95,16 +95,22 @@ impl MFourBar {
     /// Convert to a four-bar linkage reference.
     pub const fn as_fb(&self) -> &FourBar {
         // Compile time checks memory layout compatibility.
-        #[allow(dead_code)]
-        const MFB: MFourBar = MFourBar::example();
-        #[allow(dead_code)]
-        const FB: &FourBar = MFB.as_fb();
-        const _: [(); (FB.unnorm.p1x != MFB.unnorm.p1x) as usize] = [];
-        const _: [(); (FB.unnorm.l2 != MFB.unnorm.l2) as usize] = [];
-        const _: [(); (FB.norm.l1 != MFB.norm.base.l1) as usize] = [];
-        const _: [(); (FB.norm.g != MFB.norm.base.g) as usize] = [];
+        const _: () = {
+            let mfb = MFourBar::example();
+            let fb = mfb.as_fb();
+            assert!(fb.unnorm.p1x == mfb.unnorm.p1x);
+            assert!(fb.unnorm.l2 == mfb.unnorm.l2);
+            assert!(fb.norm.l1 == mfb.norm.base.l1);
+            assert!(fb.norm.g == mfb.norm.base.g);
+        };
         // Safety: `MFourBar` and `FourBar` have the same memory layout.
         unsafe { &*(self as *const Self as *const FourBar) }
+    }
+
+    /// Convert to a mutable four-bar linkage reference.
+    pub fn as_fb_mut(&mut self) -> &mut FourBar {
+        // Safety: `MFourBar` and `FourBar` have the same memory layout.
+        unsafe { &mut *(self as *mut Self as *mut FourBar) }
     }
 
     /// An example crank rocker.
