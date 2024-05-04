@@ -26,3 +26,4 @@ let path = FourBar::example().curve(360);
 ## Citations
 The synthesis technique is based on the paper by us:
 + Chang, Y., Chang, JL., Lee, JJ. (2024). Atlas-Based Path Synthesis of Planar Four-Bar Linkages Using Elliptical Fourier Descriptors. In: Okada, M. (eds) Advances in Mechanism and Machine Science. IFToMM WC 2023. Mechanisms and Machine Science, vol 149. Springer, Cham. <https://doi.org/10.1007/978-3-031-45709-8_20>
++ Chang, Y., Chang, JL. & Lee, JJ. Path Synthesis of Planar Four-bar Linkages for Closed and Open Curves Using Elliptical Fourier Descriptors. J Mech Sci Technol (2024). <http://doi.org/10.1007/s12206-024-0436-y>
