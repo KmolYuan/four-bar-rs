@@ -1,7 +1,10 @@
 use super::widgets::*;
 use crate::io;
 use eframe::egui::*;
-use four_bar::{mech, plot as fb_plot};
+use four_bar::{
+    mech,
+    plot::{self, IntoDrawingArea as _},
+};
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
@@ -17,7 +20,7 @@ use std::{
 
 const GIF_RES: usize = 60;
 const NEW_CURVE: &str = "New Curve";
-type Fig<M, const D: usize> = fb_plot::FigureBase<'static, 'static, M, [f64; D]>;
+type Fig<M, const D: usize> = plot::FigureBase<'static, 'static, M, [f64; D]>;
 
 fn fig_ui<M, const D: usize>(
     ui: &mut Ui,
@@ -107,23 +110,19 @@ fn fig_ui<M, const D: usize>(
         ui.checkbox(&mut fig.grid, "Show grid");
         ui.checkbox(&mut fig.axis, "Show axis");
         ui.horizontal(|ui| {
-            use fb_plot::LegendPos;
+            use plot::LegendPos;
             ui.label("Legend");
             combo_enum(ui, "legend", &mut fig.legend, LegendPos::LIST, |e| e.name());
         });
     });
 }
 
-fn fig_line_ui<const N: usize>(
-    ui: &mut Ui,
-    i: usize,
-    line: &mut fb_plot::LineData<[f64; N]>,
-) -> bool {
+fn fig_line_ui<const N: usize>(ui: &mut Ui, i: usize, line: &mut plot::LineData<[f64; N]>) -> bool {
     let keep = ui
         .horizontal(|ui| {
             match &mut line.line {
-                fb_plot::LineType::Line(..) => _ = ui.label("[Line]"),
-                fb_plot::LineType::Pose { is_frame, .. } => {
+                plot::LineType::Line(..) => _ = ui.label("[Line]"),
+                plot::LineType::Pose { is_frame, .. } => {
                     ui.label("[Pose]");
                     ui.checkbox(is_frame, "Frame Style");
                 }
@@ -138,7 +137,7 @@ fn fig_line_ui<const N: usize>(
     ui.horizontal(|ui| {
         ui.label("Style");
         let id = Id::new("sty").with(i);
-        combo_enum(ui, id, &mut line.style, fb_plot::Style::LIST, |e| e.name());
+        combo_enum(ui, id, &mut line.style, plot::Style::LIST, |e| e.name());
     });
     ui.horizontal(|ui| {
         let color = &mut line.color.color;
@@ -157,8 +156,8 @@ fn fig_line_ui<const N: usize>(
 
 #[derive(Deserialize, Serialize, Clone)]
 enum PlotType {
-    P(Arc<Mutex<fb_plot::fb::Figure<'static, 'static>>>),
-    S(Arc<Mutex<fb_plot::sfb::Figure<'static, 'static>>>),
+    P(Arc<Mutex<plot::fb::Figure<'static, 'static>>>),
+    S(Arc<Mutex<plot::sfb::Figure<'static, 'static>>>),
 }
 
 impl PlotType {
@@ -166,7 +165,7 @@ impl PlotType {
         Self::new_p_and_get().0
     }
 
-    fn new_p_and_get() -> (Self, Arc<Mutex<fb_plot::fb::Figure<'static, 'static>>>) {
+    fn new_p_and_get() -> (Self, Arc<Mutex<plot::fb::Figure<'static, 'static>>>) {
         let fig = Arc::new(Mutex::new(Default::default()));
         (Self::P(fig.clone()), fig)
     }
@@ -175,7 +174,7 @@ impl PlotType {
         Self::S(Default::default())
     }
 
-    fn new_s_and_get() -> (Self, Arc<Mutex<fb_plot::sfb::Figure<'static, 'static>>>) {
+    fn new_s_and_get() -> (Self, Arc<Mutex<plot::sfb::Figure<'static, 'static>>>) {
         let fig = Arc::new(Mutex::new(Default::default()));
         (Self::S(fig.clone()), fig)
     }
@@ -376,13 +375,12 @@ impl Plotter {
     }
 
     fn save_plot(&mut self) {
-        use four_bar::plot::IntoDrawingArea as _;
         let mut buf = String::new();
         let size = (
             self.size * self.shape.1 as u32,
             self.size * self.shape.0 as u32,
         );
-        let b = fb_plot::SVGBackend::with_string(&mut buf, size);
+        let b = plot::SVGBackend::with_string(&mut buf, size);
         for (root, p_opt) in zip(b.into_drawing_area().split_evenly(self.shape), &self.queue) {
             match &p_opt {
                 None => (),
@@ -394,7 +392,6 @@ impl Plotter {
     }
 
     fn save_plot_gif(&mut self) {
-        use four_bar::plot::IntoDrawingArea as _;
         use image::{codecs::gif, DynamicImage, Frame, RgbImage};
         let pg = Arc::new(AtomicUsize::new(0));
         self.gif_pg = Some(pg.clone());
@@ -411,7 +408,7 @@ impl Plotter {
                     return;
                 }
                 let mut frame = vec![0; size.0 as usize * size.1 as usize * 3];
-                let b = fb_plot::BitMapBackend::with_buffer(&mut frame, size);
+                let b = plot::BitMapBackend::with_buffer(&mut frame, size);
                 for (root, p_opt) in zip(b.into_drawing_area().split_evenly(shape), &fig_queue) {
                     match &p_opt {
                         None => (),
