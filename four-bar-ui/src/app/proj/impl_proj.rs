@@ -6,11 +6,9 @@ macro_rules! hotkey {
     ($ui:ident, $mod1:ident + $key:ident) => {
         hotkey!(@$ui, Modifiers::$mod1, Key::$key)
     };
-
     ($ui:ident, $mod1:ident + $mod2:ident + $key:ident) => {
         hotkey!(@$ui, Modifiers::$mod1 | Modifiers::$mod2, Key::$key)
     };
-
     (@$ui:ident, $arg1:expr, $arg2:expr) => {
         $ui.ctx().input_mut(|s| s.consume_key($arg1, $arg2))
     };
