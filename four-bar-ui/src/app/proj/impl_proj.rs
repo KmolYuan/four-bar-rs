@@ -2,19 +2,6 @@ use super::*;
 use four_bar::*;
 use std::{borrow::Cow, path::Path};
 
-macro_rules! hotkey {
-    ($ui:ident, $mod1:ident + $key:ident) => {
-        hotkey!(@$ui, Modifiers::$mod1, Key::$key)
-    };
-    ($ui:ident, $mod1:ident + $mod2:ident + $key:ident) => {
-        hotkey!(@$ui, Modifiers::$mod1 | Modifiers::$mod2, Key::$key)
-    };
-    (@$ui:ident, $arg1:expr, $arg2:expr) => {
-        $ui.ctx().input_mut(|s| s.consume_key($arg1, $arg2))
-    };
-}
-pub(crate) use hotkey;
-
 #[allow(private_interfaces)]
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "type")]
@@ -372,9 +359,10 @@ where
 
     fn ui(&mut self, ui: &mut Ui) {
         ui.heading("Curve");
-        self.cache.changed |= nonzero_i(ui, "Resolution: ", &mut self.res, 1)
-            .on_hover_text("Resolution of rendering and data export")
-            .changed();
+        ui.horizontal(|ui| {
+            self.cache.changed |= nonzero_i(ui, "Resolution: ", &mut self.res, 1).changed();
+            hint(ui, "Resolution of rendering and data export");
+        });
         ui.horizontal(|ui| {
             ui.label("Coupler Motion: ");
             if small_btn(ui, "💾", "Save") {
@@ -401,15 +389,12 @@ where
         ui.separator();
         ui.horizontal(|ui| {
             ui.heading("Offset");
-            if ui
-                .button("Normalize")
-                .on_hover_text("Remove offset, then scale by the driver link")
-                .clicked()
-            {
+            if ui.button("Normalize").clicked() {
                 M::normalize_inplace(&mut self.fb);
                 self.cache.changed = true;
                 self.unsaved = true;
             }
+            hint(ui, "Remove offset, rotation and scaling");
         });
         let mut res = fb_ui::ProjUi::proj_ui(&mut self.fb, ui);
         self.unsaved |= res.changed();

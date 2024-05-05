@@ -22,6 +22,11 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
     }
 }
 
+pub(crate) fn hint(ui: &mut Ui, tip: &str) -> Response {
+    ui.add(Label::new(RichText::new("(?)").underline()).selectable(false))
+        .on_hover_text(tip)
+}
+
 pub(crate) fn counter(
     ui: &mut Ui,
     val: &mut usize,

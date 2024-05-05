@@ -10,11 +10,28 @@ mod proj;
 mod syn;
 mod widgets;
 
+const REPO_URL: &str = env!("CARGO_PKG_REPOSITORY");
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
-const FONT: &[(&str, &[u8])] = &[
+const FONT: [(&str, &[u8]); 2] = [
     ("Noto", include_bytes!("../assets/GoNotoCurrent.ttf")),
     ("emoji", include_bytes!("../assets/emoji-icon-font.ttf")),
 ];
+
+macro_rules! hotkey {
+    ($ui:ident, $key:ident) => {
+        hotkey!($ui, NONE + $key)
+    };
+    ($ui:ident, $mod1:ident + $key:ident) => {
+        hotkey!(@$ui, Modifiers::$mod1, Key::$key)
+    };
+    ($ui:ident, $mod1:ident + $mod2:ident + $key:ident) => {
+        hotkey!(@$ui, Modifiers::$mod1 | Modifiers::$mod2, Key::$key)
+    };
+    (@$ui:ident, $arg1:expr, $arg2:expr) => {
+        $ui.ctx().input_mut(|s| s.consume_key($arg1, $arg2))
+    };
+}
+pub(crate) use hotkey;
 
 fn side_panel(ctx: &Context, f: impl FnOnce(&mut Ui)) {
     SidePanel::left("side").show(ctx, |ui| ScrollArea::vertical().show(ui, f));
@@ -57,7 +74,7 @@ impl App {
     fn new_boxed(ctx: &eframe::CreationContext, files: Vec<PathBuf>) -> Box<Self> {
         let mut font_data = BTreeMap::new();
         let mut families = Vec::with_capacity(FONT.len());
-        for &(name, font) in FONT {
+        for (name, font) in FONT {
             font_data.insert(name.to_string(), FontData::from_static(font));
             families.push(name.to_string());
         }
@@ -67,19 +84,19 @@ impl App {
         ]);
         ctx.egui_ctx
             .set_fonts(FontDefinitions { font_data, families });
-        let mut style = (*ctx.egui_ctx.style()).clone();
-        style.override_text_style = Some(TextStyle::Body);
-        for (text_style, size) in [
-            (TextStyle::Button, 14.),
-            (TextStyle::Small, 14.),
-            (TextStyle::Body, 18.),
-            (TextStyle::Monospace, 18.),
-            (TextStyle::Heading, 24.),
-        ] {
-            let id = FontId::proportional(size);
-            style.text_styles.insert(text_style, id);
-        }
-        ctx.egui_ctx.set_style(style);
+        ctx.egui_ctx.style_mut(|style| {
+            style.override_text_style = Some(TextStyle::Body);
+            const STYLE: [(TextStyle, FontId); 5] = [
+                (TextStyle::Button, FontId::proportional(14.)),
+                (TextStyle::Small, FontId::proportional(14.)),
+                (TextStyle::Body, FontId::proportional(18.)),
+                (TextStyle::Monospace, FontId::proportional(18.)),
+                (TextStyle::Heading, FontId::proportional(24.)),
+            ];
+            for (text_style, id) in STYLE {
+                style.text_styles.insert(text_style, id);
+            }
+        });
         let mut app = ctx
             .storage
             .and_then(|s| eframe::get_value::<Self>(s, eframe::APP_KEY))
@@ -109,10 +126,9 @@ impl App {
             .show(ctx, |ui| {
                 ui.label(concat!["Version: v", env!("CARGO_PKG_VERSION")]);
                 ui.label(env!("CARGO_PKG_DESCRIPTION"));
-                ui.horizontal(|ui| {
-                    url_btn(ui, "", "Repository", env!("CARGO_PKG_REPOSITORY"));
-                    url_btn(ui, "⮋", "Release", RELEASE_URL);
-                });
+                if ui.button("📥 Download Desktop Version").clicked() {
+                    ui.ctx().open_url(OpenUrl::new_tab(RELEASE_URL));
+                }
                 ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui/");
                 ui.separator();
                 ui.heading("Author");
@@ -153,9 +169,10 @@ impl App {
             }
         }
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
-            if small_btn(ui, "❓", "Welcome") {
+            if small_btn(ui, "❓", "Welcome") || hotkey!(ui, F1) {
                 self.welcome_off = !self.welcome_off;
             }
+            url_btn(ui, "", "Repository", REPO_URL);
         });
     }
 

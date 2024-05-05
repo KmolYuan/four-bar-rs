@@ -200,18 +200,17 @@ impl PlotType {
             }
             PlotType::S(fig) => {
                 ui.heading("Spherical Plot");
-                if let Some(fb) = &mut fig.lock().unwrap().fb {
-                    if ui
-                        .button("⚾ Take Sphere")
-                        .on_hover_text("Draw the sphere without the linkage")
-                        .clicked()
-                    {
-                        match fb {
-                            Cow::Borrowed(src) => *fb = Cow::Owned(src.clone().take_sphere()),
-                            Cow::Owned(fb) => fb.take_sphere_inplace(),
+                ui.horizontal(|ui| {
+                    if let Some(fb) = &mut fig.lock().unwrap().fb {
+                        if ui.button("⚾ Take Sphere").clicked() {
+                            match fb {
+                                Cow::Borrowed(src) => *fb = Cow::Owned(src.clone().take_sphere()),
+                                Cow::Owned(fb) => fb.take_sphere_inplace(),
+                            }
                         }
+                        hint(ui, "Take the sphere without the linkage");
                     }
-                }
+                });
                 let get_fb = |fb| match fb {
                     io::Fb::S(fb) => Some(fb),
                     _ => None,

@@ -1,7 +1,6 @@
 use self::impl_proj::*;
-use super::widgets::*;
+use super::{widgets::*, *};
 use crate::io;
-use eframe::egui::*;
 use four_bar::{FourBar, MFourBar, SFourBar};
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};

@@ -105,13 +105,15 @@ impl Synthesis {
             nonzero_i(ui, "Generation: ", &mut self.cfg.gen, 1);
             nonzero_i(ui, "Population: ", &mut self.cfg.pop, 1);
             nonzero_i(ui, "Resolution: ", &mut self.cfg.res, 1);
-            ui.checkbox(&mut self.cfg.use_dd, "Use distance discrepancy");
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut self.cfg.use_dd, "Use distance discrepancy");
+                hint(ui, "When the point number is small, the distance discrepancy may help to find the better solution.");
+            });
         });
         ui.collapsing("Atlas Database", |ui| self.atlas_setting(ui));
         ui.separator();
         ui.heading("Target Curve");
         ui.horizontal(|ui| {
-            ui.label("Type: ");
             ui.group(|ui| {
                 if ui
                     .selectable_label(matches!(self.target, io::Curve::P(..)), "Planar")
@@ -149,8 +151,10 @@ impl Synthesis {
             Cache::Empty => (),
         }
         ui.checkbox(&mut self.cfg.on_unit, "Constrain on unit");
-        toggle_btn(ui, &mut self.from_plot_open, "🖊 Append from canvas")
-            .on_hover_text("Click canvas to add target point drictly!");
+        ui.horizontal(|ui| {
+            toggle_btn(ui, &mut self.from_plot_open, "🖊 Append Mode");
+            hint(ui, "Add points by clicking the canvas");
+        });
         ui.horizontal(|ui| {
             if ui.button("🖴 Load from").clicked() {
                 if let Some(target) = lnk.projs.current_curve() {
