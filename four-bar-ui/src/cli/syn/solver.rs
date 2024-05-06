@@ -271,7 +271,7 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             false,
         );
         {
-            let t = efd::MotionSig::new(&tar_curve, &tar_pose).t;
+            let t = efd::get_norm_t(&tar_curve, true);
             let curve = tar_efd.as_curve().recon_by(&t).into();
             let pose = tar_efd.as_pose().recon_by(&t);
             let pose = tar_efd.as_geo().transform(pose).into();
