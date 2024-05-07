@@ -1,4 +1,4 @@
-use super::widgets::*;
+use super::{widgets::*, GIF_RES};
 use crate::io;
 use eframe::egui::*;
 use four_bar::{
@@ -18,7 +18,6 @@ use std::{
     },
 };
 
-const GIF_RES: usize = 60;
 const NEW_CURVE: &str = "New Curve";
 type Fig<M, const D: usize> = plot::FigureBase<'static, 'static, M, [f64; D]>;
 

@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::GIF_RES;
 use four_bar::plot::Style;
 use plot::{full_palette::*, RGBColor};
 use std::{
@@ -12,6 +13,7 @@ const TAR_FIG: &str = "target.fig.ron";
 const LNK_RON: &str = "linkage.ron";
 const LNK_SVG: &str = "linkage.svg";
 const LNK_FIG: &str = "linkage.fig.ron";
+const LNK_GIF: &str = "linkage.gif";
 const EFD_CSV: &str = "target-efd.csv";
 const EFD_CRUVE_CSV: &str = "target-curve-efd.csv";
 const EFD_POSE_CSV: &str = "target-pose-efd.csv";
@@ -21,6 +23,39 @@ const TARGET_COLOR: RGBColor = RED;
 const SYN_COLOR: RGBColor = BLUE_900;
 const ATLAS_COLOR: RGBColor = GREEN_900;
 const REF_COLOR: RGBColor = ORANGE_900;
+
+macro_rules! gif_video {
+    ($root:ident, $fig:ident) => {
+        let legend = $fig.legend;
+        $fig.legend = plot::LegendPos::Hide;
+        gif_video($root, &$fig)?;
+        $fig.legend = legend;
+    };
+}
+
+fn gif_video<M, const D: usize>(
+    root: &Path,
+    fig: &plot::FigureBase<M, [f64; D]>,
+) -> Result<(), SynErr>
+where
+    M: Clone + mech::CurveGen<D>,
+    for<'a, 'b> plot::FigureBase<'a, 'b, M, [f64; D]>: plot::Plot,
+{
+    use image::{codecs::gif, DynamicImage, Frame, RgbImage};
+    let mut buf = std::fs::File::create(root.join(LNK_GIF))?;
+    let mut w = gif::GifEncoder::new_with_speed(&mut buf, 30);
+    w.set_repeat(gif::Repeat::Infinite)?;
+    for curr in 0..GIF_RES {
+        const SIZE: usize = 1600 * 1600 * 3;
+        let mut frame = vec![0; SIZE];
+        let b = plot::BitMapBackend::with_buffer(&mut frame, (1600, 1600));
+        fig.plot_video(b, curr, GIF_RES)
+            .map_err(|e| format!("{e}"))?;
+        let image = RgbImage::from_vec(1600, 1600, frame).unwrap();
+        w.encode_frame(Frame::new(DynamicImage::from(image).into_rgba8()))?;
+    }
+    Ok(())
+}
 
 impl<M, const N: usize, const D: usize> PSynData<'_, M::De, syn::PathSyn<M, N, D>, D>
 where
@@ -86,6 +121,9 @@ where
             let path = root.join(LNK_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
+        }
+        if info.video {
+            gif_video!(root, fig);
         }
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;
@@ -187,6 +225,9 @@ where
             let path = root.join(LNK_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
+        }
+        if info.video {
+            gif_video!(root, fig);
         }
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;
@@ -301,6 +342,9 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
+        if info.video {
+            gif_video!(root, fig);
+        }
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;
             log.log(fb)?;
@@ -406,6 +450,9 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             let path = root.join(LNK_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
+        }
+        if info.video {
+            gif_video!(root, fig);
         }
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;

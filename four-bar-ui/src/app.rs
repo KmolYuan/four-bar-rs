@@ -10,6 +10,7 @@ mod proj;
 mod syn;
 mod widgets;
 
+pub(crate) const GIF_RES: usize = 60;
 const REPO_URL: &str = env!("CARGO_PKG_REPOSITORY");
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
 const FONT: [(&str, &[u8]); 2] = [

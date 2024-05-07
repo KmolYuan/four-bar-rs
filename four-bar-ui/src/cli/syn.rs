@@ -19,6 +19,7 @@ pub(crate) enum SynErr {
     Format,
     Io(std::io::Error),
     Plot(plot::DrawingAreaErrorKind<std::io::Error>),
+    Gif(image::ImageError),
     CsvSer(csv::Error),
     RonSerde(ron::error::SpannedError),
     RonIo(ron::error::Error),
@@ -31,6 +32,7 @@ impl std::fmt::Display for SynErr {
             Self::Format => write!(f, "unsupported format"),
             Self::Io(e) => write!(f, "[IO] {e}"),
             Self::Plot(e) => write!(f, "[Plot] {e}"),
+            Self::Gif(e) => write!(f, "[GIF] {e}"),
             Self::CsvSer(e) => write!(f, "[CSV] {e}"),
             Self::RonSerde(e) => write!(f, "[RON-Serde] {e}"),
             Self::RonIo(e) => write!(f, "[RON-IO] {e}"),
@@ -38,16 +40,20 @@ impl std::fmt::Display for SynErr {
         }
     }
 }
-
 impl std::error::Error for SynErr {}
-
 impl_err_from!(
     (std::io::Error, Io),
     (plot::DrawingAreaErrorKind<std::io::Error>, Plot),
+    (image::ImageError, Gif),
     (csv::Error, CsvSer),
     (ron::error::SpannedError, RonSerde),
     (ron::error::Error, RonIo),
 );
+impl From<String> for SynErr {
+    fn from(e: String) -> Self {
+        Self::Io(std::io::Error::other(e))
+    }
+}
 
 #[derive(clap::Args)]
 #[clap(subcommand_precedence_over_arg = true)]
@@ -65,6 +71,9 @@ pub(super) struct Syn {
     /// This flag won't run the synthesis functions
     #[clap(long, alias = "clear")]
     clean: bool,
+    /// Save GIF video of the result linkage
+    #[clap(long)]
+    video: bool,
     /// Disable parallel for running all tasks, use a single loop for
     /// benchmarking
     #[clap(long)]
@@ -100,6 +109,7 @@ pub(crate) struct Info<'a> {
     pub(crate) refer: Option<&'a Path>,
     pub(crate) legend: Option<plot::LegendPos>,
     pub(crate) rerun: bool,
+    pub(crate) video: bool,
 }
 
 pub(super) fn loader(syn: Syn) {
@@ -113,6 +123,7 @@ pub(super) fn loader(syn: Syn) {
         alg,
         rerun,
         clean,
+        video,
         legend,
     } = syn;
     println!("=====");
@@ -225,7 +236,7 @@ pub(super) fn loader(syn: Syn) {
                     std::fs::create_dir(&root)?;
                 }
                 let title = title.to_string();
-                let info = Info { root, title, mode, refer, legend, rerun };
+                let info = Info { root, title, mode, refer, legend, rerun, video };
                 Ok((info, target))
             })();
             match info_ret {
