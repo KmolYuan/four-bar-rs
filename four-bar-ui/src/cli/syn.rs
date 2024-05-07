@@ -72,6 +72,9 @@ pub(super) struct Syn {
     #[clap(long, alias = "clear")]
     clean: bool,
     /// Save GIF video of the result linkage
+    ///
+    /// This function compresses and optimizes the GIF file, which may take a
+    /// long time
     #[clap(long)]
     video: bool,
     /// Disable parallel for running all tasks, use a single loop for
@@ -103,6 +106,7 @@ pub(super) struct Syn {
 }
 
 pub(crate) struct Info<'a> {
+    pub(crate) pb: ProgressBar,
     pub(crate) root: PathBuf,
     pub(crate) title: String,
     pub(crate) mode: syn::Mode,
@@ -156,6 +160,10 @@ pub(super) fn loader(syn: Syn) {
         )
     };
     let atlas_ref = atlas.as_ref();
+    // Progress bar
+    const STYLE: &str = "{eta} {wide_bar} {percent}%";
+    let pb = ProgressBar::new(0);
+    pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     // Load target files & create project folders
     let tasks = files
         .into_iter()
@@ -236,7 +244,8 @@ pub(super) fn loader(syn: Syn) {
                     std::fs::create_dir(&root)?;
                 }
                 let title = title.to_string();
-                let info = Info { root, title, mode, refer, legend, rerun, video };
+                let pb = pb.clone();
+                let info = Info { root, title, mode, refer, legend, rerun, video, pb };
                 Ok((info, target))
             })();
             match info_ret {
@@ -255,13 +264,9 @@ pub(super) fn loader(syn: Syn) {
     if clean && !rerun {
         return;
     }
-    // Progress bar
-    const STYLE: &str = "{eta} {wide_bar} {percent}%";
-    let pb = ProgressBar::new(tasks.len() as u64 * cfg.gen);
-    pb.set_style(ProgressStyle::with_template(STYLE).unwrap());
     // Tasks
     let alg = alg.unwrap_or_default();
-    let run = |(info, target)| solver::run(&pb, alg.clone(), info, target, &cfg);
+    let run = |(info, target)| solver::run(alg.clone(), info, target, &cfg);
     let t0 = std::time::Instant::now();
     if each {
         tasks.into_iter().for_each(run);

@@ -18,7 +18,7 @@ path = "src/main.rs"
 # Turn off the default "native" in WASM
 # Turn on "native-win-release" to hide the console in Windows
 default = ["native"]
-native = ["four-bar/clap", "four-bar/rayon"]
+native = ["four-bar/clap", "four-bar/rayon", "image/rayon"]
 native-win-release = ["winapi", "native"]
 
 [dependencies]

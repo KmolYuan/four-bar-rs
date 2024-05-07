@@ -25,35 +25,43 @@ const ATLAS_COLOR: RGBColor = GREEN_900;
 const REF_COLOR: RGBColor = ORANGE_900;
 
 macro_rules! gif_video {
-    ($root:ident, $fig:ident) => {
-        let legend = $fig.legend;
-        $fig.legend = plot::LegendPos::Hide;
-        gif_video($root, &$fig)?;
-        $fig.legend = legend;
+    ($info:ident, $root:ident, $fig:ident) => {
+        if $info.video {
+            let legend = $fig.legend;
+            $fig.legend = plot::LegendPos::Hide;
+            gif_video($root, &$fig, &$info.pb)?;
+            $fig.legend = legend;
+        }
     };
 }
 
 fn gif_video<M, const D: usize>(
     root: &Path,
     fig: &plot::FigureBase<M, [f64; D]>,
+    pb: &ProgressBar,
 ) -> Result<(), SynErr>
 where
     M: Clone + mech::CurveGen<D>,
     for<'a, 'b> plot::FigureBase<'a, 'b, M, [f64; D]>: plot::Plot,
 {
     use image::{codecs::gif, DynamicImage, Frame, RgbImage};
-    let mut buf = std::fs::File::create(root.join(LNK_GIF))?;
+    let mut buf = Vec::new();
     let mut w = gif::GifEncoder::new_with_speed(&mut buf, 30);
     w.set_repeat(gif::Repeat::Infinite)?;
+    pb.inc_length(GIF_RES as u64);
     for curr in 0..GIF_RES {
-        const SIZE: usize = 1600 * 1600 * 3;
-        let mut frame = vec![0; SIZE];
-        let b = plot::BitMapBackend::with_buffer(&mut frame, (1600, 1600));
+        const SIZE: u32 = 1600;
+        const BUF_SIZE: usize = (SIZE * SIZE) as usize * 3;
+        let mut frame = vec![0; BUF_SIZE];
+        let b = plot::BitMapBackend::with_buffer(&mut frame, (SIZE, SIZE));
         fig.plot_video(b, curr, GIF_RES)
             .map_err(|e| format!("{e}"))?;
-        let image = RgbImage::from_vec(1600, 1600, frame).unwrap();
+        let image = RgbImage::from_vec(SIZE, SIZE, frame).unwrap_or_else(|| unreachable!());
         w.encode_frame(Frame::new(DynamicImage::from(image).into_rgba8()))?;
+        pb.inc(1);
     }
+    drop(w);
+    std::fs::write(root.join(LNK_GIF), buf)?;
     Ok(())
 }
 
@@ -122,9 +130,7 @@ where
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        if info.video {
-            gif_video!(root, fig);
-        }
+        gif_video!(info, root, fig);
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;
             log.log(fb)?;
@@ -226,9 +232,7 @@ where
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        if info.video {
-            gif_video!(root, fig);
-        }
+        gif_video!(info, root, fig);
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;
             log.log(fb)?;
@@ -342,9 +346,7 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        if info.video {
-            gif_video!(root, fig);
-        }
+        gif_video!(info, root, fig);
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;
             log.log(fb)?;
@@ -451,9 +453,7 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
             fig.plot(svg)?;
         }
-        if info.video {
-            gif_video!(root, fig);
-        }
+        gif_video!(info, root, fig);
         if let Some(fb) = tar_fb {
             log.title("target.fb")?;
             log.log(fb)?;
@@ -490,29 +490,24 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
     }
 }
 
-pub(crate) fn run(pb: &ProgressBar, alg: SynAlg, info: Info, target: Target, cfg: &SynCfg) {
+pub(crate) fn run(alg: SynAlg, info: Info, target: Target, cfg: &SynCfg) {
     let root = &info.root;
     let ret = if !info.rerun && root.join(LNK_FIG).is_file() && root.join(CURVE_FIG).is_file() {
-        pb.inc(cfg.gen);
-        from_exist(&info, &target)
+        from_exist(&target, &info)
     } else {
-        from_runtime(pb, alg, &info, target, cfg)
+        info.pb.inc_length(cfg.gen);
+        from_runtime(alg, target, cfg, &info)
     };
     match ret {
-        Ok(()) => pb.println(format!("Finished: {}", info.title)),
-        Err(e) => pb.println(format!("Error in {}: {e}", info.title)),
+        Ok(()) => info.pb.println(format!("Finished: {}", info.title)),
+        Err(e) => info.pb.println(format!("Error in {}: {e}", info.title)),
     }
 }
 
-fn from_runtime(
-    pb: &ProgressBar,
-    alg: SynAlg,
-    info: &Info,
-    target: Target,
-    cfg: &SynCfg,
-) -> Result<(), SynErr> {
+fn from_runtime(alg: SynAlg, target: Target, cfg: &SynCfg, info: &Info) -> Result<(), SynErr> {
     let history = Arc::new(Mutex::new(Vec::with_capacity(cfg.gen as usize)));
     let s = {
+        let pb = info.pb.clone();
         let history = history.clone();
         let cfg = SynCfg { mode: info.mode, ..cfg.clone() };
         let stop = || false;
@@ -531,29 +526,34 @@ fn from_runtime(
     }
 }
 
-fn from_exist(info: &Info, target: &Target) -> Result<(), SynErr> {
+fn from_exist(target: &Target, info: &Info) -> Result<(), SynErr> {
+    const PATH_LIST: [(&str, &str); 3] = [
+        (TAR_FIG, TAR_SVG),
+        (LNK_FIG, LNK_SVG),
+        (CURVE_FIG, CURVE_SVG),
+    ];
     let root = &info.root;
     macro_rules! plot {
-        ($ty:ty) => {
-            for (path, svg_path) in [
-                (root.join(TAR_FIG), root.join(TAR_SVG)),
-                (root.join(LNK_FIG), root.join(LNK_SVG)),
-                (root.join(CURVE_FIG), root.join(CURVE_SVG)),
-            ] {
-                let mut fig = ron::de::from_reader::<_, $ty>(std::fs::File::open(path)?)?;
+        ($ty:ty) => {{
+            for (path, svg_path) in PATH_LIST {
+                let mut fig =
+                    ron::de::from_reader::<_, $ty>(std::fs::File::open(root.join(path))?)?;
                 if let Some(legend) = info.legend {
                     fig.legend = legend;
                 }
-                fig.plot(plot::SVGBackend::new(&svg_path, (1600, 1600)))?;
+                fig.plot(plot::SVGBackend::new(&root.join(svg_path), (1600, 1600)))?;
+                if path == LNK_FIG {
+                    gif_video!(info, root, fig);
+                }
             }
-        };
+            Ok(())
+        }};
     }
     match target {
         // HINT: `fb::Figure` and `mfb::Figure` are the same type
         Target::Fb { .. } | Target::MFb { .. } => plot!(plot::fb::Figure),
         Target::SFb { .. } => plot!(plot::sfb::Figure),
     }
-    Ok(())
 }
 
 #[derive(serde::Serialize)]
