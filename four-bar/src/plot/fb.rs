@@ -161,12 +161,16 @@ impl Plot for Figure<'_, '_> {
             .or_else(|| self.get_joints_auto(Into::into));
         let Opt { grid, axis, legend, .. } = self.opt;
         let [x_spec, y_spec] = {
-            let lines = self.lines().collect::<Vec<_>>();
-            let iter = lines.iter().map(|data| data.line.boundary());
-            area2d(
-                iter.chain(Some(joints.iter().flatten().collect())),
-                root.dim_in_pixel(),
-            )
+            use mech::CurveGen as _;
+            let joints = joints.into_iter().flatten().collect();
+            let possible_p = (self.fb.as_deref())
+                .filter(|_| t.is_some())
+                .into_iter()
+                .flat_map(|fb| fb.curves(8))
+                .flatten()
+                .collect();
+            let iter = self.lines().map(|data| data.line.boundary());
+            area2d(iter.chain([joints, possible_p]), root.dim_in_pixel())
         };
         let mut chart = ChartBuilder::on(root)
             .set_label_area_size(LabelAreaPosition::Left, (8).percent())

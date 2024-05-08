@@ -54,8 +54,7 @@ impl Plot for Figure<'_, '_> {
             debug_assert!(*r > 0.);
             [sc.x - r..sc.x + r, sc.y - r..sc.y + r, sc.z - r..sc.z + r]
         } else {
-            let lines = self.lines().collect::<Vec<_>>();
-            area3d(lines.iter().map(|data| data.line.boundary()))
+            area3d(self.lines().map(|data| data.line.boundary()))
         };
         let Opt { grid, axis, legend, .. } = self.opt;
         let mut chart = ChartBuilder::on(root)

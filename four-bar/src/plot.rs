@@ -85,21 +85,22 @@ pub(crate) fn formatter(v: &f64) -> String {
 /// assert_eq!(ext.min, [1.]);
 /// assert_eq!(ext.max, [3.]);
 /// ```
-pub struct ExtBound<const N: usize> {
+pub struct ExtBound<const D: usize> {
     /// Minimum values.
-    pub min: [f64; N],
+    pub min: [f64; D],
     /// Maximum values.
-    pub max: [f64; N],
+    pub max: [f64; D],
 }
 
-impl<'a, const N: usize> FromIterator<&'a [f64; N]> for ExtBound<N> {
-    fn from_iter<I: IntoIterator<Item = &'a [f64; N]>>(iter: I) -> Self {
-        let init = Self {
-            min: [f64::INFINITY; N],
-            max: [f64::NEG_INFINITY; N],
-        };
-        iter.into_iter().fold(init, |mut bound, p| {
-            for ((max, min), p) in zip(zip(&mut bound.max, &mut bound.min), p) {
+impl<T, const D: usize> FromIterator<T> for ExtBound<D>
+where
+    T: std::borrow::Borrow<[f64; D]>,
+{
+    /// Allow `Iter<Item = [f64; D]>` and `&[f64; D]` to be converted to
+    /// `ExtBound<D>`.
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        iter.into_iter().fold(Self::INFINITY, |mut bound, p| {
+            for ((max, min), p) in zip(zip(&mut bound.max, &mut bound.min), p.borrow()) {
                 *min = min.min(*p);
                 *max = max.max(*p);
             }
@@ -108,16 +109,11 @@ impl<'a, const N: usize> FromIterator<&'a [f64; N]> for ExtBound<N> {
     }
 }
 
-impl<const N: usize> FromIterator<ExtBound<N>> for ExtBound<N> {
-    fn from_iter<T: IntoIterator<Item = ExtBound<N>>>(iter: T) -> Self {
-        let init = Self {
-            min: [f64::INFINITY; N],
-            max: [f64::NEG_INFINITY; N],
-        };
-        iter.into_iter().fold(init, |mut bound, ext| {
-            for ((max, min), (ext_max, ext_min)) in
-                zip(zip(&mut bound.max, &mut bound.min), zip(&ext.max, &ext.min))
-            {
+impl<const D: usize> FromIterator<ExtBound<D>> for ExtBound<D> {
+    fn from_iter<T: IntoIterator<Item = ExtBound<D>>>(iter: T) -> Self {
+        iter.into_iter().fold(Self::INFINITY, |mut bound, ext| {
+            let ext = zip(&ext.max, &ext.min);
+            for ((max, min), (ext_max, ext_min)) in zip(zip(&mut bound.max, &mut bound.min), ext) {
                 *min = min.min(*ext_min);
                 *max = max.max(*ext_max);
             }
@@ -126,14 +122,17 @@ impl<const N: usize> FromIterator<ExtBound<N>> for ExtBound<N> {
     }
 }
 
-impl<const N: usize> ExtBound<N> {
+impl<const D: usize> ExtBound<D> {
+    /// Create a new boundary with infinity.
+    pub const INFINITY: Self = Self::new([f64::INFINITY; D], [f64::NEG_INFINITY; D]);
+
     /// Create a new boundary.
-    pub const fn new(min: [f64; N], max: [f64; N]) -> Self {
+    pub const fn new(min: [f64; D], max: [f64; D]) -> Self {
         Self { min, max }
     }
 
     /// Map the extreme values to another type.
-    pub fn map_to<F, R>(self, f: F) -> [R; N]
+    pub fn map_to<F, R>(self, f: F) -> [R; D]
     where
         F: Fn(f64, f64) -> R,
     {
@@ -141,7 +140,7 @@ impl<const N: usize> ExtBound<N> {
     }
 
     /// Get the center of the boundary.
-    pub fn center(&self) -> [f64; N] {
+    pub fn center(&self) -> [f64; D] {
         std::array::from_fn(|i| (self.min[i] + self.max[i]) * 0.5)
     }
 
@@ -728,7 +727,7 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
         self.fb.as_deref()
     }
 
-    pub(crate) fn get_t<const D: usize>(&self, curr: usize, total: usize) -> f64
+    fn get_t<const D: usize>(&self, curr: usize, total: usize) -> f64
     where
         M: crate::mech::CurveGen<D>,
     {
@@ -755,13 +754,11 @@ impl<'a, 'b, M: Clone, C: Clone> FigureBase<'a, 'b, M, C> {
     {
         use std::f64::consts::TAU;
         const RES: usize = 90;
-
         fn angle(a: na::Point2<f64>, b: na::Point2<f64>, c: na::Point2<f64>) -> f64 {
             let ab = a - b;
             let cb = c - b;
             (ab.dot(&cb) / (ab.norm() * cb.norm())).acos()
         }
-
         let fb = self.as_fb()?;
         let [start, end] = fb.angle_bound().to_value()?;
         let end = if end > start { end } else { end + TAU };
