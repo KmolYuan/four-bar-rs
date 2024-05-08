@@ -7,7 +7,13 @@ Web demo: <https://kmolyuan.github.io/four-bar-rs/>
 
 ![](https://raw.githubusercontent.com/KmolYuan/four-bar-rs/master/img/screenshot.png)
 
-Four🍀bar is a simulator and a synthesis tool for four-bar linkage mechanism.
+<div>
+<img width="33%" src="img/fb-demo.gif">
+<img width="33%" src="img/mfb-demo.gif">
+<img width="33%" src="img/sfb-demo.gif">
+</div>
+
+Four🍀bar is a simulator and a synthesis tool for the four-bar linkage mechanisms.
 
 + CLI/GUI program is `four-bar-ui` crate, but the executable is called `four-bar`.
 + Kernel library `four-bar` is on <https://crates.io/crates/four-bar>.
