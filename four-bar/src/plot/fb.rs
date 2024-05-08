@@ -227,7 +227,7 @@ impl Plot for Figure<'_, '_> {
     }
 }
 
-/// Get the 1:1 bounding box of the data, ignore the labels.
+/// Get the 1:1 bounding box of the 2D coordinates.
 pub fn area2d<I>(pts: I, area: (u32, u32)) -> [std::ops::Range<f64>; 2]
 where
     I: IntoIterator,
