@@ -8,9 +8,9 @@ Web demo: <https://kmolyuan.github.io/four-bar-rs/>
 ![](https://raw.githubusercontent.com/KmolYuan/four-bar-rs/master/img/screenshot.png)
 
 <div>
-<img width="33%" src="img/fb-demo.gif">
-<img width="33%" src="img/mfb-demo.gif">
-<img width="33%" src="img/sfb-demo.gif">
+<img width="30%" src="img/fb-demo.gif">
+<img width="30%" src="img/mfb-demo.gif">
+<img width="30%" src="img/sfb-demo.gif">
 </div>
 
 Four🍀bar is a simulator and a synthesis tool for the four-bar linkage mechanisms.
