@@ -49,7 +49,6 @@ enum Panel {
     Synthesis,
     Plotter,
     BluePrint,
-    AppOptions,
     Off,
 }
 
@@ -119,42 +118,12 @@ impl App {
         Box::new(app)
     }
 
-    fn welcome(&mut self, ctx: &Context) {
-        let mut welcome = !self.welcome_off;
-        Window::new("Welcome to Four🍀bar!")
-            .open(&mut welcome)
-            .collapsible(false)
-            .show(ctx, |ui| {
-                ui.label(concat!["Version: v", env!("CARGO_PKG_VERSION")]);
-                ui.label(env!("CARGO_PKG_DESCRIPTION"));
-                if ui.button("📥 Download Desktop Version").clicked() {
-                    ui.ctx().open_url(OpenUrl::new_tab(RELEASE_URL));
-                }
-                ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui/");
-                ui.separator();
-                ui.heading("Author");
-                ui.label(env!("CARGO_PKG_AUTHORS"));
-                ui.separator();
-                ui.heading("License");
-                ui.label("This software is under AGPL v3 license.");
-                ui.label("The commercial usages under server or client side are not allowed.");
-                ui.separator();
-                ui.heading("Local Storage");
-                ui.label("The local storage is disabled by default.");
-                let text = WidgetText::from("Save local data").color(Color32::GREEN);
-                ui.checkbox(&mut self.save_cfg, text);
-                ui.allocate_space(ui.available_size());
-            });
-        self.welcome_off = !welcome;
-    }
-
     fn menu(&mut self, ui: &mut Ui) {
         for (value, icon, text) in [
             (Panel::Linkages, "🍀", "Linkages"),
             (Panel::Synthesis, "💡", "Synthesis"),
             (Panel::Plotter, "", "Plotter"),
             (Panel::BluePrint, "🖻", "Blue Print"),
-            (Panel::AppOptions, "🛠", "App Options"),
         ] {
             let is_current = self.panel == value;
             if ui
@@ -170,7 +139,12 @@ impl App {
             }
         }
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
-            if small_btn(ui, "❓", "Welcome") || hotkey!(ui, F1) {
+            if ui
+                .selectable_label(!self.welcome_off, "❓")
+                .on_hover_text("Welcome (F1)")
+                .clicked()
+                || hotkey!(ui, F1)
+            {
                 self.welcome_off = !self.welcome_off;
             }
             url_btn(ui, "", "Repository", REPO_URL);
@@ -196,7 +170,6 @@ impl App {
             Panel::Synthesis => pan_panel(ui, |ui| self.syn.show(ui, &mut self.link)),
             Panel::Plotter => pan_panel(ui, |ui| self.plotter.show(ui, &mut self.link)),
             Panel::BluePrint => pan_panel(ui, |ui| self.bp.show(ui)),
-            Panel::AppOptions => pan_panel(ui, |ui| self.link.option(ui)),
             Panel::Off => self.canvas(ui),
         });
     }
@@ -207,16 +180,58 @@ impl App {
             Panel::Synthesis => side_panel(ctx, |ui| self.syn.show(ui, &mut self.link)),
             Panel::Plotter => side_panel(ctx, |ui| self.plotter.show(ui, &mut self.link)),
             Panel::BluePrint => side_panel(ctx, |ui| self.bp.show(ui)),
-            Panel::AppOptions => side_panel(ctx, |ui| self.link.option(ui)),
             Panel::Off => (),
         }
         CentralPanel::default().show(ctx, |ui| self.canvas(ui));
+    }
+
+    fn welcome(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("Theme");
+            let mut vis = ui.visuals().clone();
+            ui.selectable_value(&mut vis, Visuals::light(), "☀ Light");
+            ui.selectable_value(&mut vis, Visuals::dark(), "🌜 Dark");
+            ui.ctx().set_visuals(vis);
+        });
+        ui.separator();
+        ui.label(concat!["Version: v", env!("CARGO_PKG_VERSION")]);
+        ui.label(env!("CARGO_PKG_DESCRIPTION"));
+        if ui.button("📥 Download Desktop Version").clicked() {
+            ui.ctx().open_url(OpenUrl::new_tab(RELEASE_URL));
+        }
+        ui.hyperlink_to("GUI powered by egui", "https://github.com/emilk/egui/");
+        ui.separator();
+        ui.heading("Author");
+        ui.label(env!("CARGO_PKG_AUTHORS"));
+        ui.separator();
+        ui.heading("License");
+        ui.label("This software is under AGPL v3 license.");
+        ui.label("The commercial usages under server or client side are not allowed.");
+        ui.separator();
+        ui.heading("Local Storage");
+        ui.label("The local storage is disabled by default.");
+        let text = RichText::new("Save local data").color(Color32::GREEN);
+        ui.checkbox(&mut self.save_cfg, text);
+        ui.collapsing("📚 Control Tips", |ui| {
+            ui.label("Pan move: Left-drag / Drag");
+            ui.label("Zoom: Ctrl+Wheel / Pinch+Stretch");
+            ui.label("Box Zoom: Right-drag");
+            ui.label("Reset: Double-click");
+        });
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
-        self.welcome(ctx);
+        {
+            let mut welcome = !self.welcome_off;
+            Window::new("Welcome to Four🍀bar!")
+                .open(&mut welcome)
+                .collapsible(false)
+                .auto_sized()
+                .show(ctx, |ui| self.welcome(ui));
+            self.welcome_off = !welcome;
+        }
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         if ctx.input(|s| s.screen_rect.width()) < 600. {
             self.mobile_view(ctx);

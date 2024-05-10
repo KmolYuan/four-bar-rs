@@ -93,7 +93,7 @@ impl Projects {
 
     pub(crate) fn show(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            if ui.button("🖴 Load").clicked() || hotkey!(ui, CTRL + O) {
+            if ui.button("🖴 Load").on_hover_text("Ctrl+O").clicked() || hotkey!(ui, CTRL + O) {
                 let q = self.queue();
                 io::open_ron(move |path, fb| q.push(Some(path), fb));
             }
