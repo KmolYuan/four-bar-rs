@@ -34,7 +34,7 @@ four-bar
 four-bar FILE_PATH1 FILE_PATH2
 ```
 
-Some platforms require additional dependencies as listed below. If your platform have no pre-compiled binary, you need to build from source.
+Some platforms require additional dependencies as listed below. If your platform has no pre-compiled binary, you need to build from the source.
 
 ### Windows
 
@@ -46,7 +46,7 @@ The executable requires support for Visual C++. You can refer to the [Visual C++
 
 ### NetBSD
 
-On NetBSD a pre-compiled binary is available from the official repositories, to install it simply run:
+In NetBSD, a pre-compiled binary is available from the official repositories. To install it simply run the following command:
 
 ```bash
 pkgin install four-bar-rs
@@ -54,7 +54,7 @@ pkgin install four-bar-rs
 
 ## Build from Source
 
-In Linux, you need to install some library for GUI.
+In Linux, you need to install some libraries for GUI.
 
 This is an example for `apt`, please see <https://github.com/emilk/egui#demo>.
 
@@ -89,7 +89,7 @@ The application package will be deployed in the `dist` directory.
 
 ## File Format
 
-Four🍀bar uses a custom file format to store the linkage data. The file is a plain text file of [RON](https://github.com/ron-rs/ron) syntax.
+Four🍀bar uses a custom file format to store the linkage data. The file is a plain text of [RON](https://github.com/ron-rs/ron) syntax.
 
 ### Synthesis Target Format
 
