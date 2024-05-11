@@ -7,7 +7,7 @@ mod syn;
 const APP_NAME: &str = env!("CARGO_BIN_NAME");
 
 #[derive(clap::Parser)]
-#[clap(name = APP_NAME, version, author, about)]
+#[clap(name = APP_NAME, version = crate::app::VERSION, author, about)]
 pub(crate) struct Entry {
     /// Default to startup GUI then open file paths
     files: Vec<PathBuf>,

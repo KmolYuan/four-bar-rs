@@ -13,13 +13,8 @@ mod widgets;
 pub(crate) const GIF_RES: usize = 60;
 const REPO_URL: &str = env!("CARGO_PKG_REPOSITORY");
 const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
-const VERSION: &str = concat![
-    "Version: v",
-    env!("CARGO_PKG_VERSION"),
-    " (",
-    env!("GIT_HASH"),
-    ")",
-];
+pub(crate) const VERSION: &str =
+    concat!["v", env!("CARGO_PKG_VERSION"), " (", env!("GIT_HASH"), ")",];
 const FONT: [(&str, &[u8]); 2] = [
     ("Noto", include_bytes!("../assets/GoNotoCurrent.ttf")),
     ("emoji", include_bytes!("../assets/emoji-icon-font.ttf")),
