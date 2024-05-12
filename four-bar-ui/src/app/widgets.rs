@@ -23,8 +23,15 @@ pub(crate) fn url_btn(ui: &mut Ui, icon: &str, tip: &str, url: &str) {
 }
 
 pub(crate) fn hint(ui: &mut Ui, tip: &str) -> Response {
-    ui.add(Label::new(RichText::new("(?)").underline()).selectable(false))
-        .on_hover_text(tip)
+    let res = ui
+        .add(Label::new(RichText::new("(?)").underline()).selectable(false))
+        .on_hover_text(tip);
+    if res.long_touched() {
+        show_tooltip_for(&res.ctx, res.id.with("__tooltip"), &res.rect, |ui| {
+            ui.label(tip);
+        });
+    }
+    res
 }
 
 pub(crate) fn counter(

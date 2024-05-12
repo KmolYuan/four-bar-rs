@@ -1,13 +1,11 @@
-use crate::app::App;
+use crate::app::{App, APP_NAME, VERSION};
 use std::path::PathBuf;
 
 mod atlas;
 mod syn;
 
-const APP_NAME: &str = env!("CARGO_BIN_NAME");
-
 #[derive(clap::Parser)]
-#[clap(name = APP_NAME, version = crate::app::VERSION, author, about)]
+#[clap(name = APP_NAME, version = VERSION, author, about)]
 pub(crate) struct Entry {
     /// Default to startup GUI then open file paths
     files: Vec<PathBuf>,

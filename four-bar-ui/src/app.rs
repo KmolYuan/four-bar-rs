@@ -10,15 +10,21 @@ mod proj;
 mod syn;
 mod widgets;
 
-pub(crate) const GIF_RES: usize = 60;
-const REPO_URL: &str = env!("CARGO_PKG_REPOSITORY");
-const RELEASE_URL: &str = concat![env!("CARGO_PKG_REPOSITORY"), "/releases/latest"];
+pub(crate) const APP_NAME: &str = env!("CARGO_BIN_NAME");
 pub(crate) const VERSION: &str =
-    concat!["v", env!("CARGO_PKG_VERSION"), " (", env!("GIT_HASH"), ")",];
+    concat!["v", env!("CARGO_PKG_VERSION"), " (", env!("GIT_HASH"), ")"];
+pub(crate) const GIF_RES: usize = 60;
+const LOCAL_STORAGE_TIP: &str = "\
+Your last settings will be used next time.
+The data will be saved in the system config or
+web-browser local storage.";
 const FONT: [(&str, &[u8]); 2] = [
     ("Noto", include_bytes!("../assets/GoNotoCurrent.ttf")),
     ("emoji", include_bytes!("../assets/emoji-icon-font.ttf")),
 ];
+
+#[rustfmt::skip]
+macro_rules! repo { () => { env!("CARGO_PKG_REPOSITORY") }; }
 
 macro_rules! hotkey {
     ($ui:ident, $key:ident) => {
@@ -44,6 +50,54 @@ fn pan_panel(ui: &mut Ui, f: impl FnOnce(&mut Ui)) {
     ScrollArea::vertical().show(ui, f);
 }
 
+fn welcome(ui: &mut Ui, save_cfg: &mut bool) {
+    ui.horizontal(|ui| {
+        ui.label("Theme");
+        let is_dark = ui.visuals().dark_mode;
+        if ui.add(SelectableLabel::new(!is_dark, "☀ Light")).clicked() {
+            ui.ctx().set_visuals(Visuals::light());
+        }
+        if ui.add(SelectableLabel::new(is_dark, "🌜 Dark")).clicked() {
+            ui.ctx().set_visuals(Visuals::dark());
+        }
+    });
+    ui.separator();
+    ui.horizontal(|ui| {
+        ui.label(APP_NAME);
+        ui.label(VERSION);
+    });
+    ui.label(env!("CARGO_PKG_DESCRIPTION"));
+    if ui.button("📥 Download Desktop Version").clicked() {
+        ui.ctx()
+            .open_url(OpenUrl::new_tab(concat![repo!(), "/releases/latest"]));
+    }
+    ui.hyperlink_to("GUI powered by egui", "https://github.com/emilk/egui/");
+    ui.separator();
+    ui.heading("Author");
+    ui.label(env!("CARGO_PKG_AUTHORS"));
+    ui.separator();
+    ui.heading("License");
+    ui.label("This software is under AGPL v3 license.");
+    ui.label("The commercial usages under server or client side are not allowed.");
+    ui.separator();
+    ui.heading("User Preferences");
+    ui.horizontal(|ui| {
+        let text = RichText::new("Save local data").color(Color32::GREEN);
+        ui.checkbox(save_cfg, text);
+        hint(ui, LOCAL_STORAGE_TIP);
+    });
+    ui.separator();
+    let res = ui.collapsing("📚 Canvas Control Tips", |ui| {
+        ui.label("Pan move: Left-drag / Drag");
+        ui.label("Zoom: Ctrl+Wheel / Pinch+Stretch");
+        ui.label("Box Zoom: Right-drag");
+        ui.label("Reset: Double-click");
+    });
+    if let Some(res) = res.body_response {
+        res.scroll_to_me(None);
+    }
+}
+
 #[derive(Default, PartialEq, Eq)]
 enum Panel {
     #[default]
@@ -54,16 +108,35 @@ enum Panel {
     Off,
 }
 
+#[repr(transparent)]
+#[derive(Deserialize, Serialize)]
+struct Welcome {
+    open: bool,
+}
+
+impl Default for Welcome {
+    fn default() -> Self {
+        Self { open: true }
+    }
+}
+
+impl Welcome {
+    fn invert(&mut self) {
+        self.open = !self.open;
+    }
+}
+
 /// Main app state.
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
 pub(crate) struct App {
-    welcome_off: bool,
     link: link::Linkages,
     syn: syn::Synthesis,
     bp: blueprint::BluePrint,
     plotter: plotter::Plotter,
     save_cfg: bool,
+    #[serde(flatten)]
+    welcome: Welcome,
     #[serde(skip)]
     panel: Panel,
 }
@@ -141,15 +214,11 @@ impl App {
             }
         }
         ui.with_layout(Layout::right_to_left(Align::LEFT), |ui| {
-            if ui
-                .selectable_label(!self.welcome_off, "❓")
-                .on_hover_text("Welcome (F1)")
-                .clicked()
-                || hotkey!(ui, F1)
-            {
-                self.welcome_off = !self.welcome_off;
+            let res = ui.selectable_label(self.welcome.open, "❓");
+            if res.on_hover_text("Welcome (F1)").clicked() || hotkey!(ui, F1) {
+                self.welcome.invert();
             }
-            url_btn(ui, "", "Repository", REPO_URL);
+            url_btn(ui, "", "Repository", repo!());
         });
     }
 
@@ -186,54 +255,17 @@ impl App {
         }
         CentralPanel::default().show(ctx, |ui| self.canvas(ui));
     }
-
-    fn welcome(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ui.label("Theme");
-            let mut vis = ui.visuals().clone();
-            ui.selectable_value(&mut vis, Visuals::light(), "☀ Light");
-            ui.selectable_value(&mut vis, Visuals::dark(), "🌜 Dark");
-            ui.ctx().set_visuals(vis);
-        });
-        ui.separator();
-        ui.label(VERSION);
-        ui.label(env!("CARGO_PKG_DESCRIPTION"));
-        if ui.button("📥 Download Desktop Version").clicked() {
-            ui.ctx().open_url(OpenUrl::new_tab(RELEASE_URL));
-        }
-        ui.hyperlink_to("GUI powered by egui", "https://github.com/emilk/egui/");
-        ui.separator();
-        ui.heading("Author");
-        ui.label(env!("CARGO_PKG_AUTHORS"));
-        ui.separator();
-        ui.heading("License");
-        ui.label("This software is under AGPL v3 license.");
-        ui.label("The commercial usages under server or client side are not allowed.");
-        ui.separator();
-        ui.heading("Local Storage");
-        ui.label("The local storage is disabled by default.");
-        let text = RichText::new("Save local data").color(Color32::GREEN);
-        ui.checkbox(&mut self.save_cfg, text);
-        ui.collapsing("📚 Control Tips", |ui| {
-            ui.label("Pan move: Left-drag / Drag");
-            ui.label("Zoom: Ctrl+Wheel / Pinch+Stretch");
-            ui.label("Box Zoom: Right-drag");
-            ui.label("Reset: Double-click");
-        });
-    }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
-        {
-            let mut welcome = !self.welcome_off;
-            Window::new("Welcome to Four🍀bar!")
-                .open(&mut welcome)
-                .collapsible(false)
-                .auto_sized()
-                .show(ctx, |ui| self.welcome(ui));
-            self.welcome_off = !welcome;
-        }
+        Window::new("Welcome to Four🍀bar!")
+            .open(&mut self.welcome.open)
+            .default_size([350., 520.])
+            .collapsible(false)
+            .resizable(false)
+            .vscroll(true)
+            .show(ctx, |ui| welcome(ui, &mut self.save_cfg));
         TopBottomPanel::top("menu").show(ctx, |ui| ui.horizontal(|ui| self.menu(ui)));
         if ctx.input(|s| s.screen_rect.width()) < 600. {
             self.mobile_view(ctx);
