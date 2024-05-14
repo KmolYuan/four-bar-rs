@@ -29,7 +29,7 @@ fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
 mh = { version = "10.1", package = "metaheuristics-nature" }
-efd = "9.3.1"
+efd = "10"
 
 [dev-dependencies]
 approx = "0.5"

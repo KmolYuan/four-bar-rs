@@ -31,8 +31,7 @@ where
         C: efd::Curve<D>,
         V: efd::Curve<D>,
     {
-        assert_ne!(mode, Mode::Closed, "Closed mode is not supported");
-        let sig = efd::MotionSig::new(curve, vectors);
+        let sig = efd::MotionSig::new(curve, vectors, mode.is_target_open());
         Self::new(sig, mode)
     }
 }
@@ -63,13 +62,14 @@ where
     type Ys = mh::WithProduct<f64, M::De>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Ys {
+        let is_open = self.mode.is_target_open();
         let get_series = |fb: &M, start, end| {
             let (curve, pose) = fb.pose_in(start, end, self.res);
             (curve.len() > 2).then_some((curve, pose))
         };
         impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
-            let efd = efd::PosedEfd::from_uvec(c, v);
-            let geo = efd.as_geo().to(self.tar.as_geo());
+            let efd = efd::PosedEfd::from_uvec(c, v, is_open);
+            let geo = efd.as_curve().as_geo().to(self.tar.as_geo());
             let fb = fb.clone().trans_denorm(&geo);
             use efd::Distance as _;
             let curve = zip(

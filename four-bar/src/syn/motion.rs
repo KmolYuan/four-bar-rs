@@ -16,7 +16,7 @@ where
         C1: efd::Curve<D>,
         C2: efd::Curve<D>,
     {
-        let efd = efd::PosedEfd::from_series(curve1, curve2);
+        let efd = efd::PosedEfd::from_series(curve1, curve2, mode.is_target_open());
         Self::from_efd(efd, mode)
     }
 
@@ -27,7 +27,7 @@ where
         C: efd::Curve<D>,
         V: efd::Curve<D>,
     {
-        let efd = efd::PosedEfd::from_uvec(curve, vectors);
+        let efd = efd::PosedEfd::from_uvec(curve, vectors, mode.is_target_open());
         Self::from_efd(efd, mode)
     }
 
@@ -102,13 +102,14 @@ where
     type Ys = mh::WithProduct<MOFit, M::De>;
 
     fn fitness(&self, xs: &[f64]) -> Self::Ys {
+        let is_open = self.mode.is_target_open();
         let get_series = |fb: &M, start, end| {
             let (curve, pose) = fb.pose_in(start, end, self.res);
             (curve.len() > 2).then_some((curve, pose))
         };
         impl_fitness(self.mode, xs, get_series, |((c, v), fb)| {
-            let efd = efd::PosedEfd::from_uvec_harmonic(c, v, self.harmonic());
-            let geo = efd.as_geo().to(self.tar.as_geo());
+            let efd = efd::PosedEfd::from_uvec_harmonic(c, v, is_open, self.harmonic());
+            let geo = efd.as_curve().as_geo().to(self.tar.as_curve().as_geo());
             let fb = fb.clone().trans_denorm(&geo);
             let err = MOFit {
                 curve: efd.as_curve().err(self.tar.as_curve()),
@@ -117,7 +118,7 @@ where
                     use efd::Distance as _;
                     let me = efd.as_pose().as_geo().trans();
                     let tar = self.tar.as_pose().as_geo().trans();
-                    me.l2_err(&tar)
+                    me.l2_err(tar)
                 },
                 unit: self.unit_err(&geo),
             };

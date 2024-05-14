@@ -307,7 +307,7 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
         if let Some(legend) = info.legend {
             fig.legend = legend;
         }
-        let length = tar_efd.as_geo().scale();
+        let length = tar_efd.as_curve().as_geo().scale();
         fig.push_pose(
             "Target",
             (&tar_curve, &tar_pose, length),
@@ -319,7 +319,7 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             let t = efd::get_norm_t(&tar_curve, true);
             let curve = tar_efd.as_curve().recon_by(&t).into();
             let pose = tar_efd.as_pose().recon_by(&t);
-            let pose = tar_efd.as_geo().transform(pose).into();
+            let pose = tar_efd.as_curve().as_geo().transform(pose).into();
             fig.push_line_data(plot::LineData {
                 label: "Target Recon.".into(),
                 line: plot::LineType::Pose { curve, pose, is_frame: false },
@@ -360,7 +360,8 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             let (c, v) = fb.pose(cfg.res);
             log.title("competitor")?;
             if !matches!(mode, syn::Mode::Partial) {
-                let efd = efd::PosedEfd::from_uvec_harmonic(&c, &v, harmonic);
+                let efd =
+                    efd::PosedEfd::from_uvec_harmonic(&c, &v, mode.is_result_open(), harmonic);
                 log.log(Performance::cost(efd.err(&tar_efd)))?;
             }
             log.title("competitor.fb")?;
@@ -423,10 +424,10 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             false,
         );
         {
-            let efd = efd::PosedEfd::from_uvec(&curve, &pose);
+            let efd = efd::PosedEfd::from_uvec(&curve, &pose, mode.is_target_open());
             let curve = efd.as_curve().recon_by(tar_sig.as_t()).into();
             let pose = efd.as_pose().recon_by(tar_sig.as_t());
-            let pose = efd.as_geo().transform(pose).into();
+            let pose = efd.as_curve().as_geo().transform(pose).into();
             fig.push_line_data(plot::LineData {
                 label: "DD Recon.".into(),
                 line: plot::LineType::Pose { curve, pose, is_frame: false },
@@ -467,7 +468,7 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             let (c, v) = fb.pose(cfg.res);
             log.title("competitor")?;
             if !matches!(mode, syn::Mode::Partial) {
-                let efd = efd::PosedEfd::from_uvec(&c, &v);
+                let efd = efd::PosedEfd::from_uvec(&c, &v, mode.is_result_open());
                 log.log(Performance::cost(efd.err_sig(&tar_sig)))?;
             }
             log.title("competitor.fb")?;
