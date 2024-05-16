@@ -396,25 +396,30 @@ impl<M, const N: usize, const D: usize> Atlas<M, N, D> {
     }
 
     /// Merge two data to one atlas.
-    pub fn merge(mut self, rhs: &Self) -> Result<Self, ndarray::ShapeError> {
+    pub fn merge(mut self, rhs: Self) -> Result<Self, ndarray::ShapeError> {
         self.merge_inplace(rhs)?;
         Ok(self)
     }
 
     /// Merge two data to one atlas inplace.
-    pub fn merge_inplace(&mut self, rhs: &Self) -> Result<(), ndarray::ShapeError> {
+    pub fn merge_inplace(&mut self, mut rhs: Self) -> Result<(), ndarray::ShapeError> {
         self.fb.append(Axis(0), rhs.fb.view())?;
         self.stat.append(Axis(0), rhs.stat.view())?;
         // Extend the harmonic number (zero padding) if needed
-        if self.harmonic() < rhs.harmonic() {
-            let mut shape = self.efd.raw_dim();
-            shape[1] = rhs.harmonic();
-            self.efd
-                .append(Axis(1), Array::zeros(shape).view())
-                .unwrap_or_else(|_| unreachable!());
+        macro_rules! padding {
+            ($lhs:ident, $rhs:ident) => {{
+                let mut shape = $lhs.efd.raw_dim();
+                shape[1] = $rhs.harmonic();
+                ($lhs.efd.append(Axis(1), Array::zeros(shape).view()))
+                    .unwrap_or_else(|_| unreachable!());
+            }};
         }
-        self.efd.append(Axis(0), rhs.efd.view())?;
-        Ok(())
+        match self.harmonic().cmp(&rhs.harmonic()) {
+            std::cmp::Ordering::Less => padding!(self, rhs),
+            std::cmp::Ordering::Greater => padding!(rhs, self),
+            std::cmp::Ordering::Equal => (),
+        }
+        self.efd.append(Axis(0), rhs.efd.view())
     }
 }
 
@@ -429,7 +434,7 @@ where
     /// Panics if the data shape is not correct.
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {
         iter.into_iter()
-            .reduce(|a, b| a.merge(&b).expect("Shape mismatched"))
+            .reduce(|a, b| a.merge(b).expect("Shape mismatched"))
             .unwrap_or_default()
     }
 }

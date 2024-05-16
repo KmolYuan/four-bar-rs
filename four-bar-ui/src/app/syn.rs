@@ -58,6 +58,9 @@ struct AtlasVis {
 
 impl AtlasVis {
     fn clear(&mut self) {
+        if self.p_closed.is_empty() {
+            return;
+        }
         macro_rules! clear {
             ($($field:ident),+) => {$(
                 self.$field.clear();
@@ -161,7 +164,7 @@ impl Synthesis {
         });
         match std::mem::replace(&mut *self.queue.lock(), Cache::Empty) {
             Cache::Curve(curve) => self.target = curve,
-            Cache::Atlas(atlas) => self.atlas.merge_inplace(&atlas),
+            Cache::Atlas(atlas) => self.atlas.merge_inplace(*atlas),
             Cache::Empty => (),
         }
         ui.checkbox(&mut self.cfg.on_unit, "Constrain on unit");
@@ -330,17 +333,16 @@ impl Synthesis {
                     q => *q = Cache::Atlas(Box::new(atlas.into())),
                 });
             }
-            if toggle_btn(ui, &mut self.atlas_vis_open, "☁ Point Cloud Visualize")
-                .on_hover_text("Use PCA to visualize the point cloud of atlas")
-                .clicked()
+            if toggle_btn(ui, &mut self.atlas_vis_open, "☁ Point Cloud Visualize").clicked()
+                && self.atlas_vis_open
             {
-                if self.atlas_vis_open {
-                    self.atlas_vis_cache();
-                } else {
-                    self.atlas_vis.clear();
-                }
+                self.atlas_vis_cache();
             }
+            hint(ui, "PCA point cloud visualization of the atlas linkages");
         });
+        if !self.atlas_vis_open {
+            self.atlas_vis.clear();
+        }
         ui.separator();
         ui.horizontal(|ui| {
             nonzero_i(ui, "Size: ", &mut self.atlas_cfg.size, 1);

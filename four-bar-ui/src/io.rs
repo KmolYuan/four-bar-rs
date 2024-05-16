@@ -522,15 +522,23 @@ impl From<Atlas> for AtlasPool {
 }
 
 impl AtlasPool {
-    pub(crate) fn merge_inplace(&mut self, rhs: &Self) {
-        _ = self.fb.merge_inplace(&rhs.fb);
-        _ = self.sfb.merge_inplace(&rhs.sfb);
+    pub(crate) fn merge_inplace(&mut self, rhs: Self) {
+        self.fb
+            .merge_inplace(rhs.fb)
+            .unwrap_or_else(|_| unreachable!());
+        self.sfb
+            .merge_inplace(rhs.sfb)
+            .unwrap_or_else(|_| unreachable!());
     }
 
     pub(crate) fn merge_atlas_inplace(&mut self, atlas: Atlas) {
         match atlas {
-            Atlas::P(atlas) => _ = self.fb.merge_inplace(&atlas),
-            Atlas::S(atlas) => _ = self.sfb.merge_inplace(&atlas),
+            Atlas::P(atlas) => (self.fb)
+                .merge_inplace(atlas)
+                .unwrap_or_else(|_| unreachable!()),
+            Atlas::S(atlas) => (self.sfb)
+                .merge_inplace(atlas)
+                .unwrap_or_else(|_| unreachable!()),
         }
     }
 
