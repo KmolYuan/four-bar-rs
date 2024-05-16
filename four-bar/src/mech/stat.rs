@@ -263,28 +263,21 @@ pub enum FourBarTy {
 
 impl FourBarTy {
     /// Detect from four-bar loop `[l1, l2, l3, l4]`.
-    pub fn from_loop(mut fb_loop: [f64; 4]) -> Self {
-        let [l1, l2, l3, l4] = fb_loop;
-        fb_loop.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        let [s, p, q, l] = fb_loop;
+    pub fn from_loop(fb_loop: [f64; 4]) -> Self {
+        let mut i = 0;
+        let mut fb_loop = fb_loop.map(|l| {
+            let ret = (i, l);
+            i += 1;
+            ret
+        });
+        fb_loop.sort_unstable_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
+        let [(s_ind, s), (_, p), (_, q), (l_ind, l)] = fb_loop;
         if l > s + p + q {
-            return Self::Invalid;
-        }
-        macro_rules! arms {
-            ($d:expr, $c1:expr, $c2:expr, $c3:expr, $c4:expr) => {
-                match $d {
-                    d if d == l1 => $c1,
-                    d if d == l2 => $c2,
-                    d if d == l3 => $c3,
-                    d if d == l4 => $c4,
-                    _ => unreachable!(),
-                }
-            };
-        }
-        if s + l < p + q {
-            arms!(s, Self::GCCC, Self::GCRR, Self::GRCR, Self::GRRC)
+            Self::Invalid
+        } else if s + l < p + q {
+            [Self::GCCC, Self::GCRR, Self::GRCR, Self::GRRC][s_ind]
         } else {
-            arms!(l, Self::RRR1, Self::RRR2, Self::RRR3, Self::RRR4)
+            [Self::RRR1, Self::RRR2, Self::RRR3, Self::RRR4][l_ind]
         }
     }
 
