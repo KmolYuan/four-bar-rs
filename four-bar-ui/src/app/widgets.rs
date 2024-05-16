@@ -229,6 +229,7 @@ pub(crate) fn combo_enum<H, E, F, T, const N: usize>(
     }
 }
 
+#[inline]
 pub(crate) fn static_plot(name: &str) -> egui_plot::Plot {
     egui_plot::Plot::new(name)
         .legend(Default::default())

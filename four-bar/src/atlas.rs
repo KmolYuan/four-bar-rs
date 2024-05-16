@@ -346,24 +346,28 @@ impl<M, const N: usize, const D: usize> Atlas<M, N, D> {
         Ok(())
     }
 
+    /// Clear the atlas.
+    pub fn clear(&mut self)
+    where
+        Self: Default,
+    {
+        *self = Self::default();
+    }
+
     /// Length, total size.
+    #[inline]
     pub fn len(&self) -> usize {
         self.fb.nrows()
     }
 
-    /// Clear the atlas.
-    pub fn clear(&mut self) {
-        self.fb.fill(0.);
-        self.stat.fill(0);
-        self.efd.fill(0.);
-    }
-
     /// Return whether the atlas has any data.
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.fb.is_empty()
+        self.len() == 0
     }
 
     /// Number of the harmonics.
+    #[inline]
     pub fn harmonic(&self) -> usize {
         self.efd.len_of(Axis(1))
     }
@@ -371,7 +375,7 @@ impl<M, const N: usize, const D: usize> Atlas<M, N, D> {
     /// Get a reference to the data.
     ///
     /// Data is stored in a 2D array, each row is a linkage code.
-    pub fn data(&self) -> &Array2<f64> {
+    pub fn fb_data(&self) -> &Array2<f64> {
         &self.fb
     }
 
@@ -382,35 +386,34 @@ impl<M, const N: usize, const D: usize> Atlas<M, N, D> {
 
     /// Iterate over the EFD coefficients.
     pub fn efd_iter(&self) -> impl Iterator<Item = ndarray::ArrayView2<f64>> + '_ {
-        self.efd.axis_iter(ndarray::Axis(0))
+        self.efd.axis_iter(Axis(0))
     }
 
-    /// Iterate over the open state of the linkages.
-    pub fn open_iter(&self) -> impl Iterator<Item = bool> + '_ {
-        self.efd
-            .axis_iter(ndarray::Axis(0))
+    /// Iterate over with an "open state" of the linkages.
+    pub fn is_open_iter(&self) -> impl Iterator<Item = bool> + '_ {
+        self.efd_iter()
             .map(|efd| efd.slice(s![.., D..]).sum() == 0.)
     }
 
     /// Merge two data to one atlas.
-    pub fn merge(&self, rhs: &Self) -> Result<Self, ndarray::ShapeError> {
-        let mut atlas = self.clone();
-        atlas.merge_inplace(rhs)?;
-        Ok(atlas)
+    pub fn merge(mut self, rhs: &Self) -> Result<Self, ndarray::ShapeError> {
+        self.merge_inplace(rhs)?;
+        Ok(self)
     }
 
     /// Merge two data to one atlas inplace.
     pub fn merge_inplace(&mut self, rhs: &Self) -> Result<(), ndarray::ShapeError> {
-        if self.is_empty() {
-            self.clone_from(rhs);
-        } else {
-            macro_rules! merge {
-                ($($field:ident),+) => {$(
-                    self.$field = ndarray::concatenate(Axis(0), &[self.$field.view(), rhs.$field.view()])?;
-                )+};
-            }
-            merge!(fb, stat, efd);
+        self.fb.append(Axis(0), rhs.fb.view())?;
+        self.stat.append(Axis(0), rhs.stat.view())?;
+        // Extend the harmonic number (zero padding) if needed
+        if self.harmonic() < rhs.harmonic() {
+            let mut shape = self.efd.raw_dim();
+            shape[1] = rhs.harmonic();
+            self.efd
+                .append(Axis(1), Array::zeros(shape).view())
+                .unwrap_or_else(|_| unreachable!());
         }
+        self.efd.append(Axis(0), rhs.efd.view())?;
         Ok(())
     }
 }
@@ -420,9 +423,13 @@ where
     M: Code<N, D> + Send,
     efd::U<D>: efd::EfdDim<D>,
 {
+    /// Merge multiple data to one atlas.
+    ///
+    /// # Panics
+    /// Panics if the data shape is not correct.
     fn from_iter<T: IntoIterator<Item = Self>>(iter: T) -> Self {
         iter.into_iter()
-            .reduce(|a, b| a.merge(&b).unwrap_or(a))
+            .reduce(|a, b| a.merge(&b).expect("Shape mismatched"))
             .unwrap_or_default()
     }
 }

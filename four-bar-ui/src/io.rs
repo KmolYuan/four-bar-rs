@@ -322,7 +322,7 @@ where
     });
 }
 
-pub(crate) fn open_cb<C>(done: C)
+pub(crate) fn open_atlas<C>(done: C)
 where
     C: Fn(Atlas) + 'static,
 {
@@ -497,11 +497,11 @@ impl Atlas {
     where
         R: std::io::Read + std::io::Seek,
     {
-        if let Ok(atlas) = atlas::FbAtlas::read(&mut r) {
-            Ok(Self::P(atlas))
+        if let Ok(atlas) = atlas::SFbAtlas::read(&mut r) {
+            Ok(Self::S(atlas))
         } else {
             r.rewind().map_err(|e| atlas::ReadNpzError::Zip(e.into()))?;
-            Ok(Self::S(atlas::SFbAtlas::read(r)?))
+            Ok(Self::P(atlas::FbAtlas::read(r)?))
         }
     }
 }
@@ -512,11 +512,25 @@ pub(crate) struct AtlasPool {
     sfb: atlas::SFbAtlas,
 }
 
-impl AtlasPool {
-    pub(crate) fn merge_inplace(&mut self, atlas: Atlas) -> Result<(), ndarray::ShapeError> {
+impl From<Atlas> for AtlasPool {
+    fn from(atlas: Atlas) -> Self {
         match atlas {
-            Atlas::P(atlas) => self.fb.merge_inplace(&atlas),
-            Atlas::S(atlas) => self.sfb.merge_inplace(&atlas),
+            Atlas::P(atlas) => Self { fb: atlas, sfb: Default::default() },
+            Atlas::S(atlas) => Self { sfb: atlas, fb: Default::default() },
+        }
+    }
+}
+
+impl AtlasPool {
+    pub(crate) fn merge_inplace(&mut self, rhs: &Self) {
+        _ = self.fb.merge_inplace(&rhs.fb);
+        _ = self.sfb.merge_inplace(&rhs.sfb);
+    }
+
+    pub(crate) fn merge_atlas_inplace(&mut self, atlas: Atlas) {
+        match atlas {
+            Atlas::P(atlas) => _ = self.fb.merge_inplace(&atlas),
+            Atlas::S(atlas) => _ = self.sfb.merge_inplace(&atlas),
         }
     }
 
@@ -541,7 +555,7 @@ impl FromIterator<Atlas> for AtlasPool {
     fn from_iter<T: IntoIterator<Item = Atlas>>(iter: T) -> Self {
         let mut pool = Self::default();
         iter.into_iter()
-            .for_each(|atlas| _ = pool.merge_inplace(atlas));
+            .for_each(|atlas| pool.merge_atlas_inplace(atlas));
         pool
     }
 }

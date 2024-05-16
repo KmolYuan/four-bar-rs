@@ -45,13 +45,27 @@ enum Cache {
     #[default]
     Empty,
     Curve(io::Curve),
-    Atlas(io::Atlas),
+    Atlas(Box<io::AtlasPool>),
 }
 
+#[derive(Default)]
 struct AtlasVis {
-    pt: [f64; 2],
-    is_open: bool,
-    is_sphere: bool,
+    p_closed: Vec<[f64; 2]>,
+    p_open: Vec<[f64; 2]>,
+    s_closed: Vec<[f64; 2]>,
+    s_open: Vec<[f64; 2]>,
+}
+
+impl AtlasVis {
+    fn clear(&mut self) {
+        macro_rules! clear {
+            ($($field:ident),+) => {$(
+                self.$field.clear();
+                self.$field.shrink_to_fit();
+            )+};
+        }
+        clear!(p_closed, p_open, s_closed, s_open);
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -80,7 +94,7 @@ pub(crate) struct Synthesis {
     #[serde(skip)]
     atlas: io::AtlasPool,
     #[serde(skip)]
-    atlas_vis: Vec<AtlasVis>,
+    atlas_vis: AtlasVis,
     #[serde(skip)]
     atlas_pg: Option<Arc<AtomicU32>>,
     #[serde(skip)]
@@ -147,7 +161,7 @@ impl Synthesis {
         });
         match std::mem::replace(&mut *self.queue.lock(), Cache::Empty) {
             Cache::Curve(curve) => self.target = curve,
-            Cache::Atlas(atlas) => io::alert!("Merge Atlas", self.atlas.merge_inplace(atlas)),
+            Cache::Atlas(atlas) => self.atlas.merge_inplace(&atlas),
             Cache::Empty => (),
         }
         ui.checkbox(&mut self.cfg.on_unit, "Constrain on unit");
@@ -311,19 +325,21 @@ impl Synthesis {
         ui.horizontal(|ui| {
             if ui.button("🖴 Load").clicked() {
                 let queue = self.queue.clone();
-                io::open_cb(move |atlas| *queue.lock() = Cache::Atlas(atlas));
+                io::open_atlas(move |atlas| match &mut *queue.lock() {
+                    Cache::Atlas(pool) => pool.merge_atlas_inplace(atlas),
+                    q => *q = Cache::Atlas(Box::new(atlas.into())),
+                });
             }
-            ui.group(|ui| {
-                if ui.button("☁ Point Cloud Visualize").clicked() {
-                    if !self.atlas_vis_open {
-                        self.atlas_vis_cache();
-                    } else {
-                        self.atlas_vis.clear();
-                        self.atlas_vis.shrink_to_fit();
-                    }
-                    self.atlas_vis_open = !self.atlas_vis_open;
+            if toggle_btn(ui, &mut self.atlas_vis_open, "☁ Point Cloud Visualize")
+                .on_hover_text("Use PCA to visualize the point cloud of atlas")
+                .clicked()
+            {
+                if self.atlas_vis_open {
+                    self.atlas_vis_cache();
+                } else {
+                    self.atlas_vis.clear();
                 }
-            });
+            }
         });
         ui.separator();
         ui.horizontal(|ui| {
@@ -343,9 +359,13 @@ impl Synthesis {
                 let pg = Arc::new(AtomicU32::new(0f32.to_bits()));
                 self.atlas_pg = Some(pg.clone());
                 let f = move || {
-                    let atlas =
-                        atlas::$atlas::make_with(cfg, |p| pg_set(&pg, p as f32 / size as f32));
-                    *queue.lock() = Cache::Atlas(io::Atlas::$atlas_ty(atlas));
+                    let atlas = io::Atlas::$atlas_ty(atlas::$atlas::make_with(cfg, |p| {
+                        pg_set(&pg, p as f32 / size as f32)
+                    }));
+                    match &mut *queue.lock() {
+                        Cache::Atlas(pool) => pool.merge_atlas_inplace(atlas),
+                        q => *q = Cache::Atlas(Box::new(atlas.into())),
+                    }
                 };
                 #[cfg(not(target_arch = "wasm32"))]
                 mh::rayon::spawn(f);
@@ -486,58 +506,67 @@ impl Synthesis {
 
     // Cache the visualization of atlas
     fn atlas_vis_cache(&mut self) {
-        fn pca<M, const N: usize, const D: usize>(
-            atlas: &atlas::Atlas<M, N, D>,
-            is_sphere: bool,
-        ) -> Vec<AtlasVis> {
-            use smartcore::decomposition::pca::PCA;
-            let reduced = PCA::fit(atlas.data(), Default::default())
-                .unwrap()
-                .transform(atlas.data())
-                .unwrap();
-            zip(atlas.open_iter(), reduced.rows())
-                .map(|(is_open, pt)| AtlasVis { pt: [pt[0], pt[1]], is_open, is_sphere })
-                .collect()
+        use smartcore::decomposition::pca::PCA;
+        macro_rules! pca {
+            ($atlas:expr, $pts:expr, $pts_open:expr) => {
+                'a: {
+                    let atlas = $atlas;
+                    if atlas.is_empty() {
+                        break 'a;
+                    }
+                    let reduced = PCA::fit(atlas.fb_data(), Default::default())
+                        .unwrap()
+                        .transform(atlas.fb_data())
+                        .unwrap();
+                    $pts.reserve(reduced.len());
+                    $pts_open.reserve(reduced.len());
+                    for (is_open, pt) in zip(atlas.is_open_iter(), reduced.rows()) {
+                        if is_open {
+                            $pts_open.push([pt[0], pt[1]]);
+                        } else {
+                            $pts.push([pt[0], pt[1]]);
+                        }
+                    }
+                }
+            };
         }
-
-        self.atlas_vis
-            .reserve(self.atlas.as_fb().len() + self.atlas.as_sfb().len());
-        if !self.atlas.as_fb().is_empty() {
-            self.atlas_vis.extend(pca(self.atlas.as_fb(), false));
-        }
-        if !self.atlas.as_sfb().is_empty() {
-            self.atlas_vis.extend(pca(self.atlas.as_sfb(), true));
-        }
+        pca!(
+            self.atlas.as_fb(),
+            self.atlas_vis.p_closed,
+            self.atlas_vis.p_open
+        );
+        pca!(
+            self.atlas.as_sfb(),
+            self.atlas_vis.s_closed,
+            self.atlas_vis.s_open
+        );
     }
 
     fn atlas_vis(&mut self, ui: &mut Ui) {
-        if !self.atlas_vis_open {
-            return;
-        }
-        let mut f = |name, title, draw_sphere| {
-            Window::new(title)
-                .open(&mut self.atlas_vis_open)
-                .show(ui.ctx(), |ui| {
-                    static_plot(name).view_aspect(1.).show(ui, |ui| {
-                        for &AtlasVis { pt, is_open, is_sphere } in &self.atlas_vis {
-                            if is_sphere != draw_sphere {
-                                continue;
-                            }
-                            let (name, color) = if is_open {
-                                ("Open Curve", Color32::RED)
-                            } else {
-                                ("Closed Curve", Color32::BLUE)
-                            };
-                            ui.points(egui_plot::Points::new(pt).color(color).name(name));
-                        }
-                    });
-                });
+        let draw = |ui: &mut egui_plot::PlotUi, pts: Vec<[f64; 2]>, name, color| {
+            ui.points(egui_plot::Points::new(pts).name(name).color(color));
         };
-        f("atlas_vis_planar", "☁ Planar Data Visualization", false);
-        f(
-            "atlas_vis_spherical",
+        macro_rules! w {
+            ($title:literal, $closed:expr, $open:expr) => {
+                Window::new($title)
+                    .open(&mut self.atlas_vis_open)
+                    .show(ui.ctx(), |ui| {
+                        static_plot($title).view_aspect(1.).show(ui, |ui| {
+                            draw(ui, $closed.clone(), "Closed", Color32::BLUE);
+                            draw(ui, $open.clone(), "Open", Color32::RED);
+                        });
+                    });
+            };
+        }
+        w!(
+            "☁ Planar Data Visualization",
+            self.atlas_vis.p_closed,
+            self.atlas_vis.p_open
+        );
+        w!(
             "☁ Spherical Data Visualization",
-            true,
+            self.atlas_vis.s_closed,
+            self.atlas_vis.s_open
         );
     }
 
