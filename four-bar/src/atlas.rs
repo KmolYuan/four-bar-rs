@@ -227,9 +227,7 @@ where
     where
         efd::Efd<D>: Sync,
     {
-        if self.is_empty() {
-            return None;
-        }
+        self.is_empty().then_some(())?;
         let res = target.len();
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
         let geo = target.as_geo();
@@ -266,9 +264,7 @@ where
     where
         efd::Efd<D>: Sync,
     {
-        if self.is_empty() {
-            return None;
-        }
+        self.is_empty().then_some(())?;
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
