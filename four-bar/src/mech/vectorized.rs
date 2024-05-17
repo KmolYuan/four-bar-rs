@@ -6,7 +6,7 @@ use std::f64::consts::{PI, TAU};
 pub trait FromVectorized<const N: usize>: Sized {
     /// Lower & upper bounds
     const BOUND: [[f64; 2]; N];
-    /// Lower & upper bounds for partial synthesis
+    /// Lower & upper bounds for partial synthesis (N + 2)
     const BOUND_PARTIAL: &'static [[f64; 2]];
 
     /// Create a new instance from a vector.
@@ -24,9 +24,8 @@ pub trait IntoVectorized {
     fn into_vectorized(self) -> (Vec<f64>, mech::Stat);
 }
 
-// Concat const slices by their variable names, currently only support
-// non-generic slices.
-const fn concat_slices<T: Copy, const N1: usize, const N2: usize, const N3: usize>(
+// Concat const arrays.
+const fn concat_arr<T: Copy, const N1: usize, const N2: usize, const N3: usize>(
     a: [T; N1],
     b: [T; N2],
 ) -> [T; N3]
@@ -51,9 +50,9 @@ where
 impl FromVectorized<5> for NormFourBar {
     const BOUND: [[f64; 2]; 5] = {
         const K: f64 = 6.;
-        concat_slices([[1. / K, K]; 4], [[0., TAU]; 1])
+        concat_arr([[1. / K, K]; 4], [[0., TAU]; 1])
     };
-    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
+    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_arr(Self::BOUND, [[0., TAU]; 2]);
 
     fn from_vectorized(v: [f64; 5], stat: Stat) -> Self {
         let [l1, l3, l4, l5, g] = v;
@@ -70,10 +69,10 @@ impl IntoVectorized for NormFourBar {
 
 impl FromVectorized<6> for MNormFourBar {
     const BOUND: [[f64; 2]; 6] = {
-        const K: f64 = 6.;
-        concat_slices([[1. / K, K]; 4], [[0., TAU]; 2])
+        let k = 6.;
+        concat_arr([[1. / k, k]; 4], [[0., TAU]; 2])
     };
-    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
+    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_arr(Self::BOUND, [[0., TAU]; 2]);
 
     fn from_vectorized(v: [f64; 6], stat: Stat) -> Self {
         let [l1, l3, l4, l5, g, e] = v;
@@ -89,8 +88,8 @@ impl IntoVectorized for MNormFourBar {
 }
 
 impl FromVectorized<6> for SNormFourBar {
-    const BOUND: [[f64; 2]; 6] = concat_slices([[1e-4, PI]; 5], [[0., PI]; 1]);
-    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_slices(Self::BOUND, [[0., TAU]; 2]);
+    const BOUND: [[f64; 2]; 6] = concat_arr([[1e-4, PI]; 5], [[0., PI]; 1]);
+    const BOUND_PARTIAL: &'static [[f64; 2]] = &concat_arr(Self::BOUND, [[0., TAU]; 2]);
 
     fn from_vectorized(v: [f64; 6], stat: Stat) -> Self {
         let [l1, l2, l3, l4, l5, g] = v;
