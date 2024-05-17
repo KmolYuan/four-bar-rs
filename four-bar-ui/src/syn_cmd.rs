@@ -279,10 +279,8 @@ impl<'a> Solver<'a> {
                 alg.build_solver(obj)
             }};
             (@ $ty:ident, $target:ident) => {{
-                let (tar_curve, tar_pose): (Vec<_>, Vec<_>) = $target
-                    .into_owned()
-                    .into_iter()
-                    .unzip();
+                let (tar_curve, tar_pose): (Vec<_>, Vec<_>) =
+                    $target.into_owned().into_iter().unzip();
                 let mut obj = syn::$ty::from_uvec(&tar_curve, &tar_pose, cfg.mode).res(cfg.res);
                 if cfg.on_unit {
                     obj = obj.on_unit();
