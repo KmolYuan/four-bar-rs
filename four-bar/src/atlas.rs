@@ -227,7 +227,7 @@ where
     where
         efd::Efd<D>: Sync,
     {
-        self.is_empty().then_some(())?;
+        (!self.is_empty()).then_some(())?;
         let res = target.len();
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
         let geo = target.as_geo();
@@ -260,40 +260,26 @@ where
     }
 
     /// Get the nearest four-bar linkage from a target curve.
-    pub fn fetch_1st(&self, target: &[[f64; D]], is_open: bool, res: usize) -> Option<(f64, M::De)>
+    pub fn fetch_1st(&self, target: &[[f64; D]], is_open: bool) -> Option<(f64, M::De)>
     where
         efd::Efd<D>: Sync,
     {
-        self.is_empty().then_some(())?;
-        let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
-        #[cfg(not(feature = "rayon"))]
-        let iter = self.efd.axis_iter(Axis(0));
-        #[cfg(feature = "rayon")]
-        let iter = self.efd.axis_iter(Axis(0)).into_par_iter();
-        iter.map(|arr| target.err(&arr_to_efd(arr)))
-            .enumerate()
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(i, err)| (err, self.pick(i, target.as_geo(), is_open, res)))
+        self.fetch_raw(target, is_open, 1).map(|(first, _)| first)
     }
 
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// Slower than [`Self::fetch_1st()`].
-    pub fn fetch(
-        &self,
-        target: &[[f64; D]],
-        is_open: bool,
-        size: usize,
-        res: usize,
-    ) -> Vec<(f64, M::De)>
+    pub fn fetch(&self, target: &[[f64; D]], is_open: bool, size: usize) -> Vec<(f64, M::De)>
     where
         efd::Efd<D>: Sync,
     {
         if self.is_empty() {
             return Vec::new();
         } else if size == 1 {
-            return self.fetch_1st(target, is_open, res).into_iter().collect();
+            return Vec::from_iter(self.fetch_1st(target, is_open));
         }
+        let res = target.len();
         let target = efd::Efd::from_curve_harmonic(target, is_open, self.harmonic());
         #[cfg(not(feature = "rayon"))]
         let iter = self.efd.axis_iter(Axis(0));
