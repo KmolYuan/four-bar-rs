@@ -212,8 +212,8 @@ where
     F: mh::ObjFunc<Ys = mh::WithProduct<Y, MFourBar>>,
 {
     pub(crate) s: SolverBox<'a, F>,
-    pub(crate) tar_curve: Vec<[f64; 2]>,
-    pub(crate) tar_pose: Vec<[f64; 2]>,
+    pub(crate) tar_p: Vec<[f64; 2]>,
+    pub(crate) tar_v: Vec<[f64; 2]>,
     pub(crate) tar_fb: Option<MFourBar>,
 }
 
@@ -241,7 +241,7 @@ where
             .pop_num(cfg.pop)
             .task(move |ctx| !stop() && ctx.gen >= cfg.gen)
             .callback(move |ctx| callback(ctx.best.get_eval(), ctx.gen));
-        Self { s, tar_curve, tar_pose, tar_fb }
+        Self { s, tar_p: tar_curve, tar_v: tar_pose, tar_fb }
     }
 
     fn solve(self) -> MFourBar {

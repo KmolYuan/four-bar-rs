@@ -104,6 +104,18 @@ impl<UN, NM> Mech<UN, NM> {
         PoseGen::<D>::pose_zipped(self, res)
     }
 
+    /// Obtain the coupler curve and the extended curve in the range of motion.
+    pub fn ext_curve<const D: usize>(
+        &self,
+        length: f64,
+        res: usize,
+    ) -> (Vec<[f64; D]>, Vec<[f64; D]>)
+    where
+        Self: PoseGen<D>,
+    {
+        PoseGen::<D>::ext_curve(self, length, res)
+    }
+
     /// Check if the data is valid.
     pub fn is_valid(&self) -> bool
     where
@@ -323,40 +335,38 @@ pub trait PoseGen<const D: usize>: CurveGen<D> {
         curves.iter().map(|pos| self.uvec(pos)).collect()
     }
 
-    /// Generator for the extended points in specified angle.
-    fn ext_iter<I>(&self, length: f64, iter: I) -> impl Iterator<Item = [f64; D]>
+    /// Generator for the coupler points and the extended points in specified
+    /// angle.
+    fn ext_iter<I>(&self, length: f64, iter: I) -> impl Iterator<Item = ([f64; D], [f64; D])>
     where
         I: IntoIterator<Item = f64>,
     {
         self.uvec_iter(iter)
-            .map(move |(p, v)| std::array::from_fn(|i| p[i] + length * v[i]))
+            .map(move |(p, v)| (p, std::array::from_fn(|i| p[i] + length * v[i])))
     }
 
-    /// Obtain the extended curve in the range of motion.
-    fn ext_curve_in(&self, length: f64, start: f64, end: f64, res: usize) -> Vec<[f64; D]> {
-        self.ext_iter(length, linspace(start, end, res)).collect()
+    /// Obtain the coupler curve and the extended curve in the range of motion.
+    fn ext_curve_in(
+        &self,
+        length: f64,
+        start: f64,
+        end: f64,
+        res: usize,
+    ) -> (Vec<[f64; D]>, Vec<[f64; D]>) {
+        self.ext_iter(length, linspace(start, end, res)).unzip()
     }
 
-    /// Obtain the extended curve in the range of motion.
-    fn ext_curve(&self, length: f64, res: usize) -> Vec<[f64; D]> {
+    /// Obtain the coupler curve and the extended curve in the range of motion.
+    fn ext_curve(&self, length: f64, res: usize) -> (Vec<[f64; D]>, Vec<[f64; D]>) {
         self.angle_bound()
             .to_value()
             .map(|[start, end]| self.ext_curve_in(length, start, end, res))
             .unwrap_or_default()
     }
 
-    /// Obtain the extended curve by an input angle list.
-    fn ext_curve_by(&self, length: f64, t: &[f64]) -> Vec<[f64; D]> {
-        self.ext_iter(length, t.iter().copied()).collect()
-    }
-
-    /// Obtain the extended curve from known position.
-    fn ext_curve_from_curves(&self, length: f64, curves: &[[[f64; D]; 3]]) -> Vec<[f64; D]> {
-        curves
-            .iter()
-            .map(|pos @ [.., p5]| (p5, self.uvec(pos)))
-            .map(move |(p, v)| std::array::from_fn(|i| p[i] + length * v[i]))
-            .collect()
+    /// Obtain the coupler curve and the extended curve by an input angle list.
+    fn ext_curve_by(&self, length: f64, t: &[f64]) -> (Vec<[f64; D]>, Vec<[f64; D]>) {
+        self.ext_iter(length, t.iter().copied()).unzip()
     }
 }
 

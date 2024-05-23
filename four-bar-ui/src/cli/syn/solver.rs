@@ -138,14 +138,18 @@ where
         if let Some((cost, fb)) = atlas_fb {
             let curve = fb.curve(cfg.res);
             log.title("atlas")?;
-            log.log(Performance::cost(cost).harmonic(harmonic))?;
+            log.log(Performance::cost(cost, &tar_curve, &curve).harmonic(harmonic))?;
             log.title("atlas.fb")?;
             log.log(&fb)?;
             write_ron(root.join("atlas.ron"), &fb)?;
             fig.push_line("Atlas", curve, Style::Triangle, ATLAS_COLOR);
         }
         log.title("optimized")?;
-        log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
+        log.log(
+            Performance::cost(cost, &tar_curve, &curve)
+                .time(t1)
+                .harmonic(harmonic),
+        )?;
         log.title("optimized.fb")?;
         log.log(&fb)?;
         if let Some(refer) = refer {
@@ -154,7 +158,7 @@ where
             log.title("competitor")?;
             if !matches!(mode, syn::Mode::Partial) {
                 let efd = efd::Efd::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
-                log.log(Performance::cost(efd.err(&tar_efd)))?;
+                log.log(Performance::cost(efd.err(&tar_efd), &tar_curve, &c))?;
             }
             log.title("competitor.fb")?;
             log.log(&fb)?;
@@ -240,14 +244,14 @@ where
         if let Some((cost, fb)) = atlas_fb {
             let curve = fb.curve(cfg.res);
             log.title("atlas")?;
-            log.log(Performance::cost(cost))?;
+            log.log(Performance::cost(cost, &tar_curve, &curve))?;
             log.title("atlas.fb")?;
             log.log(&fb)?;
             write_ron(root.join("atlas.ron"), &fb)?;
             fig.push_line("Atlas", curve, Style::Triangle, ATLAS_COLOR);
         }
         log.title("optimized")?;
-        log.log(Performance::cost(cost).time(t1))?;
+        log.log(Performance::cost(cost, &tar_curve, &curve).time(t1))?;
         log.title("optimized.fb")?;
         log.log(&fb)?;
         if let Some(refer) = refer {
@@ -256,7 +260,7 @@ where
             log.title("competitor")?;
             if !matches!(mode, syn::Mode::Partial) {
                 let efd = efd::Efd::from_curve(&c, mode.is_result_open());
-                log.log(Performance::cost(efd.err_sig(&tar_sig)))?;
+                log.log(Performance::cost(efd.err_sig(&tar_sig), &tar_curve, &c))?;
             }
             log.title("competitor.fb")?;
             log.log(&fb)?;
@@ -279,7 +283,7 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
         info: &Info,
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
-        let Self { s, tar_curve, tar_pose, tar_fb } = self;
+        let Self { s, tar_p, tar_v, tar_fb } = self;
         let Info { root, title, mode, refer, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
@@ -302,30 +306,26 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
         write_tar_efd(root.join(EFD_CRUVE_CSV), tar_efd.as_curve())?;
         write_tar_efd(root.join(EFD_POSE_CSV), tar_efd.as_pose())?;
         write_ron(root.join(LNK_RON), &fb)?;
-        let (curve, pose) = fb.pose(cfg.res);
+        let length = tar_efd.as_curve().as_geo().scale();
+        let (curve_p, curve_q) = fb.ext_curve(length, cfg.res);
         let mut fig = plot::mfb::Figure::new();
         if let Some(legend) = info.legend {
             fig.legend = legend;
         }
-        let length = tar_efd.as_curve().as_geo().scale();
-        fig.push_pose(
-            "Target",
-            (&tar_curve, &tar_pose, length),
-            Style::Line,
-            TARGET_COLOR,
-            false,
-        );
+        let tar_q = efd::posed::guide_from_curve(&tar_p, tar_v, length);
+        fig.push_series("Target", (&tar_p, &tar_q), Style::Line, TARGET_COLOR, false);
         {
-            let t = efd::get_norm_t(&tar_curve, true);
-            let curve = tar_efd.as_curve().recon_by(&t).into();
+            let t = efd::get_norm_t(&tar_p, true);
+            let curve_p = tar_efd.as_curve().recon_by(&t);
             let pose = tar_efd.as_pose().recon_by(&t);
-            let pose = tar_efd.as_curve().as_geo().transform(pose).into();
-            fig.push_line_data(plot::LineData {
-                label: "Target Recon.".into(),
-                line: plot::LineType::Pose { curve, pose, is_frame: false },
-                style: Style::DashedLine,
-                color: SYN_COLOR.into(),
-            });
+            let curve_q = tar_efd.as_curve().as_geo().transform(pose);
+            fig.push_series(
+                "Target Recon.",
+                (curve_p, curve_q),
+                Style::DashedLine,
+                SYN_COLOR,
+                false,
+            );
             write_ron(root.join(TAR_FIG), &fig)?;
             let path = root.join(TAR_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -333,9 +333,9 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             fig.lines.pop();
         }
         fig.set_fb_ref(fb.as_fb());
-        fig.push_pose(
+        fig.push_series(
             "Optimized",
-            (&curve, &pose, length),
+            (&curve_p, &curve_q),
             Style::DashedLine,
             SYN_COLOR,
             true,
@@ -352,23 +352,29 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             log.log(fb)?;
         }
         log.title("optimized")?;
-        log.log(Performance::cost(cost).time(t1).harmonic(harmonic))?;
+        log.log(
+            Performance::cost_m(cost, &tar_p, &tar_q, &curve_p, &curve_q)
+                .time(t1)
+                .harmonic(harmonic),
+        )?;
         log.title("optimized.fb")?;
         log.log(&fb)?;
         if let Some(refer) = refer {
             let fb = ron::de::from_reader::<_, MFourBar>(std::fs::File::open(refer)?)?;
             let (c, v) = fb.pose(cfg.res);
+            let c_q = efd::posed::guide_from_curve(&c, &v, length);
             log.title("competitor")?;
             if !matches!(mode, syn::Mode::Partial) {
                 let efd =
                     efd::PosedEfd::from_uvec_harmonic(&c, &v, mode.is_result_open(), harmonic);
-                log.log(Performance::cost(efd.err(&tar_efd)))?;
+                let cost = efd.err(&tar_efd);
+                log.log(Performance::cost_m(cost, &tar_p, &tar_q, &c, &c_q))?;
             }
             log.title("competitor.fb")?;
             log.log(&fb)?;
-            fig.push_pose(
+            fig.push_series(
                 "Ref. [?]",
-                (c, v, length),
+                (c, c_q),
                 Style::DashDottedLine,
                 ATLAS_COLOR,
                 true,
@@ -391,7 +397,7 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
         info: &Info,
         history: Arc<Mutex<Vec<f64>>>,
     ) -> Result<(), SynErr> {
-        let Self { s, tar_curve, tar_pose, tar_fb } = self;
+        let Self { s, tar_p, tar_v, tar_fb } = self;
         let Info { root, title, refer, mode, .. } = info;
         let t0 = std::time::Instant::now();
         let s = s.solve();
@@ -410,30 +416,27 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
         let mut log = super::logger::Logger::new(&mut log);
         log.top_title(title)?;
         write_ron(root.join(LNK_RON), &fb)?;
-        let (curve, pose) = fb.pose(cfg.res);
+        let length = tar_sig.as_geo().scale();
+        let (curve_p, curve_q) = fb.ext_curve(length, cfg.res);
         let mut fig = plot::mfb::Figure::new();
         if let Some(legend) = info.legend {
             fig.legend = legend;
         }
-        let length = tar_sig.as_geo().scale();
-        fig.push_pose(
-            "Target",
-            (&tar_curve, &tar_pose, length),
-            Style::Line,
-            TARGET_COLOR,
-            false,
-        );
+        let tar_q = efd::posed::guide_from_curve(&tar_p, tar_v, length);
+        fig.push_series("Target", (&tar_p, &tar_q), Style::Line, TARGET_COLOR, false);
         {
-            let efd = efd::PosedEfd::from_uvec(&curve, &pose, mode.is_target_open());
-            let curve = efd.as_curve().recon_by(tar_sig.as_t()).into();
+            let efd =
+                efd::PosedEfd::from_series_harmonic(&curve_p, &curve_q, mode.is_target_open(), 1);
+            let curve_p = efd.as_curve().recon_by(tar_sig.as_t());
             let pose = efd.as_pose().recon_by(tar_sig.as_t());
-            let pose = efd.as_curve().as_geo().transform(pose).into();
-            fig.push_line_data(plot::LineData {
-                label: "DD Recon.".into(),
-                line: plot::LineType::Pose { curve, pose, is_frame: false },
-                style: Style::DashedLine,
-                color: SYN_COLOR.into(),
-            });
+            let curve_q = efd.as_curve().as_geo().transform(pose);
+            fig.push_series(
+                "DD Recon.",
+                (curve_p, curve_q),
+                Style::DashedLine,
+                SYN_COLOR,
+                false,
+            );
             write_ron(root.join(TAR_FIG), &fig)?;
             let path = root.join(TAR_SVG);
             let svg = plot::SVGBackend::new(&path, (1600, 1600));
@@ -441,9 +444,9 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             fig.lines.pop();
         }
         fig.set_fb_ref(fb.as_fb());
-        fig.push_pose(
+        fig.push_series(
             "Optimized",
-            (&curve, &pose, length),
+            (&curve_p, &curve_q),
             Style::DashedLine,
             SYN_COLOR,
             true,
@@ -460,22 +463,24 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             log.log(fb)?;
         }
         log.title("optimized")?;
-        log.log(Performance::cost(cost).time(t1))?;
+        log.log(Performance::cost_m(cost, &tar_p, &tar_q, &curve_p, &curve_q).time(t1))?;
         log.title("optimized.fb")?;
         log.log(&fb)?;
         if let Some(refer) = refer {
             let fb = ron::de::from_reader::<_, MFourBar>(std::fs::File::open(refer)?)?;
             let (c, v) = fb.pose(cfg.res);
+            let c_q = efd::posed::guide_from_curve(&c, &v, length);
             log.title("competitor")?;
             if !matches!(mode, syn::Mode::Partial) {
                 let efd = efd::PosedEfd::from_uvec(&c, &v, mode.is_result_open());
-                log.log(Performance::cost(efd.err_sig(&tar_sig)))?;
+                let cost = efd.err_sig(&tar_sig);
+                log.log(Performance::cost_m(cost, &tar_p, &tar_q, &c, &c_q))?;
             }
             log.title("competitor.fb")?;
             log.log(&fb)?;
-            fig.push_pose(
+            fig.push_series(
                 "Ref. [?]",
-                (c, v, length),
+                (c, c_q),
                 Style::DashDottedLine,
                 ATLAS_COLOR,
                 true,
@@ -559,9 +564,11 @@ fn from_exist(target: &Target, info: &Info) -> Result<(), SynErr> {
 
 #[derive(serde::Serialize)]
 struct Performance {
+    cost: f64,
+    #[serde(rename = "dist-err")]
+    dist_err: f64,
     #[serde(serialize_with = "ser_time")]
     time: Option<std::time::Duration>,
-    cost: f64,
     harmonic: Option<usize>,
 }
 
@@ -576,8 +583,20 @@ where
 }
 
 impl Performance {
-    fn cost(cost: f64) -> Self {
-        Self { time: None, cost, harmonic: None }
+    fn cost<const D: usize>(cost: f64, tar: impl efd::Curve<D>, cur: impl efd::Curve<D>) -> Self {
+        let dist_err = efd::util::dist_err(tar, cur);
+        Self { cost, dist_err, time: None, harmonic: None }
+    }
+
+    fn cost_m<const D: usize>(
+        cost: f64,
+        tar_p: impl efd::Curve<D>,
+        tar_q: impl efd::Curve<D>,
+        cur_p: impl efd::Curve<D>,
+        cur_q: impl efd::Curve<D>,
+    ) -> Self {
+        let dist_err = efd::util::dist_err(tar_p, cur_p) + efd::util::dist_err(tar_q, cur_q);
+        Self { cost, dist_err, time: None, harmonic: None }
     }
 
     fn time(self, time: std::time::Duration) -> Self {

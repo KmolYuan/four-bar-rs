@@ -412,9 +412,9 @@ pub enum LineType<'a, C: Clone> {
     /// Motion Line
     Pose {
         /// Curve data
-        curve: Cow<'a, [C]>,
+        curve_p: Cow<'a, [C]>,
         /// Pose data (`curve` + `uvec`)
-        pose: Cow<'a, [C]>,
+        curve_q: Cow<'a, [C]>,
         /// Use frame style
         is_frame: bool,
     },
@@ -432,7 +432,9 @@ impl<'a, const D: usize> LineType<'a, [f64; D]> {
     pub fn boundary(&self) -> ExtBound<D> {
         match self {
             Self::Line(line) => line.iter().collect(),
-            Self::Pose { curve, pose, is_frame: _ } => curve.iter().chain(pose.iter()).collect(),
+            Self::Pose { curve_p: curve, curve_q: pose, is_frame: _ } => {
+                curve.iter().chain(pose.iter()).collect()
+            }
         }
     }
 }
@@ -481,7 +483,7 @@ impl<const D: usize> LineData<'_, [f64; D]> {
                 let line = line.iter().map(|&c| c.into());
                 style.draw(chart, line, &color, label, font)
             }
-            LineType::Pose { curve, pose, is_frame } => {
+            LineType::Pose { curve_p: curve, curve_q: pose, is_frame } => {
                 let curve = curve.iter().map(|&c| c.into());
                 let pose = pose.iter().map(|&c| c.into());
                 if *is_frame {
@@ -884,17 +886,12 @@ impl<'a, M: Clone, const D: usize> FigureBase<'a, '_, M, [f64; D]> {
         Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
         Color: Into<ShapeStyle>,
     {
-        let curve = Cow::from(curve);
+        let curve_p = Cow::from(curve);
         let uvec = Cow::from(uvec);
-        let pose = zip(&*curve, &*uvec)
+        let curve_q = zip(&*curve_p, &*uvec)
             .map(|(p, v)| std::array::from_fn(|i| p[i] + length * v[i]))
-            .collect();
-        self.push_line_data(LineData {
-            label: label.into(),
-            line: LineType::Pose { curve, pose, is_frame },
-            style,
-            color: color.into(),
-        });
+            .collect::<Vec<_>>();
+        self.push_series(label, (curve_p, curve_q), style, color, is_frame);
     }
 
     /// Add a line with unit vectors and default settings.
@@ -904,6 +901,55 @@ impl<'a, M: Clone, const D: usize> FigureBase<'a, '_, M, [f64; D]> {
         Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
     {
         self.push_pose(label, pose, Style::default(), RED, is_frame);
+    }
+
+    /// Add two lines as a motion.
+    pub fn add_series<S, L1, L2, Color>(
+        mut self,
+        label: S,
+        series: (L1, L2),
+        style: Style,
+        color: Color,
+        is_frame: bool,
+    ) -> Self
+    where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
+        Color: Into<ShapeStyle>,
+    {
+        self.push_series(label, series, style, color, is_frame);
+        self
+    }
+
+    /// Add two lines as a motion in-placed.
+    pub fn push_series<S, L1, L2, Color>(
+        &mut self,
+        label: S,
+        (curve_p, curve_q): (L1, L2),
+        style: Style,
+        color: Color,
+        is_frame: bool,
+    ) where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
+        Color: Into<ShapeStyle>,
+    {
+        let label = label.into();
+        let line = LineType::Pose {
+            curve_p: curve_p.into(),
+            curve_q: curve_q.into(),
+            is_frame,
+        };
+        self.push_line_data(LineData { label, line, style, color: color.into() });
+    }
+
+    /// Add two lines as a motion with default settings.
+    pub fn push_series_default<S, L1, L2>(&mut self, label: S, series: (L1, L2), is_frame: bool)
+    where
+        S: Into<Cow<'a, str>>,
+        Cow<'a, [[f64; D]]>: From<L1> + From<L2>,
+    {
+        self.push_series(label, series, Style::default(), RED, is_frame);
     }
 }
 
