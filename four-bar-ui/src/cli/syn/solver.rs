@@ -156,7 +156,9 @@ where
             let fb = ron::de::from_reader::<_, M::De>(std::fs::File::open(refer)?)?;
             let c = fb.curve(cfg.res);
             log.title("competitor")?;
-            if !matches!(mode, syn::Mode::Partial) {
+            if matches!(mode, syn::Mode::Partial) {
+                log.log(Performance::dist_err(&tar_curve, &c))?;
+            } else {
                 let efd = efd::Efd::from_curve_harmonic(&c, mode.is_result_open(), harmonic);
                 log.log(Performance::cost(efd.err(&tar_efd), &tar_curve, &c))?;
             }
@@ -258,7 +260,9 @@ where
             let fb = ron::de::from_reader::<_, M::De>(std::fs::File::open(refer)?)?;
             let c = fb.curve(cfg.res);
             log.title("competitor")?;
-            if !matches!(mode, syn::Mode::Partial) {
+            if matches!(mode, syn::Mode::Partial) {
+                log.log(Performance::dist_err(&tar_curve, &c))?;
+            } else {
                 let efd = efd::Efd::from_curve(&c, mode.is_result_open());
                 log.log(Performance::cost(efd.err_sig(&tar_sig), &tar_curve, &c))?;
             }
@@ -364,7 +368,9 @@ impl MSynData<'_, syn::MOFit, syn::MFbSyn> {
             let (c, v) = fb.pose(cfg.res);
             let c_q = efd::posed::guide_from_curve(&c, &v, length);
             log.title("competitor")?;
-            if !matches!(mode, syn::Mode::Partial) {
+            if matches!(mode, syn::Mode::Partial) {
+                log.log(Performance::dist_err_m(&tar_p, &tar_q, &c, &c_q))?;
+            } else {
                 let efd =
                     efd::PosedEfd::from_uvec_harmonic(&c, &v, mode.is_result_open(), harmonic);
                 let cost = efd.err(&tar_efd);
@@ -471,7 +477,9 @@ impl MSynData<'_, f64, syn::MFbDDSyn> {
             let (c, v) = fb.pose(cfg.res);
             let c_q = efd::posed::guide_from_curve(&c, &v, length);
             log.title("competitor")?;
-            if !matches!(mode, syn::Mode::Partial) {
+            if matches!(mode, syn::Mode::Partial) {
+                log.log(Performance::dist_err_m(&tar_p, &tar_q, &c, &c_q))?;
+            } else {
                 let efd = efd::PosedEfd::from_uvec(&c, &v, mode.is_result_open());
                 let cost = efd.err_sig(&tar_sig);
                 log.log(Performance::cost_m(cost, &tar_p, &tar_q, &c, &c_q))?;
@@ -564,9 +572,9 @@ fn from_exist(target: &Target, info: &Info) -> Result<(), SynErr> {
 
 #[derive(serde::Serialize)]
 struct Performance {
-    cost: f64,
     #[serde(rename = "dist-err")]
     dist_err: f64,
+    cost: Option<f64>,
     #[serde(serialize_with = "ser_time")]
     time: Option<std::time::Duration>,
     harmonic: Option<usize>,
@@ -583,9 +591,29 @@ where
 }
 
 impl Performance {
+    fn dist_err<const D: usize>(tar: impl efd::Curve<D>, cur: impl efd::Curve<D>) -> Self {
+        let dist_err = efd::util::dist_err(tar, cur);
+        Self { dist_err, cost: None, time: None, harmonic: None }
+    }
+
     fn cost<const D: usize>(cost: f64, tar: impl efd::Curve<D>, cur: impl efd::Curve<D>) -> Self {
         let dist_err = efd::util::dist_err(tar, cur);
-        Self { cost, dist_err, time: None, harmonic: None }
+        Self {
+            cost: Some(cost),
+            dist_err,
+            time: None,
+            harmonic: None,
+        }
+    }
+
+    fn dist_err_m<const D: usize>(
+        tar_p: impl efd::Curve<D>,
+        tar_q: impl efd::Curve<D>,
+        cur_p: impl efd::Curve<D>,
+        cur_q: impl efd::Curve<D>,
+    ) -> Self {
+        let dist_err = efd::util::dist_err(tar_p, cur_p) + efd::util::dist_err(tar_q, cur_q);
+        Self { dist_err, cost: None, time: None, harmonic: None }
     }
 
     fn cost_m<const D: usize>(
@@ -596,7 +624,12 @@ impl Performance {
         cur_q: impl efd::Curve<D>,
     ) -> Self {
         let dist_err = efd::util::dist_err(tar_p, cur_p) + efd::util::dist_err(tar_q, cur_q);
-        Self { cost, dist_err, time: None, harmonic: None }
+        Self {
+            cost: Some(cost),
+            dist_err,
+            time: None,
+            harmonic: None,
+        }
     }
 
     fn time(self, time: std::time::Duration) -> Self {
