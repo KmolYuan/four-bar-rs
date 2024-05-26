@@ -355,6 +355,8 @@ pub trait Statable: PlanarLoop + Clone {
     }
 
     /// Check if the bounds is open.
+    ///
+    /// Please check [`Statable::is_valid()`] first.
     fn is_open(&self) -> bool {
         self.angle_bound().is_open()
     }

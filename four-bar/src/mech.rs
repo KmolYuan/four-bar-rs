@@ -27,8 +27,22 @@ pub struct Mech<UN, NM> {
 
 impl<UN, NM> Mech<UN, NM> {
     /// Create a new value from inner values.
+    ///
+    /// Please don't use [`Mech::default()`] directly, because it is an
+    /// invalid value.
+    ///
+    /// Use [`Mech::from_norm()`] to create from a normalized part.
     pub const fn new(unnorm: UN, norm: NM) -> Self {
         Self { unnorm, norm }
+    }
+
+    /// Create a new instance from normalized part.
+    pub fn from_norm<const D: usize>(norm: NM) -> Self
+    where
+        NM: Normalized<D, De = Self>,
+        efd::U<D>: efd::EfdDim<D>,
+    {
+        norm.denormalize()
     }
 
     /// Build with inverter.
@@ -77,7 +91,7 @@ impl<UN, NM> Mech<UN, NM> {
         NM: Normalized<D, De = Self>,
         efd::U<D>: efd::EfdDim<D>,
     {
-        <NM as Normalized<D>>::normalize(self)
+        Normalized::<D>::normalize(self)
     }
 
     /// Curve generation for coupler curve.
@@ -122,6 +136,16 @@ impl<UN, NM> Mech<UN, NM> {
         Self: Statable,
     {
         Statable::is_valid(self)
+    }
+
+    /// Check if the bounds is open.
+    ///
+    /// Please check [`Mech::is_valid()`] first.
+    pub fn is_open(&self) -> bool
+    where
+        Self: Statable,
+    {
+        Statable::is_open(self)
     }
 
     /// Input angle bounds of the linkage.
