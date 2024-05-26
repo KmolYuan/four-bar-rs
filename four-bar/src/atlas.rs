@@ -214,6 +214,17 @@ where
         Ok(atlas)
     }
 
+    /// Iterate over the normalized linkages.
+    pub fn fb_norm_iter(&self) -> impl Iterator<Item = M> + '_ {
+        std::iter::zip(&self.stat, self.fb.rows())
+            .map(|(stat, arr)| M::from_code(arr.as_slice().unwrap(), *stat))
+    }
+
+    /// Iterate over the EFD coefficients.
+    pub fn efd_iter(&self) -> impl Iterator<Item = efd::Efd<D>> + '_ {
+        self.efd.axis_iter(Axis(0)).map(arr_to_efd)
+    }
+
     /// Get the n-nearest four-bar linkages from a target curve.
     ///
     /// This method will keep the dimensional variables without transform.
@@ -365,20 +376,9 @@ impl<M, const N: usize, const D: usize> Atlas<M, N, D> {
         &self.fb
     }
 
-    /// Iterate over the linkages.
-    pub fn fb_iter(&self) -> impl Iterator<Item = (Vec<f64>, u8)> + '_ {
-        std::iter::zip(&self.stat, self.fb.rows()).map(|(stat, arr)| (arr.to_vec(), *stat))
-    }
-
-    /// Iterate over the EFD coefficients.
-    pub fn efd_iter(&self) -> impl Iterator<Item = ndarray::ArrayView2<f64>> + '_ {
-        self.efd.axis_iter(Axis(0))
-    }
-
     /// Iterate over with an "open state" of the linkages.
     pub fn is_open_iter(&self) -> impl Iterator<Item = bool> + '_ {
-        self.efd_iter()
-            .map(|efd| efd.slice(s![.., D..]).sum() == 0.)
+        (self.efd.axis_iter(Axis(0))).map(|efd| efd.slice(s![.., D..]).sum() == 0.)
     }
 
     /// Merge two data to one atlas.
