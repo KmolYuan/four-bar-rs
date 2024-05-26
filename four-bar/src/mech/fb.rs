@@ -85,6 +85,21 @@ impl NormFourBar {
         self.l4 *= scale;
         self.l5 *= scale;
     }
+
+    /// Generator for coupler curve.
+    pub fn curve(&self, res: usize) -> Vec<[f64; 2]> {
+        CurveGen::curve(self, res)
+    }
+
+    /// Check if the linkage is valid.
+    pub fn is_valid(&self) -> bool {
+        Statable::is_valid(self)
+    }
+
+    /// Check if the bounds is open.
+    pub fn is_open(&self) -> bool {
+        Statable::is_open(self)
+    }
 }
 
 /// Four-bar linkage with offset.

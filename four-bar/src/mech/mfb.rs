@@ -28,6 +28,38 @@ pub struct MNormFourBar {
     pub e: f64,
 }
 
+impl MNormFourBar {
+    /// Generator for coupler curve.
+    pub fn curve(&self, res: usize) -> Vec<[f64; 2]> {
+        CurveGen::curve(self, res)
+    }
+
+    /// Check if the linkage is valid.
+    pub fn is_valid(&self) -> bool {
+        Statable::is_valid(self)
+    }
+
+    /// Check if the bounds is open.
+    pub fn is_open(&self) -> bool {
+        Statable::is_open(self)
+    }
+
+    /// Obtain the continuous pose in the range of motion.
+    pub fn pose(&self, res: usize) -> (Vec<[f64; 2]>, Vec<[f64; 2]>) {
+        PoseGen::pose(self, res)
+    }
+
+    /// Pose generation for coupler curve in zipped form.
+    pub fn pose_zipped(&self, res: usize) -> Vec<([f64; 2], [f64; 2])> {
+        PoseGen::pose_zipped(self, res)
+    }
+
+    /// Obtain the coupler curve and the extended curve in the range of motion.
+    pub fn ext_curve(&self, length: f64, res: usize) -> (Vec<[f64; 2]>, Vec<[f64; 2]>) {
+        PoseGen::ext_curve(self, length, res)
+    }
+}
+
 impl std::ops::Deref for MNormFourBar {
     type Target = NormFourBar;
     fn deref(&self) -> &Self::Target {

@@ -218,7 +218,7 @@ impl AngleBound {
 
     /// Return true if the bounds is open.
     pub fn is_open(&self) -> bool {
-        !matches!(self, Self::Closed | Self::Invalid)
+        matches!(self, Self::OpenC1B2(_) | Self::OpenC2B2(_))
     }
 
     /// Check if the data is valid.
@@ -347,6 +347,16 @@ pub trait Statable: PlanarLoop + Clone {
     fn angle_bound(&self) -> AngleBound {
         let stat = self.stat();
         AngleBound::from_planar_loop(self.planar_loop(), stat)
+    }
+
+    /// Check if the linkage is valid.
+    fn is_valid(&self) -> bool {
+        self.angle_bound().is_valid()
+    }
+
+    /// Check if the bounds is open.
+    fn is_open(&self) -> bool {
+        self.angle_bound().is_open()
     }
 
     /// Return `true` will actives the inversion.

@@ -121,7 +121,7 @@ impl<UN, NM> Mech<UN, NM> {
     where
         Self: Statable,
     {
-        self.ty().is_valid()
+        Statable::is_valid(self)
     }
 
     /// Input angle bounds of the linkage.

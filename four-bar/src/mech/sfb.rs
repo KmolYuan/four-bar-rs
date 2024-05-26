@@ -157,6 +157,21 @@ impl SNormFourBar {
             stat: self.stat,
         }
     }
+
+    /// Generator for coupler curve.
+    pub fn curve(&self, res: usize) -> Vec<[f64; 3]> {
+        CurveGen::curve(self, res)
+    }
+
+    /// Check if the linkage is valid.
+    pub fn is_valid(&self) -> bool {
+        Statable::is_valid(self)
+    }
+
+    /// Check if the bounds is open.
+    pub fn is_open(&self) -> bool {
+        Statable::is_open(self)
+    }
 }
 
 impl SFourBar {
