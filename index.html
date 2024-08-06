@@ -94,8 +94,8 @@
         }
     </style>
 
-<link rel="modulepreload" href="/four-bar-rs/four-bar-ui.js" crossorigin=anonymous integrity="sha384-gooi9z8k1iq+YLWjyWJXNmPmnqUHcX2sb5NdHAWOvrxbaasdNZhFryBqBa5U7Qfo">
-<link rel="preload" href="/four-bar-rs/four-bar-ui_bg.wasm" crossorigin=anonymous integrity="sha384-m0MYUc7dnxNXbQOk2j679g2p+T8GpevgmSbhuP3O1BgLeLuLqFu0SewxrkaWfjCg" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/four-bar-rs/four-bar-ui.js" crossorigin=anonymous integrity="sha384-rIvbJqHkKxcyFOxoqL7Mc6/rLNxOE6gCDo7RnPvsDs0WNyGN1VGTKVbdQvY84QvQ">
+<link rel="preload" href="/four-bar-rs/four-bar-ui_bg.wasm" crossorigin=anonymous integrity="sha384-NhS3Pz9jFCMyGQc+Ys9cdfm3+mDblY2EFmr11HymIdiZ/+QWkzKTds/UmLJ2nqW1" as="fetch" type="application/wasm"></head>
 
 <body>
     <!-- The WASM code will resize this canvas to cover the entire screen -->
@@ -107,7 +107,7 @@
     
     <script type="module" src="utility.js"></script>
     
-<script type="module">
+<script type="module" nonce="MZzS077l3qd/pjntSyrBfg==">
 import init, * as bindings from '/four-bar-rs/four-bar-ui.js';
 const wasm = await init('/four-bar-rs/four-bar-ui_bg.wasm');
 
