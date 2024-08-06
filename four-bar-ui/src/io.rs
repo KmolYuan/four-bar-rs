@@ -574,7 +574,7 @@ pub(crate) fn load_img<R>(r: R) -> Result<ColorImage, image::ImageError>
 where
     R: std::io::Read + std::io::Seek,
 {
-    let img = image::io::Reader::new(std::io::BufReader::new(r))
+    let img = image::ImageReader::new(std::io::BufReader::new(r))
         .with_guessed_format()?
         .decode()?
         .to_rgba8();
