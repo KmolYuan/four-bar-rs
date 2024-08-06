@@ -114,7 +114,7 @@ impl Synthesis {
     pub(crate) fn show(&mut self, ui: &mut Ui, lnk: &mut Linkages) {
         ui.horizontal(|ui| {
             ui.heading("Synthesis");
-            reset_button(ui, &mut self.cfg);
+            reset_button(ui, &mut self.cfg, "Reset");
         });
         ui.collapsing("Algorithm", |ui| {
             ui.group(|ui| self.opt_setting(ui));

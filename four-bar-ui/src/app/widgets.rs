@@ -26,10 +26,8 @@ pub(crate) fn hint(ui: &mut Ui, tip: &str) -> Response {
     let res = ui
         .add(Label::new(RichText::new("(?)").underline()).selectable(false))
         .on_hover_text(tip);
-    if res.long_touched() {
-        show_tooltip_for(&res.ctx, res.id.with("__tooltip"), &res.rect, |ui| {
-            ui.label(tip);
-        });
+    if res.enabled() && res.long_touched() {
+        res.show_tooltip_ui(|ui| _ = ui.label(tip));
     }
     res
 }
@@ -74,7 +72,7 @@ where
     let dv = DragValue::new(val)
         .prefix(label)
         .speed(int)
-        .clamp_range(1..=usize::MAX);
+        .range(1..=usize::MAX);
     ui.add(dv)
 }
 
@@ -85,7 +83,7 @@ where
     let dv = DragValue::new(val)
         .prefix(label)
         .speed(int)
-        .clamp_range(1e-2..=f64::MAX)
+        .range(1e-2..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
 }
@@ -119,7 +117,7 @@ pub(crate) fn percent(ui: &mut Ui, label: &str, val: &mut f64) -> Response {
         .prefix(label)
         .custom_formatter(|v, _| format!("{:.04}%", v * 100.))
         .speed(0.1)
-        .clamp_range(1e-2..=f64::MAX)
+        .range(1e-2..=f64::MAX)
         .min_decimals(2);
     ui.add(dv)
 }

@@ -146,7 +146,10 @@ impl App {
         Box::new(|ctx| Self::new_boxed(ctx, files))
     }
 
-    fn new_boxed(ctx: &eframe::CreationContext, files: Vec<PathBuf>) -> Box<Self> {
+    fn new_boxed(
+        ctx: &eframe::CreationContext,
+        files: Vec<PathBuf>,
+    ) -> Result<Box<dyn eframe::App>, Box<dyn std::error::Error + Send + Sync>> {
         let mut font_data = BTreeMap::new();
         let mut families = Vec::with_capacity(FONT.len());
         for (name, font) in FONT {
@@ -190,7 +193,7 @@ impl App {
             }
             loading_finished();
         }
-        Box::new(app)
+        Ok(Box::new(app))
     }
 
     fn menu(&mut self, ui: &mut Ui) {
