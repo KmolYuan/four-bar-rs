@@ -1,14 +1,10 @@
 fn main() {
+    if let Ok(hash) = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .output()
     {
-        let hash = std::process::Command::new("git")
-            .args(["rev-parse", "HEAD"])
-            .output()
-            .unwrap()
-            .stdout;
-        println!(
-            "cargo:rustc-env=GIT_HASH={}",
-            String::from_utf8_lossy(&hash[..7])
-        );
+        let hash = String::from_utf8_lossy(&hash.stdout[..7]);
+        println!("cargo:rustc-env=GIT_HASH={hash}");
     }
     #[cfg(windows)]
     {

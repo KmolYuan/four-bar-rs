@@ -11,8 +11,16 @@ mod syn;
 mod widgets;
 
 pub(crate) const APP_NAME: &str = env!("CARGO_BIN_NAME");
-pub(crate) const VERSION: &str =
-    concat!["v", env!("CARGO_PKG_VERSION"), " (", env!("GIT_HASH"), ")"];
+pub(crate) const VERSION: &str = {
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    const GIT_HASH: Option<&str> = option_env!("GIT_HASH");
+    if GIT_HASH.is_some() {
+        const HASH: &str = const_str::unwrap!(GIT_HASH);
+        const_str::concat!("v", VERSION, " (", HASH, ")")
+    } else {
+        const_str::concat!("v", VERSION)
+    }
+};
 pub(crate) const GIF_RES: usize = 60;
 const LOCAL_STORAGE_TIP: &str = "\
 Your last settings will be used next time.
