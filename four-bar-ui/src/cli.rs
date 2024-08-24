@@ -45,6 +45,7 @@ impl Entry {
 }
 
 fn native(files: Vec<PathBuf>) {
+    // Safety: Free console window at the beginning is safe
     #[cfg(all(windows, feature = "native-win-release"))]
     unsafe {
         winapi::um::wincon::FreeConsole();
