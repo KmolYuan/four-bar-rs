@@ -57,6 +57,8 @@ console_error_panic_hook = "0.1"
 wasm-bindgen-futures = "0.4"
 wasm-bindgen = "0.2"
 tracing-wasm = "0.2"
+# FIXME: https://github.com/emilk/egui/issues/4961
+web-sys = "=0.3.69"
 
 [target.'cfg(windows)'.dependencies]
 # windows here!
