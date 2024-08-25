@@ -1,14 +1,14 @@
 [package]
-name = "four-bar-ui"
-version.workspace = true
 authors.workspace = true
-edition.workspace = true
-description = "Four🍀bar GUI is a simulator, a synthesis tool for four-bar linkages."
-readme = "../README.md"
-license.workspace = true
-repository.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "Four🍀bar GUI is a simulator, a synthesis tool for four-bar linkages."
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "four-bar-ui"
+readme = "../README.md"
+repository.workspace = true
+version.workspace = true
 
 [[bin]]
 name = "four-bar"
@@ -22,41 +22,41 @@ native = ["four-bar/clap", "four-bar/rayon", "image/rayon"]
 native-win-release = ["winapi", "native"]
 
 [dependencies]
-smartcore = { version = "0.3", features = ["ndarray-bindings"] }
-serde = { version = "1", features = ["derive"] }
-egui_plot = "0.28"
 const-str = "0.5"
+eframe = { version = "0.28", default-features = false, features = [
+    "accesskit",
+    "persistence",
+    "glow",
+] }
+egui_plot = "0.28"
+four-bar = { path = "../four-bar", version = "7", features = [
+    "csv",
+    "atlas",
+    "plot",
+] }
+image = { version = "0.25", default-features = false, features = [
+    "ico",
+    "jpeg",
+    "gif",
+] }
 rfd = "0.14"
 ron = { git = "https://github.com/ron-rs/ron" }
-
-[dependencies.four-bar]
-version = "7"
-path = "../four-bar"
-features = ["csv", "atlas", "plot"]
-
-[dependencies.eframe]
-version = "0.28"
-default-features = false
-features = ["accesskit", "persistence", "glow"]
-
-[dependencies.image]
-version = "0.25"
-default-features = false
-features = ["ico", "jpeg", "gif"]
+serde = { version = "1", features = ["derive"] }
+smartcore = { version = "0.3", features = ["ndarray-bindings"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # native here!
-indicatif = { version = "0.17", features = ["improved_unicode"] }
 clap = { version = "4", features = ["derive"] }
+indicatif = { version = "0.17", features = ["improved_unicode"] }
 wild = "2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # wasm here!
-instant = { version = "0.1", features = ["wasm-bindgen"] }
 console_error_panic_hook = "0.1"
-wasm-bindgen-futures = "0.4"
-wasm-bindgen = "0.2"
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 tracing-wasm = "0.2"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 # FIXME: https://github.com/emilk/egui/issues/4961
 web-sys = "=0.3.69"
 

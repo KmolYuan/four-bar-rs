@@ -1,35 +1,35 @@
 [package]
-name = "four-bar"
-version.workspace = true
 authors.workspace = true
-edition.workspace = true
-description = "Four🍀bar library provides simulation and synthesis function for four-bar linkages."
-readme = "README.md"
-license.workspace = true
-repository.workspace = true
-keywords.workspace = true
 categories.workspace = true
+description = "Four🍀bar library provides simulation and synthesis function for four-bar linkages."
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "four-bar"
+readme = "README.md"
+repository.workspace = true
+version.workspace = true
 
 [features]
-default = []
-serde = ["dep:serde", "mh/serde"]
+atlas = ["ndarray", "ndarray-npy"]
+clap = ["dep:clap", "mh/clap"]
 csv = ["dep:csv", "serde"]
+default = []
 plot = ["plotters", "plotters-backend", "fmtastic"]
 rayon = ["mh/rayon"]
-clap = ["dep:clap", "mh/clap"]
-atlas = ["ndarray", "ndarray-npy"]
+serde = ["dep:serde", "mh/serde"]
 
 [dependencies]
-ndarray = { version = "0.15", features = ["rayon"], optional = true }
-ndarray-npy = { version = "0.8", optional = true }
-serde = { version = "1", features = ["derive"], optional = true }
-plotters = { version = "0.3", optional = true }
-plotters-backend = { version = "0.3", optional = true }
-fmtastic = { version = "0.2", optional = true }
 clap = { version = "4", optional = true }
 csv = { version = "1", optional = true }
-mh = { version = "10.1", package = "metaheuristics-nature" }
 efd = "10.1"
+fmtastic = { version = "0.2", optional = true }
+mh = { version = "10.1", package = "metaheuristics-nature" }
+ndarray = { version = "0.15", features = ["rayon"], optional = true }
+ndarray-npy = { version = "0.8", optional = true }
+plotters = { version = "0.3", optional = true }
+plotters-backend = { version = "0.3", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
 approx = "0.5"

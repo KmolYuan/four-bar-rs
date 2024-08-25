@@ -3,13 +3,13 @@ members = ["four-bar", "four-bar-ui"]
 resolver = "2"
 
 [workspace.package]
-version = "7.0.1"
 authors = ["KmolYuan <pyslvs@gmail.com>"]
+categories = ["algorithms"]
 edition = "2021"
+keywords = ["mechanism", "simulation", "optimization"]
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/KmolYuan/four-bar-rs"
-keywords = ["mechanism", "simulation", "optimization"]
-categories = ["algorithms"]
+version = "7.0.1"
 
 [workspace.lints.clippy]
 semicolon-if-nothing-returned = "warn"
