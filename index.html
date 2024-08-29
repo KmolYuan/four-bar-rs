@@ -47,6 +47,8 @@
             top: 0;
             left: 50%;
             transform: translate(-50%, 0%);
+            width: 100%;
+            height: 100%;
         }
 
         .centered {
@@ -94,8 +96,8 @@
         }
     </style>
 
-<link rel="modulepreload" href="/four-bar-rs/four-bar-ui.js" crossorigin=anonymous integrity="sha384-F+2kIAEsPrcmpz+Op5EBWID8hYvYGLpVl4iy2Sxmw/PRIHKuyoZZ3NFIfJdPJGtU">
-<link rel="preload" href="/four-bar-rs/four-bar-ui_bg.wasm" crossorigin=anonymous integrity="sha384-d2cWity2cKboy47v0cwooWs3dKXzHADu37Vew/jzwVa0KxD7ZSFLe+pifCfHTVaV" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/four-bar-rs/four-bar-ui.js" crossorigin=anonymous integrity="sha384-kBXtBcLw7ND0GtY8Yb14HF94gdedY7JU6hUb2y/qtwC7QA0PGt2mobZE2YkF7zoM">
+<link rel="preload" href="/four-bar-rs/four-bar-ui_bg.wasm" crossorigin=anonymous integrity="sha384-J3MYFZpCZzTcz0Fl100G0OG838mO5imsUrKBYnM5rXq2eCMG0Yglb6K7WO7rcHvh" as="fetch" type="application/wasm"></head>
 
 <body>
     <!-- The WASM code will resize this canvas to cover the entire screen -->
@@ -107,7 +109,7 @@
     
     <script type="module" src="utility.js"></script>
     
-<script type="module" nonce="AYsy9EN6PuVPktfh8sdGAg==">
+<script type="module" nonce="jnxP4OfwQqlzRwSRc+5eOg==">
 import init, * as bindings from '/four-bar-rs/four-bar-ui.js';
 const wasm = await init('/four-bar-rs/four-bar-ui_bg.wasm');
 
