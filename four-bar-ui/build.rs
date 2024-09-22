@@ -3,8 +3,10 @@ fn main() {
         .args(["rev-parse", "HEAD"])
         .output()
     {
-        let hash = String::from_utf8_lossy(&hash.stdout[..7]);
-        println!("cargo:rustc-env=GIT_HASH={hash}");
+        if hash.status.success() {
+            let hash = String::from_utf8_lossy(&hash.stdout[..7]);
+            println!("cargo:rustc-env=GIT_HASH={hash}");
+        }
     }
     #[cfg(windows)]
     {
