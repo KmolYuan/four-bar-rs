@@ -1,13 +1,17 @@
 fn main() {
+    let mut version = format!("v{}", env!("CARGO_PKG_VERSION"));
     if let Ok(hash) = std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .output()
     {
         if hash.status.success() {
             let hash = String::from_utf8_lossy(&hash.stdout[..7]);
-            println!("cargo:rustc-env=GIT_HASH={hash}");
+            version.push_str(" (");
+            version.push_str(&hash);
+            version.push(')');
         }
     }
+    println!("cargo:rustc-env=APP_VERSION={version}");
     #[cfg(windows)]
     {
         let profile = std::env::var("PROFILE").unwrap();

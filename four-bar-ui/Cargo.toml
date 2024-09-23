@@ -22,7 +22,6 @@ native = ["four-bar/clap", "four-bar/rayon", "image/rayon"]
 native-win-release = ["winapi", "native"]
 
 [dependencies]
-const-str = "0.5"
 eframe = { version = "0.28", default-features = false, features = [
     "accesskit",
     "persistence",
