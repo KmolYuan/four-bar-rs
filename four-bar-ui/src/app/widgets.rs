@@ -218,7 +218,7 @@ pub(crate) fn combo_enum<H, E, F, T, const N: usize>(
     T: Into<WidgetText>,
 {
     let mut i = list.iter().position(|opt| opt == value).unwrap();
-    if ComboBox::from_id_source(id)
+    if ComboBox::from_id_salt(id)
         .selected_text(name(value))
         .show_index(ui, &mut i, N, |i| name(&list[i]))
         .changed()

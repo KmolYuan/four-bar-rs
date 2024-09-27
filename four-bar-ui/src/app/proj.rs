@@ -164,7 +164,7 @@ impl Projects {
     }
 
     pub(crate) fn select(&mut self, ui: &mut Ui) {
-        let combo = ComboBox::from_id_source("proj");
+        let combo = ComboBox::from_id_salt("proj");
         if self.list.is_empty() {
             combo.show_ui(ui, |_| ());
         } else {

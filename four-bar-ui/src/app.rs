@@ -141,7 +141,7 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn create(files: Vec<PathBuf>) -> eframe::AppCreator {
+    pub(crate) fn create(files: Vec<PathBuf>) -> eframe::AppCreator<'static> {
         Box::new(|ctx| Self::new_boxed(ctx, files))
     }
 

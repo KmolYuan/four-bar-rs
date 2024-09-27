@@ -22,12 +22,12 @@ native = ["four-bar/clap", "four-bar/rayon", "image/rayon"]
 native-win-release = ["winapi", "native"]
 
 [dependencies]
-eframe = { version = "0.28", default-features = false, features = [
+eframe = { version = "0.29", default-features = false, features = [
     "accesskit",
     "persistence",
     "glow",
 ] }
-egui_plot = "0.28"
+egui_plot = "0.29"
 four-bar = { path = "../four-bar", version = "7", features = [
     "csv",
     "atlas",
@@ -38,7 +38,7 @@ image = { version = "0.25", default-features = false, features = [
     "jpeg",
     "gif",
 ] }
-rfd = "0.14"
+rfd = "0.15"
 ron = { git = "https://github.com/ron-rs/ron" }
 serde = { version = "1", features = ["derive"] }
 smartcore = { version = "0.3", features = ["ndarray-bindings"] }
@@ -56,8 +56,7 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 tracing-wasm = "0.2"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-# FIXME: https://github.com/emilk/egui/issues/4961
-web-sys = "=0.3.69"
+web-sys = "0.3.70"
 
 [target.'cfg(windows)'.dependencies]
 # windows here!
