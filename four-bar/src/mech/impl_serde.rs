@@ -73,7 +73,7 @@ macro_rules! impl_serde {
                         // Cannot use `&mut` and `=` on an uninitialized field, so we have to use `write`.
                         // SAFETY: We only write them for initialization.
                         $(unsafe {
-                            std::ptr::addr_of_mut!((*fb_ptr).$($unnorm.)?$field)
+                            std::ptr::addr_of_mut!((&mut *fb_ptr).$($unnorm.)?$field)
                                 .write($field.into_inner().ok_or_else(|| serde::de::Error::missing_field(stringify!($field)))?);
                         })+
                         // SAFETY: We have initialized all fields.

@@ -100,7 +100,7 @@ impl Project {
         fn cache(self: &mut Self);
         fn plot(self: &Self, ui: &mut egui_plot::PlotUi, ind: usize, id: usize);
         fn coupler(self: &Self) -> io::Curve;
-        fn name(self: &Self) -> Cow<str>;
+        fn name(self: &Self) -> Cow<'_, str>;
         fn preload(self: &mut Self);
         fn set_path(self: &mut Self, path: PathBuf);
         fn path(self: &Self) -> Option<&Path>;
@@ -242,7 +242,7 @@ where
         }
     }
 
-    fn name(&self) -> Cow<str> {
+    fn name(&self) -> Cow<'_, str> {
         if let Some(path) = &self.path {
             let name = path.file_name().unwrap().to_string_lossy();
             if name.ends_with(".ron") {
