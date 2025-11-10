@@ -338,6 +338,14 @@ function wasm_bindgen__convert__closures_____invoke__hf04d623a171ed709(arg0, arg
     wasm.wasm_bindgen__convert__closures_____invoke__hf04d623a171ed709(arg0, arg1, ptr0, len0);
 }
 
+function wasm_bindgen__convert__closures_____invoke__hd5032603eeff6d23(arg0, arg1, arg2, arg3) {
+    const ptr0 = passStringToWasm0(arg2, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(arg3, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.wasm_bindgen__convert__closures_____invoke__hd5032603eeff6d23(arg0, arg1, ptr0, len0, ptr1, len1);
+}
+
 function wasm_bindgen__convert__closures_____invoke__h58cb7561090297da(arg0, arg1, arg2, arg3) {
     const ptr0 = passStringToWasm0(arg2, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
@@ -360,14 +368,6 @@ function wasm_bindgen__convert__closures_____invoke__hb7abcbce011827fe(arg0, arg
     if (ret[1]) {
         throw takeFromExternrefTable0(ret[0]);
     }
-}
-
-function wasm_bindgen__convert__closures_____invoke__hd5032603eeff6d23(arg0, arg1, arg2, arg3) {
-    const ptr0 = passStringToWasm0(arg2, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(arg3, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    wasm.wasm_bindgen__convert__closures_____invoke__hd5032603eeff6d23(arg0, arg1, ptr0, len0, ptr1, len1);
 }
 
 const __wbindgen_enum_ResizeObserverBoxOptions = ["border-box", "content-box", "device-pixel-content-box"];
