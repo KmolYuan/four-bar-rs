@@ -322,6 +322,9 @@ function getArrayI8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getInt8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
+function wasm_bindgen__convert__closures_____invoke__h74255834e94911cb(arg0, arg1, arg2) {
+    wasm.wasm_bindgen__convert__closures_____invoke__h74255834e94911cb(arg0, arg1, arg2);
+}
 
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
@@ -335,20 +338,16 @@ function wasm_bindgen__convert__closures_____invoke__hf04d623a171ed709(arg0, arg
     wasm.wasm_bindgen__convert__closures_____invoke__hf04d623a171ed709(arg0, arg1, ptr0, len0);
 }
 
-function wasm_bindgen__convert__closures_____invoke__h74255834e94911cb(arg0, arg1, arg2) {
-    wasm.wasm_bindgen__convert__closures_____invoke__h74255834e94911cb(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures_____invoke__h58cb7561090297da(arg0, arg1, arg2, arg3) {
+    const ptr0 = passStringToWasm0(arg2, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(arg3, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.wasm_bindgen__convert__closures_____invoke__h58cb7561090297da(arg0, arg1, ptr0, len0, ptr1, len1);
 }
 
 function wasm_bindgen__convert__closures_____invoke__h0df73e580b12a696(arg0, arg1, arg2) {
     wasm.wasm_bindgen__convert__closures_____invoke__h0df73e580b12a696(arg0, arg1, arg2);
-}
-
-function wasm_bindgen__convert__closures_____invoke__h58cb7561090297da(arg0, arg1, arg2, arg3) {
-    const ptr0 = passStringToWasm0(arg2, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(arg3, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    wasm.wasm_bindgen__convert__closures_____invoke__h58cb7561090297da(arg0, arg1, ptr0, len0, ptr1, len1);
 }
 
 function takeFromExternrefTable0(idx) {
