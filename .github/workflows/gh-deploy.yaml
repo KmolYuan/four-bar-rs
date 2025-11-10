@@ -8,11 +8,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      - uses: actions/checkout@v5
       - run: |
+          rustup update
           cargo login ${{ secrets.CRATE_IO }}
           cargo publish -p four-bar || true
           cargo publish -p four-bar-ui || true
@@ -37,13 +35,11 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      - uses: actions/checkout@v5
       - if: matrix.asset_name == 'four-bar-linux-amd64'
         name: Linux requirements
         run: |
+          rustup update
           sudo apt update
           sudo apt install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
       - if: matrix.asset_name == 'four-bar-wasm-unknown'
@@ -61,13 +57,8 @@ jobs:
           cargo clippy -- -D warnings
           cargo test -p four-bar
           cargo build --release --features=native-win-release
-      - name: Pack
-        uses: vimtor/action-zip@v1
-        with:
-          files: ${{ matrix.artifact_name }}
-          dest: ${{ matrix.asset_name }}.zip
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.asset_name }}
           path: ${{ matrix.artifact_name }}
