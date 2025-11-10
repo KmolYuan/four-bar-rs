@@ -7,7 +7,7 @@
 <head>
     <title>Four-bar</title>
     <base href="/four-bar-rs/" />
-    <link rel="icon" href="/four-bar-rs/favicon.png" integrity="sha384&#x2D;rsQyz1U0t50ljlEuFPJuMGvFwLHbHpUPc3ABjC4KDG2EdE4kbnUJB9f1umjQXszw"/>
+    <link rel="icon" href="/four-bar-rs/favicon.png" integrity="sha384-rsQyz1U0t50ljlEuFPJuMGvFwLHbHpUPc3ABjC4KDG2EdE4kbnUJB9f1umjQXszw"/>
     <style>
         html {
             /* Remove touch delay: */
@@ -95,9 +95,7 @@
             }
         }
     </style>
-
-<link rel="modulepreload" href="/four-bar-rs/four-bar-ui.js" crossorigin=anonymous integrity="sha384-JVzsm07p/1Pz+a70DNrsw2uSbSVeX75TaGiYrkaDteT9aHGXv4bSVPLT21xNevOU">
-<link rel="preload" href="/four-bar-rs/four-bar-ui_bg.wasm" crossorigin=anonymous integrity="sha384-2RRdw+mW9X5lsuMHw+gAT3UQ9Pmh/v9eIraqMmJvT1o3zfR13Q9bgmehZm16mlfq" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/four-bar-rs/four-bar-ui.js" crossorigin="anonymous" integrity="sha384-dCEXY85CDfT0iygVYRh0M3wD3mjK5TKZCYm9Oj7Q9jSliI9boJETZUzJmYtE/rHH"><link rel="preload" href="/four-bar-rs/four-bar-ui_bg.wasm" crossorigin="anonymous" integrity="sha384-xw5aFSdZPxmXlZJ3TEpsCiLn+sEfZs7j/OxeWi6qZIgK9PTjcz7im7qqludfG+nV" as="fetch" type="application/wasm"></head>
 
 <body>
     <!-- The WASM code will resize this canvas to cover the entire screen -->
@@ -109,9 +107,9 @@
     
     <script type="module" src="utility.js"></script>
     
-<script type="module" nonce="pgxkyHQVKn/Khh2EbEFjwA==">
+<script type="module">
 import init, * as bindings from '/four-bar-rs/four-bar-ui.js';
-const wasm = await init('/four-bar-rs/four-bar-ui_bg.wasm');
+const wasm = await init({ module_or_path: '/four-bar-rs/four-bar-ui_bg.wasm' });
 
 
 window.wasmBindings = bindings;
